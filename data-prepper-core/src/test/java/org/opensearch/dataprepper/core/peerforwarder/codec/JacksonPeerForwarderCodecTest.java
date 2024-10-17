@@ -8,12 +8,11 @@ package org.opensearch.dataprepper.core.peerforwarder.codec;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
+import org.opensearch.dataprepper.core.peerforwarder.model.WireEvents;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
-import org.opensearch.dataprepper.core.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
 import java.util.ArrayList;

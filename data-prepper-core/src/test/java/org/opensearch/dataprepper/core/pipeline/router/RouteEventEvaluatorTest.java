@@ -5,10 +5,6 @@
 
 package org.opensearch.dataprepper.core.pipeline.router;
 
-import org.opensearch.dataprepper.core.pipeline.router.RouteEventEvaluator;
-import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
 import java.util.Collections;

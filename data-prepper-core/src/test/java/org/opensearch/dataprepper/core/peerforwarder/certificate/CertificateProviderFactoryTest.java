@@ -5,17 +5,16 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.certificate;
 
-import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;

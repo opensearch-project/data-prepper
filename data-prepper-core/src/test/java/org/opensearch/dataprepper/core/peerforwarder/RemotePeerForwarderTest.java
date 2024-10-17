@@ -7,15 +7,8 @@ package org.opensearch.dataprepper.core.peerforwarder;
 
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import org.opensearch.dataprepper.core.peerforwarder.HashRing;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +16,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -41,10 +39,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -57,13 +55,12 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_ACTUALLY_PROCESSED_LOCALLY;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_FAILED_FORWARDING;
+import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
-import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
 import static org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
-import org.apache.commons.lang3.RandomStringUtils;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {

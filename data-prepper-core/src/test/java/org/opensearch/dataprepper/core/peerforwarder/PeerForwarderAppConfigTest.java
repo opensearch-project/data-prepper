@@ -6,13 +6,9 @@
 package org.opensearch.dataprepper.core.peerforwarder;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.PeerClientPool;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderAppConfig;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;

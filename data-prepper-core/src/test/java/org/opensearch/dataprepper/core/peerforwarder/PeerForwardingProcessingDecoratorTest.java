@@ -5,26 +5,20 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
-import org.opensearch.dataprepper.core.peerforwarder.LocalPeerForwarder;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
-import org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
-import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.record.Record;
+import org.apache.commons.collections.CollectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.apache.commons.collections.CollectionUtils;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import org.opensearch.dataprepper.core.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
 import org.opensearch.dataprepper.core.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,11 +28,13 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;

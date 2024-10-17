@@ -22,6 +22,14 @@ import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
+import org.opensearch.dataprepper.core.pipeline.Pipeline;
+import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -32,19 +40,11 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
-import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
-import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.core.validation.PluginError;
-import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
@@ -74,7 +74,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
+import static org.opensearch.dataprepper.core.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
 class PipelineTransformerTests {

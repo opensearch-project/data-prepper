@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.server.RemotePeerForwarderServer;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

@@ -5,26 +5,17 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
-import org.opensearch.dataprepper.core.peerforwarder.DefaultPeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.HashRing;
-import org.opensearch.dataprepper.core.peerforwarder.LocalPeerForwarder;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarder;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.core.peerforwarder.RemotePeerForwarder;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collections;
 import java.util.List;

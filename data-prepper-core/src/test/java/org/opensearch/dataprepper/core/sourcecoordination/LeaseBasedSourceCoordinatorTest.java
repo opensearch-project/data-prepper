@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator;
+import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
@@ -27,7 +27,6 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionN
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
-import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.net.InetAddress;

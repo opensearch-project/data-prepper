@@ -2,8 +2,7 @@ package org.opensearch.dataprepper.core.validation;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
-import org.opensearch.dataprepper.core.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

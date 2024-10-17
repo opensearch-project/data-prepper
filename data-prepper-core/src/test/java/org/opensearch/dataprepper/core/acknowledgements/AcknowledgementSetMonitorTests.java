@@ -5,19 +5,17 @@
 
 package org.opensearch.dataprepper.core.acknowledgements;
 
-import org.opensearch.dataprepper.core.acknowledgements.AcknowledgementSetMonitor;
-import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSet;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
-import static org.hamcrest.Matchers.equalTo;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class AcknowledgementSetMonitorTests {

@@ -5,21 +5,12 @@
 
 package org.opensearch.dataprepper.core.peerforwarder.client;
 
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpResponse;
-import com.linecorp.armeria.common.HttpStatus;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -29,7 +20,10 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.noop.NoopTimer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerClientPool;
@@ -37,6 +31,11 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -61,8 +60,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
-import static org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient.REQUESTS;
 import static org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient.CLIENT_REQUEST_FORWARDING_LATENCY;
+import static org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient.REQUESTS;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {

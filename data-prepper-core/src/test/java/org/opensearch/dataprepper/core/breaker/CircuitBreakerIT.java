@@ -13,13 +13,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.breaker.CircuitBreakerAppConfig;
-import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.core.parser.model.CircuitBreakerConfig;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.parser.model.HeapCircuitBreakerConfig;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;

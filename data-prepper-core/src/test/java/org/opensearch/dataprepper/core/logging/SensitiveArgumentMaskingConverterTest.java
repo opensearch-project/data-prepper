@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.core.logging;
+package org.opensearch.dataprepper.logging;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.core.LogEvent;
@@ -15,7 +15,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.logging.SensitiveArgumentMaskingConverter;
 import org.slf4j.Marker;
 
 import java.util.stream.Stream;
@@ -25,9 +24,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.logging.SensitiveArgumentMaskingConverter.MASK_PATTERN;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
-import static org.opensearch.dataprepper.core.logging.SensitiveArgumentMaskingConverter.MASK_PATTERN;
 
 @ExtendWith(MockitoExtension.class)
 class SensitiveArgumentMaskingConverterTest {

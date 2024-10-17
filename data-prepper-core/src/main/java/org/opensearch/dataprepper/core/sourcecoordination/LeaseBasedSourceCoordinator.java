@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
@@ -20,7 +21,6 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionN
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
-import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

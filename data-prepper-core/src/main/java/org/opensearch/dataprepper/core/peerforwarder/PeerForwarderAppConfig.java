@@ -5,16 +5,16 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
-import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.core.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServerProxy;
 import org.opensearch.dataprepper.core.peerforwarder.server.ResponseHandler;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

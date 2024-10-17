@@ -5,16 +5,16 @@
 
 package org.opensearch.dataprepper.core.pipeline.server.config;
 
+import com.sun.net.httpserver.Authenticator;
 import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
+import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
 import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
-import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
-import com.sun.net.httpserver.Authenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

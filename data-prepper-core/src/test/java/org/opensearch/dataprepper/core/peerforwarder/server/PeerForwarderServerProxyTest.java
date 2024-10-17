@@ -12,8 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderHttpServerProvider;
-import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServerProxy;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

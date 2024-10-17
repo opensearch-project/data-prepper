@@ -14,9 +14,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.breaker.HeapCircuitBreaker;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.core.parser.model.HeapCircuitBreakerConfig;
+import org.opensearch.dataprepper.model.types.ByteCount;
 
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;

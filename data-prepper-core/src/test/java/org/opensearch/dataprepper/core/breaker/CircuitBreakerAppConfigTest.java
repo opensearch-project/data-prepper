@@ -9,12 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.breaker.CircuitBreakerAppConfig;
-import org.opensearch.dataprepper.core.breaker.HeapCircuitBreaker;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.core.parser.model.CircuitBreakerConfig;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.parser.model.HeapCircuitBreakerConfig;
+import org.opensearch.dataprepper.model.types.ByteCount;
 
 import java.time.Duration;
 

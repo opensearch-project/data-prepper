@@ -7,13 +7,13 @@ package org.opensearch.dataprepper.core.peerforwarder;
 
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.StaticPeerListProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import io.micrometer.core.instrument.Counter;
-import org.opensearch.dataprepper.core.peerforwarder.client.PeerForwarderClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

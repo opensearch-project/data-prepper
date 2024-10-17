@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.opensearch.dataprepper.core.peerforwarder.HashRing;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
 
 import java.util.Arrays;

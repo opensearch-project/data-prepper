@@ -5,15 +5,15 @@
 
 package org.opensearch.dataprepper.core.sourcecoordination;
 
+import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.core.sourcecoordination.enhanced.EnhancedLeaseBasedSourceCoordinator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -7,13 +7,12 @@ package org.opensearch.dataprepper.core.peerforwarder.codec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.core.peerforwarder.model.PeerForwardingEvents;
 
 import java.io.IOException;
 import java.io.InvalidClassException;

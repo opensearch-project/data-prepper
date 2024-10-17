@@ -10,9 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.core.pipeline.Pipeline;
-import org.opensearch.dataprepper.core.pipeline.PipelineShutdownAppConfig;
-import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
 
 import java.util.Map;
 import java.util.function.Predicate;

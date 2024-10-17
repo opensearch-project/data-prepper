@@ -15,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
-import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;

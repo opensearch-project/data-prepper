@@ -8,10 +8,13 @@ package org.opensearch.dataprepper.core.pipeline;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
+import org.opensearch.dataprepper.core.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.core.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -25,9 +28,6 @@ import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordinatio
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
-import org.opensearch.dataprepper.core.parser.DataFlowComponent;
-import org.opensearch.dataprepper.core.pipeline.router.RouterCopyRecordStrategy;
-import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -283,6 +283,9 @@ public class Pipeline {
      * 4. Stopping the ProcessWorkers if they are unable to exit gracefully
      * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
+     *
+     * @param dataPrepperShutdownOptions options for shutdown behavior
+     * @see DataPrepperShutdownOptions
      */
     public synchronized void shutdown(final DataPrepperShutdownOptions dataPrepperShutdownOptions) {
         LOG.info("Pipeline [{}] - Received shutdown signal with buffer drain timeout {}, processor shutdown timeout {}, " +

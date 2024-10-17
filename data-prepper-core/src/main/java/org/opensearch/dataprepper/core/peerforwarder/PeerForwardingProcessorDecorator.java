@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.core.peerforwarder;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.opensearch.dataprepper.core.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
+import org.opensearch.dataprepper.core.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.apache.commons.collections.CollectionUtils;
-import org.opensearch.dataprepper.core.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;

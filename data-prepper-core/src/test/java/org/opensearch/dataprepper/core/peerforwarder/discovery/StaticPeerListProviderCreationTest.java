@@ -7,10 +7,8 @@ package org.opensearch.dataprepper.core.peerforwarder.discovery;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.StaticPeerListProvider;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -5,22 +5,23 @@
 
 package org.opensearch.dataprepper.core.parser.config;
 
-import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.core.parser.PipelineTransformer;
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.core.parser.PipelineTransformer;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -63,12 +64,15 @@ class PipelineParserConfigurationTest {
     @Mock
     private PluginErrorsHandler pluginErrorsHandler;
 
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+
     @Test
     void pipelineParser() {
         final PipelineTransformer pipelineTransformer = pipelineParserConfiguration.pipelineParser(
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider, routerFactory,
                 dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager,
-                sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler);
+                sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler, expressionEvaluator);
 
         assertThat(pipelineTransformer, is(notNullValue()));
     }

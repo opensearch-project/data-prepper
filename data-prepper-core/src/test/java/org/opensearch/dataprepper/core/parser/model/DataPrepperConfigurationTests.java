@@ -5,25 +5,23 @@
 
 package org.opensearch.dataprepper.core.parser.model;
 
-import org.opensearch.dataprepper.TestDataProvider;
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
-import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 
 import java.io.File;
 import java.io.IOException;

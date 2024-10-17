@@ -13,11 +13,11 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import org.opensearch.dataprepper.core.event.EventConfiguration;
 import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
-import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.core.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
+import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
 
 import java.time.Duration;

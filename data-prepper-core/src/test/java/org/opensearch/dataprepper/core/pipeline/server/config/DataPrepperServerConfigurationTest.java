@@ -5,18 +5,18 @@
 
 package org.opensearch.dataprepper.core.pipeline.server.config;
 
-import org.opensearch.dataprepper.core.DataPrepper;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
-import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
-import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
-import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
 import com.sun.net.httpserver.Authenticator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.DataPrepper;
+import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
+import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
+import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 
 import java.util.HashMap;
 import java.util.Map;

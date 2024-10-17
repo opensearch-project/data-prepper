@@ -5,11 +5,6 @@
 
 package org.opensearch.dataprepper.core.parser.config;
 
-import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
-import org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics;
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
-import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
@@ -24,6 +19,11 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
+import org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
+import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

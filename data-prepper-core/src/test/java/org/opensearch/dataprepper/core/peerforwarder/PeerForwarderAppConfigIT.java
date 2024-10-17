@@ -9,8 +9,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderAppConfig;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;

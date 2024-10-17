@@ -5,20 +5,12 @@
 
 package org.opensearch.dataprepper.core.parser.config;
 
-import io.micrometer.core.instrument.Metrics;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.opensearch.dataprepper.core.DataPrepper;
-import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
-import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -28,12 +20,20 @@ import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.DataPrepper;
+import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.parser.model.MetricRegistryType;
+import org.opensearch.dataprepper.core.pipeline.server.CloudWatchMeterRegistryProvider;
+import org.opensearch.dataprepper.metrics.MetricNames;
 
 import java.util.Arrays;
 import java.util.Collections;

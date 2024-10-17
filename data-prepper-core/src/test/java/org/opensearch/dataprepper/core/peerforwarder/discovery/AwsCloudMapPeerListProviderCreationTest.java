@@ -12,10 +12,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.AwsCloudMapPeerListProvider;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.PeerListProvider;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;

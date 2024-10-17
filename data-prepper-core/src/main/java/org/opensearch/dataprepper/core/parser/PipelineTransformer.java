@@ -7,34 +7,35 @@ package org.opensearch.dataprepper.core.parser;
 
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
+import org.opensearch.dataprepper.core.pipeline.Pipeline;
+import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.core.pipeline.router.Router;
+import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
-import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.core.pipeline.Pipeline;
-import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationValidator;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
-import org.opensearch.dataprepper.core.pipeline.router.Router;
-import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.core.validation.PluginError;
-import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,9 @@ import static java.lang.String.format;
 @SuppressWarnings("rawtypes")
 public class PipelineTransformer {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
+
+    static final String CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT = "Route %s contains an invalid conditional expression '%s'. " +
+            "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.";
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
     private final PipelinesDataFlowModel pipelinesDataFlowModel;
@@ -68,6 +72,8 @@ public class PipelineTransformer {
     private final PluginErrorCollector pluginErrorCollector;
     private final PluginErrorsHandler pluginErrorsHandler;
 
+    private final ExpressionEvaluator expressionEvaluator;
+
     public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
@@ -78,7 +84,8 @@ public class PipelineTransformer {
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final SourceCoordinatorFactory sourceCoordinatorFactory,
                                final PluginErrorCollector pluginErrorCollector,
-                               final PluginErrorsHandler pluginErrorsHandler) {
+                               final PluginErrorsHandler pluginErrorsHandler,
+                               final ExpressionEvaluator expressionEvaluator) {
         this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
@@ -90,6 +97,7 @@ public class PipelineTransformer {
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.pluginErrorCollector = pluginErrorCollector;
         this.pluginErrorsHandler = pluginErrorsHandler;
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     public Map<String, Pipeline> transformConfiguration() {
@@ -128,7 +136,6 @@ public class PipelineTransformer {
                 try {
                     return pluginFactory.loadPlugin(Source.class, sourceSetting);
                 } catch (Exception e) {
-                    LOG.error("Failed to instantiate the plugin class", e);
                     final PluginError pluginError = PluginError.builder()
                             .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
                             .pipelineName(pipelineName)
@@ -169,7 +176,19 @@ public class PipelineTransformer {
             final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
                     .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
                     .collect(Collectors.toList());
-            if (!subPipelinePluginErrors.isEmpty()) {
+
+            final List<PluginError> invalidRouteExpressions = pipelineConfiguration.getRoutes()
+                    .stream().filter(route -> !expressionEvaluator.isValidExpressionStatement(route.getCondition()))
+                    .map(route -> PluginError.builder()
+                            .componentType(PipelineModel.ROUTE_PLUGIN_TYPE)
+                            .pipelineName(pipelineName)
+                            .exception(new InvalidPluginConfigurationException(
+                                    String.format(CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT, route.getName(), route.getCondition())))
+                            .build())
+                    .collect(Collectors.toList());
+
+            if (!subPipelinePluginErrors.isEmpty() || !invalidRouteExpressions.isEmpty()) {
+                subPipelinePluginErrors.addAll(invalidRouteExpressions);
                 pluginErrorsHandler.handleErrors(subPipelinePluginErrors);
                 throw new InvalidPluginConfigurationException(
                         String.format("One or more plugins are not configured correctly in the pipeline: %s.\n",

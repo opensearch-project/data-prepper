@@ -5,48 +5,40 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
-import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
-import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
-import org.opensearch.dataprepper.model.trace.DefaultLink;
-import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
-
-import static org.hamcrest.Matchers.sameInstance;
-import static org.junit.Assert.assertThat;
-
+import com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultLink;
+import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.Queue;
-import java.util.Map;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
-import com.google.common.collect.ImmutableMap;
-
-
+import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-
-import org.junit.jupiter.api.Assertions;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
