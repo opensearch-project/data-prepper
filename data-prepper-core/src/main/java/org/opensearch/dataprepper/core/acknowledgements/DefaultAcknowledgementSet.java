@@ -75,18 +75,13 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     }
 
     @Override
-    public void add(Event event) {
+    public void add(EventHandle eventHandle) {
         lock.lock();
         try {
-            if (event instanceof JacksonEvent) {
-                EventHandle eventHandle = event.getEventHandle();
-                if (eventHandle instanceof DefaultEventHandle) {
-                    InternalEventHandle internalEventHandle = (InternalEventHandle)(DefaultEventHandle)eventHandle;
-                    internalEventHandle.addAcknowledgementSet(this);
-                    pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
-                    totalEventsAdded.incrementAndGet();
-                }
-            }
+            InternalEventHandle internalEventHandle = (InternalEventHandle)eventHandle;
+            internalEventHandle.addAcknowledgementSet(this);
+            pendingAcknowledgments.put(eventHandle, new AtomicInteger(1));
+            totalEventsAdded.incrementAndGet();
         } finally {
             lock.unlock();
         }

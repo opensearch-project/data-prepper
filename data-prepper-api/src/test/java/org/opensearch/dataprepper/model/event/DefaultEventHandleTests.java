@@ -75,5 +75,17 @@ class DefaultEventHandleTests {
         assertThat(count, equalTo(1));
 
     }
+  
+    @Test
+    void testAddEventHandle() {
+        Instant now = Instant.now();
+        DefaultEventHandle eventHandle = new DefaultEventHandle(now);
+        acknowledgementSet = mock(AcknowledgementSet.class);
+        eventHandle.addAcknowledgementSet(acknowledgementSet);
+        DefaultEventHandle eventHandle2 = new DefaultEventHandle(now);
+        doNothing().when(acknowledgementSet).add(any(EventHandle.class));
+        eventHandle.addEventHandle(eventHandle2);
+        verify(acknowledgementSet).add(eventHandle2);
+    }
 
 }
