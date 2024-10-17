@@ -78,7 +78,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
     if (geoIPProcessorConfig.getWhenCondition() != null &&
             (!expressionEvaluator.isValidExpressionStatement(geoIPProcessorConfig.getWhenCondition()))) {
-      throw new InvalidPluginConfigurationException("geoip_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+      throw new InvalidPluginConfigurationException(
+              String.format("geoip_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                      geoIPProcessorConfig.getWhenCondition()));
     }
 
     this.geoIPProcessorService = geoIpConfigSupplier.getGeoIPProcessorService().orElseThrow(() ->

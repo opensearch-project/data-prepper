@@ -35,12 +35,13 @@ public class KeyValueProcessorConfig {
     @JsonPropertyDescription("The source field to parse for key-value pairs. The default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 
+    @JsonProperty(defaultValue = DEFAULT_DESTINATION)
     @JsonPropertyDescription("The destination field for the structured data. The destination will be a structured map with the key value pairs extracted from the source. " +
             "If <code>destination</code> is set to <code>null</code>, the parsed fields will be written to the root of the event. " +
             "The default value is <code>parsed_message</code>.")
     private String destination = DEFAULT_DESTINATION;
 
-    @JsonProperty("field_split_characters")
+    @JsonProperty(value = "field_split_characters", defaultValue = DEFAULT_FIELD_SPLIT_CHARACTERS)
     @JsonPropertyDescription("A string of characters specifying the delimiter that separates key-value pairs. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
             "This field cannot be defined along with <code>field_delimiter_regex</code>. " +
@@ -55,7 +56,7 @@ public class KeyValueProcessorConfig {
             "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>field_split_characters</code>.")
     private String fieldDelimiterRegex;
 
-    @JsonProperty("value_split_characters")
+    @JsonProperty(value = "value_split_characters", defaultValue = DEFAULT_VALUE_SPLIT_CHARACTERS)
     @JsonPropertyDescription("A string of characters specifying the delimiter that separates keys from their values within a key-value pair. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
             "This field cannot be defined along with <code>key_value_delimiter_regex</code>. " +
@@ -137,7 +138,7 @@ public class KeyValueProcessorConfig {
             "The default configuration is <code>false</code> which retains those grouping characters.")
     private boolean removeBrackets;
 
-    @JsonProperty("value_grouping")
+    @JsonProperty(value = "value_grouping", defaultValue = "false")
     @JsonPropertyDescription("Specifies whether to group values using predefined grouping delimiters. " +
             "If this flag is enabled, then the content between the delimiters is considered to be one entity and " +
             "they are not parsed as key-value pairs. The following characters are used a group delimiters: " +
@@ -163,13 +164,13 @@ public class KeyValueProcessorConfig {
             "when writing parsed fields to the event. Default is <code>true</code>.")
     private boolean overwriteIfDestinationExists = true;
 
-    @JsonProperty("drop_keys_with_no_value")
+    @JsonProperty(value = "drop_keys_with_no_value", defaultValue = "false")
     @JsonPropertyDescription("Specifies whether keys should be dropped if they have a null value. Default is <code>false</code>. " +
             "For example, if <code>drop_keys_with_no_value</code> is set to <code>true</code>, " +
             "then <code>{\"key1=value1&amp;key2\"}</code> parses to <code>{\"key1\": \"value1\"}</code>.")
     private boolean dropKeysWithNoValue = false;
 
-    @JsonProperty("strict_grouping")
+    @JsonProperty(value = "strict_grouping", defaultValue = "false")
     @JsonPropertyDescription("When enabled, groups with unmatched end characters yield errors. " +
             "The event is ignored after the errors are logged. " +
             "Specifies whether strict grouping should be enabled when the <code>value_grouping</code> " +

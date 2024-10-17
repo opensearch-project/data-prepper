@@ -118,9 +118,8 @@ public class DateProcessorConfig {
             "Can be used with both <code>match</code> and <code>from_time_received</code>. Default is <code>@timestamp</code>.")
     private String destination = DEFAULT_DESTINATION;
 
-    @JsonProperty("output_format")
-    @JsonPropertyDescription("Determines the format of the timestamp added to an event. " +
-            "Default is <code>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</code>.")
+    @JsonProperty(value = "output_format", defaultValue = DEFAULT_OUTPUT_FORMAT)
+    @JsonPropertyDescription("Determines the format of the timestamp added to an event.")
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
     @JsonProperty("to_origination_metadata")

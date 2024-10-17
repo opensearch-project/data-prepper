@@ -20,7 +20,7 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 
     @NotBlank
-    @JsonProperty("source")
+    @JsonProperty(value = "source", defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The field in the event that will be parsed. The default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 

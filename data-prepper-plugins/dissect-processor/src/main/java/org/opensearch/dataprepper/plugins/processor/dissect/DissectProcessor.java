@@ -52,7 +52,9 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
 
         if (dissectConfig.getDissectWhen() != null &&
                 (!expressionEvaluator.isValidExpressionStatement(dissectConfig.getDissectWhen()))) {
-            throw new InvalidPluginConfigurationException("dissect_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(
+                    String.format("dissect_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            dissectConfig.getDissectWhen()));
         }
 
     }

@@ -20,15 +20,15 @@ public class ServiceMapProcessorConfig {
     static final String DEFAULT_DB_PATH = "data/service-map/";
     static final String DB_PATH = "db_path";
 
-    @JsonProperty(WINDOW_DURATION)
+    @JsonProperty(value = WINDOW_DURATION, defaultValue = "" + DEFAULT_WINDOW_DURATION)
     @JsonPropertyDescription("Represents the fixed time window, in seconds, " +
-            "during which service map relationships are evaluated. Default value is <code>180</code>.")
+            "during which service map relationships are evaluated.")
     private int windowDuration = DEFAULT_WINDOW_DURATION;
 
     @NotEmpty
-    @JsonProperty(DB_PATH)
+    @JsonProperty(value = DB_PATH, defaultValue = DEFAULT_DB_PATH)
     @JsonPropertyDescription("Represents folder path for creating database files storing transient data off heap memory" +
-            "when processing service-map data. Default value is <code>data/service-map/</code>")
+            "when processing service-map data.")
     private String dbPath = DEFAULT_DB_PATH;
 
     public int getWindowDuration() {

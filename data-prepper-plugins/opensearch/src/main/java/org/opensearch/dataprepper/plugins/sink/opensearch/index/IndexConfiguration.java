@@ -244,7 +244,8 @@ public class IndexConfiguration {
 
         builder = builder.withVersionExpression(versionExpression);
         if (versionExpression != null && (!expressionEvaluator.isValidFormatExpression(versionExpression))) {
-            throw new InvalidPluginConfigurationException("document_version {} is not a valid format expression.");
+            throw new InvalidPluginConfigurationException(
+                    String.format("document_version \"%s\" is not a valid format expression.", versionExpression));
         }
 
         builder = builder.withVersionType(versionType);

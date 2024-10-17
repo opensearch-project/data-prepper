@@ -45,6 +45,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class KinesisService {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisService.class);
     private static final int GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS = 20;
@@ -138,7 +140,7 @@ public class KinesisService {
             try {
                 scheduler = createScheduler(buffer);
             } catch (Exception ex) {
-                LOG.error("Caught exception when initializing KCL Scheduler. Will retry");
+                LOG.error(NOISY, "Caught exception when initializing KCL Scheduler. Will retry", ex);
             }
 
             if (scheduler == null) {

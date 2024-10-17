@@ -26,7 +26,7 @@ public class TruncateProcessorConfig {
                 "The default value is an empty list, which indicates that all values will be truncated.")
         private List<String> sourceKeys;
 
-        @JsonProperty("start_at")
+        @JsonProperty(value = "start_at", defaultValue = "0")
         @JsonPropertyDescription("The index into the string value to start truncation. " +
                 "Default is <code>0</code>, which specifies to start truncation at the beginning of each key's value.")
         private Integer startAt;

@@ -32,7 +32,7 @@ public class UserAgentProcessorConfig {
     private EventKey source;
 
     @NotNull
-    @JsonProperty("target")
+    @JsonProperty(value = "target", defaultValue = "user_agent")
     @JsonPropertyDescription("The field to which the parsed event will write. Default is <code>user_agent</code>.")
     private String target = "user_agent";
 
@@ -41,7 +41,7 @@ public class UserAgentProcessorConfig {
     @JsonPropertyDescription("Determines whether to exclude the original UA string from the parsing result. Defaults to <code>false</code>.")
     private boolean excludeOriginal = false;
 
-    @JsonProperty("cache_size")
+    @JsonProperty(value = "cache_size", defaultValue = "1000")
     @JsonPropertyDescription("The cache size of the parser in megabytes. Defaults to <code>1000</code>.")
     private int cacheSize = DEFAULT_CACHE_SIZE;
 

@@ -93,7 +93,7 @@ public class GrokProcessorConfig {
             "<code>pattern_directories</code>. Default is <code>*</code>.")
     private String patternsFilesGlob = DEFAULT_PATTERNS_FILES_GLOB;
 
-    @JsonProperty(TIMEOUT_MILLIS)
+    @JsonProperty(value = TIMEOUT_MILLIS, defaultValue = "30000")
     @JsonPropertyDescription("The maximum amount of time during which matching occurs. " +
             "Setting to <code>0</code> prevents any matching from occurring. Default is <code>30000</code>.")
     private int timeoutMillis = DEFAULT_TIMEOUT_MILLIS;

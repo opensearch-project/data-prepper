@@ -27,7 +27,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 
     @NotBlank
-    @JsonProperty("source")
+    @JsonProperty(value = "source", defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The field in the event that will be parsed. The default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 
@@ -36,7 +36,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("The destination field of the structured object from the parsed JSON. Defaults to the root of the event. Cannot be an empty string, <code>/</code>, or any whitespace-only string because these are not valid event fields.")
     private String destination;
 
-    @JsonProperty("depth")
+    @JsonProperty(value = "depth", defaultValue = "0")
     @Min(0)
     @Max(10)
     @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
