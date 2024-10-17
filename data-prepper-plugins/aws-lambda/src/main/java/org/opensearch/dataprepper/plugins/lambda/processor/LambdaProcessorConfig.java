@@ -10,14 +10,17 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
 
+import javax.annotation.Nullable;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 
 public class LambdaProcessorConfig {
 
@@ -41,10 +44,6 @@ public class LambdaProcessorConfig {
     @JsonProperty("invocation_type")
     private String invocationType = REQUEST_RESPONSE;
 
-    @JsonPropertyDescription("payload model defines whether we want to batch the events together or use them as single events")
-    @JsonProperty("payload_model")
-    private String payloadModel = BATCH_EVENT;
-
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("sdk_timeout")
     private Duration sdkTimeout = DEFAULT_SDK_TIMEOUT;
@@ -56,12 +55,32 @@ public class LambdaProcessorConfig {
     @JsonProperty("lambda_when")
     private String whenCondition;
 
+    @JsonPropertyDescription("Codec configuration for parsing Lambda responses")
+    @JsonProperty("response_codec")
+    @Valid
+    @Nullable
+    private PluginModel responseCodecConfig;
+
+    @JsonProperty("tags_on_match_failure")
+    @JsonPropertyDescription("A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when lambda fails to " +
+            "or exception occurs. This tag may be used in conditional expressions in " +
+            "other parts of the configuration")
+    private List<String> tagsOnMatchFailure = Collections.emptyList();
+
+    // Getter for codecConfig
+    public PluginModel getResponseCodecConfig() {
+        return responseCodecConfig;
+    }
+
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
     }
 
     public BatchOptions getBatchOptions(){return batchOptions;}
 
+    public List<String> getTagsOnMatchFailure(){
+        return tagsOnMatchFailure;
+    }
     public String getFunctionName() {
         return functionName;
     }
@@ -74,10 +93,6 @@ public class LambdaProcessorConfig {
 
     public String getWhenCondition() {
         return whenCondition;
-    }
-
-    public String getPayloadModel() {
-        return payloadModel;
     }
 
     public Duration getSdkTimeout() { return sdkTimeout;}

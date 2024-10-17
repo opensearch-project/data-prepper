@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
@@ -17,8 +19,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,38 +29,42 @@ import java.util.concurrent.TimeUnit;
  */
 public class InMemoryBuffer implements Buffer {
 
-    private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final ByteArrayOutputStream byteArrayOutputStream;
 
     private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
     private final String invocationType;
     private int eventCount;
-    private StopWatch watch;
-    private StopWatch lambdaSyncLatencyWatch;
-    private StopWatch lambdaAsyncLatencyWatch;
+    private StopWatch bufferWatch;
+    private StopWatch lambdaLatencyWatch;
+    private long payloadRequestSize;
+    private long payloadResponseSize;
     private boolean isCodecStarted;
-    private long payloadRequestSyncSize;
-    private long payloadResponseSyncSize;
-    private long payloadRequestAsyncSize;
-    private long payloadResponseAsyncSize;
+    private final List<Record<Event>> records;
 
 
     public InMemoryBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType) {
         this.lambdaAsyncClient = lambdaAsyncClient;
         this.functionName = functionName;
         this.invocationType = invocationType;
-
-        byteArrayOutputStream.reset();
+        byteArrayOutputStream = new ByteArrayOutputStream();
+        records = new ArrayList<>();
+        bufferWatch = new StopWatch();
+        bufferWatch.start();
+        lambdaLatencyWatch = new StopWatch();
         eventCount = 0;
-        watch = new StopWatch();
-        watch.start();
-        lambdaSyncLatencyWatch = new StopWatch();
-        lambdaAsyncLatencyWatch = new StopWatch();
         isCodecStarted = false;
-        payloadRequestSyncSize = 0;
-        payloadResponseSyncSize = 0;
-        payloadRequestAsyncSize = 0;
-        payloadResponseAsyncSize =0;
+        payloadRequestSize = 0;
+        payloadResponseSize = 0;
+    }
+
+    public void addRecord(Record<Event> record) {
+        records.add(record);
+        eventCount++;
+    }
+
+    public List<Record<Event>> getRecords() {
+        return records;
     }
 
     @Override
@@ -71,27 +78,23 @@ public class InMemoryBuffer implements Buffer {
     }
 
     public Duration getDuration() {
-        return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
+        return Duration.ofMillis(bufferWatch.getTime(TimeUnit.MILLISECONDS));
     }
 
     public void reset() {
         byteArrayOutputStream.reset();
         eventCount = 0;
-        watch.reset();
-        watch.start();
-        lambdaSyncLatencyWatch.reset();
-        lambdaAsyncLatencyWatch.reset();
+        bufferWatch.reset();
+        lambdaLatencyWatch.reset();
         isCodecStarted = false;
-        payloadRequestSyncSize = 0;
-        payloadResponseSyncSize = 0;
-        payloadRequestAsyncSize = 0;
-        payloadResponseAsyncSize = 0;
+        payloadRequestSize = 0;
+        payloadResponseSize = 0;
     }
 
     @Override
-    public CompletableFuture<InvokeResponse> flushToLambdaAsync(String invocationType) {
+    public CompletableFuture<InvokeResponse> flushToLambda(String invocationType) {
         SdkBytes payload = getPayload();
-        payloadRequestAsyncSize = payload.asByteArray().length;
+        payloadRequestSize = payload.asByteArray().length;
 
         // Setup an InvokeRequest.
         InvokeRequest request = InvokeRequest.builder()
@@ -100,33 +103,24 @@ public class InMemoryBuffer implements Buffer {
                 .invocationType(invocationType)
                 .build();
 
-        if (lambdaAsyncLatencyWatch.isStarted()) {
-            lambdaAsyncLatencyWatch.reset();
+        synchronized (this) {
+            if (lambdaLatencyWatch.isStarted()) {
+                lambdaLatencyWatch.reset();
+            }
+            lambdaLatencyWatch.start();
         }
-        lambdaAsyncLatencyWatch.start();
         // Use the async client to invoke the Lambda function
         CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(request);
-
-        // When the future completes, stop the latency watch and set payload size
-        future = future.handle((resp, throwable) -> {
-            lambdaAsyncLatencyWatch.stop();
-            if (throwable == null) {
-                payloadResponseAsyncSize = resp.payload().asByteArray().length;
-                return resp;
-            } else {
-                // Rethrow the exception to propagate it
-                throw new CompletionException(throwable);
-            }
-        });
         return future;
     }
 
-    @Override
-    @Deprecated
-    public InvokeResponse flushToLambdaSync(String invocationType) {
-        return null;
+    public synchronized Duration stopLatencyWatch() {
+        if (lambdaLatencyWatch.isStarted()) {
+            lambdaLatencyWatch.stop();
+        }
+        long timeInMillis = lambdaLatencyWatch.getTime();
+        return Duration.ofMillis(timeInMillis);
     }
-
 
     private SdkBytes validatePayload(String payload_string) {
         ObjectMapper mapper = new ObjectMapper();
@@ -140,7 +134,6 @@ public class InMemoryBuffer implements Buffer {
             throw new RuntimeException(e);
         }
     }
-
 
     @Override
     public void setEventCount(int eventCount) {
@@ -159,28 +152,21 @@ public class InMemoryBuffer implements Buffer {
         return sdkBytes;
     }
 
-    public Duration getFlushLambdaSyncLatencyMetric (){
-        return Duration.ofMillis(lambdaSyncLatencyWatch.getTime(TimeUnit.MILLISECONDS));
+    public Duration getFlushLambdaLatencyMetric (){
+        return Duration.ofMillis(lambdaLatencyWatch.getTime(TimeUnit.MILLISECONDS));
     }
 
-    public Duration getFlushLambdaAsyncLatencyMetric (){
-        return Duration.ofMillis(lambdaAsyncLatencyWatch.getTime(TimeUnit.MILLISECONDS));
+    public Long getPayloadRequestSize() {
+        return payloadRequestSize;
     }
 
-    public Long getPayloadRequestSyncSize() {
-        return payloadRequestSyncSize;
+    public Long getPayloadResponseSize() {
+        return payloadResponseSize;
     }
 
-    public Long getPayloadResponseSyncSize() {
-        return payloadResponseSyncSize;
-    }
+    public StopWatch getBufferWatch() {return bufferWatch;}
 
-    public Long getPayloadRequestAsyncSize() {
-        return payloadRequestAsyncSize;
-    }
+    public StopWatch getLambdaLatencyWatch(){return lambdaLatencyWatch;}
 
-    public Long getPayloadResponseAsyncSize() {
-        return payloadResponseAsyncSize;
-    }
 }
 

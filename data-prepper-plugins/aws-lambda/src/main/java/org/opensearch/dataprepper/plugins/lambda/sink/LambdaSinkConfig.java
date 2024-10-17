@@ -13,7 +13,6 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.BATCH_EVENT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
@@ -45,10 +44,6 @@ public class LambdaSinkConfig {
     @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
     @JsonProperty("invocation_type")
     private String invocationType = EVENT;
-
-    @JsonPropertyDescription("payload model defines whether we want to batch the events together or use them as single events")
-    @JsonProperty("payload_model")
-    private String payloadModel = BATCH_EVENT;
 
     @JsonProperty("dlq")
     private PluginModel dlq;
@@ -106,7 +101,4 @@ public class LambdaSinkConfig {
         return whenCondition;
     }
 
-    public String getPayloadModel() {
-        return payloadModel;
-    }
 }
