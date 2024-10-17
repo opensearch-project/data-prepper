@@ -80,7 +80,7 @@ class InMemoryBufferTest {
             inMemoryBuffer.setEventCount(eventCount);
         }
         assertDoesNotThrow(() -> {
-            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambdaAsync(invocationType);
+            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambda(invocationType);
             InvokeResponse response = responseFuture.join();
             assertThat(response.statusCode(), equalTo(200));
         });
@@ -105,7 +105,7 @@ class InMemoryBufferTest {
         inMemoryBuffer.setEventCount(1);
 
         assertDoesNotThrow(() -> {
-            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambdaAsync(invocationType);
+            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambda(invocationType);
             InvokeResponse response = responseFuture.join();
             assertThat(response.statusCode(), equalTo(200));
         });
@@ -126,7 +126,7 @@ class InMemoryBufferTest {
 
         // Execute and assert exception
         CompletionException exception = assertThrows(CompletionException.class, () -> {
-            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambdaAsync(invocationType);
+            CompletableFuture<InvokeResponse> responseFuture = inMemoryBuffer.flushToLambda(invocationType);
             responseFuture.join(); // This will throw CompletionException
         });
 
@@ -135,7 +135,6 @@ class InMemoryBufferTest {
         assertThat(exception.getCause().getMessage(), equalTo("Mock exception"));
 
     }
-
 
     private byte[] generateByteArray() {
         byte[] bytes = new byte[1000];

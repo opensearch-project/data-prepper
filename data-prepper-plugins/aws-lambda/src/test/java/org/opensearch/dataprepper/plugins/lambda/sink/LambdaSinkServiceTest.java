@@ -1,18 +1,16 @@
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,43 +19,63 @@ import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
+import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
 import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class LambdaSinkServiceTest {
 
     @Mock
-    private PluginMetrics pluginMetrics;
+    private LambdaAsyncClient lambdaAsyncClient;
 
     @Mock
     private LambdaSinkConfig lambdaSinkConfig;
 
     @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private PluginFactory pluginFactory;
+
+    @Mock
+    private PluginSetting pluginSetting;
+
+    @Mock
+    private OutputCodecContext codecContext;
+
+    @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
+
+    @Mock
+    private DlqPushHandler dlqPushHandler;
+
+    @Mock
+    private BufferFactory bufferFactory;
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
@@ -72,65 +90,67 @@ public class LambdaSinkServiceTest {
     private Timer lambdaLatencyMetric;
 
     @Mock
-    private LambdaAsyncClient lambdaAsyncClient;
+    private OutputCodec requestCodec;
 
     @Mock
-    private BufferFactory bufferFactory;
+    private Buffer currentBufferPerBatch;
 
     @Mock
-    private DlqPushHandler dlqPushHandler;
+    private LambdaCommonHandler lambdaCommonHandler;
 
     @Mock
-    private PluginFactory pluginFactory;
+    private Event event;
 
     @Mock
-    private PluginSetting pluginSetting;
+    private EventHandle eventHandle;
 
     @Mock
-    private OutputCodecContext codecContext;
+    private EventMetadata eventMetadata;
 
     @Mock
-    private AwsAuthenticationOptions awsAuthenticationOptions;
+    private InvokeResponse invokeResponse;
 
     private LambdaSinkService lambdaSinkService;
-
-    private static final String FUNCTION_NAME = "test-function";
-    private static final String INVOCATION_TYPE = "RequestResponse";
-    private static final String RESPONSE_PAYLOAD = "{\"result\":\"success\"}";
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        when(pluginMetrics.counter(any())).thenReturn(numberOfRecordsSuccessCounter);
-        when(pluginMetrics.counter(any())).thenReturn(numberOfRecordsFailedCounter);
-        when(pluginMetrics.timer(any())).thenReturn(lambdaLatencyMetric);
-        when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(lambdaSinkConfig.getSdkTimeout()).thenReturn(Duration.ofSeconds(5));
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-1"));
-    }
+        // Mock PluginMetrics counters and timers
+        when(pluginMetrics.counter("lambdaSinkObjectsEventsSucceeded")).thenReturn(numberOfRecordsSuccessCounter);
+        when(pluginMetrics.counter("lambdaSinkObjectsEventsFailed")).thenReturn(numberOfRecordsFailedCounter);
+        when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
+        when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenReturn(new AtomicLong());
 
-    private void setUpBatchEventSink() {
-        when(lambdaSinkConfig.getFunctionName()).thenReturn(FUNCTION_NAME);
-        when(lambdaSinkConfig.getInvocationType()).thenReturn(INVOCATION_TYPE);
-        when(lambdaSinkConfig.getPayloadModel()).thenReturn(LambdaCommonConfig.BATCH_EVENT);
-        BatchOptions batchOptions = Mockito.mock(BatchOptions.class);
-        ThresholdOptions thresholdOptions = Mockito.mock(ThresholdOptions.class);
+        // Mock lambdaSinkConfig
+        when(lambdaSinkConfig.getFunctionName()).thenReturn("test-function");
+        when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
+        when(lambdaSinkConfig.getInvocationType()).thenReturn("event");
+
+        // Mock BatchOptions and ThresholdOptions
+        BatchOptions batchOptions = mock(BatchOptions.class);
+        ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
         when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(thresholdOptions.getEventCount()).thenReturn(5);
-        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
-        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(5));
-    }
+        when(thresholdOptions.getEventCount()).thenReturn(10);
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("1mb"));
+        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(1));
 
-    private void setUpSingleEventSink() {
-        when(lambdaSinkConfig.getFunctionName()).thenReturn(FUNCTION_NAME);
-        when(lambdaSinkConfig.getInvocationType()).thenReturn(INVOCATION_TYPE);
-        when(lambdaSinkConfig.getPayloadModel()).thenReturn(LambdaCommonConfig.SINGLE_EVENT);
-    }
+        // Mock JsonOutputCodec
+        requestCodec = mock(JsonOutputCodec.class);
+        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any(PluginSetting.class))).thenReturn(requestCodec);
 
-    private LambdaSinkService createObjectUnderTest() {
-        return new LambdaSinkService(
+        // Initialize bufferFactory and buffer
+        bufferFactory = mock(BufferFactory.class);
+        currentBufferPerBatch = mock(Buffer.class);
+        when(currentBufferPerBatch.getEventCount()).thenReturn(0);
+
+        // Mock LambdaCommonHandler
+        lambdaCommonHandler = mock(LambdaCommonHandler.class);
+        when(lambdaCommonHandler.createBuffer(any())).thenReturn(currentBufferPerBatch);
+        doNothing().when(currentBufferPerBatch).reset();
+
+        lambdaSinkService = new LambdaSinkService(
                 lambdaAsyncClient,
                 lambdaSinkConfig,
                 pluginMetrics,
@@ -142,118 +162,111 @@ public class LambdaSinkServiceTest {
                 bufferFactory,
                 expressionEvaluator
         );
+
+        // Set private fields
+        setPrivateField(lambdaSinkService, "lambdaCommonHandler", lambdaCommonHandler);
+        setPrivateField(lambdaSinkService, "requestCodec", requestCodec);
+        setPrivateField(lambdaSinkService, "currentBufferPerBatch", currentBufferPerBatch);
+    }
+
+    // Helper method to set private fields via reflection
+    private void setPrivateField(Object targetObject, String fieldName, Object value) {
+        try {
+            Field field = targetObject.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(targetObject, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
-    public void testOutput_withEmptyRecords_batchEvent() {
-        setUpBatchEventSink();
-        lambdaSinkService = createObjectUnderTest();
-        Collection<Record<Event>> emptyRecords = new ArrayList<>();
-
-        lambdaSinkService.output(emptyRecords);
-
-        // Verify that the lambdaAsyncClient.invoke method is never called
-        verify(lambdaAsyncClient, never()).invoke(any(InvokeRequest.class));
-    }
-
-    @Test
-    public void testOutput_withEmptyRecords_singleEvent() {
-        setUpSingleEventSink();
-        lambdaSinkService = createObjectUnderTest();
-        Collection<Record<Event>> emptyRecords = new ArrayList<>();
-
-        lambdaSinkService.output(emptyRecords);
-
-        // Verify that the lambdaAsyncClient.invoke method is never called
-        verify(lambdaAsyncClient, never()).invoke(any(InvokeRequest.class));
-    }
-
-    @Test
-    public void testOutput_single_event_WithConfig() throws JsonProcessingException {
-        // Arrange: Create a configuration from a YAML string
-        final String config = "function_name: test_function\n" +
-                "invocation_type: request-response\n" +
-                "payload_model: single-event\n" +
-                "aws:\n" +
-                "  region: us-east-1\n" +
-                "  sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
-                "  sts_header_overrides: {\"test\":\"test\"}\n" +
-                "max_retries: 3\n";
-
-        ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-        LambdaSinkConfig lambdaConfig = yamlMapper.readValue(config, LambdaSinkConfig.class);
-
-        // Create an actual Event using JacksonEvent
-        Event event = JacksonEvent.builder().withEventType("event").withData("{\"status\":true}").build();
+    public void testOutput_SuccessfulProcessing() throws Exception {
+        Event event = mock(Event.class);
         Record<Event> record = new Record<>(event);
-        Collection<Record<Event>> records = List.of(record);
+        Collection<Record<Event>> records = Collections.singletonList(record);
 
-        try (MockedStatic<LambdaClientFactory> mockedFactory = Mockito.mockStatic(LambdaClientFactory.class)) {
-            mockedFactory.when(() -> LambdaClientFactory.createAsyncLambdaClient(
-                            any(), anyInt(), any(), any()))
-                    .thenReturn(lambdaAsyncClient);
+        when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(true);
+        when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
+        when(currentBufferPerBatch.getEventCount()).thenReturn(0).thenReturn(1);
+        doNothing().when(requestCodec).start(any(), eq(event), any());
+        doNothing().when(requestCodec).writeEvent(eq(event), any());
+        doNothing().when(currentBufferPerBatch).addRecord(eq(record));
+        when(currentBufferPerBatch.getEventCount()).thenReturn(1);
+        when(currentBufferPerBatch.getSize()).thenReturn(100L);
+        when(currentBufferPerBatch.getDuration()).thenReturn(Duration.ofMillis(500));
+        CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(invokeResponse);
+        when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(future);
+        when(invokeResponse.statusCode()).thenReturn(202);
+        doNothing().when(lambdaCommonHandler).checkStatusCode(eq(invokeResponse));
+        doNothing().when(lambdaLatencyMetric).record(any(Duration.class));
 
-            // Mocking invoke response
-            InvokeResponse invokeResponse = InvokeResponse.builder().statusCode(200).payload(SdkBytes.fromUtf8String(RESPONSE_PAYLOAD)).build();
-            CompletableFuture<InvokeResponse> invokeResponseFuture = CompletableFuture.completedFuture(invokeResponse);
-            when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeResponseFuture);
+        lambdaSinkService.output(records);
 
-            // Act: Create LambdaSinkService and invoke output with records
-            lambdaSinkConfig = lambdaConfig; // Assign parsed config
-            lambdaSinkService = createObjectUnderTest();
-            lambdaSinkService.output(records);
-
-            // Assert: Verify interactions and results
-            verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
-        }
+        verify(currentBufferPerBatch, times(1)).addRecord(eq(record));
+        verify(currentBufferPerBatch, times(1)).flushToLambda(anyString());
+        verify(lambdaCommonHandler, times(1)).checkStatusCode(eq(invokeResponse));
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
     }
 
     @Test
-    public void testOutput_WithBatchConfig() throws JsonProcessingException {
-        // Arrange: Create a configuration from a YAML string for batch processing
-        final String config = "function_name: test_function\n" +
-                "invocation_type: request-response\n" +
-                "payload_model: batch-event\n" +
-                "aws:\n" +
-                "  region: us-east-1\n" +
-                "  sts_role_arn: arn:aws:iam::1234:role/app-test\n" +
-                "  sts_header_overrides: {\"test\":\"test\"}\n" +
-                "max_retries: 3\n" +
-                "batch:\n" +
-                "  key_name: testKey\n" +
-                "  threshold:\n" +
-                "    event_count: 5\n" +
-                "    maximum_size: 5mb\n" +
-                "    event_collect_timeout: PT5s\n";
+    public void testHandleFailure_WithDlq() {
+        Throwable throwable = new RuntimeException("Test Exception");
+        SdkBytes payload = SdkBytes.fromUtf8String("test payload");
+        when(currentBufferPerBatch.getEventCount()).thenReturn(1);
+        when(currentBufferPerBatch.getPayload()).thenReturn(payload);
 
-        ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-        yamlMapper.registerModule(new JavaTimeModule());
-        LambdaSinkConfig lambdaConfig = yamlMapper.readValue(config, LambdaSinkConfig.class);
+        lambdaSinkService.handleFailure(throwable, currentBufferPerBatch);
 
-        Map<String, Object> eventData1 = Map.of("key", "value1");
-        Map<String, Object> eventData2 = Map.of("key", "value2");
-        Event event1 = JacksonEvent.builder().withEventType("event").withData(eventData1).build();
-        Event event2 = JacksonEvent.builder().withEventType("event").withData(eventData2).build();
-        Record<Event> record1 = new Record<>(event1);
-        Record<Event> record2 = new Record<>(event2);
-        Collection<Record<Event>> records = List.of(record1, record2);
-
-        try (MockedStatic<LambdaClientFactory> mockedFactory = Mockito.mockStatic(LambdaClientFactory.class)) {
-            mockedFactory.when(() -> LambdaClientFactory.createAsyncLambdaClient(
-                            any(), anyInt(), any(), any()))
-                    .thenReturn(lambdaAsyncClient);
-
-            InvokeResponse invokeResponse = InvokeResponse.builder().statusCode(200).payload(SdkBytes.fromUtf8String(RESPONSE_PAYLOAD)).build();
-            CompletableFuture<InvokeResponse> invokeResponseFuture = CompletableFuture.completedFuture(invokeResponse);
-            when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeResponseFuture);
-
-            // Act
-            lambdaSinkConfig = lambdaConfig; // Assign parsed config
-            lambdaSinkService = createObjectUnderTest();
-            lambdaSinkService.output(records);
-
-            // Assert
-            verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
-        }
+        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+        verify(dlqPushHandler, times(1)).perform(eq(pluginSetting), any(LambdaSinkFailedDlqData.class));
+        verify(lambdaCommonHandler, times(1)).releaseEventHandlesPerBatch(eq(true), eq(currentBufferPerBatch));
     }
+
+    @Test
+    public void testHandleFailure_WithoutDlq() {
+        setPrivateField(lambdaSinkService, "dlqPushHandler", null);
+        Throwable throwable = new RuntimeException("Test Exception");
+        when(currentBufferPerBatch.getEventCount()).thenReturn(1);
+
+        lambdaSinkService.handleFailure(throwable, currentBufferPerBatch);
+
+        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+        verify(dlqPushHandler, never()).perform(any(), any());
+        verify(lambdaCommonHandler, times(1)).releaseEventHandlesPerBatch(eq(false), eq(currentBufferPerBatch));
+    }
+
+    @Test
+    public void testOutput_ExceptionDuringProcessing() throws Exception {
+        // Arrange
+        Record<Event> record = new Record<>(event);
+        Collection<Record<Event>> records = Collections.singletonList(record);
+
+        // Mock whenCondition evaluation
+        when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(true);
+        when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
+
+        // Mock event handling to throw exception when writeEvent is called
+        when(currentBufferPerBatch.getEventCount()).thenReturn(0,1);
+        doNothing().when(requestCodec).start(any(), eq(event), any());
+        doThrow(new IOException("Test IOException")).when(requestCodec).writeEvent(eq(event), any());
+
+        // Mock buffer reset
+        doNothing().when(currentBufferPerBatch).reset();
+
+        // Mock flushToLambda to prevent NullPointerException
+        CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(invokeResponse);
+        when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(future);
+
+        // Act
+        lambdaSinkService.output(records);
+
+        // Assert
+        verify(requestCodec, times(1)).start(any(), eq(event), any());
+        verify(requestCodec, times(1)).writeEvent(eq(event), any());
+        verify(currentBufferPerBatch, times(1)).reset();
+        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+    }
+
+
 }
