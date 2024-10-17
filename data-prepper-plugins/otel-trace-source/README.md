@@ -42,6 +42,19 @@ For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see
     * `none`: no compression
     * `gzip`: apply GZip de-compression on the incoming request.
 
+
+### Retry Information
+
+Data Prepper replies with a `RetryInfo` specifying how long to wait for the next request in case backpressure builds up. The retry information is implemented as exponential backoff, with a max delay of `retry_info.max_delay`.
+
+```yaml
+source:
+  otel_trace_source:
+    retry_info:
+      min_delay: 1000ms # defaults to 100ms
+      max_delay: 5s     # defaults to 2s
+```
+
 ### Authentication Configurations
 
 By default, the otel-trace-source input is unauthenticated.
