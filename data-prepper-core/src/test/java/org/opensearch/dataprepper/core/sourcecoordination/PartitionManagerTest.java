@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.core.sourcecoordination;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.core.sourcecoordination.PartitionManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 
 import java.util.Optional;

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.meter.JvmMemoryAggregateMetrics;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
