@@ -26,8 +26,8 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonPropertyDescription("List of keys whose values needs to be converted to a different type.")
     private List<String> keys;
 
-    @JsonProperty("type")
-    @JsonPropertyDescription("Target type for the values. Default value is <code>integer.</code>")
+    @JsonProperty(value = "type", defaultValue = "integer")
+    @JsonPropertyDescription("Target type for the values. Default value is <code>integer</code>.")
     private TargetType type = TargetType.INTEGER;
 
     @JsonProperty("null_values")
@@ -37,7 +37,7 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     /**
      * Optional scale value used only in the case of BigDecimal converter
      */
-    @JsonProperty("scale")
+    @JsonProperty(value = "scale", defaultValue = "0")
     @JsonPropertyDescription("Modifies the scale of the <code>big_decimal</code> when converting to a <code>big_decimal</code>. The default value is 0.")
     private int scale = 0;
 

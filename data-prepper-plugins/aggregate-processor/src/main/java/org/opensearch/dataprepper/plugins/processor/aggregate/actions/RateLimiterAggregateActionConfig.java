@@ -23,7 +23,7 @@ public class RateLimiterAggregateActionConfig {
     
     @JsonPropertyDescription("Indicates what action the <code>rate_limiter</code> takes when the number of events received is greater than the number of events allowed per second. " +
             "Default value is block, which blocks the processor from running after the maximum number of events allowed per second is reached until the next second. Alternatively, the drop option drops the excess events received in that second. Default is block")
-    @JsonProperty("when_exceeds")
+    @JsonProperty(value = "when_exceeds", defaultValue = "block")
     RateLimiterMode whenExceedsMode = RateLimiterMode.BLOCK;
     
     public int getEventsPerSecond() {

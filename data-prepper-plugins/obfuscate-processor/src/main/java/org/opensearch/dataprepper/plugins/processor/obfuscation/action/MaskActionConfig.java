@@ -16,17 +16,19 @@ import jakarta.validation.constraints.Pattern;
 @JsonClassDescription("Obfuscates data by masking data. Without any configuration this will replace text with <code>***</code>")
 @JsonPropertyOrder
 public class MaskActionConfig {
+    private static final String DEFAULT_MASK_CHARACTER = "*";
+    private static final int DEFAULT_MASK_LENGTH = 3;
 
-    @JsonProperty("mask_character")
+    @JsonProperty(value = "mask_character", defaultValue = DEFAULT_MASK_CHARACTER)
     @Pattern(regexp = "[*#!%&@]", message = "Valid characters are *, #, $, %, &, ! and @")
     @JsonPropertyDescription("The character to use to mask text. By default, this is <code>*</code>")
-    private String maskCharacter = "*";
+    private String maskCharacter = DEFAULT_MASK_CHARACTER;
 
-    @JsonProperty("mask_character_length")
+    @JsonProperty(value = "mask_character_length", defaultValue = "" + DEFAULT_MASK_LENGTH)
     @Min(1)
     @Max(10)
     @JsonPropertyDescription("The length of the character mask to apply. By default, this is three characters.")
-    private int maskCharacterLength = 3;
+    private int maskCharacterLength = DEFAULT_MASK_LENGTH;
 
     public MaskActionConfig() {
     }

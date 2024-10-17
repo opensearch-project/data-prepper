@@ -29,6 +29,7 @@ public class OtelMetricsRawProcessorConfig {
     @JsonPropertyDescription("Whether or not to calculate exponential histogram buckets. Default value is <code>true</code>.")
     private Boolean calculateExponentialHistogramBuckets = true;
 
+    @JsonProperty(defaultValue = "" + DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE)
     @JsonPropertyDescription("Maximum allowed scale in exponential histogram calculation. By default, the maximum allowed scale is <code>10</code>.")
     private Integer exponentialHistogramMaxAllowedScale = DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE;
 
