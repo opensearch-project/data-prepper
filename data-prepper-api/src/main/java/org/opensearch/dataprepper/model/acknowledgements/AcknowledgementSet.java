@@ -25,7 +25,7 @@ public interface AcknowledgementSet {
      * Adds an event handle to the acknowledgement set. Assigns initial reference
      * count of 1.
      *
-     * @param event event to be added
+     * @param eventHandle event handle to be added
      * @since 2.11
      */
     void add(EventHandle eventHandle);
