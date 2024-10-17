@@ -14,8 +14,8 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.plugins.test.TestComponentWithConfigInject;
-import org.opensearch.dataprepper.plugins.test.TestDISourceWithConfig;
+import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
+import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;

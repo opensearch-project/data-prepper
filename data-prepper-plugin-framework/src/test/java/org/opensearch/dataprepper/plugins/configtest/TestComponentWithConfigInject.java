@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.test;
+package org.opensearch.dataprepper.plugins.configtest;
 
 import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
 
