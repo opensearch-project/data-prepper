@@ -43,7 +43,7 @@ public class GeoIPProcessorConfig {
     private List<String> tagsOnNoValidIp;
 
     @JsonProperty("geoip_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>'/srcaddr != \"8.8.8.8\"'</code>. " +
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/srcaddr != \"8.8.8.8\"</code>. " +
             "If specified, the <code>geoip</code> processor will only run on events when the expression evaluates to true. ")
     private String whenCondition;
 
