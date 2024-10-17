@@ -20,8 +20,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 public class OTelLogsInputCodecConfig {
     static final OTelLogsFormatOption DEFAULT_FORMAT = OTelLogsFormatOption.JSON;
     
-    @JsonProperty("format")
-    @JsonPropertyDescription("Specifies the format of the OTel logs. Default is <code>json</code>.") 
+    @JsonProperty(value = "format", defaultValue = "json")
+    @JsonPropertyDescription("Specifies the format of the OTel logs.")
     @NotNull
     private OTelLogsFormatOption format = DEFAULT_FORMAT;
  

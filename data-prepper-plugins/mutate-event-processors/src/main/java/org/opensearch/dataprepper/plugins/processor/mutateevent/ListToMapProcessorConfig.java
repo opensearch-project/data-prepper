@@ -91,7 +91,7 @@ public class ListToMapProcessorConfig {
     private boolean flatten = false;
 
     @NotNull
-    @JsonProperty("flattened_element")
+    @JsonProperty(value = "flattened_element", defaultValue = "first")
     @JsonPropertyDescription("The element to keep, either <code>first</code> or <code>last</code>, when <code>flatten</code> is set to <code>true</code>.")
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
