@@ -43,7 +43,8 @@ public class TargetsParameterConfig {
     @JsonProperty("default")
     @JsonPropertyDescription("The default value to use when no match is found during translation.")
     private String defaultValue;
-    @JsonProperty("type")
+
+    @JsonProperty(value = "type", defaultValue = "string")
     @JsonPropertyDescription("Specifies the data type for the target value.")
     private TargetType targetType = TargetType.STRING;
 

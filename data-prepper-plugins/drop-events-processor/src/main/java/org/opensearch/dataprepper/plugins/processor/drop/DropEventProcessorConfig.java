@@ -23,7 +23,7 @@ public class DropEventProcessorConfig {
     private String dropWhen;
 
     @JsonPropertyDescription("Specifies how exceptions are handled when an exception occurs while evaluating an event. Default value is <code>skip</code>, which drops the event so that it is not sent to further processors or sinks.")
-    @JsonProperty("handle_failed_events")
+    @JsonProperty(value = "handle_failed_events", defaultValue = "skip")
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
     public String getDropWhen() {

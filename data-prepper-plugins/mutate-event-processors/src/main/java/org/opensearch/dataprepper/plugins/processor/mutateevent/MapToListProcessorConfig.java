@@ -36,11 +36,11 @@ public class MapToListProcessorConfig {
     @JsonPropertyDescription("The target for the generated list.")
     private String target;
 
-    @JsonProperty("key_name")
+    @JsonProperty(value = "key_name", defaultValue = DEFAULT_KEY_NAME)
     @JsonPropertyDescription("The name of the field in which to store the original key. Default is <code>key</code>.")
     private String keyName = DEFAULT_KEY_NAME;
 
-    @JsonProperty("value_name")
+    @JsonProperty(value = "value_name", defaultValue = DEFAULT_VALUE_NAME)
     @JsonPropertyDescription("The name of the field in which to store the original value. Default is <code>value</code>.")
     private String valueName = DEFAULT_VALUE_NAME;
 

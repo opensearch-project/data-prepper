@@ -26,12 +26,12 @@ public class CsvProcessorConfig {
     static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote
     static final Boolean DEFAULT_DELETE_HEADERS = true;
 
-    @JsonProperty("source")
+    @JsonProperty(value = "source", defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The field in the event that will be parsed. Default value is <code>message</code>.")
     @NotBlank
     private String source = DEFAULT_SOURCE;
 
-    @JsonProperty("delimiter")
+    @JsonProperty(value = "delimiter", defaultValue = DEFAULT_DELIMITER)
     @JsonPropertyDescription("The character separating each column. Default value is <code>,</code>.")
     private String delimiter = DEFAULT_DELIMITER;
 
@@ -40,7 +40,7 @@ public class CsvProcessorConfig {
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
-    @JsonProperty("quote_character")
+    @JsonProperty(value = "quote_character", defaultValue = DEFAULT_QUOTE_CHARACTER)
     @JsonPropertyDescription("The character used as a text qualifier for a single column of data. " +
             "Default value is <code>\"</code>.")
     private String quoteCharacter = DEFAULT_QUOTE_CHARACTER;

@@ -27,8 +27,8 @@ public class EntryConfig {
     @NotEmpty
     private String source;
 
-    @JsonPropertyDescription("The key of the target field in which to set the geolocation data. Default is <code>geo</code>.")
-    @JsonProperty("target")
+    @JsonPropertyDescription("The key of the target field in which to set the geolocation data.")
+    @JsonProperty(value = "target", defaultValue = DEFAULT_TARGET)
     private String target = DEFAULT_TARGET;
 
     @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases. " +

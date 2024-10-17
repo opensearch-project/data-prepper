@@ -27,7 +27,7 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     static final String DEFAULT_SOURCE = "message";
 
     @NotBlank
-    @JsonProperty("source")
+    @JsonProperty(value = "source", defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The field in the event that will be parsed. The default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 
@@ -57,15 +57,14 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")
     private String parseWhen;
 
-    @JsonProperty("handle_failed_events")
+    @JsonProperty(value = "handle_failed_events", defaultValue = "skip")
     @JsonPropertyDescription("Determines how to handle events with ION processing errors. Options include 'skip', " +
             "which will log the error and send the event downstream to the next processor, and 'skip_silently', " +
-            "which will send the Event downstream to the next processor without logging the error. " +
-            "Default is 'skip'.")
+            "which will send the Event downstream to the next processor without logging the error. ")
     @NotNull
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
-    @JsonProperty("depth")
+    @JsonProperty(value = "depth", defaultValue = "0")
     @Min(0)
     @Max(10)
     @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
