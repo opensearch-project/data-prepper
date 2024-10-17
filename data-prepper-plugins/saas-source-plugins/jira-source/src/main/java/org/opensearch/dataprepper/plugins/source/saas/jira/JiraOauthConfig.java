@@ -1,69 +1,55 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 
+import javax.inject.Named;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * The type Jira service.
  */
+
+@Setter
+@Getter
 public class JiraOauthConfig {
-  /**
-   * The Jira project cache.
-   */
-  static Map<String, String> jiraProjectCache = new HashMap<>();
-  /**
-   * The Access token.
-   */
-  static String accessToken = "";
-  /**
-   * The Refresh token.
-   */
-  static String refreshToken = "";
-  /**
-   * The Client id.
-   */
-  static String clientId = "";
-  /**
-   * The Client secret.
-   */
-  static String clientSecret = "";
+
   private static final Logger appLog =
           org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
 
-  /**
-   * Set OauthConfigValues initially.
-   */
-  static synchronized void setOauthConfigValues(String jiraId,
-                                                String jiraCredential, String jiraAccessToken,
-                                                String jiraRefreshToken) {
-    appLog.info("Setting OAuth configuration values for Jira Connector.");
 
-    if (!jiraId.equals(clientId)) {
-      clientId = jiraId;
-    }
-    if (!jiraCredential.equals(clientSecret)) {
-      clientSecret = jiraCredential;
-    }
-    if (!jiraAccessToken.equals(accessToken)) {
-      accessToken = jiraAccessToken;
-    }
-    if (!jiraRefreshToken.equals(refreshToken)) {
-      refreshToken = jiraRefreshToken;
-    }
+  private String accessToken = "";
+  private String refreshToken = "";
+  private String clientId = "";
+  private String clientSecret = "";
+
+  public JiraOauthConfig(String accessToken, String refreshToken, String clientId, String clientSecret) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
   }
 
-  /**
+  public JiraOauthConfig(JiraOauthConfig oauthConfig){
+    this.accessToken = oauthConfig.getAccessToken();
+    this.refreshToken = oauthConfig.getRefreshToken();
+    this.clientId = oauthConfig.getClientId();
+    this.clientSecret = oauthConfig.getClientSecret();
+  }
+
+
+   /* *//**
    * Get changed Access and Refresh Token when old expired.
-   */
+   *//*
   static synchronized void changeAccessAndRefreshToken(Object jiraConfiguration) {
     appLog.info("Setting access-refresh token for Jira Connector.");
     boolean configuaration = true;
     if (jiraConfiguration instanceof JiraConfigHelper) {
-      configuaration = JiraService.reTestConnection((JiraConfigHelper) jiraConfiguration);
+      configuaration = JiraService. .reTestConnection((JiraConfigHelper) jiraConfiguration);
     }
 
     if (!configuaration) {
@@ -79,15 +65,15 @@ public class JiraOauthConfig {
     }
   }
 
-  /**
+  *//**
    * create AccessRefreshToken Pair.
    *
    * @param clientId the configuration
    * @return AccessRefreshToken
-   */
+   *//*
   private static HashMap<String, Object> createAccessRefreshTokenPair(
           String clientId, String clientSecret, String refreshToken) {
-    /*appLog.info("Creating access-refresh token pair for Jira Connector.");
+    *//*appLog.info("Creating access-refresh token pair for Jira Connector.");
     OAuthClientRequest accessRequest = null;
     HashMap<String, Object> oauthValues = new HashMap<>();
     try {
@@ -120,7 +106,7 @@ public class JiraOauthConfig {
         throw new ContinuableBadRequestException(e.getMessage(), e);
       }
     }
-    return oauthValues;*/
+    return oauthValues;*//*
     return null;
-  }
+  }*/
 }

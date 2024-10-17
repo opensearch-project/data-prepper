@@ -22,13 +22,13 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class JiraSourceConfig implements SaasSourceConfig {
 
     /**
-     * This connector's account url
+     * Jira account url
      */
     @JsonProperty("account_url")
     private String accountUrl;
 
     /**
-     * A map of connector credentials specific to this connector
+     * A map of connector credentials specific to this source
      */
     @JsonProperty("connector_credentials")
     private Map<String, String> connectorCredentials;
@@ -106,25 +106,30 @@ public class JiraSourceConfig implements SaasSourceConfig {
 
 
     public String getAccessToken() {
-        if(!OAUTH2.equals(getAuthType())) {
-            throw new RuntimeException("Authentication Type is not OAuth2.");
-        }
-        String accessToken = this.getConnectorCredentials().get("access_token");
-        if(accessToken == null || accessToken.isEmpty()) {
-            throw new RuntimeException("Access Token is required for OAuth2 AuthType");
-        }
-        return accessToken;
+        return fetchGivenOAuthAttribute("access_token");
     }
 
     public String getRefreshToken() {
+        return fetchGivenOAuthAttribute("refresh_token");
+    }
+
+    public String getClientId() {
+        return fetchGivenOAuthAttribute("client_id");
+    }
+
+    public String getClientSecret() {
+        return fetchGivenOAuthAttribute("client_secret");
+    }
+
+    private String fetchGivenOAuthAttribute(String givenAttribute) {
         if(!OAUTH2.equals(getAuthType())) {
             throw new RuntimeException("Authentication Type is not OAuth2.");
         }
-        String refreshToken = this.getConnectorCredentials().get("refresh_token");
-        if(refreshToken == null || refreshToken.isEmpty()) {
-            throw new RuntimeException("Refresh Token is required for OAuth2 AuthType");
+        String attributeValue = this.getConnectorCredentials().get(givenAttribute);
+        if(attributeValue == null || attributeValue.isEmpty()) {
+            throw new RuntimeException(String.format("%s Token is required for OAuth2 AuthType", givenAttribute));
         }
-        return refreshToken;
+        return attributeValue;
     }
 
 }

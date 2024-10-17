@@ -29,11 +29,9 @@ public class JiraConfigHelper {
   public static final String ISSUE_STATUS_FILTER = "status";
   public static final String ISSUE_TYPE_FILTER = "issuetype";
 
-  private final OAuth2RestHelper auth2RestHelper;
   private final JiraSourceConfig config;
 
-  public JiraConfigHelper(OAuth2RestHelper auth2RestHelper, JiraSourceConfig config) {
-    this.auth2RestHelper = auth2RestHelper;
+  public JiraConfigHelper(JiraSourceConfig config) {
     this.config = config;
   }
 
@@ -164,16 +162,4 @@ public class JiraConfigHelper {
     }
     return true;
   }
-
-  public String getAuthTypeBasedJiraUrl() {
-    //For OAuth based flow, we use a different Jira url
-    String authType = config.getAuthType();
-    if(OAUTH2.equals(authType)){
-        String cloudId = this.auth2RestHelper.getJiraAccountCloudId(config);
-        return OAuth2_URL + cloudId + "/" + REST_API_FETCH_ISSUE;
-    }else {
-      return config.getAccountUrl() + REST_API_FETCH_ISSUE + "/";
-    }
-  }
-
 }

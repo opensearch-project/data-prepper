@@ -7,25 +7,26 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.saas.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.AddressValidation;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.inject.Named;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.regex.Matcher;
@@ -53,7 +53,6 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EMPTY_STRING;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ERR_MSG;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.EXPAND_VALUE;
@@ -73,6 +72,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT_NAME;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.START_AT;
@@ -86,30 +86,41 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 
 
 /**
- * The type Jira service.
+ * Service class for interactive external Atlassian jira SaaS service and fetch required details using their rest apis.
  */
 
 @Slf4j
 @Named
 public class JiraService {
 
-    private static final List<Integer> waitTimeList =
-          Arrays.asList(1, 3, 5, 10, 20, 40, 60, 120, 240);
-
   private final RestTemplate restTemplate;
-
   private final JiraConfigHelper configHelper;
+  private JiraOauthConfig oauthConfig;
+  private OAuth2RestHelper  oAuth2RestHelper;
+
+  public static final String ISSUES_REQUESTED = "issuesRequested";
+  public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+
+  private final Counter issuesRequestedCounter;
+  private final Timer requestProcessDuration;
+  private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
   private final String url;
-  /**
-   * The Jira project cache.
-   */
+
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
-  public JiraService(RestTemplate restTemplate, JiraConfigHelper configHelper) {
+  public JiraService(RestTemplate restTemplate,
+                     JiraConfigHelper configHelper,
+                     OAuth2RestHelper oAuth2RestHelper) {
     this.restTemplate = restTemplate;
     this.configHelper = configHelper;
-    this.url = configHelper.getAuthTypeBasedJiraUrl();
+    this.oAuth2RestHelper = oAuth2RestHelper;
+    this.oauthConfig = oAuth2RestHelper.getJiraOauthConfig();
+
+    issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+    requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
+
+    this.url = oAuth2RestHelper.getAuthTypeBasedJiraUrl();
   }
 
   /**
@@ -265,14 +276,14 @@ public class JiraService {
           request = Unirest.get(REST_API_SEARCH)
                   .header(ACCEPT, Application_JSON)
                   .header(HttpHeaders.AUTHORIZATION, String
-                          .format("%s %s", Constants.TOKEN_TYPE, JiraOauthConfig.accessToken))
+                          .format("%s %s", Constants.TOKEN_TYPE, this.oauthConfig.getAccessToken()))
                   .queryString(MAX_RESULT, FIFTY)
                   .queryString(START_AT, startAt)
                   .queryString(JQL_FIELD, jql)
                   .queryString(EXPAND_FIELD, EXPAND_VALUE);
           response = request.asJson();
           if (response.getStatus() == TOKEN_EXPIRED) {
-            JiraOauthConfig.changeAccessAndRefreshToken(configuration);
+            oauthConfig = this.oAuth2RestHelper.tryRefreshingAccessToken(oauthConfig);
             retryCount++;
           } else if (response.getStatus() == SUCCESS_RESPONSE) {
             Gson gson = new GsonBuilder().create();
@@ -332,96 +343,19 @@ public class JiraService {
   }
 
   /**
-   * Method to build message input stream.
-   *
-   * @param text input parameter.
-   * @return ByteArrayInputStream input stream
-   */
-  public final InputStream buildTextInputStream(String text) {
-    if (text!=null && !text.isEmpty()) {
-      text = EMPTY_STRING;
-    }
-    byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-    return new ByteArrayInputStream(bytes);
-  }
-
-  /**
    * Gets issue.
    *
    * @param issueKey      the item info
    * @param configuration the configuration
    * @return the issue
    */
+  @Retryable(value = RuntimeException.class, maxAttempts = 5, backoff = @Backoff(delay = 1000, multiplier = 2))
+  @Timed(REQUEST_PROCESS_DURATION)
   public String getIssue(String issueKey, JiraSourceConfig configuration) {
-    log.info("Started to fetch issue information");
-    Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
-
-    while(true) {
-      String issueUrl = this.url + issueKey;
-      log.info("Issue Fetching api call request is : {}", issueUrl);
-      try {
-        return restTemplate.getForEntity(issueUrl, String.class).getBody();
-      } catch (HttpClientErrorException ex) {
-        log.error("Failed to execute the rest call ",ex);
-      }
-    }
-  }
-
-
-  public String getCurrentUser(JiraSourceConfig config) {
-      String url = config.getAccountUrl() + "/rest/api/3/myself";
-      return restTemplate.getForEntity(url, String.class).getBody();
-  }
-
-  /**
-   * Method to test if the connections are working or not.
-   *
-   * @param configuration the configuration
-   * @return the boolean
-   */
-  public boolean handShakeWithService(JiraSourceConfig configuration) {
-    AddressValidation.validateInetAddress(AddressValidation
-            .getInetAddress(configuration.getAccountUrl()));
-    Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
-    boolean shouldContinue = Boolean.TRUE;
-    while (shouldContinue) {
-      try {
-        if (configuration.getAuthType().equals(OAUTH2)) {
-          JiraOauthConfig
-                  .setOauthConfigValues(configuration.getJiraId(),
-                          configuration.getJiraCredential(),
-                          configuration.getAccessToken(), configuration.getRefreshToken());
-        }
-        getCurrentUser(configuration);
-        shouldContinue = Boolean.FALSE;
-      } catch (HttpClientErrorException e) {
-        try {
-          if (e.getStatusCode().value() == HttpStatus.SC_FORBIDDEN
-                  || e.getStatusCode().value() == HttpStatus.SC_UNAUTHORIZED){
-            throw new UnAuthorizedException("Access token expired", e);
-          }
-          log.error("Error occurred while testing connection {}", e.getMessage());
-          throw new BadRequestException(e.getMessage(), e);
-        } catch (Exception ex) {
-           log.error("An exception has occurred while testing"
-                  + " connection {}",  ex.getMessage());
-          throw new BadRequestException(ex.getMessage(), ex);
-        }
-      }
-    }
-    return true;
-  }
-
-
-  /**
-   * Gets issue search api.
-   *
-   * @param configuration the configuration
-   * @return the issue search api
-   */
-  public SearchResults getIssueSearchApi(JiraConfigHelper configuration, String jql) {
-    //TODO: Fill this method body
-    return null;
+    log.debug("Started to fetch issue information");
+    issuesRequestedCounter.increment();
+    String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+    return restTemplate.getForEntity(url, String.class).getBody();
   }
 
   /**
@@ -463,53 +397,6 @@ public class JiraService {
               .withProject(metadata.get(PROJECT_KEY))
               .withIssueType(metadata.get(CONTENT_TYPE))
               .build();
-  }
-
-  /**
-   * Re-Test connection boolean.
-   *
-   * @param configuration the configuration
-   * @return the boolean
-   */
-  public static boolean reTestConnection(JiraConfigHelper configuration) {
-    Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
-    boolean shouldContinue = Boolean.TRUE;
-    while (shouldContinue) {
-      try {
-        //TODO: replace below line
-//        getMyselfApi(configuration).getCurrentUser(EMPTY_STRING);
-        shouldContinue = Boolean.FALSE;
-      } catch (RuntimeException ex) {
-        if (/*ex.status() == RATE_LIMIT &&*/ !CollectionUtils.isEmpty(waitTimeQueue)) {
-          log.error("Re-testing connection due to error: {}", ex.getMessage());
-          String waitTime = String.valueOf(waitTimeQueue.remove());
-          handleThrottling(waitTime, Boolean.TRUE);
-        } else {
-          log.error("An exception has occurred while "
-                  + "re-testing connection {}", ex.getMessage());
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Method to handle Slack API Throttling.
-   *
-   * @param waitTime    input parameter.
-   * @param resumeCrawl input parameter.
-   */
-  public static void handleThrottling(String waitTime, boolean resumeCrawl) {
-    int seconds = Integer.parseInt(waitTime);
-    long retryAfter = seconds * 1000L;
-    try {
-      Thread.sleep(retryAfter);
-    } catch (InterruptedException interruptedException) {
-      //TODO: Better exception handling required here
-      log.error("Thread interrupted while handling throttling");
-      throw new RuntimeException(interruptedException);
-    }
   }
 
 }

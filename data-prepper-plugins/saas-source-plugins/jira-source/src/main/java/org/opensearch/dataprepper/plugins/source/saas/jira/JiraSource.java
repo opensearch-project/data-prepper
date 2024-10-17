@@ -40,7 +40,7 @@ public class JiraSource extends SaasSourcePlugin {
     log.info("Create Jira Source Connector");
 
     //Handshake with the service
-    service.handShakeWithService(jiraSourceConfig);
+    //service.handShakeWithService(jiraSourceConfig);
   }
 
 }
