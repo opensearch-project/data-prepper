@@ -122,6 +122,8 @@ public class OpenSearchSinkIT {
     private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
     private static final String INCLUDE_TYPE_NAME_FALSE_URI = "?include_type_name=false";
     private static final String TRACE_INGESTION_TEST_DISABLED_REASON = "Trace ingestion is not supported for ES 6";
+    private static final String LOG_INGESTION_TEST_DISABLED_REASON = "Log ingestion is not supported for ES 6";
+    private static final String METRIC_INGESTION_TEST_DISABLED_REASON = "Metric ingestion is not supported for ES 6";
 
     private RestClient client;
     private SinkContext sinkContext;
@@ -188,6 +190,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+        assertThat(indexAlias, equalTo("otel-v1-apm-span"));
         Request request = new Request(HttpMethod.HEAD, indexAlias);
         Response response = client.performRequest(request);
         assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
@@ -223,6 +226,96 @@ public class OpenSearchSinkIT {
         if (isOSBundle()) {
             // Check managed index
             assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.RAW_ISM_POLICY));
+        }
+    }
+
+    @Test
+    @DisabledIf(value = "isES6", disabledReason = LOG_INGESTION_TEST_DISABLED_REASON)
+    public void testInstantiateSinkLogsDefaultLogSink() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.LOG_ANALYTICS.getValue(), null, null);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.LOG_ANALYTICS);
+        assertThat(indexAlias, equalTo("logs-otel-v1"));
+        Request request = new Request(HttpMethod.HEAD, indexAlias);
+        Response response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+        final String index = String.format("%s-000001", indexAlias);
+        final Map<String, Object> mappings = getIndexMappings(index);
+        assertThat(mappings, notNullValue());
+        assertThat((boolean) mappings.get("date_detection"), equalTo(false));
+        sink.shutdown();
+
+        if (isOSBundle()) {
+            // Check managed index
+            await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+                        assertThat(getIndexPolicyId(index), equalTo(IndexConstants.LOGS_ISM_POLICY));
+                    }
+            );
+        }
+
+        // roll over initial index
+        request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
+        request.setJsonEntity("{ \"conditions\" : { } }\n");
+        response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        // Instantiate sink again
+        sink = createObjectUnderTest(pluginSetting, true);
+        // Make sure no new write index *-000001 is created under alias
+        final String rolloverIndexName = String.format("%s-000002", indexAlias);
+        request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
+        response = client.performRequest(request);
+        assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
+        sink.shutdown();
+
+        if (isOSBundle()) {
+            // Check managed index
+            assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.LOGS_ISM_POLICY));
+        }
+    }
+
+    @Test
+    @DisabledIf(value = "isES6", disabledReason = METRIC_INGESTION_TEST_DISABLED_REASON)
+    public void testInstantiateSinkMetricsDefaultMetricSink() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.METRIC_ANALYTICS.getValue(), null, null);
+        OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+        final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.METRIC_ANALYTICS);
+        assertThat(indexAlias, equalTo("metrics-otel-v1"));
+        Request request = new Request(HttpMethod.HEAD, indexAlias);
+        Response response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+        final String index = String.format("%s-000001", indexAlias);
+        final Map<String, Object> mappings = getIndexMappings(index);
+        assertThat(mappings, notNullValue());
+        assertThat((boolean) mappings.get("date_detection"), equalTo(false));
+        sink.shutdown();
+
+        if (isOSBundle()) {
+            // Check managed index
+            await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+                        assertThat(getIndexPolicyId(index), equalTo(IndexConstants.METRICS_ISM_POLICY));
+                    }
+            );
+        }
+
+        // roll over initial index
+        request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
+        request.setJsonEntity("{ \"conditions\" : { } }\n");
+        response = client.performRequest(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
+
+        // Instantiate sink again
+        sink = createObjectUnderTest(pluginSetting, true);
+        // Make sure no new write index *-000001 is created under alias
+        final String rolloverIndexName = String.format("%s-000002", indexAlias);
+        request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
+        response = client.performRequest(request);
+        assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
+        sink.shutdown();
+
+        if (isOSBundle()) {
+            // Check managed index
+            assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.METRICS_ISM_POLICY));
         }
     }
 
