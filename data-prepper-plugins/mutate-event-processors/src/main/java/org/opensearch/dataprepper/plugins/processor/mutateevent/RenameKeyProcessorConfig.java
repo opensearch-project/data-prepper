@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -17,18 +17,21 @@ import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")
 public class RenameKeyProcessorConfig {
     @JsonPropertyOrder
     public static class Entry {
-        @NotEmpty
-        @NotNull
         @JsonProperty("from_key")
         @JsonPropertyDescription("The key of the entry to be renamed.")
         @EventKeyConfiguration({EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE})
         private EventKey fromKey;
+
+        @JsonProperty("from_key_pattern")
+        @JsonPropertyDescription("The regex pattern of the key of the entry to be renamed.")
+        private String fromKeyPattern;
 
         @NotEmpty
         @NotNull
@@ -47,8 +50,14 @@ public class RenameKeyProcessorConfig {
                 "run on the event. By default, all events will be processed unless otherwise stated.")
         private String renameWhen;
 
+        private Pattern fromKeyCompiledPattern;
+
         public EventKey getFromKey() {
             return fromKey;
+        }
+
+        public String getFromKeyPattern() {
+            return fromKeyPattern;
         }
 
         public EventKey getToKey() {
@@ -59,13 +68,23 @@ public class RenameKeyProcessorConfig {
             return overwriteIfToKeyExists;
         }
 
-        public String getRenameWhen() { return renameWhen; }
+        public String getRenameWhen() {
+            return renameWhen;
+        }
 
-        public Entry(final EventKey fromKey, final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
+        public Pattern getFromKeyCompiledPattern() {
+            return fromKeyCompiledPattern;
+        }
+
+        public Entry(final EventKey fromKey, final String fromKeyPattern, final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
             this.fromKey = fromKey;
+            this.fromKeyPattern = fromKeyPattern;
             this.toKey = toKey;
             this.overwriteIfToKeyExists = overwriteIfKeyExists;
             this.renameWhen = renameWhen;
+            if (fromKeyPattern != null) {
+                fromKeyCompiledPattern = Pattern.compile(fromKeyPattern);
+            }
         }
 
         public Entry() {
