@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation used in schema generation to define the names and corresponding values of other required
- * configurations if the configuration represented by the annotated field/method is present.
+ * configurations if the configuration represented by the annotated field/method takes non-null or true value.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

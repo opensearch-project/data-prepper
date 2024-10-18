@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
@@ -23,6 +24,8 @@ import java.util.List;
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     @JsonPropertyOrder
     public static class Entry {
+        static final String DELIMITER_REGEX_KEY = "delimiter_regex";
+
         @NotEmpty
         @NotNull
         @JsonPropertyDescription("The key name of the field to split.")
@@ -32,11 +35,17 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @JsonPropertyDescription("The separator character responsible for the split. " +
                 "Cannot be defined at the same time as <code>delimiter_regex</code>. " +
                 "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name=DELIMITER_REGEX_KEY, allowedValues = {"null", "\"\""})
+        })
         private String delimiter;
 
         @JsonProperty("delimiter_regex")
         @JsonPropertyDescription("The regex string responsible for the split. Cannot be defined at the same time as <code>delimiter</code>. " +
                 "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name="delimiter", allowedValues = {"null", "\"\""})
+        })
         private String delimiterRegex;
 
         @JsonProperty("split_when")

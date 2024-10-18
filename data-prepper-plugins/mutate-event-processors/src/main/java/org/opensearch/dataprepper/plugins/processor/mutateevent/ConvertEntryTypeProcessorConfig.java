@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
@@ -18,12 +19,21 @@ import java.util.Optional;
 @JsonClassDescription("The <code>convert_type</code> processor converts a value associated with the specified key in " +
         "a event to the specified type. It is a casting processor that changes the types of specified fields in events.")
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
-    @JsonProperty("key")
+    static final String KEY_KEY = "key";
+    static final String KEYS_KEY = "keys";
+
+    @JsonProperty(KEY_KEY)
     @JsonPropertyDescription("Key whose value needs to be converted to a different type.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = KEYS_KEY, allowedValues = {"null"})
+    })
     private String key;
 
-    @JsonProperty("keys")
+    @JsonProperty(KEYS_KEY)
     @JsonPropertyDescription("List of keys whose values needs to be converted to a different type.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = KEY_KEY, allowedValues = {"null"})
+    })
     private List<String> keys;
 
     @JsonProperty(value = "type", defaultValue = "integer")
