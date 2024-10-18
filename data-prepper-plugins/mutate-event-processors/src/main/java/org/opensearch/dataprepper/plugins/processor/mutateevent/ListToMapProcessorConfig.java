@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,8 @@ import java.util.stream.Collectors;
 @JsonClassDescription("The <code>list_to_map</code> processor converts a list of objects from an event, " +
         "where each object contains a <code>key</code> field, into a map of target keys.")
 public class ListToMapProcessorConfig {
+    static final String KEY_KEY = "key";
+
     public enum FlattenedElement {
         FIRST("first"),
         LAST("last");
@@ -64,9 +67,12 @@ public class ListToMapProcessorConfig {
     @JsonProperty("use_source_key")
     @JsonPropertyDescription("When <code>true</code>, keys in the generated map will use original keys from the source. " +
             "Default is <code>false</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = KEY_KEY)
+    })
     private boolean useSourceKey = false;
 
-    @JsonProperty("key")
+    @JsonProperty(KEY_KEY)
     @JsonPropertyDescription("The key of the fields to be extracted as keys in the generated mappings. Must be " +
             "specified if <code>use_source_key</code> is <code>false</code>.")
     private String key;
