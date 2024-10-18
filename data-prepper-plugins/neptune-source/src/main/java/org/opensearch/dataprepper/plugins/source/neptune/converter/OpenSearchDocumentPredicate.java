@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.neptune.converter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
+import software.amazon.awssdk.services.neptunedata.model.PropertygraphData;
 
 import java.util.Objects;
 
@@ -31,5 +32,13 @@ public class OpenSearchDocumentPredicate {
     @Override
     public int hashCode() {
         return Objects.hash(value, graph, language);
+    }
+
+    public static OpenSearchDocumentPredicate fromPropertGraphData(final PropertygraphData propertygraphData) {
+        final String value = propertygraphData.value().asMap().get("value").asString();
+        return OpenSearchDocumentPredicate
+                .builder()
+                .value(value)
+                .build();
     }
 }

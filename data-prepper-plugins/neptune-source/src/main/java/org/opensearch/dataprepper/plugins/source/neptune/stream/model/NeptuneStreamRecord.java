@@ -142,7 +142,7 @@ public class NeptuneStreamRecord<T extends ToCopyableBuilder> {
         } else {
             // TODO:: handle datatype
             predicates.put(key, new HashSet<>());
-            predicates.get(key).add(OpenSearchDocumentPredicate.builder().value(propertygraphData.value().asString()).build());
+            predicates.get(key).add(OpenSearchDocumentPredicate.fromPropertGraphData(propertygraphData));
         }
 
         return OpenSearchDocument
