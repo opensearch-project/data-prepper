@@ -45,7 +45,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertTrue(isThresholdExceed, "Threshold exceeded");
     }
@@ -57,7 +57,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(this.maxCollectionDuration.minusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertFalse(isThresholdExceed, "Threshold exceeded");
     }
@@ -69,7 +69,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertTrue(isThresholdExceed, "Threshold not exceeded");
     }
@@ -81,7 +81,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertFalse(isThresholdExceed, "Threshold exceeded");
     }
@@ -93,7 +93,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(maxCollectionDuration.plusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertTrue(isThresholdExceed, "Threshold not exceeded");
     }
@@ -105,7 +105,7 @@ class ThresholdCheckTest {
         when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
 
         assertFalse(isThresholdExceed, "Threshold exceeded");
@@ -119,7 +119,7 @@ class ThresholdCheckTest {
         Boolean isBatchEnabled = false;
 
         boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, isBatchEnabled);
+                maxBytes, maxCollectionDuration);
 
         assertTrue(isThresholdExceed);
     }
