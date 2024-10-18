@@ -91,7 +91,7 @@ public class AddEntryProcessorConfig {
 
         @JsonProperty("add_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
+                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
         private String addWhen;
 
         public String getKey() {

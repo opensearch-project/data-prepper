@@ -44,7 +44,7 @@ public class CopyValueProcessorConfig {
 
         @JsonProperty("copy_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
+                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
         private String copyWhen;
 
         public String getFromKey() {
@@ -80,14 +80,14 @@ public class CopyValueProcessorConfig {
     private List<Entry> entries;
 
     @JsonProperty(FROM_LIST_KEY)
-    @JsonPropertyDescription("The source list to copy values from.")
+    @JsonPropertyDescription("The key of the list of objects to be copied.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = TO_LIST_KEY)
     })
     private String fromList;
 
     @JsonProperty(TO_LIST_KEY)
-    @JsonPropertyDescription("The target list to copy values to.")
+    @JsonPropertyDescription("The key of the new list to be added.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FROM_LIST_KEY)
     })

@@ -34,7 +34,7 @@ public class DissectProcessorConfig {
     @JsonPropertyDescription("Specifies a condition for performing the <code>dissect</code> operation using a " +
             "<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>. " +
             "If specified, the <code>dissect</code> operation will only run when the expression evaluates to true. " +
-            "For example, <code>'/some_value == \"log\"'</code>.")
+            "For example, <code>/some_value == \"log\"</code>.")
     private String dissectWhen;
 
     public String getDissectWhen(){
