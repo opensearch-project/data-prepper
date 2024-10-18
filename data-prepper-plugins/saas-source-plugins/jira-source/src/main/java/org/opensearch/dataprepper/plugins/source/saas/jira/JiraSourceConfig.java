@@ -5,7 +5,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
-import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -13,10 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 
 @Getter
 public class JiraSourceConfig implements SaasSourceConfig {

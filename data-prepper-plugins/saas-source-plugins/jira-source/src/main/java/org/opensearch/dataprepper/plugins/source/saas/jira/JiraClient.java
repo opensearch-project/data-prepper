@@ -27,6 +27,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.PROJECT;
 
 /**
  * This class represents a Jira client.
@@ -36,7 +37,6 @@ public class JiraClient implements SaasClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-    public static final String PROJECT = "project";
 
     private final JiraService service;
     private SaasSourceConfig configuration;
@@ -55,22 +55,10 @@ public class JiraClient implements SaasClient {
     }
 
 
-    //@Override
-    public String getItem(ItemInfo itemInfo, SaasSourceConfig configuration) {
-        return service.getIssue(itemInfo.getId(), (JiraSourceConfig) configuration);
-    }
-
-
     @Override
     public Iterator<ItemInfo> listItems() {
         jiraIterator.initialize(lastPollTime);
         return jiraIterator;
-    }
-
-    @Override
-    public void setConfiguration(SaasSourceConfig configuration) {
-        this.configuration = configuration;
-        this.jiraIterator.setSourceConfig(configuration);
     }
 
     @Override
@@ -81,6 +69,8 @@ public class JiraClient implements SaasClient {
 
     @Override
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig configuration) {
+        log.info("Executing the partition: {} with {} ticket(s)",
+                state.getKeyAttributes(), state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
         Map<String, String> keyAttributes = state.getKeyAttributes();
         String project = keyAttributes.get(PROJECT);
@@ -101,7 +91,7 @@ public class JiraClient implements SaasClient {
 
         List<Record<Event>> recordsToWrite = itemInfos
                 .parallelStream()
-                .map(t -> (Supplier<String>) (() -> getItem(t, configuration)))
+                .map(t -> (Supplier<String>) (() -> service.getIssue(t.getId())))
                 .map(supplier -> supplyAsync(supplier, this.executorService))
                 .map(CompletableFuture::join)
                 .map(ticketJson -> {

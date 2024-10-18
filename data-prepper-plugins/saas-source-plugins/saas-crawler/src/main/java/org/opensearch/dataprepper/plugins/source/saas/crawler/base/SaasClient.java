@@ -4,7 +4,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.model.Item;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 
 import java.util.Iterator;
@@ -44,12 +43,6 @@ public interface SaasClient {
         return Optional.empty();
     }
 
-    /**
-     * Set configuration for saas client.
-     *
-     * @param configuration {@link SaasSourceConfig}
-     */
-     void setConfiguration(SaasSourceConfig configuration);
 
     void setLastPollTime(long lastPollTime);
 

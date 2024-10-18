@@ -11,17 +11,15 @@ import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHeaders;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.SearchResults;
-import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.AddressValidation;
-import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.CollectionUtils;
@@ -94,7 +92,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class JiraService {
 
   private final RestTemplate restTemplate;
-  private JiraOauthConfig oauthConfig;
+  private final JiraOauthConfig oauthConfig;
   private final JiraSourceConfig jiraSourceConfig;
 
   public static final String ISSUES_REQUESTED = "issuesRequested";
@@ -107,13 +105,14 @@ public class JiraService {
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
   public JiraService(RestTemplate restTemplate,
-                     JiraSourceConfig jiraSourceConfig) {
+                     JiraSourceConfig jiraSourceConfig,
+                     JiraOauthConfig oauthConfig) {
     this.restTemplate = restTemplate;
     this.jiraSourceConfig = jiraSourceConfig;
 
     issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
     requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
-    //this.oauthConfig = JiraOauthConfig.getInstance(jiraSourceConfig);
+    this.oauthConfig = oauthConfig;
 
   }
 
@@ -262,34 +261,30 @@ public class JiraService {
         Gson gson = new GsonBuilder().create();
         results = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
       } else if (configuration.getAuthType().equals(OAUTH2)) {
-        if(this.oauthConfig==null) {
-          this.oauthConfig = JiraOauthConfig.getInstance(configuration);
-        }
         int retryCount = 0;
         boolean shouldContinue = Boolean.TRUE;
+        Map<String, Object> params = new HashMap<>();
+        params.put(MAX_RESULT, FIFTY);
+        params.put(START_AT, startAt);
+        params.put(JQL_FIELD, jql);
+        params.put(EXPAND_FIELD, EXPAND_VALUE);
+        String url = oauthConfig.getUrl() + REST_API_SEARCH;
         while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
-          request = Unirest.get(REST_API_SEARCH)
-                  .header(ACCEPT, Application_JSON)
-                  .header(HttpHeaders.AUTHORIZATION, String
-                          .format("%s %s", Constants.TOKEN_TYPE, this.oauthConfig.getAccessToken()))
-                  .queryString(MAX_RESULT, FIFTY)
-                  .queryString(START_AT, startAt)
-                  .queryString(JQL_FIELD, jql)
-                  .queryString(EXPAND_FIELD, EXPAND_VALUE);
-          response = request.asJson();
-          if (response.getStatus() == TOKEN_EXPIRED) {
-            OAuth2RestHelper.tryRefreshingAccessToken(configuration);
+          ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class, params);
+          int statusCode = responseEntity.getStatusCode().value();
+          if (statusCode == TOKEN_EXPIRED) {
+            oauthConfig.resetAccessRefreshTokenPair(configuration);
             retryCount++;
-          } else if (response.getStatus() == SUCCESS_RESPONSE) {
+          } else if (statusCode == SUCCESS_RESPONSE) {
             Gson gson = new GsonBuilder().create();
-            results = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
+            results = gson.fromJson(responseEntity.getBody(), SearchResults.class);
             shouldContinue = Boolean.FALSE;
           } else {
-            if (Objects.nonNull(response.getBody().getObject())) {
+            if (Objects.nonNull(responseEntity.getBody())) {
               log.error("An exception has occurred while "
                               + "getting response from Jira search API  {}",
-                      response.getBody().getObject().get(ERR_MSG).toString());
-              throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
+                      responseEntity.getBody());
+              throw new BadRequestException(responseEntity.getBody());
             }
           }
         }
@@ -341,15 +336,14 @@ public class JiraService {
    * Gets issue.
    *
    * @param issueKey      the item info
-   * @param configuration the configuration
    * @return the issue
    */
   @Retryable(value = RuntimeException.class, maxAttempts = 5, backoff = @Backoff(delay = 1000, multiplier = 2))
   @Timed(REQUEST_PROCESS_DURATION)
-  public String getIssue(String issueKey, JiraSourceConfig configuration) {
-    log.debug("Started to fetch issue information");
+  public String getIssue(String issueKey) {
+    log.debug("Started to fetch issue {}", issueKey);
     issuesRequestedCounter.increment();
-    String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+    String url = oauthConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
     return restTemplate.getForEntity(url, String.class).getBody();
   }
 

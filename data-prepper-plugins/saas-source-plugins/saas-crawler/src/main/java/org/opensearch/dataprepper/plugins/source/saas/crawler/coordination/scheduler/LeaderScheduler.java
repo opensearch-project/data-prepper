@@ -75,7 +75,7 @@ public class LeaderScheduler implements Runnable {
                     }
 
                     //Start crawling and create child partitions
-                    long updatedPollTime = crawler.crawl(sourcePlugin.getSourceConfig(), lastPollTime, coordinator);
+                    long updatedPollTime = crawler.crawl(lastPollTime, coordinator);
                     leaderProgressState.setLastPollTime(updatedPollTime);
                     leaderPartition.setLeaderProgressState(leaderProgressState);
                     coordinator.saveProgressStateForPartition(leaderPartition, null);

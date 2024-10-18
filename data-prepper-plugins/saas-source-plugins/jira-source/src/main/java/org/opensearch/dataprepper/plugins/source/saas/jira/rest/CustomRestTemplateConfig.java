@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.saas.jira.rest;
 
 
 import org.opensearch.dataprepper.plugins.source.saas.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -14,12 +15,12 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class CustomRestTemplateConfig {
 
     @Bean
-    public RestTemplate basicAuthRestTemplate(JiraSourceConfig config) {
+    public RestTemplate basicAuthRestTemplate(JiraSourceConfig config, JiraOauthConfig oauthConfig) {
         RestTemplate restTemplate = new RestTemplateRetryable(3);
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
         ClientHttpRequestInterceptor httpInterceptor;
         if(OAUTH2.equals(config.getAuthType())) {
-            httpInterceptor = new OAuth2RequestInterceptor(config);
+            httpInterceptor = new OAuth2RequestInterceptor(oauthConfig);
         }else {
             httpInterceptor = new BasicAuthInterceptor(config);
         }

@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
-import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,10 +34,12 @@ public class JiraSource extends SaasSourcePlugin {
 
   private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
   private final JiraSourceConfig jiraSourceConfig;
+  private final JiraOauthConfig jiraOauthConfig;
 
   @DataPrepperPluginConstructor
   public JiraSource(final PluginMetrics pluginMetrics,
                     final JiraSourceConfig jiraSourceConfig,
+                    final JiraOauthConfig jiraOauthConfig,
                     final PluginFactory pluginFactory,
                     final AcknowledgementSetManager acknowledgementSetManager,
                     Crawler crawler,
@@ -46,6 +47,7 @@ public class JiraSource extends SaasSourcePlugin {
     super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     log.info("Create Jira Source Connector");
     this.jiraSourceConfig = jiraSourceConfig;
+    this.jiraOauthConfig = jiraOauthConfig;
   }
 
   @Override
@@ -53,9 +55,7 @@ public class JiraSource extends SaasSourcePlugin {
     log.info("Starting Jira Source Plugin... ");
     JiraConfigHelper.validateConfig(jiraSourceConfig);
     if(this.jiraSourceConfig.getAuthType().equals(OAUTH2)) {
-      String authTypeBasedJiraUrl = OAuth2RestHelper.getAuthTypeBasedJiraUrl(jiraSourceConfig);
-      JiraOauthConfig jiraOauthConfig = JiraOauthConfig.getInstance(jiraSourceConfig);
-      jiraOauthConfig.setUrl(authTypeBasedJiraUrl);
+      jiraOauthConfig.initAuthBasedUrl();
     }
     super.start(buffer);
   }

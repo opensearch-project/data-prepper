@@ -1,9 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira;
 
-import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +20,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
 
     private static final Logger log = LoggerFactory.getLogger(JiraIterator.class);
     private Queue<ItemInfo> itemInfoQueue;
-    @Setter
-    private SaasSourceConfig sourceConfig;
+    private final JiraSourceConfig sourceConfig;
     private final JiraService service;
     private long lastPollTime;
     private boolean firstTime = true;
@@ -32,9 +29,11 @@ public class JiraIterator implements Iterator<ItemInfo> {
     public static final int HAS_NEXT_TIMEOUT = 7200;
 
     public JiraIterator(final JiraService service,
-                        SaasPluginExecutorServiceProvider executorServiceProvider) {
+                        SaasPluginExecutorServiceProvider executorServiceProvider,
+                        JiraSourceConfig sourceConfig) {
         this.service = service;
         this.crawlerTaskExecutor = executorServiceProvider.get();
+        this.sourceConfig = sourceConfig;
     }
 
     @Override

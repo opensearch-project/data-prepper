@@ -29,11 +29,9 @@ public class Crawler {
         this.client = client;
     }
 
-    public long crawl(SaasSourceConfig sourceConfig,
-                      long lastPollTime,
+    public long crawl(long lastPollTime,
                       EnhancedSourceCoordinator coordinator) {
         long startTime = System.currentTimeMillis();
-        client.setConfiguration(sourceConfig);
         client.setLastPollTime(lastPollTime);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
         log.info("Starting to crawl the source");
