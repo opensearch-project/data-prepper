@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -23,6 +24,7 @@ import java.util.List;
         "Then, the processor performs an action on each group, helping reduce unnecessary log volume and " +
         "creating aggregated logs over time.")
 public class AggregateProcessorConfig {
+    static final String AGGREGATED_EVENTS_TAG_KEY = "aggregated_events_tag";
     static final int DEFAULT_GROUP_DURATION_SECONDS = 180;
 
     @JsonPropertyDescription("An unordered list by which to group events. Events with the same values as these keys are put into the same group. " +
@@ -49,10 +51,13 @@ public class AggregateProcessorConfig {
 
     @JsonPropertyDescription("A boolean indicating if the unaggregated events should be forwarded to the next processor or sink in the chain.")
     @JsonProperty("output_unaggregated_events")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = AGGREGATED_EVENTS_TAG_KEY)
+    })
     private Boolean outputUnaggregatedEvents = false;
 
     @JsonPropertyDescription("Tag to be used for aggregated events to distinguish aggregated events from unaggregated events.")
-    @JsonProperty("aggregated_events_tag")
+    @JsonProperty(AGGREGATED_EVENTS_TAG_KEY)
     private String aggregatedEventsTag;
 
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as '/some-key == \"test\"', that will be evaluated to determine whether the processor will be run on the event.")

@@ -13,12 +13,16 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.List;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
 public class CopyValueProcessorConfig {
+    static final String FROM_LIST_KEY = "from_list";
+    static final String TO_LIST_KEY = "to_list";
+
     @JsonPropertyOrder
     public static class Entry {
         @NotEmpty
@@ -75,12 +79,18 @@ public class CopyValueProcessorConfig {
     @JsonPropertyDescription("A list of entries to be copied in an event.")
     private List<Entry> entries;
 
-    @JsonProperty("from_list")
+    @JsonProperty(FROM_LIST_KEY)
     @JsonPropertyDescription("The source list to copy values from.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = TO_LIST_KEY)
+    })
     private String fromList;
 
-    @JsonProperty("to_list")
+    @JsonProperty(TO_LIST_KEY)
     @JsonPropertyDescription("The target list to copy values to.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = FROM_LIST_KEY)
+    })
     private String toList;
 
     @JsonProperty("overwrite_if_to_list_exists")
