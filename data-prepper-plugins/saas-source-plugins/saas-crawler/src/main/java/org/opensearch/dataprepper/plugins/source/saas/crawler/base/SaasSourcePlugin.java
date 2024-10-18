@@ -32,7 +32,7 @@ import java.util.function.Function;
  * JiraConnector connector entry point.
  */
 
-public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
+public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
 
 
   private static final Logger log = LoggerFactory.getLogger(SaasSourcePlugin.class);
@@ -69,6 +69,7 @@ public class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSour
     this.acknowledgementSetManager = acknowledgementSetManager;
     this.executorService = executorServiceProvider.get();
   }
+
 
   @Override
   public void start(Buffer<Record<Event>> buffer) {

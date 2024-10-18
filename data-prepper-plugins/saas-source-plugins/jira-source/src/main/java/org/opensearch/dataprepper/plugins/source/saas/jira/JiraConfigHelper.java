@@ -3,37 +3,26 @@ package org.opensearch.dataprepper.plugins.source.saas.jira;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.ErrorCodeEnum;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.ExceptionUtil;
 import org.springframework.util.CollectionUtils;
 
-import javax.inject.Named;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.MAX_CHARACTERS_LENGTH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 
 /**
  * The type Jira configuration.
  */
 @Slf4j
-@Named
 public class JiraConfigHelper {
 
   public static final String ISSUE_STATUS_FILTER = "status";
   public static final String ISSUE_TYPE_FILTER = "issuetype";
-
-  private final JiraSourceConfig config;
-
-  public JiraConfigHelper(JiraSourceConfig config) {
-    this.config = config;
-  }
 
 
   /**
@@ -41,7 +30,7 @@ public class JiraConfigHelper {
    *
    * @return List Issue Status Filter.
    */
-  public List<String> getIssueStatusFilter(JiraSourceConfig repositoryConfiguration) {
+  public static List<String> getIssueStatusFilter(JiraSourceConfig repositoryConfiguration) {
     List<String> issueStatusFilter = (List<String>)
             repositoryConfiguration.getAdditionalProperties().get(ISSUE_STATUS_FILTER);
     if (!CollectionUtils.isEmpty(issueStatusFilter)) {
@@ -74,7 +63,7 @@ public class JiraConfigHelper {
    *
    * @return List Issue Type Filter.
    */
-  public List<String> getIssueTypeFilter(JiraSourceConfig repositoryConfiguration) {
+  public static List<String> getIssueTypeFilter(JiraSourceConfig repositoryConfiguration) {
     List<String> issueTypeFilter = (List<String>)
             repositoryConfiguration.getAdditionalProperties().get(ISSUE_TYPE_FILTER);
     if (!CollectionUtils.isEmpty(issueTypeFilter)) {
@@ -108,7 +97,7 @@ public class JiraConfigHelper {
    *
    * @return List Project Filter.
    */
-  public List<String> getProjectKeyFilter(JiraSourceConfig repositoryConfiguration) {
+  public static List<String> getProjectKeyFilter(JiraSourceConfig repositoryConfiguration) {
     List<String> projectKeyFilter = repositoryConfiguration.getProject();
     if (!CollectionUtils.isEmpty(projectKeyFilter)) {
       if (projectKeyFilter.size() > 1000) {
@@ -136,7 +125,7 @@ public class JiraConfigHelper {
   }
 
 
-  public boolean validateConfig(JiraSourceConfig config) {
+  public static boolean validateConfig(JiraSourceConfig config) {
     if(config.getAccountUrl()==null) {
       throw new RuntimeException("Account URL is missing.");
     }

@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.IssueBean;
+import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.AddressValidation;
@@ -30,7 +31,6 @@ import javax.inject.Named;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -94,9 +94,8 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 public class JiraService {
 
   private final RestTemplate restTemplate;
-  private final JiraConfigHelper configHelper;
   private JiraOauthConfig oauthConfig;
-  private OAuth2RestHelper  oAuth2RestHelper;
+  private final JiraSourceConfig jiraSourceConfig;
 
   public static final String ISSUES_REQUESTED = "issuesRequested";
   public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
@@ -105,22 +104,17 @@ public class JiraService {
   private final Timer requestProcessDuration;
   private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
-  private final String url;
-
   static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
   public JiraService(RestTemplate restTemplate,
-                     JiraConfigHelper configHelper,
-                     OAuth2RestHelper oAuth2RestHelper) {
+                     JiraSourceConfig jiraSourceConfig) {
     this.restTemplate = restTemplate;
-    this.configHelper = configHelper;
-    this.oAuth2RestHelper = oAuth2RestHelper;
-    this.oauthConfig = oAuth2RestHelper.getJiraOauthConfig();
+    this.jiraSourceConfig = jiraSourceConfig;
 
     issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
     requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
+    //this.oauthConfig = JiraOauthConfig.getInstance(jiraSourceConfig);
 
-    this.url = oAuth2RestHelper.getAuthTypeBasedJiraUrl();
   }
 
   /**
@@ -153,7 +147,6 @@ public class JiraService {
    *
    * @param configuration Input Parameter
    * @param timestamp     Input Parameter
-   * @return Item Info Queue
    */
   private void buildIssueItemInfo(JiraSourceConfig configuration, long timestamp,
                                   Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
@@ -164,9 +157,8 @@ public class JiraService {
     int startAt = 0;
     try {
       do {
-        List<IssueBean> issueList = new ArrayList<>();
-        SearchResults searchIssues = getAllIssues(jql, startAt, configuration);
-        issueList.addAll(searchIssues.getIssues());
+          SearchResults searchIssues = getAllIssues(jql, startAt, configuration);
+          List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
         total = searchIssues.getTotal();
         startAt += searchIssues.getIssues().size();
         futureList.add(crawlerTaskExecutor.submit(
@@ -270,6 +262,9 @@ public class JiraService {
         Gson gson = new GsonBuilder().create();
         results = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
       } else if (configuration.getAuthType().equals(OAUTH2)) {
+        if(this.oauthConfig==null) {
+          this.oauthConfig = JiraOauthConfig.getInstance(configuration);
+        }
         int retryCount = 0;
         boolean shouldContinue = Boolean.TRUE;
         while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
@@ -283,7 +278,7 @@ public class JiraService {
                   .queryString(EXPAND_FIELD, EXPAND_VALUE);
           response = request.asJson();
           if (response.getStatus() == TOKEN_EXPIRED) {
-            oauthConfig = this.oAuth2RestHelper.tryRefreshingAccessToken(oauthConfig);
+            OAuth2RestHelper.tryRefreshingAccessToken(configuration);
             retryCount++;
           } else if (response.getStatus() == SUCCESS_RESPONSE) {
             Gson gson = new GsonBuilder().create();
@@ -319,22 +314,22 @@ public class JiraService {
   private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, long ts) {
 
     log.info("Creating issue filter criteria");
-    if (!CollectionUtils.isEmpty(configHelper.getProjectKeyFilter(configuration))) {
+    if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
       validateProjectFilters(configuration);
     }
     StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts);
-    if (!CollectionUtils.isEmpty(configHelper.getProjectKeyFilter(configuration))) {
-      jiraQl.append(PROJECT_IN).append(configHelper.getProjectKeyFilter(configuration).stream()
+    if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
+      jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectKeyFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
-    if (!CollectionUtils.isEmpty(configHelper.getIssueTypeFilter(configuration))) {
-      jiraQl.append(ISSUE_TYPE_ID).append(configHelper.getIssueTypeFilter(configuration).stream()
+    if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeFilter(configuration))) {
+      jiraQl.append(ISSUE_TYPE_ID).append(JiraConfigHelper.getIssueTypeFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
-    if (!CollectionUtils.isEmpty(configHelper.getIssueStatusFilter(configuration))) {
-      jiraQl.append(STATUS_IN).append(configHelper.getIssueStatusFilter(configuration).stream()
+    if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusFilter(configuration))) {
+      jiraQl.append(STATUS_IN).append(JiraConfigHelper.getIssueStatusFilter(configuration).stream()
                       .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
               .append(CLOSING_ROUND_BRACKET);
     }
@@ -367,7 +362,7 @@ public class JiraService {
     log.info("Validating project filters");
     List<String> badFilters = new ArrayList<>();
     Pattern regex = Pattern.compile("[^A-Z0-9]");
-    configHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {
+    JiraConfigHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {
       Matcher matcher = regex.matcher(projectFilter);
       if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
         badFilters.add(projectFilter);

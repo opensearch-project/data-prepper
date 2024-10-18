@@ -5,14 +5,21 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.SaasCrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
+import org.opensearch.dataprepper.plugins.source.saas.jira.rest.OAuth2RestHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 
 
 /**
@@ -27,6 +34,7 @@ import org.slf4j.LoggerFactory;
 public class JiraSource extends SaasSourcePlugin {
 
   private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
+  private final JiraSourceConfig jiraSourceConfig;
 
   @DataPrepperPluginConstructor
   public JiraSource(final PluginMetrics pluginMetrics,
@@ -34,13 +42,27 @@ public class JiraSource extends SaasSourcePlugin {
                     final PluginFactory pluginFactory,
                     final AcknowledgementSetManager acknowledgementSetManager,
                     Crawler crawler,
-                    SaasPluginExecutorServiceProvider executorServiceProvider,
-                    JiraService service) {
+                    SaasPluginExecutorServiceProvider executorServiceProvider) {
     super(pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     log.info("Create Jira Source Connector");
+    this.jiraSourceConfig = jiraSourceConfig;
+  }
 
-    //Handshake with the service
-    //service.handShakeWithService(jiraSourceConfig);
+  @Override
+  public void start(Buffer<Record<Event>> buffer) {
+    log.info("Starting Jira Source Plugin... ");
+    JiraConfigHelper.validateConfig(jiraSourceConfig);
+    if(this.jiraSourceConfig.getAuthType().equals(OAUTH2)) {
+      String authTypeBasedJiraUrl = OAuth2RestHelper.getAuthTypeBasedJiraUrl(jiraSourceConfig);
+      JiraOauthConfig jiraOauthConfig = JiraOauthConfig.getInstance(jiraSourceConfig);
+      jiraOauthConfig.setUrl(authTypeBasedJiraUrl);
+    }
+    super.start(buffer);
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
   }
 
 }

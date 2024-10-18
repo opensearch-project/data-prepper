@@ -1,9 +1,9 @@
 package org.opensearch.dataprepper.plugins.source.saas.jira.rest;
 
 import com.google.gson.JsonObject;
-import org.opensearch.dataprepper.plugins.source.saas.jira.JiraOauthConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,33 +29,28 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.TOKEN_EXPIRED;
 
-@Named
 public class OAuth2RestHelper {
-    private static Logger log = LoggerFactory.getLogger(OAuth2RestHelper.class);
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final JiraSourceConfig config;
+    private static final Logger log = LoggerFactory.getLogger(OAuth2RestHelper.class);
 
-    public OAuth2RestHelper(JiraSourceConfig config){
-        this.config = config;
-    }
-
-    private String getJiraAccountCloudId() {
+    private static String getJiraAccountCloudId(JiraSourceConfig config) {
         log.info("Getting Jira Account Cloud ID");
+        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(config.getAccessToken());
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         int retryCount = 0;
         while(retryCount < RETRY_ATTEMPT) {
+            retryCount++;
            try {
                ResponseEntity<Object> exchangeResponse =
-                       this.restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
+                       restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
                List listResponse = (ArrayList)exchangeResponse.getBody();
                Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
                return (String)response.get("id");
            } catch (HttpClientErrorException e) {
                if(e.getStatusCode().value() == TOKEN_EXPIRED) {
-                   tryRefreshingAccessToken(this.getJiraOauthConfig());
+                   tryRefreshingAccessToken(config);
                    throw new UnAuthorizedException("Access token expired", e);
                }
                log.error("Error occurred while accessing resources: ", e);
@@ -64,12 +58,11 @@ public class OAuth2RestHelper {
            }
        }
         return "";
-
     }
 
-    public JiraOauthConfig tryRefreshingAccessToken(JiraOauthConfig oauthConfig) {
+    public static void tryRefreshingAccessToken(JiraSourceConfig config) {
         log.info("Trying to refresh the access token");
-        JiraOauthConfig refreshedConfig = new JiraOauthConfig(oauthConfig);
+        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(config.getAccessToken());
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -78,11 +71,11 @@ public class OAuth2RestHelper {
 
         try {
             ResponseEntity<Object> exchangeResponse =
-                    this.restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
+                    restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
             List listResponse = (ArrayList)exchangeResponse.getBody();
             Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
-            refreshedConfig.setAccessToken((String)response.get("id"));
-            return refreshedConfig;
+            JiraOauthConfig oAuthConfig = JiraOauthConfig.getInstance(config);
+            oAuthConfig.setAccessToken((String)response.get("id"));
         } catch (HttpClientErrorException e) {
             if(e.getStatusCode().value() == TOKEN_EXPIRED) {
                 throw new UnAuthorizedException("Access token expired", e);
@@ -147,22 +140,15 @@ public class OAuth2RestHelper {
      * Method for getting Jira url based on auth type.
      * @return String
      */
-    public String getAuthTypeBasedJiraUrl() {
+    public static String getAuthTypeBasedJiraUrl(JiraSourceConfig jiraSourceConfig) {
         //For OAuth based flow, we use a different Jira url
-        String authType = config.getAuthType();
+        String authType = jiraSourceConfig.getAuthType();
         if(OAUTH2.equals(authType)){
-            String cloudId = this.getJiraAccountCloudId();
+            String cloudId = getJiraAccountCloudId(jiraSourceConfig);
             return OAuth2_URL + cloudId + "/" + REST_API_FETCH_ISSUE;
         }else {
-            return config.getAccountUrl() + REST_API_FETCH_ISSUE + "/";
+            return jiraSourceConfig.getAccountUrl() + REST_API_FETCH_ISSUE + "/";
         }
-    }
-
-    public JiraOauthConfig getJiraOauthConfig() {
-        return new JiraOauthConfig(config.getAccessToken(),
-                config.getRefreshToken(),
-                config.getClientId(),
-                config.getClientSecret());
     }
     
 }
