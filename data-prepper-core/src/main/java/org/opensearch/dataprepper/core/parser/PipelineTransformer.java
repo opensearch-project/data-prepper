@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
@@ -35,7 +35,7 @@ import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationValidator
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
 import org.opensearch.dataprepper.validation.PluginError;
-import org.opensearch.dataprepper.core.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

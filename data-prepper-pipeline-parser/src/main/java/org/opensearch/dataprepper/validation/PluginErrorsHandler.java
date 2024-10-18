@@ -1,6 +1,4 @@
-package org.opensearch.dataprepper.core.validation;
-
-import org.opensearch.dataprepper.validation.PluginError;
+package org.opensearch.dataprepper.validation;
 
 import java.util.Collection;
 
