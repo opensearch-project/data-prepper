@@ -1,7 +1,6 @@
-package org.opensearch.dataprepper.core.validation;
+package org.opensearch.dataprepper.validation;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.validation.PluginError;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
