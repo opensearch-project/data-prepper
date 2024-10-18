@@ -11,7 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.peerforwarder.codec.LoggingObjectInputFilter;
 
 import java.io.ObjectInputFilter;
 

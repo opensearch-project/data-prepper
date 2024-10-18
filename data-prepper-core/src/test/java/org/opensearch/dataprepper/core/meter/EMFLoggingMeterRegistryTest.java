@@ -21,8 +21,6 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.TimeGauge;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.meter.EMFLoggingMeterRegistry;
-import org.opensearch.dataprepper.core.meter.EMFLoggingRegistryConfig;
 import software.amazon.cloudwatchlogs.emf.environment.EnvironmentProvider;
 import software.amazon.cloudwatchlogs.emf.logger.MetricsLogger;
 import software.amazon.cloudwatchlogs.emf.model.DimensionSet;

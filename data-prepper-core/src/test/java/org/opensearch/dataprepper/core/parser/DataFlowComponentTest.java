@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.core.parser;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 
 import java.util.Collections;
 import java.util.Set;

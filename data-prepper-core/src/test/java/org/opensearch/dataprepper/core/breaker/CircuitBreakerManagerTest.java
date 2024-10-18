@@ -13,8 +13,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.core.breaker.InnerCircuitBreaker;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 
 import java.util.Collections;

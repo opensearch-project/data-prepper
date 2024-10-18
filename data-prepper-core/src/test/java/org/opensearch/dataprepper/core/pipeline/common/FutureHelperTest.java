@@ -10,8 +10,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
-import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;

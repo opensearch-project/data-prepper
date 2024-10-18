@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
-import org.opensearch.dataprepper.core.pipeline.PipelineShutdown;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 
 import java.time.Clock;

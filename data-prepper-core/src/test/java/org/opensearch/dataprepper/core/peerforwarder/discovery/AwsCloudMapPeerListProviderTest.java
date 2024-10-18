@@ -17,7 +17,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
-import org.opensearch.dataprepper.core.peerforwarder.discovery.AwsCloudMapPeerListProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.servicediscovery.ServiceDiscoveryAsyncClient;
 import software.amazon.awssdk.services.servicediscovery.model.DiscoverInstancesRequest;

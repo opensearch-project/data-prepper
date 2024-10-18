@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.core.pipeline.server;
 
 import org.junit.Test;
-import org.opensearch.dataprepper.core.pipeline.server.SslUtil;
 
 import javax.net.ssl.SSLContext;
 

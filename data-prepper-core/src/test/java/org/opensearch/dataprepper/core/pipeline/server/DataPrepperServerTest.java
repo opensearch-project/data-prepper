@@ -16,12 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.core.pipeline.server.DataPrepperServer;
-import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
-import org.opensearch.dataprepper.core.pipeline.server.HttpServerProvider;
-import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
-import org.opensearch.dataprepper.core.pipeline.server.PrometheusMetricsHandler;
-import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
