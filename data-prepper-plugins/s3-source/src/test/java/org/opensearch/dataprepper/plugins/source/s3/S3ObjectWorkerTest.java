@@ -196,6 +196,8 @@ class S3ObjectWorkerTest {
         numEventsAdded = 0;
         doAnswer(a -> {
             Record record = mock(Record.class);
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
             Consumer c = (Consumer)a.getArgument(2);
             c.accept(record);
             return null;
