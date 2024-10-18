@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -241,10 +242,10 @@ public class RouterCopyRecordStrategyTests {
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
-                JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
+                EventHandle handle = (EventHandle) i.getArgument(0);
+                ((DefaultEventHandle)handle).addAcknowledgementSet(acknowledgementSet1);
                 return null;
-            }).when(acknowledgementSet1).add(any(JacksonEvent.class));
+            }).when(acknowledgementSet1).add(any(EventHandle.class));
         } catch (Exception e){}
 
         eventBuilder = mock(EventBuilder.class);
@@ -279,10 +280,10 @@ public class RouterCopyRecordStrategyTests {
         attachEventHandlesToRecordsIn(eventHandles);
         try {
             doAnswer((i) -> {
-                JacksonEvent e1 = (JacksonEvent) i.getArgument(0);
-                ((DefaultEventHandle)e1.getEventHandle()).addAcknowledgementSet(acknowledgementSet1);
+                EventHandle handle = (EventHandle) i.getArgument(0);
+                ((DefaultEventHandle)handle).addAcknowledgementSet(acknowledgementSet1);
                 return null;
-            }).when(acknowledgementSet1).add(any(JacksonEvent.class));
+            }).when(acknowledgementSet1).add(any(EventHandle.class));
         } catch (Exception e){}
 
         eventBuilder = mock(EventBuilder.class);

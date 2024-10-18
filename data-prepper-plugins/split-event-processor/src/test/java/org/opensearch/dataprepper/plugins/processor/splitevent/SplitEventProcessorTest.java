@@ -376,7 +376,7 @@ public class SplitEventProcessorTest {
 
         DefaultEventHandle spyEventHandle = (DefaultEventHandle) spyEvent.getEventHandle();
         // Verify that the add method is called on the acknowledgement set
-        verify(spyEventHandle).getAcknowledgementSet();
+        verify(spyEventHandle).addEventHandle(recordEvent.getEventHandle());
 
         AcknowledgementSet spyAckSet = spyEventHandle.getAcknowledgementSet();
         DefaultEventHandle eventHandle = (DefaultEventHandle) recordEvent.getEventHandle();

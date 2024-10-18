@@ -129,7 +129,7 @@ class DefaultAcknowledgementSetTests {
 
     @Test
     void testDefaultAcknowledgementInvalidAcquire() {
-        defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.add(event.getEventHandle());
         defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         defaultAcknowledgementSet.acquire(handle2);
@@ -247,7 +247,7 @@ class DefaultAcknowledgementSetTests {
             Duration.ofSeconds(1)
         );
         defaultAcknowledgementSet.add(event);
-        defaultAcknowledgementSet.add(event2);
+        defaultAcknowledgementSet.add(event2.getEventHandle());
         defaultAcknowledgementSet.complete();
         lenient().doAnswer(a -> {
             AcknowledgementSet acknowledgementSet = a.getArgument(0);

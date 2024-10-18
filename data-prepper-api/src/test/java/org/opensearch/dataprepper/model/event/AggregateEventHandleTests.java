@@ -98,5 +98,18 @@ class AggregateEventHandleTests {
 
     }
 
+    @Test
+    void testAddEventHandle() {
+        Instant now = Instant.now();
+        AggregateEventHandle eventHandle = new AggregateEventHandle(now);
+        acknowledgementSet1 = mock(AcknowledgementSet.class);
+        acknowledgementSet2 = mock(AcknowledgementSet.class);
+        eventHandle.addAcknowledgementSet(acknowledgementSet1);
+        eventHandle.addAcknowledgementSet(acknowledgementSet2);
+        AggregateEventHandle eventHandle2 = new AggregateEventHandle(now);
+            eventHandle.addEventHandle(eventHandle2);
+        verify(acknowledgementSet1).add(eventHandle2);
+        verify(acknowledgementSet2).add(eventHandle2);
+    }
 }
 

@@ -259,7 +259,7 @@ public class PitWorkerTest {
         doAnswer(a -> {
            numEventsAdded.getAndSet(numEventsAdded.get() + 1);
            return null;
-        }).when(acknowledgementSet).add(any());
+        }).when(acknowledgementSet).add(any(Event.class));
 
         doAnswer(invocation -> {
             Consumer<Boolean> consumer = invocation.getArgument(0);
