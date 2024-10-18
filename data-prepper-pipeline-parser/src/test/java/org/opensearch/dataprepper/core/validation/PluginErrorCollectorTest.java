@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.core.validation;
 
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.validation.PluginError;
+import org.opensearch.dataprepper.validation.PluginErrorCollector;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;

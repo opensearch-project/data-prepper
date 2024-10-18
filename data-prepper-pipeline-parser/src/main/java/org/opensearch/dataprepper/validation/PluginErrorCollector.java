@@ -1,7 +1,6 @@
-package org.opensearch.dataprepper.core.validation;
+package org.opensearch.dataprepper.validation;
 
 import lombok.Getter;
-import org.opensearch.dataprepper.validation.PluginError;
 
 import javax.inject.Named;
 import java.util.ArrayList;

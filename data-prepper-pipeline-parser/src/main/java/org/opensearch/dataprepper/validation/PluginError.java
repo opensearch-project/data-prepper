@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.core.validation;
+package org.opensearch.dataprepper.validation;
 
 import lombok.Builder;
 import lombok.Getter;

@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.core.validation;
 
 import org.opensearch.dataprepper.validation.PluginError;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
