@@ -10,11 +10,17 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.support.GenericApplicationContext;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -118,7 +124,12 @@ class PluginBeanFactoryProviderTest {
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, null);
         assertThat(beanFactory, notNullValue());
-        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
+        assertThat(beanFactory, instanceOf(ListableBeanFactory.class));
+        ListableBeanFactory listableBeanFactory = (ListableBeanFactory) beanFactory;
+        List<String> nonSpringBeans = Arrays.stream(listableBeanFactory.getBeanDefinitionNames())
+                .filter(Predicate.not(name -> name.startsWith("org.springframework")))
+                .collect(Collectors.toList());
+        assertThat(nonSpringBeans, equalTo(Collections.emptyList()));
     }
 
     @Test
