@@ -7,10 +7,14 @@ package org.opensearch.dataprepper.plugin;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.support.GenericApplicationContext;
+
+import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -19,7 +23,6 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -119,6 +122,16 @@ class PluginBeanFactoryProviderTest {
     }
 
     @Test
+    void testCreatePluginSpecificContext_with_pipeline_settings() {
+        when(context.getParent()).thenReturn(context);
+        final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
+        PluginSetting pipelineSettings = new PluginSetting(UUID.randomUUID().toString(), Map.of("key", "val"));
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, pipelineSettings);
+        assertThat(beanFactory, notNullValue());
+        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(PluginSetting.class));
+    }
+
+    @Test
     void testCreatePluginSpecificContext_with_empty_array_with_plugin_config() {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
@@ -134,11 +147,12 @@ class PluginBeanFactoryProviderTest {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         TestPluginConfiguration config = new TestPluginConfiguration();
-        config.setRequiredString("required_string_value");
+        String requiredStringValue = UUID.randomUUID().toString();
+        config.setRequiredString(requiredStringValue);
         BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, config);
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
         assertThat(beanFactory.getBean(TestPluginConfiguration.class), notNullValue());
-        assertEquals("required_string_value", beanFactory.getBean(TestPluginConfiguration.class).getRequiredString());
+        assertThat(beanFactory.getBean(TestPluginConfiguration.class).getRequiredString(), equalTo(requiredStringValue));
     }
 }
