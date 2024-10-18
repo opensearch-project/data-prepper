@@ -127,7 +127,7 @@ class S3SelectObjectWorkerTest {
         lenient().doAnswer(a -> {
             numEventsAdded++;
             return null;
-        }).when(acknowledgementSet).add(any());
+        }).when(acknowledgementSet).add(any(Event.class));
         final String bucketName = UUID.randomUUID().toString();
         final String objectKey = UUID.randomUUID().toString();
 
