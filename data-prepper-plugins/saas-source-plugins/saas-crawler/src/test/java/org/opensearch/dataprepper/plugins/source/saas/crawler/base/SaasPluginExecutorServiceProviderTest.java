@@ -8,7 +8,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.concurrent.ExecutorService;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
