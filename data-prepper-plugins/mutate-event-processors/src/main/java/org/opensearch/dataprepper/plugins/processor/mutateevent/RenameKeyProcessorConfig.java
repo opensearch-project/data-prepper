@@ -43,7 +43,7 @@ public class RenameKeyProcessorConfig {
 
         @JsonProperty("rename_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be " +
+                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
                 "run on the event. By default, all events will be processed unless otherwise stated.")
         private String renameWhen;
 
