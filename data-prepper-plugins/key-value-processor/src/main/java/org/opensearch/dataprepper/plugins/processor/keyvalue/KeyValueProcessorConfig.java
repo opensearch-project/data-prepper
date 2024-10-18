@@ -27,6 +27,9 @@ public class KeyValueProcessorConfig {
     static final String FIELD_SPLIT_CHARACTERS_KEY = "field_split_characters";
     static final String VALUE_SPLIT_CHARACTERS_KEY = "value_split_characters";
     static final String KEY_VALUE_DELIMITER_REGEX_KEY = "key_value_delimiter_regex";
+    static final String REMOVE_BRACKETS_KEY = "remove_brackets";
+    static final String SKIP_DUPLICATE_VALUES_KEY = "skip_duplicate_values";
+    static final String WHITESPACE_KEY = "whitespace";
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
@@ -137,7 +140,7 @@ public class KeyValueProcessorConfig {
     @JsonPropertyDescription("Allows transforming the key's name such as making the name all lowercase.")
     private TransformOption transformKey = TransformOption.NONE;
 
-    @JsonProperty(value = "whitespace", defaultValue = "lenient")
+    @JsonProperty(value = WHITESPACE_KEY, defaultValue = "lenient")
     @JsonPropertyDescription("Specifies whether to be lenient or strict with the acceptance of " +
             "unnecessary white space surrounding the configured value-split sequence. " +
             "In this case, strict means that whitespace is trimmed and lenient means it is retained in the key name and in the value. " +
@@ -145,13 +148,13 @@ public class KeyValueProcessorConfig {
     @NotNull
     private WhitespaceOption whitespace = WhitespaceOption.LENIENT;
 
-    @JsonProperty(value = "skip_duplicate_values", defaultValue = "false")
+    @JsonProperty(value = SKIP_DUPLICATE_VALUES_KEY, defaultValue = "false")
     @JsonPropertyDescription("A Boolean option for removing duplicate key-value pairs. When set to <code>true</code>, " +
             "only one unique key-value pair will be preserved. Default is <code>false</code>.")
     @NotNull
     private boolean skipDuplicateValues = false;
 
-    @JsonProperty(value = "remove_brackets", defaultValue = "false")
+    @JsonProperty(value = REMOVE_BRACKETS_KEY, defaultValue = "false")
     @JsonPropertyDescription("Specifies whether to treat certain grouping characters as wrapping text that should be removed from values." +
             "When set to <code>true</code>, the following grouping characters will be removed: square brackets, angle brackets, and parentheses. " +
             "The default configuration is <code>false</code> which retains those grouping characters.")
@@ -179,6 +182,11 @@ public class KeyValueProcessorConfig {
             "<code>remove_brackets</code> cannot also be <code>true</code>;\n" +
             "<code>skip_duplicate_values</code> will always be <code>true</code>;\n" +
             "<code>whitespace</code> will always be <code>\"strict\"</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = REMOVE_BRACKETS_KEY, allowedValues = {"false"}),
+            @AlsoRequired.Required(name = SKIP_DUPLICATE_VALUES_KEY, allowedValues = {"true"}),
+            @AlsoRequired.Required(name = WHITESPACE_KEY, allowedValues = {"strict"})
+    })
     private boolean recursive = false;
     
     @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
