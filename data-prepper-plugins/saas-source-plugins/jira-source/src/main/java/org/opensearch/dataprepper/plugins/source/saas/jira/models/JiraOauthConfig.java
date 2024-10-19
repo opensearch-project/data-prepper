@@ -2,7 +2,6 @@ package org.opensearch.dataprepper.plugins.source.saas.jira.models;
 
 import com.google.gson.JsonObject;
 import lombok.Getter;
-import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.saas.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants;
@@ -25,7 +24,6 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.TOKEN_EXPIRED;
 

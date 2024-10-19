@@ -15,9 +15,9 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.UsesEnhancedSourceCoordination;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.scheduler.LeaderScheduler;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.scheduler.WorkerScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

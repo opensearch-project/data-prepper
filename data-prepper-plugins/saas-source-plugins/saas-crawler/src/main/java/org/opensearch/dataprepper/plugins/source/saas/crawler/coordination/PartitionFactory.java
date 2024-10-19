@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.coordination;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.GlobalState;
 
 import java.util.function.Function;

@@ -5,7 +5,6 @@ import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 @Setter

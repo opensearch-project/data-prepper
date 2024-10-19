@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.SaasWorkerProgressState;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * An SAAS source partition represents a chunk of work.
