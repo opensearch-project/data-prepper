@@ -14,11 +14,9 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.SaasCrawlerApplica
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasPluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.base.SaasSourcePlugin;
-import org.opensearch.dataprepper.plugins.source.saas.jira.models.JiraOauthConfig;
+import org.opensearch.dataprepper.plugins.source.saas.jira.rest.auth.JiraAuthConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 
 
 /**
@@ -34,12 +32,12 @@ public class JiraSource extends SaasSourcePlugin {
 
   private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
   private final JiraSourceConfig jiraSourceConfig;
-  private final JiraOauthConfig jiraOauthConfig;
+  private final JiraAuthConfig jiraOauthConfig;
 
   @DataPrepperPluginConstructor
   public JiraSource(final PluginMetrics pluginMetrics,
                     final JiraSourceConfig jiraSourceConfig,
-                    final JiraOauthConfig jiraOauthConfig,
+                    final JiraAuthConfig jiraOauthConfig,
                     final PluginFactory pluginFactory,
                     final AcknowledgementSetManager acknowledgementSetManager,
                     Crawler crawler,
@@ -54,9 +52,7 @@ public class JiraSource extends SaasSourcePlugin {
   public void start(Buffer<Record<Event>> buffer) {
     log.info("Starting Jira Source Plugin... ");
     JiraConfigHelper.validateConfig(jiraSourceConfig);
-    if(this.jiraSourceConfig.getAuthType().equals(OAUTH2)) {
-      jiraOauthConfig.initAuthBasedUrl();
-    }
+    jiraOauthConfig.initCredentials();
     super.start(buffer);
   }
 

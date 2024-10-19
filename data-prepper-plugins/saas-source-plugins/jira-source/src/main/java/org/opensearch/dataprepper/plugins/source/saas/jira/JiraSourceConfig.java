@@ -83,11 +83,6 @@ public class JiraSourceConfig implements SaasSourceConfig {
     @Setter(AccessLevel.NONE)
     Map<String, Object> additionalProperties = new HashMap<>();
 
-    /**
-     * We will intialize this variable only in the case of Authentication Type OAuth2
-     */
-    private String cloudId;
-
     public String getJiraId() {
         return this.getConnectorCredentials().get("jira_id");
     }
@@ -99,7 +94,6 @@ public class JiraSourceConfig implements SaasSourceConfig {
     public String getAuthType() {
         return this.getConnectorCredentials().get("auth_type");
     }
-
 
     public String getAccessToken() {
         return fetchGivenOAuthAttribute("access_token");
@@ -123,7 +117,7 @@ public class JiraSourceConfig implements SaasSourceConfig {
         }
         String attributeValue = this.getConnectorCredentials().get(givenAttribute);
         if(attributeValue == null || attributeValue.isEmpty()) {
-            throw new RuntimeException(String.format("%s Token is required for OAuth2 AuthType", givenAttribute));
+            throw new RuntimeException(String.format("%s is required for OAuth2 AuthType", givenAttribute));
         }
         return attributeValue;
     }

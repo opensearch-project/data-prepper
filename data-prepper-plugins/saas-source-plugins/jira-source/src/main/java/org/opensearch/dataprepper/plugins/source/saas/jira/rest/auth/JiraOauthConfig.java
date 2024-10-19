@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.saas.jira.models;
+package org.opensearch.dataprepper.plugins.source.saas.jira.rest.auth;
 
 import com.google.gson.JsonObject;
 import lombok.Getter;
@@ -15,14 +15,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
-import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.TOKEN_EXPIRED;
@@ -32,8 +30,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
  */
 
 @Getter
-@Named
-public class JiraOauthConfig {
+public class JiraOauthConfig implements JiraAuthConfig {
 
   private static final Logger log =
           org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
@@ -73,7 +70,7 @@ public class JiraOauthConfig {
         return (String)response.get("id");
       } catch (HttpClientErrorException e) {
         if(e.getStatusCode().value() == TOKEN_EXPIRED) {
-          resetAccessRefreshTokenPair(config);
+          resetCredentials();
         }
         log.error("Error occurred while accessing resources: ", e);
       }
@@ -81,8 +78,7 @@ public class JiraOauthConfig {
     throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
   }
 
-  public synchronized void resetAccessRefreshTokenPair(
-          JiraSourceConfig config) {
+  public synchronized void resetCredentials() {
     log.info("Creating access-refresh token pair for Jira Connector.");
     RestTemplate restTemplate = new RestTemplate();
     try {
@@ -92,9 +88,9 @@ public class JiraOauthConfig {
       headers.setContentType(MediaType.APPLICATION_JSON);
       JsonObject obj = new JsonObject();
       obj.addProperty("grant_type", "refresh_token");
-      obj.addProperty("client_id", config.getClientId());
-      obj.addProperty("client_secret", config.getClientSecret());
-      obj.addProperty("refresh_token", config.getRefreshToken());
+      obj.addProperty("client_id", clientId);
+      obj.addProperty("client_secret", clientSecret);
+      obj.addProperty("refresh_token", refreshToken);
       String payload = obj.toString();
       HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
@@ -128,28 +124,26 @@ public class JiraOauthConfig {
     }
   }
 
+  @Override
   public String getUrl() {
     if(url==null || url.isEmpty()) {
       synchronized (this) {
         if (url == null || url.isEmpty()) {
-          initAuthBasedUrl();
+          initCredentials();
         }
       }
     }
     return url;
   }
+
   /**
    * Method for getting Jira url based on auth type.
    * @return String
    */
-  public void initAuthBasedUrl() {
+  @Override
+  public void initCredentials() {
     //For OAuth based flow, we use a different Jira url
-    String authType = jiraSourceConfig.getAuthType();
-    if(OAUTH2.equals(authType)){
       this.cloudId = getJiraAccountCloudId(jiraSourceConfig);
       this.url = OAuth2_URL + this.cloudId + "/";
-    }else {
-      this.url = jiraSourceConfig.getAccountUrl();
-    }
   }
 }
