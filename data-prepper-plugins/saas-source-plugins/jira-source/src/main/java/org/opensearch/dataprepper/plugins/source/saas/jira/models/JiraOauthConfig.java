@@ -33,7 +33,6 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
  * The type Jira service.
  */
 
-@Setter
 @Getter
 @Named
 public class JiraOauthConfig {
@@ -41,10 +40,10 @@ public class JiraOauthConfig {
   private static final Logger log =
           org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
 
+  private final String clientId;
+  private final String clientSecret;
   private String accessToken;
   private String refreshToken;
-  private String clientId;
-  private String clientSecret;
   private String url;
   private String cloudId;
 
@@ -58,7 +57,7 @@ public class JiraOauthConfig {
     this.clientSecret = jiraSourceConfig.getClientSecret();
   }
 
-  public synchronized String getJiraAccountCloudId(JiraSourceConfig config) {
+  private synchronized String getJiraAccountCloudId(JiraSourceConfig config) {
     log.info("Getting Jira Account Cloud ID");
     RestTemplate restTemplate = new RestTemplate();
     HttpHeaders headers = new HttpHeaders();
@@ -132,8 +131,13 @@ public class JiraOauthConfig {
   }
 
   public String getUrl() {
-    if(url==null || url.isEmpty())
-      initAuthBasedUrl();
+    if(url==null || url.isEmpty()) {
+      synchronized (this) {
+        if (url == null || url.isEmpty()) {
+          initAuthBasedUrl();
+        }
+      }
+    }
     return url;
   }
   /**
