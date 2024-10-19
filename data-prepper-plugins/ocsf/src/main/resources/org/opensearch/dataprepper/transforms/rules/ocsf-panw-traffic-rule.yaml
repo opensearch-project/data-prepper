@@ -1,6 +1,0 @@
-plugin_name: "ocsf-panw-traffic"
-apply_when:
-  - "$..processor[?(@.ocsf.type == 'PALOALTO_NETWORKS_TRAFFIC_LOGS')]"
-  - "$..processor[?(@.ocsf.version == '1.0')]"
-
-
