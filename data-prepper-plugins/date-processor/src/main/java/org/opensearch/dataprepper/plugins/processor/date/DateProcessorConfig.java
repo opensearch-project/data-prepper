@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -47,6 +48,11 @@ public class DateProcessorConfig {
                 "The timestamp value also supports <code>epoch_second</code>, <code>epoch_milli</code>, and <code>epoch_nano</code> values, " +
                 "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
                 "Epoch values always use the UTC time zone.")
+        @ExampleValues({
+                @ExampleValues.Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Matches ISO-8601 formatted strings."),
+                @ExampleValues.Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Matches Apache Common Log Format."),
+                @ExampleValues.Example(value = "epoch_second", description = "Matches against strings that represent seconds since Unix epoch time.")
+        })
         private List<String> patterns;
 
         public DateMatch() {
@@ -129,6 +135,10 @@ public class DateProcessorConfig {
 
     @JsonProperty(value = "output_format", defaultValue = DEFAULT_OUTPUT_FORMAT)
     @JsonPropertyDescription("Determines the format of the timestamp added to an event.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Outputs ISO-8601 formatted strings."),
+            @ExampleValues.Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Outputs in Apache Common Log Format.")
+    })
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
     @JsonProperty("to_origination_metadata")
@@ -141,12 +151,20 @@ public class DateProcessorConfig {
             "from the value. If the zone or offset are part of the value, then the time zone is ignored. " +
             "A list of all the available time zones is contained in the TZ database name column of " +
             "<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List\">this table</a>.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
+            @ExampleValues.Example(value = "US/Pacific", description = "United States Pacific time zone.")
+    })
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
 
     @JsonProperty("destination_timezone")
     @JsonPropertyDescription("The time zone used for storing the timestamp in the <code>destination</code> field. " +
             "A list of all the available time zones is contained in the TZ database name column of " +
             "<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List\">this table</a>.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
+            @ExampleValues.Example(value = "US/Pacific", description = "United States Pacific time zone.")
+    })
     private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
     @JsonProperty("locale")
@@ -157,6 +175,10 @@ public class DateProcessorConfig {
             "A full list of locale fields, including language, country, and variant, can be found " +
             "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>." +
             "Default is <code>Locale.ROOT</code>.")
+    @ExampleValues({
+            @ExampleValues.Example("en-US"),
+            @ExampleValues.Example("fr-FR")
+    })
     private String locale;
 
     @JsonProperty("date_when")

@@ -53,6 +53,7 @@ public class JsonSchemaConverter {
         resolveDependentRequiresFields(scopeSchemaGeneratorConfigPart);
         overrideDataPrepperPluginTypeAttribute(configBuilder.forTypesInGeneral(), schemaVersion, optionPreset);
         resolveDataPrepperTypes(scopeSchemaGeneratorConfigPart);
+        scopeSchemaGeneratorConfigPart.withInstanceAttributeOverride(new ExampleValuesInstanceAttributeOverride());
 
         final SchemaGeneratorConfig config = configBuilder.build();
         final SchemaGenerator generator = new SchemaGenerator(config);
