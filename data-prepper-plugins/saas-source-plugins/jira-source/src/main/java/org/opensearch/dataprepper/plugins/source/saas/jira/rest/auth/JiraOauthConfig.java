@@ -23,6 +23,7 @@ import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.OAuth2_URL;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.SLASH;
 import static org.opensearch.dataprepper.plugins.source.saas.jira.utils.Constants.TOKEN_EXPIRED;
 
 /**
@@ -70,7 +71,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
         return (String)response.get("id");
       } catch (HttpClientErrorException e) {
         if(e.getStatusCode().value() == TOKEN_EXPIRED) {
-          resetCredentials();
+          renewCredentials();
         }
         log.error("Error occurred while accessing resources: ", e);
       }
@@ -78,8 +79,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
     throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
   }
 
-  public synchronized void resetCredentials() {
-    log.info("Creating access-refresh token pair for Jira Connector.");
+  public synchronized void renewCredentials() {
+    log.info("Renewing access-refresh token pair for Jira Connector.");
     RestTemplate restTemplate = new RestTemplate();
     try {
       String tokenEndPoint = Constants.TOKEN_LOCATION;
@@ -118,8 +119,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     } catch (Exception e) {
       if (e.getMessage().contains(AUTHORIZATION_ERROR_CODE)) {
-        log.error("An Authorization Exception exception has occurred while building"
-                + " request for request access token {} ", e.getMessage());
+        log.error("An Authorization Exception exception has occurred while renewing access token {} ", e.getMessage());
       }
     }
   }
@@ -138,12 +138,11 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
   /**
    * Method for getting Jira url based on auth type.
-   * @return String
    */
   @Override
   public void initCredentials() {
     //For OAuth based flow, we use a different Jira url
       this.cloudId = getJiraAccountCloudId(jiraSourceConfig);
-      this.url = OAuth2_URL + this.cloudId + "/";
+      this.url = OAuth2_URL + this.cloudId + SLASH;
   }
 }

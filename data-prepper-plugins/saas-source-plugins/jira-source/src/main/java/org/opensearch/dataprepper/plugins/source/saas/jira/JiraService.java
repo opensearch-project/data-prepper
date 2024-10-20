@@ -273,7 +273,7 @@ public class JiraService {
           ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class, params);
           int statusCode = responseEntity.getStatusCode().value();
           if (statusCode == TOKEN_EXPIRED) {
-            authConfig.resetCredentials();
+            authConfig.renewCredentials();
             retryCount++;
           } else if (statusCode == SUCCESS_RESPONSE) {
             Gson gson = new GsonBuilder().create();

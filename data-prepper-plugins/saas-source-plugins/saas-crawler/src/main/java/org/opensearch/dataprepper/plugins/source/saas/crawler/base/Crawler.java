@@ -9,14 +9,14 @@ import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state
 import org.opensearch.dataprepper.plugins.source.saas.crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
+import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component
+@Named
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private static final int maxItemsPerPage = 20;

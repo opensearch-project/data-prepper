@@ -21,7 +21,7 @@ public class JiraBasicAuthConfig implements JiraAuthConfig{
     }
 
     @Override
-    public void resetCredentials() {
+    public void renewCredentials() {
         //do nothing for basic authentication
     }
 

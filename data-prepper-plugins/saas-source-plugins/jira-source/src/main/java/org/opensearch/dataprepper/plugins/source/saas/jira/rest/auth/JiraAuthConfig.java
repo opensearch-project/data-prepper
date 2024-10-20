@@ -4,5 +4,5 @@ public interface JiraAuthConfig {
 
     String getUrl();
     void initCredentials();
-    void resetCredentials();
+    void renewCredentials();
 }
