@@ -19,7 +19,9 @@ import org.opensearch.dataprepper.plugins.source.saas.jira.utils.JiraContentType
 import org.slf4j.Logger;
 import org.springframework.security.oauth2.client.ClientAuthorizationRequiredException;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 import javax.inject.Named;
 import java.io.ByteArrayInputStream;
@@ -208,7 +210,6 @@ public class JiraService {
       issueMetadata.put(CONTENT_TYPE, JiraContentType.ISSUE.getType());
       String id = _ISSUE + issueMetadata.get(PROJECT_KEY) + "-" + issue.getKey();
 
-      log.info("Creating issue information {}", id);
       itemInfoQueue.add(createItemInfo(id, issueMetadata));
 
       if (Objects.nonNull(issueMetadata.get(PROJECT_KEY)) && !jiraProjectCache
@@ -229,7 +230,6 @@ public class JiraService {
    */
   public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                     JiraSourceConfig configuration) {
-    log.info("Started to fetch all issues information");
     SearchResults results = null;
     HttpResponse<JsonNode> response;
     com.mashape.unirest.request.HttpRequest request;
@@ -245,8 +245,6 @@ public class JiraService {
                 .queryString(START_AT, startAt)
                 .queryString(JQL_FIELD, jql)
                 .queryString(EXPAND_FIELD, EXPAND_VALUE);
-        log.info("Search result api call request is : {}",
-                new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
 
         response = request.asJson();
         /*appLog.info("Search result api call response is: {}",
@@ -274,11 +272,7 @@ public class JiraService {
                   .queryString(START_AT, startAt)
                   .queryString(JQL_FIELD, jql)
                   .queryString(EXPAND_FIELD, EXPAND_VALUE);
-          log.info("Search result api call request is :",
-                  new Gson().toJson(request, com.mashape.unirest.request.HttpRequest.class));
           response = request.asJson();
-          log.info("Search result api call response is:",
-                  new Gson().toJson(response, com.mashape.unirest.http.HttpResponse.class));
           if (response.getStatus() == TOKEN_EXPIRED) {
             JiraOauthConfig.changeAccessAndRefreshToken(configuration);
             retryCount++;
@@ -361,17 +355,17 @@ public class JiraService {
    * @return the issue
    */
   public String getIssue(String issueKey, JiraSourceConfig configuration) {
-    log.info("Started to fetch issue information");
+    log.debug("Started to fetch issue information");
     Queue<Integer> waitTimeQueue = new ConcurrentLinkedQueue<>(waitTimeList);
 
     while(true) {
       String url = configuration.getAccountUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
-      log.info("Issue Fetching api call request is : {}", url);
       try {
         return restTemplate.getForEntity(url, String.class).getBody();
       } catch (ClientAuthorizationRequiredException ex) {
 
-        log.error("Failed to execute the rest call ",ex);
+        log.error(NOISY, "Failed to execute the rest call ",ex);
+
 
       }
     }
