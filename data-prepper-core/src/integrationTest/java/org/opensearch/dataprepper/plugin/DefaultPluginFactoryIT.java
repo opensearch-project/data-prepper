@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
+import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -116,6 +118,32 @@ class DefaultPluginFactoryIT {
         assertNotNull(plugin.getTestComponent());
         assertInstanceOf(TestComponent.class, plugin.getTestComponent());
         assertThat(plugin.getTestComponent().getIdentifier(), equalTo("test-component"));
+    }
+
+    @Test
+    void loadPlugin_should_return_a_new_plugin_instance_with_DI_context_and_config_injected() {
+
+        final String requiredStringValue = UUID.randomUUID().toString();
+        final String optionalStringValue = UUID.randomUUID().toString();
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("required_string", requiredStringValue);
+        pluginSettingMap.put("optional_string", optionalStringValue);
+        final PluginSetting pluginSetting = new PluginSetting("test_di_source_with_config", pluginSettingMap);
+        pluginSetting.setPipelineName("test_di_source_with_config");
+
+        final Source sourcePlugin = createObjectUnderTest().loadPlugin(Source.class, pluginSetting);
+
+        assertThat(sourcePlugin, instanceOf(TestDISourceWithConfig.class));
+        TestDISourceWithConfig plugin = (TestDISourceWithConfig) sourcePlugin;
+        // Testing the auto wired been with the Dependency Injection
+        assertNotNull(plugin.getTestComponent());
+        assertInstanceOf(TestComponentWithConfigInject.class, plugin.getTestComponent());
+        TestPluginConfiguration pluginConfig = plugin.getTestComponent().getConfiguration();
+        assertInstanceOf(TestPluginConfiguration.class, pluginConfig);
+        assertThat(pluginConfig.getRequiredString(), equalTo(requiredStringValue));
+        assertThat(pluginConfig.getOptionalString(), equalTo(optionalStringValue));
+        assertThat(plugin.getTestComponent().getIdentifier(), equalTo("test-component-with-plugin-config-injected"));
     }
 
     @Test
