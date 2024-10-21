@@ -6,6 +6,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -25,7 +26,7 @@ import org.slf4j.LoggerFactory;
         pluginType = Source.class,
         packagesToScan = {SaasCrawlerApplicationContextMarker.class, JiraSource.class}
 )
-public class JiraSource {
+public class JiraSource implements Source<Record<Event>> {
 
   private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
 
@@ -41,6 +42,16 @@ public class JiraSource {
 
   public void start(Buffer<Record<Event>> buffer) {
     log.info("Starting Jira Source Plugin... ");
+  }
+
+  @Override
+  public void stop() {
+
+  }
+
+  @Override
+  public ByteDecoder getDecoder() {
+    return Source.super.getDecoder();
   }
 
 }
