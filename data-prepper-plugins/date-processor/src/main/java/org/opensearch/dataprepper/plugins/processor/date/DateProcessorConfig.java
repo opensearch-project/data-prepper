@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -22,6 +23,8 @@ import java.time.format.DateTimeFormatter;
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
         "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {
+    static final String MATCH_KEY = "match";
+    static final String FROM_TIME_RECEIVED_KEY = "from_time_received";
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final Boolean DEFAULT_TO_ORIGINATION_METADATA = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
@@ -104,6 +107,9 @@ public class DateProcessorConfig {
     @JsonPropertyDescription("When <code>true</code>, the timestamp from the event metadata, " +
             "which is the time at which the source receives the event, is added to the event data. " +
             "This option cannot be defined at the same time as <code>match</code>. Default is <code>false</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = MATCH_KEY, allowedValues = {"null"})
+    })
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("match")
@@ -111,6 +117,9 @@ public class DateProcessorConfig {
             "This option cannot be defined at the same time as <code>from_time_received</code>. " +
             "The date processor will use the first pattern that matches each event's timestamp field. " +
             "You must provide at least one pattern unless you have <code>from_time_received</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = FROM_TIME_RECEIVED_KEY, allowedValues = {"null", "false"})
+    })
     private List<DateMatch> match;
 
     @JsonProperty("destination")
