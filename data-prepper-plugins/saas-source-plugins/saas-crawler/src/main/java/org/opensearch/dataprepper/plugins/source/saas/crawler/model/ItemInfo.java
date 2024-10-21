@@ -15,6 +15,7 @@ public abstract class ItemInfo {
      * Use this field to store primary item of a repository. Primary item of a repository is something
      * which can be fetched/queried/obtained from repository just using its item ID.
      */
+    @NonNull
     String itemId;
 
     /**
