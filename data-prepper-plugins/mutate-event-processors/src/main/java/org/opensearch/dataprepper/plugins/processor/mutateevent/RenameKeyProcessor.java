@@ -86,6 +86,7 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                                     recordEvent.put(entry.getToKey(), value);
                                     recordEvent.delete(key);
                                     if(!entry.getOverwriteIfToKeyExists()) break;
+
                                 }
                             }
                         }
