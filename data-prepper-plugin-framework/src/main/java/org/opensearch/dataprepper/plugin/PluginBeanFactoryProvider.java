@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -62,11 +61,10 @@ class PluginBeanFactoryProvider {
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
     public BeanFactory createPluginSpecificContext(Class[] markersToScan, Object configuration) {
-
         AnnotationConfigApplicationContext isolatedPluginApplicationContext = new AnnotationConfigApplicationContext();
         DefaultListableBeanFactory beanFactory = (DefaultListableBeanFactory) isolatedPluginApplicationContext.getBeanFactory();
         if(markersToScan !=null && markersToScan.length>0) {
-            if(!(configuration instanceof PluginSetting)) {
+            if(configuration !=null && !(configuration instanceof PluginSetting)) {
                 beanFactory.registerSingleton(configuration.getClass().getName(), configuration);
             }
             // If packages to scan is provided in this plugin annotation, which indicates

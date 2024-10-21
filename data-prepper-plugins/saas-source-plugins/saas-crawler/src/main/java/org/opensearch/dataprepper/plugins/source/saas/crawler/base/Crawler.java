@@ -14,6 +14,7 @@ import javax.inject.Named;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Named
@@ -46,15 +47,19 @@ public class Crawler {
                     continue;
                 }
                 itemInfoList.add(nextItem);
-                long niCreated = Long.parseLong(nextItem.getMetadata().get(CREATED)!=null?nextItem.getMetadata().get(CREATED):"0");
-                long niUpdated = Long.parseLong(nextItem.getMetadata().get(UPDATED)!=null?nextItem.getMetadata().get(UPDATED):"0");
+                Map<String, String> metadata = nextItem.getMetadata();
+                long niCreated = Long.parseLong(metadata.get(CREATED)!=null? metadata.get(CREATED):"0");
+                long niUpdated = Long.parseLong(metadata.get(UPDATED)!=null? metadata.get(UPDATED):"0");
                 updatedPollTime = Math.max(updatedPollTime, niCreated);
                 updatedPollTime = Math.max(updatedPollTime, niUpdated);
+                log.info("updated poll time {}", updatedPollTime);
             }
             createPartition(itemInfoList, coordinator);
         }while (itemInfoIterator.hasNext());
         log.info("Crawling completed in {} ms", System.currentTimeMillis() - startTime);
-        return updatedPollTime!=0?updatedPollTime:startTime;
+        updatedPollTime = updatedPollTime != 0 ? updatedPollTime + 1 : startTime;
+        log.info("Updating last_poll_time to {}", updatedPollTime);
+        return updatedPollTime;
     }
 
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {

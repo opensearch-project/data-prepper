@@ -13,12 +13,16 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.List;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
 public class CopyValueProcessorConfig {
+    static final String FROM_LIST_KEY = "from_list";
+    static final String TO_LIST_KEY = "to_list";
+
     @JsonPropertyOrder
     public static class Entry {
         @NotEmpty
@@ -40,7 +44,7 @@ public class CopyValueProcessorConfig {
 
         @JsonProperty("copy_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"'</code>, that will be evaluated to determine whether the processor will be run on the event.")
+                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
         private String copyWhen;
 
         public String getFromKey() {
@@ -75,12 +79,18 @@ public class CopyValueProcessorConfig {
     @JsonPropertyDescription("A list of entries to be copied in an event.")
     private List<Entry> entries;
 
-    @JsonProperty("from_list")
-    @JsonPropertyDescription("The source list to copy values from.")
+    @JsonProperty(FROM_LIST_KEY)
+    @JsonPropertyDescription("The key of the list of objects to be copied.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = TO_LIST_KEY)
+    })
     private String fromList;
 
-    @JsonProperty("to_list")
-    @JsonPropertyDescription("The target list to copy values to.")
+    @JsonProperty(TO_LIST_KEY)
+    @JsonPropertyDescription("The key of the new list to be added.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = FROM_LIST_KEY)
+    })
     private String toList;
 
     @JsonProperty("overwrite_if_to_list_exists")

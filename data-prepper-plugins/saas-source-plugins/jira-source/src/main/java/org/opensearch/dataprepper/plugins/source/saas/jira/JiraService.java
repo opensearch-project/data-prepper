@@ -247,8 +247,6 @@ public class JiraService {
                 .queryString(EXPAND_FIELD, EXPAND_VALUE);
 
         response = request.asJson();
-        /*appLog.info("Search result api call response is: {}",
-                new Gson().toJson(response, com.mashape.unirest.http.HttpResponse.class));*/
         if (response.getStatus() == BAD_RESPONSE) {
           if (Objects.nonNull(response.getBody())
                   && Objects.nonNull(response.getBody().getObject())) {

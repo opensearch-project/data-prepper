@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.List;
 @JsonPropertyOrder
 @JsonClassDescription("The <code>flatten</code> processor transforms nested objects inside of events into flattened structures.")
 public class FlattenProcessorConfig {
+    static final String REMOVE_LIST_INDICES_KEY = "remove_list_indices";
 
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
@@ -39,7 +41,7 @@ public class FlattenProcessorConfig {
             "The default is <code>false</code> which leaves the source fields.")
     private boolean removeProcessedFields = false;
 
-    @JsonProperty("remove_list_indices")
+    @JsonProperty(REMOVE_LIST_INDICES_KEY)
     @JsonPropertyDescription("When <code>true</code>, the processor converts the fields from the source map into lists and " +
             "puts the lists into the target field. Default is <code>false</code>.")
     private boolean removeListIndices = false;
@@ -47,6 +49,9 @@ public class FlattenProcessorConfig {
     @JsonProperty("remove_brackets")
     @JsonPropertyDescription("When <code>true</code>, the processor also removes brackets around the indices. Can only be " +
             "set to <code>true</code> when <code>remove_list_indices</code> is <code>true</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = REMOVE_LIST_INDICES_KEY, allowedValues = {"true"})
+    })
     private boolean removeBrackets = false;
 
     @JsonProperty("exclude_keys")
