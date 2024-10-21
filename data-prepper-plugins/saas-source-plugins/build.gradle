@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+
+subprojects {
+    apply plugin: 'data-prepper.publish'
+    group = 'org.opensearch.dataprepper.plugins.source'
+}
+
+dependencies {
+    subprojects.forEach { api project(':data-prepper-plugins::saas-source-plugins:' + it.name) }
+}
