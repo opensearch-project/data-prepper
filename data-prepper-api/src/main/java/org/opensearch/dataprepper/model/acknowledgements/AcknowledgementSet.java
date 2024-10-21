@@ -21,6 +21,14 @@ import java.util.function.Consumer;
  * dropped, etc)
  */
 public interface AcknowledgementSet {
+    /**
+     * Adds an event handle to the acknowledgement set. Assigns initial reference
+     * count of 1.
+     *
+     * @param eventHandle event handle to be added
+     * @since 2.11
+     */
+    void add(EventHandle eventHandle);
 
     /**
      * Adds an event to the acknowledgement set. Assigns initial reference
@@ -29,7 +37,9 @@ public interface AcknowledgementSet {
      * @param event event to be added
      * @since 2.2
      */
-    public void add(Event event);
+    default void add(Event event) {
+        add(event.getEventHandle());
+    }
 
     /**
      * Aquires a reference to the event by incrementing the reference
