@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -56,12 +57,24 @@ public class SaasSourcePluginTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
+    SourcePartitionStoreItem mockItem;
+
+    @Mock
+    EnhancedSourcePartition mockPartition;
+
+    @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
-    private SaasSourcePlugin saasSourcePlugin;
+    private testSaasSourcePlugin saasSourcePlugin;
 
-    static class TestSaasSourcePlugin extends SaasSourcePlugin {
-        public TestSaasSourcePlugin(PluginMetrics pluginMetrics, SaasSourceConfig sourceConfig, PluginFactory pluginFactory, AcknowledgementSetManager acknowledgementSetManager, Crawler crawler, SaasPluginExecutorServiceProvider executorServiceProvider) {
+    @Nested
+    public class testSaasSourcePlugin extends SaasSourcePlugin {
+        public testSaasSourcePlugin(final PluginMetrics pluginMetrics,
+                                    final SaasSourceConfig sourceConfig,
+                                    final PluginFactory pluginFactory,
+                                    final AcknowledgementSetManager acknowledgementSetManager,
+                                    final Crawler crawler,
+                                    final SaasPluginExecutorServiceProvider executorServiceProvider) {
             super(pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         }
     }
@@ -69,7 +82,7 @@ public class SaasSourcePluginTest {
     @BeforeEach
     void setUp() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        saasSourcePlugin = new TestSaasSourcePlugin(pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        saasSourcePlugin = new testSaasSourcePlugin(pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     }
 
     @Test
@@ -85,6 +98,16 @@ public class SaasSourcePluginTest {
     }
 
     @Test
+    void areAcknowledgementsEnabledTest() {
+        assertFalse(saasSourcePlugin.areAcknowledgementsEnabled());
+    }
+
+    @Test
+    void saasSourceConfigGetterTest() {
+        assertNotNull(saasSourcePlugin.getSourceConfig());
+    }
+
+    @Test
     void startTest() {
         saasSourcePlugin.setEnhancedSourceCoordinator(sourceCoordinator);
         saasSourcePlugin.start(buffer);
@@ -93,7 +116,7 @@ public class SaasSourcePluginTest {
     }
 
     @Test
-    void testExecutorServiceSchedulersSubmitted(){
+    void testExecutorServiceSchedulersSubmitted() {
         saasSourcePlugin.setEnhancedSourceCoordinator(sourceCoordinator);
         saasSourcePlugin.start(buffer);
         verify(executorService, times(1)).submit(any(LeaderScheduler.class));
@@ -120,5 +143,6 @@ public class SaasSourcePluginTest {
         assertNull(decoder);
 
     }
+
 
 }

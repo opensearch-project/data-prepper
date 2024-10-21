@@ -3,8 +3,8 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PreDestroy;
 import javax.inject.Named;
+import javax.annotation.PreDestroy;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -13,8 +13,16 @@ import java.util.concurrent.TimeUnit;
 public class SaasPluginExecutorServiceProvider {
     Logger  log = LoggerFactory.getLogger(SaasPluginExecutorServiceProvider.class);
     public static final int DEFAULT_THREAD_COUNT = 50;
+    private final ExecutorService executorService;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT);
+    public SaasPluginExecutorServiceProvider() {
+        executorService = Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT);
+    }
+
+    //Constructor for testing
+    public SaasPluginExecutorServiceProvider(ExecutorService testExecutorService) {
+        executorService = testExecutorService;
+    }
 
     public ExecutorService get() {
         return executorService;
