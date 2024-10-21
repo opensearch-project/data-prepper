@@ -10,9 +10,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 
 import java.util.UUID;
 
@@ -43,6 +46,36 @@ class PartitionFactoryTest {
         when(partitionStoreItem.getPartitionProgressState()).thenReturn(null);
 
         assertThat(objectUnderTest.apply(partitionStoreItem), instanceOf(ExportPartition.class));
+    }
+
+    @Test
+    void given_stream_partition_item_then_create_stream_partition() {
+        PartitionFactory objectUnderTest = createObjectUnderTest();
+        when(partitionStoreItem.getSourceIdentifier()).thenReturn(UUID.randomUUID() + "|" + StreamPartition.PARTITION_TYPE);
+        when(partitionStoreItem.getSourcePartitionKey()).thenReturn(UUID.randomUUID().toString());
+        when(partitionStoreItem.getPartitionProgressState()).thenReturn(null);
+
+        assertThat(objectUnderTest.apply(partitionStoreItem), instanceOf(StreamPartition.class));
+    }
+
+    @Test
+    void given_datafile_partition_item_then_create_datafile_partition() {
+        PartitionFactory objectUnderTest = createObjectUnderTest();
+        when(partitionStoreItem.getSourceIdentifier()).thenReturn(UUID.randomUUID() + "|" + DataFilePartition.PARTITION_TYPE);
+        when(partitionStoreItem.getSourcePartitionKey()).thenReturn(UUID.randomUUID() + "|" + UUID.randomUUID() + "|" + UUID.randomUUID());
+        when(partitionStoreItem.getPartitionProgressState()).thenReturn(null);
+
+        assertThat(objectUnderTest.apply(partitionStoreItem), instanceOf(DataFilePartition.class));
+    }
+
+    @Test
+    void given_resync_partition_item_then_create_resync_partition() {
+        PartitionFactory objectUnderTest = createObjectUnderTest();
+        when(partitionStoreItem.getSourceIdentifier()).thenReturn(UUID.randomUUID() + "|" + ResyncPartition.PARTITION_TYPE);
+        when(partitionStoreItem.getSourcePartitionKey()).thenReturn(UUID.randomUUID() + "|" + UUID.randomUUID() + "|12345");
+        when(partitionStoreItem.getPartitionProgressState()).thenReturn(null);
+
+        assertThat(objectUnderTest.apply(partitionStoreItem), instanceOf(ResyncPartition.class));
     }
 
     @Test

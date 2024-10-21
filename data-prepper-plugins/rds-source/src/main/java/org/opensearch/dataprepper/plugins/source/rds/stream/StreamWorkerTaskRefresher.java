@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,8 +114,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private void refreshTask(RdsSourceConfig sourceConfig) {
         final BinaryLogClient binaryLogClient = binlogClientFactory.create();
+        final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
         binaryLogClient.registerEventListener(BinlogEventListener.create(
-                buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
+                streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                streamCheckpointer, acknowledgementSetManager, cascadeActionDetector));
         final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));
     }

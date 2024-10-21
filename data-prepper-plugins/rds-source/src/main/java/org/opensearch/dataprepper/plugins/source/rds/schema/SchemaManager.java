@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
+import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,12 @@ public class SchemaManager {
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
     static final String TYPE_NAME = "TYPE_NAME";
+    static final String FKTABLE_NAME = "FKTABLE_NAME";
+    static final String FKCOLUMN_NAME = "FKCOLUMN_NAME";
+    static final String PKTABLE_NAME = "PKTABLE_NAME";
+    static final String PKCOLUMN_NAME = "PKCOLUMN_NAME";
+    static final String UPDATE_RULE = "UPDATE_RULE";
+    static final String DELETE_RULE = "DELETE_RULE";
     private final ConnectionManager connectionManager;
 
     public SchemaManager(ConnectionManager connectionManager) {
@@ -99,6 +107,71 @@ public class SchemaManager {
         }
         LOG.warn("Failed to get current binary log position");
         return Optional.empty();
+    }
+
+    /**
+     * Get the foreign key relations associated with the given tables.
+     *
+     * @param tableNames the table names
+     * @return the foreign key relations
+     */
+    public List<ForeignKeyRelation> getForeignKeyRelations(List<String> tableNames) {
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try (final Connection connection = connectionManager.getConnection()) {
+                final List<ForeignKeyRelation> foreignKeyRelations = new ArrayList<>();
+                DatabaseMetaData metaData = connection.getMetaData();
+                String[] tableTypes = new String[]{"TABLE"};
+                for (final String tableName : tableNames) {
+                    String database = tableName.split("\\.")[0];
+                    String table = tableName.split("\\.")[1];
+                    ResultSet tableResult = metaData.getTables(database, null, table, tableTypes);
+                    while (tableResult.next()) {
+                        ResultSet foreignKeys = metaData.getImportedKeys(database, null, table);
+
+                        while (foreignKeys.next()) {
+                            String fkTableName = foreignKeys.getString(FKTABLE_NAME);
+                            String fkColumnName = foreignKeys.getString(FKCOLUMN_NAME);
+                            String pkTableName = foreignKeys.getString(PKTABLE_NAME);
+                            String pkColumnName = foreignKeys.getString(PKCOLUMN_NAME);
+                            ForeignKeyAction updateAction = ForeignKeyAction.getActionFromMetadata(foreignKeys.getShort(UPDATE_RULE));
+                            ForeignKeyAction deleteAction = ForeignKeyAction.getActionFromMetadata(foreignKeys.getShort(DELETE_RULE));
+
+                            Object defaultValue = null;
+                            if (updateAction == ForeignKeyAction.SET_DEFAULT || deleteAction == ForeignKeyAction.SET_DEFAULT) {
+                                // Get column default
+                                ResultSet columnResult = metaData.getColumns(database, null, table, fkColumnName);
+
+                                if (columnResult.next()) {
+                                    defaultValue = columnResult.getObject("COLUMN_DEF");
+                                }
+                            }
+
+                            ForeignKeyRelation foreignKeyRelation = ForeignKeyRelation.builder()
+                                    .databaseName(database)
+                                    .parentTableName(pkTableName)
+                                    .referencedKeyName(pkColumnName)
+                                    .childTableName(fkTableName)
+                                    .foreignKeyName(fkColumnName)
+                                    .foreignKeyDefaultValue(defaultValue)
+                                    .updateAction(updateAction)
+                                    .deleteAction(deleteAction)
+                                    .build();
+
+                            foreignKeyRelations.add(foreignKeyRelation);
+                        }
+                    }
+                }
+
+                return foreignKeyRelations;
+            } catch (Exception e) {
+                LOG.error("Failed to scan foreign key references, retrying", e);
+            }
+            applyBackoff();
+            retry++;
+        }
+        LOG.warn("Failed to scan foreign key references");
+        return List.of();
     }
 
     private void applyBackoff() {

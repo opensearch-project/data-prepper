@@ -26,6 +26,8 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -47,6 +49,9 @@ import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogEventLi
 class BinlogEventListenerTest {
 
     @Mock
+    private StreamPartition streamPartition;
+
+    @Mock
     private Buffer<Record<Event>> buffer;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -63,6 +68,9 @@ class BinlogEventListenerTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private CascadingActionDetector cascadingActionDetector;
 
     @Mock
     private ExecutorService eventListnerExecutorService;
@@ -153,7 +161,8 @@ class BinlogEventListenerTest {
     }
 
     private BinlogEventListener createObjectUnderTest() {
-        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
+        return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                streamCheckpointer, acknowledgementSetManager, cascadingActionDetector);
     }
 
     private void verifyHandlerCallHelper() {

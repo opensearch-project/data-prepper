@@ -12,6 +12,8 @@ import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
+import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -30,6 +32,8 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_FILE;
@@ -37,6 +41,12 @@ import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_STATUS_QUERY;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.COLUMN_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.TYPE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.DELETE_RULE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.FKCOLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.FKTABLE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.PKCOLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.PKTABLE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.UPDATE_RULE;
 
 @ExtendWith(MockitoExtension.class)
 class SchemaManagerTest {
@@ -165,6 +175,45 @@ class SchemaManagerTest {
         assertThat(result, notNullValue());
         assertThat(result.size(), is(expectedColumnTypes.size()));
         assertThat(result, equalTo(expectedColumnTypes));
+    }
+
+    @Test
+    void test_getForeignKeyRelations_returns_foreign_key_relations() throws SQLException {
+        final String databaseName = "test-db";
+        final String tableName = "test-table";
+        final List<String> tableNames = List.of(databaseName + "." + tableName);
+        final ResultSet tableResult = mock(ResultSet.class);
+        final ResultSet foreignKeys = mock(ResultSet.class);
+        final String fkTableName = UUID.randomUUID().toString();
+        final String fkColumnName = UUID.randomUUID().toString();
+        final String pkTableName = UUID.randomUUID().toString();
+        final String pkColumnName = UUID.randomUUID().toString();
+        final DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metaData);
+        when(metaData.getTables(eq(databaseName), any(), eq(tableName), any())).thenReturn(tableResult);
+        when(tableResult.next()).thenReturn(true, false);
+        when(metaData.getImportedKeys(eq(databaseName), any(), eq(tableName))).thenReturn(foreignKeys);
+        when(foreignKeys.next()).thenReturn(true, false);
+        when(foreignKeys.getString(FKTABLE_NAME)).thenReturn(fkTableName);
+        when(foreignKeys.getString(FKCOLUMN_NAME)).thenReturn(fkColumnName);
+        when(foreignKeys.getString(PKTABLE_NAME)).thenReturn(pkTableName);
+        when(foreignKeys.getString(PKCOLUMN_NAME)).thenReturn(pkColumnName);
+        when(foreignKeys.getShort(UPDATE_RULE)).thenReturn((short)DatabaseMetaData.importedKeyCascade);
+        when(foreignKeys.getShort(DELETE_RULE)).thenReturn((short)DatabaseMetaData.importedKeySetNull);
+
+        final List<ForeignKeyRelation> foreignKeyRelations = schemaManager.getForeignKeyRelations(tableNames);
+
+        assertThat(foreignKeyRelations.size(), is(1));
+
+        ForeignKeyRelation foreignKeyRelation = foreignKeyRelations.get(0);
+        assertThat(foreignKeyRelation.getParentTableName(), is(pkTableName));
+        assertThat(foreignKeyRelation.getReferencedKeyName(), is(pkColumnName));
+        assertThat(foreignKeyRelation.getChildTableName(), is(fkTableName));
+        assertThat(foreignKeyRelation.getForeignKeyName(), is(fkColumnName));
+        assertThat(foreignKeyRelation.getUpdateAction(), is(ForeignKeyAction.CASCADE));
+        assertThat(foreignKeyRelation.getDeleteAction(), is(ForeignKeyAction.SET_NULL));
     }
 
     private SchemaManager createObjectUnderTest() {
