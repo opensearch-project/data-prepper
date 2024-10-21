@@ -6,6 +6,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 
 | Maintainer           | GitHub ID                                                 | Affiliation |
 | -------------------- | --------------------------------------------------------- | ----------- |
+| Souvik Bose          | [sb2k16](https://github.com/sb2k16)               | Amazon      |
 | Qi Chen              | [chenqi0805](https://github.com/chenqi0805)               | Amazon      |
 | Chase Engelbrecht    | [engechas](https://github.com/engechas)                   | Amazon      |
 | Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)             | Amazon      |
