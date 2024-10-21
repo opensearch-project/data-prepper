@@ -9,12 +9,15 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.LeaderProgressState;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,7 +33,6 @@ public class PartitionFactoryTest {
         String sourceId = sourceIdentifier + "|" + LeaderPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
 
-        //String state = "{\"keyAttributes\":{\"project\":\"project-1\"},\"totalItems\":0,\"loadedItems\":20,\"exportStartTime\":1729391235717,\"itemIds\":[\"GTMS-25\",\"GTMS-24\"]}";
         String state = "{\"last_poll_time\":1729391235717}";
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
 
@@ -42,8 +44,14 @@ public class PartitionFactoryTest {
         assertThat(leaderParition.getPartitionType(), equalTo(LeaderPartition.PARTITION_TYPE));
         assertThat(leaderParition.getPartitionKey(), equalTo(LeaderPartition.DEFAULT_PARTITION_KEY));
 
-        assertThat(leaderParition.getProgressState().isPresent(), equalTo(true));
-        assertThat(leaderParition.getProgressState().get().getLastPollTime(), equalTo(1729391235717L));
+        Optional<LeaderProgressState> progressState = leaderParition.getProgressState();
+        assertThat(progressState.isPresent(), equalTo(true));
+        assertThat(progressState.get().getLastPollTime(), equalTo(1729391235717L));
+
+        //Update leader progress state and then verify
+        LeaderProgressState updatedState = new LeaderProgressState(12345L);
+        leaderParition.setLeaderProgressState(updatedState);
+        assertThat(progressState.get().getLastPollTime(), equalTo(12345L));
     }
 
     @Test
@@ -65,6 +73,31 @@ public class PartitionFactoryTest {
         assertThat(saasSourcePartition.getPartitionType(), equalTo(SaasSourcePartition.PARTITION_TYPE));
         assertThat(saasSourcePartition.getPartitionKey(), equalTo(partitionKey));
         assertThat(saasSourcePartition.getProgressState().isPresent(), equalTo(true));
+    }
+
+    @Test
+    void testCreatWorkerPartitionWithNullState() {
+
+        String sourceId = sourceIdentifier + "|" + SaasSourcePartition.PARTITION_TYPE;
+        when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
+
+
+        PartitionFactory factory = new PartitionFactory();
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        assertThat(sourcePartition, notNullValue());
+        SaasSourcePartition saasSourcePartition = (SaasSourcePartition) sourcePartition;
+        assertThat(saasSourcePartition.getPartitionType(), equalTo(SaasSourcePartition.PARTITION_TYPE));
+        assertThat(saasSourcePartition.getProgressState().isPresent(), equalTo(false));
+    }
+
+    @Test
+    void testUnknownPartition() {
+
+        String sourceId = sourceIdentifier + "|" + "UNKNOWN";
+        when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
+
+        PartitionFactory factory = new PartitionFactory();
+        assertThrows(RuntimeException.class, () ->factory.apply(sourcePartitionStoreItem));
     }
 
 
