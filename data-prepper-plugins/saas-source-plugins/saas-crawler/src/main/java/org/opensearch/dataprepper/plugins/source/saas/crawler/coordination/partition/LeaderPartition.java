@@ -19,7 +19,7 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
 
     public static final String PARTITION_TYPE = "LEADER";
 
-    private static final String DEFAULT_PARTITION_KEY = "GLOBAL";
+    public static final String DEFAULT_PARTITION_KEY = "GLOBAL";
 
     private final LeaderProgressState state;
 

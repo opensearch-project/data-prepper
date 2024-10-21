@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.saas.crawler.coordination.state.GlobalState;
 
 import java.util.function.Function;
 
@@ -30,7 +29,9 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
             return new SaasSourcePartition(partitionStoreItem);
         } else {
             // Unable to acquire other partitions.
-            return new GlobalState(partitionStoreItem);
+            // Probably we will introduce Global state in the future but for now, we don't expect to reach here.
+             throw new RuntimeException("Unable to acquire other partitions. " +
+                    "Probably we will introduce Global state in the future but for now, we don't expect to reach here.");
         }
     }
 
