@@ -161,7 +161,8 @@ class JacksonEventKey implements EventKey {
                     || c == '@'
                     || c == '/'
                     || c == '['
-                    || c == ']')) {
+                    || c == ']'
+                    || c == '|')) {
 
                 return false;
             }

@@ -73,6 +73,9 @@ public class RenameKeyProcessorConfig {
         }
 
         public Pattern getFromKeyCompiledPattern() {
+            if (fromKeyPattern != null && fromKeyCompiledPattern == null) {
+                fromKeyCompiledPattern = Pattern.compile(fromKeyPattern);
+            }
             return fromKeyCompiledPattern;
         }
 
@@ -82,9 +85,6 @@ public class RenameKeyProcessorConfig {
             this.toKey = toKey;
             this.overwriteIfToKeyExists = overwriteIfKeyExists;
             this.renameWhen = renameWhen;
-            if (fromKeyPattern != null) {
-                fromKeyCompiledPattern = Pattern.compile(fromKeyPattern);
-            }
         }
 
         public Entry() {
