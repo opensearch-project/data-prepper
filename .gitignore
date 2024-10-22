@@ -17,5 +17,5 @@ data-prepper-main/src/test/resources/logstash-conf/logstash-filter.yaml
 # Python virtual environments
 .venv
 
-# Grale output folder
+# output folder created when we run test cases
 **/out/

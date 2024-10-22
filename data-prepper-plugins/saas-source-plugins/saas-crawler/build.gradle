@@ -8,10 +8,6 @@ tasks.withType(Javadoc).configureEach {
     enabled = false
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
 
     implementation project(path: ':data-prepper-api')
