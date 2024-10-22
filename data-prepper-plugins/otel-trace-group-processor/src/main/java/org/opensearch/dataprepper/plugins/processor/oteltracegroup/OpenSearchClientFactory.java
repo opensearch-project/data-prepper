@@ -33,21 +33,21 @@ import java.security.cert.CertificateFactory;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration2.AOS_SERVICE_NAME;
-import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration2.AWS_SIGV4;
-import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration2.VALID_PORT_RANGE;
+import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration.AOS_SERVICE_NAME;
+import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration.AWS_SIGV4;
+import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration.VALID_PORT_RANGE;
 
 public class OpenSearchClientFactory {
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchClientFactory.class);
 
-    private final ConnectionConfiguration2 connectionConfiguration;
+    private final ConnectionConfiguration connectionConfiguration;
 
     public static OpenSearchClientFactory fromConnectionConfiguration(
-            final ConnectionConfiguration2 connectionConfiguration) {
+            final ConnectionConfiguration connectionConfiguration) {
         return new OpenSearchClientFactory(connectionConfiguration);
     }
 
-    OpenSearchClientFactory(final ConnectionConfiguration2 connectionConfiguration) {
+    OpenSearchClientFactory(final ConnectionConfiguration connectionConfiguration) {
         this.connectionConfiguration = connectionConfiguration;
     }
 
@@ -121,7 +121,7 @@ public class OpenSearchClientFactory {
     }
 
     private void attachUserCredentials(final RestClientBuilder restClientBuilder) {
-        final AuthConfig2 authConfig = connectionConfiguration.getAuthConfig();
+        final AuthConfig authConfig = connectionConfiguration.getAuthConfig();
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         if (authConfig != null) {
             if (authConfig.getUsername() != null) {

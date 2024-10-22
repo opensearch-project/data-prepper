@@ -3,7 +3,6 @@ package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -14,9 +13,13 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ConnectionConfiguration2Test {
+class ConnectionConfigurationTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
     private final String TEST_USERNAME = "admin";
@@ -31,8 +34,8 @@ class ConnectionConfiguration2Test {
     void testDeserializeConnectionConfigurationDefault() {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
         assertNull(connectionConfiguration.getUsername());
         assertNull(connectionConfiguration.getPassword());
@@ -46,8 +49,8 @@ class ConnectionConfiguration2Test {
     void testDeserializeConnectionConfigurationAwsOptionServerlessDefault() {
         final String testArn = TEST_ROLE;
         final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, null, TEST_CERT_PATH, false, Collections.emptyMap());
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configMetadata, ConnectionConfiguration.class);
         assertTrue(connectionConfiguration.getAwsOption().isServerless());
     }
 
@@ -55,8 +58,8 @@ class ConnectionConfiguration2Test {
     void testDeserializeConnectionConfigurationWithDeprecatedBasicCredentialsAndNoCert() {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
         assertEquals(TEST_USERNAME, connectionConfiguration.getUsername());
         assertEquals(TEST_PASSWORD, connectionConfiguration.getPassword());
@@ -70,8 +73,8 @@ class ConnectionConfiguration2Test {
         final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configurationMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configurationMetadata, ConnectionConfiguration.class);
         assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
         assertNull(connectionConfiguration.getUsername());
         assertNull(connectionConfiguration.getPassword());
@@ -88,8 +91,8 @@ class ConnectionConfiguration2Test {
         final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configurationMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configurationMetadata, ConnectionConfiguration.class);
         assertFalse(connectionConfiguration.isValidAuthentication());
     }
 
@@ -116,8 +119,8 @@ class ConnectionConfiguration2Test {
         metadata.put("socket_timeout", 1);
         metadata.put("aws", awsOptionMetadata);
 
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         assertThat(connectionConfiguration.getAwsOption().isServerless(), is(true));
         assertThat(connectionConfiguration.getAwsOption().getServerlessOptions().getNetworkPolicyName(),
                 equalTo(serverlessNetworkPolicyName));

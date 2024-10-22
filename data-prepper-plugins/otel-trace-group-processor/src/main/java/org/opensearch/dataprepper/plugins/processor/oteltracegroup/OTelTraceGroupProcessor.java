@@ -47,7 +47,7 @@ import java.util.stream.Stream;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class,
-        pluginConfigurationType = OTelTraceGroupProcessorConfig2.class)
+        pluginConfigurationType = OTelTraceGroupProcessorConfig.class)
 public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
@@ -56,7 +56,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGroupProcessor.class);
 
-    private final OTelTraceGroupProcessorConfig2 otelTraceGroupProcessorConfig;
+    private final OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig;
     private final RestHighLevelClient restHighLevelClient;
 
     private final Counter recordsInMissingTraceGroupCounter;
@@ -65,7 +65,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
 
     @DataPrepperPluginConstructor
     public OTelTraceGroupProcessor(final PluginMetrics pluginMetrics,
-                                   final OTelTraceGroupProcessorConfig2 otelTraceGroupProcessorConfig,
+                                   final OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig,
                                    final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginMetrics);
         this.otelTraceGroupProcessorConfig = otelTraceGroupProcessorConfig;
@@ -147,16 +147,16 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     }
 
     private SearchRequest createSearchRequest(final Collection<String> traceIds) {
-        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupProcessorConfig2.RAW_INDEX_ALIAS);
+        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupProcessorConfig.RAW_INDEX_ALIAS);
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()
-                        .must(QueryBuilders.termsQuery(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD, traceIds))
-                        .must(QueryBuilders.termQuery(OTelTraceGroupProcessorConfig2.PARENT_SPAN_ID_FIELD, ""))
+                        .must(QueryBuilders.termsQuery(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD, traceIds))
+                        .must(QueryBuilders.termQuery(OTelTraceGroupProcessorConfig.PARENT_SPAN_ID_FIELD, ""))
         );
-        searchSourceBuilder.docValueField(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD);
+        searchSourceBuilder.docValueField(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_NAME_FIELD);
-        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupProcessorConfig2.STRICT_DATE_TIME);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupProcessorConfig.STRICT_DATE_TIME);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
@@ -166,7 +166,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     }
 
     private Optional<Map.Entry<String, TraceGroup>> fromSearchHitToMapEntry(final SearchHit searchHit) {
-        final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD);
+        final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD);
         final DocumentField traceGroupNameDocField = searchHit.field(TraceGroup.TRACE_GROUP_NAME_FIELD);
         final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
         final DocumentField traceGroupDurationInNanosDocField = searchHit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);

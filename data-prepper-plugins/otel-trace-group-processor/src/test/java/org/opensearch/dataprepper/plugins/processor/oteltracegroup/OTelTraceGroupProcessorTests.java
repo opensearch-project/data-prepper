@@ -96,13 +96,13 @@ class OTelTraceGroupProcessorTests {
     private ExecutorService executorService;
 
     @Mock
-    private ConnectionConfiguration2 connectionConfigurationMock;
+    private ConnectionConfiguration connectionConfigurationMock;
 
     @Mock
     private OpenSearchClientFactory openSearchClientFactory;
 
     @Mock
-    private OTelTraceGroupProcessorConfig2 otelTraceGroupProcessorConfig;
+    private OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig;
 
     @Mock(lenient = true)
     private RestHighLevelClient restHighLevelClient;
@@ -127,7 +127,7 @@ class OTelTraceGroupProcessorTests {
         MetricsTestUtil.initMetrics();
         openSearchClientFactoryMockedStatic = Mockito.mockStatic(OpenSearchClientFactory.class);
         openSearchClientFactoryMockedStatic.when(() -> OpenSearchClientFactory.fromConnectionConfiguration(
-                any(ConnectionConfiguration2.class)))
+                any(ConnectionConfiguration.class)))
                 .thenReturn(openSearchClientFactory);
         when(otelTraceGroupProcessorConfig.getEsConnectionConfig()).thenReturn(connectionConfigurationMock);
         when(openSearchClientFactory.createRestHighLevelClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);

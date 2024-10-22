@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
-public class OTelTraceGroupProcessorConfig2 {
+public class OTelTraceGroupProcessorConfig {
     protected static final String TRACE_ID_FIELD = "traceId";
     protected static final String SPAN_ID_FIELD = "spanId";
     protected static final String PARENT_SPAN_ID_FIELD = "parentSpanId";
@@ -12,9 +12,9 @@ public class OTelTraceGroupProcessorConfig2 {
     protected static final String STRICT_DATE_TIME = "strict_date_time";
 
     @JsonUnwrapped
-    private ConnectionConfiguration2 esConnectionConfig;
+    private ConnectionConfiguration esConnectionConfig;
 
-    public ConnectionConfiguration2 getEsConnectionConfig() {
+    public ConnectionConfiguration getEsConnectionConfig() {
         return esConnectionConfig;
     }
 }

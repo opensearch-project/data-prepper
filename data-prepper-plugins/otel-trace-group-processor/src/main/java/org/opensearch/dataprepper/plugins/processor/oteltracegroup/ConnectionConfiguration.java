@@ -2,20 +2,17 @@ package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
-import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import software.amazon.awssdk.arns.Arn;
 
 import java.nio.file.Path;
 import java.time.temporal.ValueRange;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
-public class ConnectionConfiguration2 {
+public class ConnectionConfiguration {
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -88,7 +85,7 @@ public class ConnectionConfiguration2 {
     private String proxy;
 
     @JsonProperty(AUTHENTICATION)
-    private AuthConfig2 authConfig;
+    private AuthConfig authConfig;
 
     List<String> getHosts() {
         return hosts;
@@ -134,7 +131,7 @@ public class ConnectionConfiguration2 {
         return connectTimeout;
     }
 
-    public AuthConfig2 getAuthConfig() {
+    public AuthConfig getAuthConfig() {
         return authConfig;
     }
 

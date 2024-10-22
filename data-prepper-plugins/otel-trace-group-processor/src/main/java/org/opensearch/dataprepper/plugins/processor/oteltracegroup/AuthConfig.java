@@ -1,6 +1,6 @@
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
-public class AuthConfig2 {
+public class AuthConfig {
     private String username;
 
     private String password;

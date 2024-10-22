@@ -31,7 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration2.PROXY;
+import static org.opensearch.dataprepper.plugins.processor.oteltracegroup.ConnectionConfiguration.PROXY;
 
 @ExtendWith(MockitoExtension.class)
 class OpenSearchClientFactoryTest {
@@ -53,8 +53,8 @@ class OpenSearchClientFactoryTest {
     void testcreateRestHighLevelClientDefault() throws IOException {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -65,8 +65,8 @@ class OpenSearchClientFactoryTest {
     void testcreateRestHighLevelClientWithDeprecatedBasicCredentialsAndNoCert() throws IOException {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -78,8 +78,8 @@ class OpenSearchClientFactoryTest {
         final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configurationMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configurationMetadata, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -90,8 +90,8 @@ class OpenSearchClientFactoryTest {
     void testcreateRestHighLevelClientInsecure() throws IOException {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -102,8 +102,8 @@ class OpenSearchClientFactoryTest {
     void testcreateRestHighLevelClientWithCertPath() throws IOException {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -114,8 +114,8 @@ class OpenSearchClientFactoryTest {
     void testcreateRestHighLevelClientWithAWSSigV4AndSTSRole() {
         final Map<String, Object> pluginSetting = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                pluginSetting, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -145,8 +145,8 @@ class OpenSearchClientFactoryTest {
         final String testArn = TEST_ROLE;
         final String externalId = UUID.randomUUID().toString();
         final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, externalId, null,false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configurationMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configurationMetadata, ConnectionConfiguration.class);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -179,8 +179,8 @@ class OpenSearchClientFactoryTest {
         final String headerValue2 = UUID.randomUUID().toString();
         final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
         configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                configurationMetadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                configurationMetadata, ConnectionConfiguration.class);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -211,8 +211,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "121.121.121.121:80";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         assertEquals(connectionConfiguration.getProxy(), testHttpProxy);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
@@ -226,8 +226,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:80";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         assertEquals(connectionConfiguration.getProxy(), testHttpProxy);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
@@ -241,8 +241,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "http://example.com:4350";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         assertEquals(connectionConfiguration.getProxy(), testHttpProxy);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         final RestHighLevelClient client = objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier);
@@ -256,8 +256,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:port";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         assertEquals(connectionConfiguration.getProxy(), testHttpProxy);
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier));
@@ -269,8 +269,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier));
     }
@@ -281,8 +281,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:888888";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier));
     }
@@ -293,8 +293,8 @@ class OpenSearchClientFactoryTest {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "socket://example.com:port";
         metadata.put(PROXY, testHttpProxy);
-        final ConnectionConfiguration2 connectionConfiguration = OBJECT_MAPPER.convertValue(
-                metadata, ConnectionConfiguration2.class);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                metadata, ConnectionConfiguration.class);
         assertEquals(connectionConfiguration.getProxy(), testHttpProxy);
         objectUnderTest = OpenSearchClientFactory.fromConnectionConfiguration(connectionConfiguration);
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createRestHighLevelClient(awsCredentialsSupplier));
