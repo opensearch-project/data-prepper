@@ -1,0 +1,6 @@
+
+dependencies {
+    implementation project(':data-prepper-api')
+}
+
+
