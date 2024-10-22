@@ -47,7 +47,7 @@ public class LeaderScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Starting Leader Scheduler for initialization and shard discovery");
+        LOG.debug("Starting Leader Scheduler for initialization and source partition discovery");
 
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -62,14 +62,8 @@ public class LeaderScheduler implements Runnable {
                 // Once owned, run Normal LEADER node process.
                 // May want to quit this scheduler if we don't want to monitor future changes
                 if (leaderPartition != null) {
-                    long lastPollTime = 0L;
                     LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-                    if (!leaderProgressState.isInitialized()) {
-                        LOG.debug("The service is not been initialized");
-                        init();
-                    } else {
-                        lastPollTime = leaderProgressState.getLastPollTime();
-                    }
+                    long lastPollTime =  leaderProgressState.getLastPollTime();
 
                     //Start crawling and create child partitions
                     long updatedPollTime = crawler.crawl(lastPollTime, coordinator);
@@ -99,14 +93,6 @@ public class LeaderScheduler implements Runnable {
         if (leaderPartition != null) {
             coordinator.giveUpPartition(leaderPartition);
         }
-    }
-
-    private LeaderProgressState init() {
-        LOG.info("Initializing Leader Scheduler");
-        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-        leaderProgressState.setLastPollTime(0L);
-        leaderProgressState.setInitialized(true);
-        return leaderProgressState;
     }
 
 }

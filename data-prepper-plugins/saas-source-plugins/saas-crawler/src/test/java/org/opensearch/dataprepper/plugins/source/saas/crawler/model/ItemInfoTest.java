@@ -65,7 +65,7 @@ public class ItemInfoTest {
         assert itemInfo.itemId.equals(itemId);
         assert !itemInfo.metadata.isEmpty();
         assert itemInfo.getMetadata().get("k1").equals("v1");
-        assert itemInfo.eventTime == 1L;
+        assert itemInfo.getEventTime() == 1L;
         assert itemInfo.getPartitionKey().equals("partitionKey");
         assert itemInfo.getId().equals("id");
         assert itemInfo.getKeyAttributes().isEmpty();
@@ -74,7 +74,7 @@ public class ItemInfoTest {
         itemInfo.setEventTime(1234L);
         itemInfo.setItemId("updatedItemId");
         itemInfo.setMetadata(Map.of("k2", "v2"));
-        assert itemInfo.eventTime == 1234L;
+        assert itemInfo.getEventTime() == 1234L;
         assert itemInfo.itemId.equals("updatedItemId");
         assert itemInfo.getMetadata().get("k2").equals("v2");
 

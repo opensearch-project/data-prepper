@@ -3,8 +3,8 @@ package org.opensearch.dataprepper.plugins.source.saas.crawler.base;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Named;
 import javax.annotation.PreDestroy;
+import javax.inject.Named;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
