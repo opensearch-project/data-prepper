@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -16,7 +17,11 @@ import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -46,7 +51,7 @@ public class EnumDeserializerTest {
 
     @ParameterizedTest
     @EnumSource(HandleFailedEventsOption.class)
-    void enum_class_returns_expected_enum_constant(final HandleFailedEventsOption handleFailedEventsOption) throws IOException {
+    void enum_class_with_json_creator_annotation_returns_expected_enum_constant(final HandleFailedEventsOption handleFailedEventsOption) throws IOException {
         final EnumDeserializer objectUnderTest = createObjectUnderTest(HandleFailedEventsOption.class);
         final JsonParser jsonParser = mock(JsonParser.class);
         final DeserializationContext deserializationContext = mock(DeserializationContext.class);
@@ -59,9 +64,42 @@ public class EnumDeserializerTest {
         assertThat(result, equalTo(handleFailedEventsOption));
     }
 
+    @ParameterizedTest
+    @EnumSource(TestEnumWithoutJsonCreator.class)
+    void enum_class_without_json_creator_annotation_returns_expected_enum_constant(final TestEnumWithoutJsonCreator enumWithoutJsonCreator) throws IOException {
+        final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumWithoutJsonCreator.class);
+        final JsonParser jsonParser = mock(JsonParser.class);
+        final DeserializationContext deserializationContext = mock(DeserializationContext.class);
+        when(jsonParser.getCodec()).thenReturn(objectMapper);
+
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(enumWithoutJsonCreator.toString()));
+
+        Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
+
+        assertThat(result, equalTo(enumWithoutJsonCreator));
+    }
+
     @Test
-    void enum_class_with_invalid_value_throws_IllegalArgumentException() throws IOException {
+    void enum_class_with_invalid_value_and_jsonValue_annotation_throws_IllegalArgumentException() throws IOException {
         final EnumDeserializer objectUnderTest = createObjectUnderTest(HandleFailedEventsOption.class);
+        final JsonParser jsonParser = mock(JsonParser.class);
+        final DeserializationContext deserializationContext = mock(DeserializationContext.class);
+        when(jsonParser.getCodec()).thenReturn(objectMapper);
+
+        final String invalidValue = UUID.randomUUID().toString();
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(invalidValue));
+
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                objectUnderTest.deserialize(jsonParser, deserializationContext));
+
+        assertThat(exception, notNullValue());
+        final String expectedErrorMessage = "Invalid value \"" + invalidValue + "\". Valid options include";
+        assertThat(exception.getMessage(), Matchers.startsWith(expectedErrorMessage));
+    }
+
+    @Test
+    void enum_class_with_invalid_value_and_no_jsonValue_annotation_throws_IllegalArgumentException() throws IOException {
+        final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnum.class);
         final JsonParser jsonParser = mock(JsonParser.class);
         final DeserializationContext deserializationContext = mock(DeserializationContext.class);
         when(jsonParser.getCodec()).thenReturn(objectMapper);
@@ -90,5 +128,39 @@ public class EnumDeserializerTest {
         JsonDeserializer<?> result = objectUnderTest.createContextual(context, property);
 
         assertTrue(result instanceof EnumDeserializer);
+    }
+
+    private enum TestEnum {
+        TEST("test");
+        private static final Map<String, TestEnum> NAMES_MAP = Arrays.stream(TestEnum.values())
+                .collect(Collectors.toMap(TestEnum::toString, Function.identity()));
+        private final String name;
+        TestEnum(final String name) {
+            this.name = name;
+        }
+        public String toString() {
+            return this.name;
+        }
+        @JsonCreator
+        static TestEnum fromOptionValue(final String option) {
+            return NAMES_MAP.get(option);
+        }
+    }
+
+    private enum TestEnumWithoutJsonCreator {
+        TEST("test");
+        private static final Map<String, TestEnumWithoutJsonCreator> NAMES_MAP = Arrays.stream(TestEnumWithoutJsonCreator.values())
+                .collect(Collectors.toMap(TestEnumWithoutJsonCreator::toString, Function.identity()));
+        private final String name;
+        TestEnumWithoutJsonCreator(final String name) {
+            this.name = name;
+        }
+        public String toString() {
+            return this.name;
+        }
+
+        static TestEnumWithoutJsonCreator fromOptionValue(final String option) {
+            return NAMES_MAP.get(option);
+        }
     }
 }

@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.pipeline.parser;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -9,7 +11,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -37,14 +43,38 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
         final JsonNode node = p.getCodec().readTree(p);
         final String enumValue = node.asText();
 
+        final Optional<Method> jsonCreator = findJsonCreatorMethod();
+        jsonCreator.ifPresent(method -> method.setAccessible(true));
+
         for (Object enumConstant : enumClass.getEnumConstants()) {
-            if (enumConstant.toString().equalsIgnoreCase(enumValue)) {
-                return (Enum<?>) enumConstant;
+            try {
+                if (jsonCreator.isPresent() && enumConstant.equals(jsonCreator.get().invoke(null, enumValue))) {
+                    return (Enum<?>) enumConstant;
+                } else if (jsonCreator.isEmpty() && enumConstant.toString().toLowerCase().equals(enumValue)) {
+                    return (Enum<?>) enumConstant;
+                }
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
             }
         }
 
-        throw new IllegalArgumentException(String.format(INVALID_ENUM_VALUE_ERROR_FORMAT, enumValue,
-                Arrays.stream(enumClass.getEnumConstants()).map(valueEnum -> valueEnum.toString().toLowerCase()).collect(Collectors.toList())));
+        jsonCreator.ifPresent(method -> method.setAccessible(false));
+
+
+        final Optional<Method> jsonValueMethod = findJsonValueMethodForClass();
+        final List<Object> listOfEnums = jsonValueMethod.map(method -> Arrays.stream(enumClass.getEnumConstants())
+                .map(valueEnum -> {
+                    try {
+                        return method.invoke(valueEnum);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList())).orElseGet(() -> Arrays.stream(enumClass.getEnumConstants())
+                .map(valueEnum -> valueEnum.toString().toLowerCase())
+                .collect(Collectors.toList()));
+
+        throw new IllegalArgumentException(String.format(INVALID_ENUM_VALUE_ERROR_FORMAT, enumValue, listOfEnums));
     }
 
     @Override
@@ -53,5 +83,25 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
         final Class<?> rawClass = javaType.getRawClass();
 
         return new EnumDeserializer(rawClass);
+    }
+
+    private Optional<Method> findJsonValueMethodForClass() {
+        for (final Method method : enumClass.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(JsonValue.class)) {
+                return Optional.of(method);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Method> findJsonCreatorMethod() {
+        for (final Method method : enumClass.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(JsonCreator.class)) {
+                return Optional.of(method);
+            }
+        }
+
+        return Optional.empty();
     }
 }
