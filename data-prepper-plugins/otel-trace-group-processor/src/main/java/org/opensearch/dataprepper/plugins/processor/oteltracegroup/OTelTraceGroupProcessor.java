@@ -6,9 +6,9 @@
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -46,7 +46,8 @@ import java.util.stream.Stream;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
-@DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class)
+@DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class,
+        pluginConfigurationType = OTelTraceGroupProcessorConfig2.class)
 public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
@@ -55,7 +56,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGroupProcessor.class);
 
-    private final OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig;
+    private final OTelTraceGroupProcessorConfig2 otelTraceGroupProcessorConfig;
     private final RestHighLevelClient restHighLevelClient;
 
     private final Counter recordsInMissingTraceGroupCounter;
@@ -63,10 +64,14 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     private final Counter recordsOutMissingTraceGroupCounter;
 
     @DataPrepperPluginConstructor
-    public OTelTraceGroupProcessor(final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier) {
-        super(pluginSetting);
-        otelTraceGroupProcessorConfig = OTelTraceGroupProcessorConfig.buildConfig(pluginSetting);
-        restHighLevelClient = otelTraceGroupProcessorConfig.getEsConnectionConfig().createClient(awsCredentialsSupplier);
+    public OTelTraceGroupProcessor(final PluginMetrics pluginMetrics,
+                                   final OTelTraceGroupProcessorConfig2 otelTraceGroupProcessorConfig,
+                                   final AwsCredentialsSupplier awsCredentialsSupplier) {
+        super(pluginMetrics);
+        this.otelTraceGroupProcessorConfig = otelTraceGroupProcessorConfig;
+        final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.fromConnectionConfiguration(
+                otelTraceGroupProcessorConfig.getEsConnectionConfig());
+        restHighLevelClient = openSearchClientFactory.createRestHighLevelClient(awsCredentialsSupplier);
 
         recordsInMissingTraceGroupCounter = pluginMetrics.counter(RECORDS_IN_MISSING_TRACE_GROUP);
         recordsOutFixedTraceGroupCounter = pluginMetrics.counter(RECORDS_OUT_FIXED_TRACE_GROUP);
@@ -142,16 +147,16 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     }
 
     private SearchRequest createSearchRequest(final Collection<String> traceIds) {
-        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupProcessorConfig.RAW_INDEX_ALIAS);
+        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupProcessorConfig2.RAW_INDEX_ALIAS);
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()
-                        .must(QueryBuilders.termsQuery(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD, traceIds))
-                        .must(QueryBuilders.termQuery(OTelTraceGroupProcessorConfig.PARENT_SPAN_ID_FIELD, ""))
+                        .must(QueryBuilders.termsQuery(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD, traceIds))
+                        .must(QueryBuilders.termQuery(OTelTraceGroupProcessorConfig2.PARENT_SPAN_ID_FIELD, ""))
         );
-        searchSourceBuilder.docValueField(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD);
+        searchSourceBuilder.docValueField(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_NAME_FIELD);
-        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupProcessorConfig.STRICT_DATE_TIME);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupProcessorConfig2.STRICT_DATE_TIME);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
         searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
@@ -161,7 +166,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     }
 
     private Optional<Map.Entry<String, TraceGroup>> fromSearchHitToMapEntry(final SearchHit searchHit) {
-        final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupProcessorConfig.TRACE_ID_FIELD);
+        final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupProcessorConfig2.TRACE_ID_FIELD);
         final DocumentField traceGroupNameDocField = searchHit.field(TraceGroup.TRACE_GROUP_NAME_FIELD);
         final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
         final DocumentField traceGroupDurationInNanosDocField = searchHit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
