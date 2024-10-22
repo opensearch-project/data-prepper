@@ -33,7 +33,8 @@ public class KinesisClientFactory {
                 .withStsExternalId(awsAuthenticationConfig.getAwsStsExternalId())
                 .withStsHeaderOverrides(awsAuthenticationConfig.getAwsStsHeaderOverrides())
                 .build());
-        defaultCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.defaultOptions());
+        defaultCredentialsProvider = awsCredentialsSupplier.getProvider(
+                AwsCredentialsOptions.defaultOptionsWithDefaultCreds());
         this.awsAuthenticationConfig = awsAuthenticationConfig;
     }
 

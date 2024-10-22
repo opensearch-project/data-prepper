@@ -50,6 +50,10 @@ class CredentialsProviderFactory {
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 
+        if (credentialsOptions.isUseDefaultCredentials()) {
+            return DefaultCredentialsProvider.create();
+        }
+
         if(credentialsOptions.getStsRoleArn() != null || defaultStsConfiguration.getAwsStsRoleArn() != null) {
             return createStsCredentials(credentialsOptions);
         }

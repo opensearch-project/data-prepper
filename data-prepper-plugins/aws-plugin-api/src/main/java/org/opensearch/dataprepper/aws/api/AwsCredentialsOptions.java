@@ -16,16 +16,20 @@ import java.util.Map;
  */
 public class AwsCredentialsOptions {
     private static final AwsCredentialsOptions DEFAULT_OPTIONS = new AwsCredentialsOptions();
+    private static final AwsCredentialsOptions DEFAULT_OPTIONS_WITH_DEFAULT_CREDS =
+            AwsCredentialsOptions.builder().withUseDefaultCredentials(true).build();
     private final String stsRoleArn;
     private final String stsExternalId;
     private final Region region;
     private final Map<String, String> stsHeaderOverrides;
+    private final boolean useDefaultCredentials;
 
     private AwsCredentialsOptions(final Builder builder) {
         this.stsRoleArn = builder.stsRoleArn;
         this.stsExternalId = builder.stsExternalId;
         this.region = builder.region;
         this.stsHeaderOverrides = builder.stsHeaderOverrides != null ? new HashMap<>(builder.stsHeaderOverrides) : Collections.emptyMap();
+        this.useDefaultCredentials = builder.useDefaultCredentials;
     }
 
     private AwsCredentialsOptions() {
@@ -33,6 +37,7 @@ public class AwsCredentialsOptions {
         this.stsExternalId = null;
         this.region = null;
         this.stsHeaderOverrides = Collections.emptyMap();
+        this.useDefaultCredentials = false;
     }
 
     /**
@@ -47,6 +52,10 @@ public class AwsCredentialsOptions {
 
     public static AwsCredentialsOptions defaultOptions() {
         return DEFAULT_OPTIONS;
+    }
+
+    public static AwsCredentialsOptions defaultOptionsWithDefaultCreds() {
+        return DEFAULT_OPTIONS_WITH_DEFAULT_CREDS;
     }
 
     public String getStsRoleArn() {
@@ -65,6 +74,10 @@ public class AwsCredentialsOptions {
         return stsHeaderOverrides;
     }
 
+    public boolean isUseDefaultCredentials() {
+        return useDefaultCredentials;
+    }
+
     /**
      * Builder class for {@link AwsCredentialsOptions}.
      */
@@ -73,6 +86,7 @@ public class AwsCredentialsOptions {
         private String stsExternalId;
         private Region region;
         private Map<String, String> stsHeaderOverrides = Collections.emptyMap();
+        private boolean useDefaultCredentials = false;
 
         /**
          * Sets the STS role ARN to use.
@@ -119,6 +133,17 @@ public class AwsCredentialsOptions {
          */
         public Builder withStsHeaderOverrides(final Map<String, String> stsHeaderOverrides) {
             this.stsHeaderOverrides = stsHeaderOverrides;
+            return this;
+        }
+
+        /**
+         * Configures whether to use default credentials.
+         *
+         * @param useDefaultCredentials
+         * @return The {@link Builder} for continuing to build
+         */
+        public Builder withUseDefaultCredentials(final boolean useDefaultCredentials) {
+            this.useDefaultCredentials = useDefaultCredentials;
             return this;
         }
 

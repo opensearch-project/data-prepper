@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AwsCredentialsOptionsTest {
     @Test
@@ -149,5 +150,21 @@ class AwsCredentialsOptionsTest {
     void defaultOptions_returns_same_instance_on_multiple_calls() {
         assertThat(AwsCredentialsOptions.defaultOptions(),
                 sameInstance(AwsCredentialsOptions.defaultOptions()));
+    }
+
+
+    @Test
+    void with_DefaultRole() {
+        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.defaultOptionsWithDefaultCreds();
+
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getStsRoleArn(), nullValue());
+        assertTrue(awsCredentialsOptions.isUseDefaultCredentials());
+    }
+
+    @Test
+    void defaultCredentialsOptions_returns_same_instance_on_multiple_calls() {
+        assertThat(AwsCredentialsOptions.defaultOptionsWithDefaultCreds(),
+                sameInstance(AwsCredentialsOptions.defaultOptionsWithDefaultCreds()));
     }
 }
