@@ -35,9 +35,8 @@ public class Crawler {
         long startTime = System.currentTimeMillis();
         client.setLastPollTime(lastPollTime);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
-        log.info("Starting to crawl the source");
+        log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
         long updatedPollTime = 0;
-        log.info("Creating Partitions");
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
             for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
@@ -52,14 +51,11 @@ public class Crawler {
                 long niUpdated = Long.parseLong(metadata.get(UPDATED)!=null? metadata.get(UPDATED):"0");
                 updatedPollTime = Math.max(updatedPollTime, niCreated);
                 updatedPollTime = Math.max(updatedPollTime, niUpdated);
-                log.info("updated poll time {}", updatedPollTime);
             }
             createPartition(itemInfoList, coordinator);
         }while (itemInfoIterator.hasNext());
-        log.info("Crawling completed in {} ms", System.currentTimeMillis() - startTime);
-        updatedPollTime = updatedPollTime != 0 ? updatedPollTime + 1 : startTime;
-        log.info("Updating last_poll_time to {}", updatedPollTime);
-        return updatedPollTime;
+        log.debug("Crawling completed in {} ms", System.currentTimeMillis() - startTime);
+        return updatedPollTime != 0 ? updatedPollTime : startTime;
     }
 
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {
