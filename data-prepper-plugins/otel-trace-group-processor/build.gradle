@@ -11,5 +11,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'io.micrometer:micrometer-core'
+    implementation 'software.amazon.awssdk:arns'
+    implementation 'software.amazon.awssdk:auth'
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
