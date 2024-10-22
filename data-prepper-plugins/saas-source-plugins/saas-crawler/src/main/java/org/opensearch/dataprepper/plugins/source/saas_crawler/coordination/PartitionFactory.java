@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.plugins.source.saas_crawler.coordination.parti
 import java.util.function.Function;
 
 /**
- * Special partition factory just SAAS connector source.
+ * Partition factory for SAAS source plugins.
  */
 public class PartitionFactory implements Function<SourcePartitionStoreItem, EnhancedSourcePartition> {
 

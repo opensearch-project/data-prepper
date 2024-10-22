@@ -58,8 +58,8 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
                           final PluginFactory pluginFactory,
                           final AcknowledgementSetManager acknowledgementSetManager,
                           final Crawler crawler,
-                          final org.opensearch.dataprepper.plugins.source.saas_crawler.base.SaasPluginExecutorServiceProvider executorServiceProvider) {
-    log.info("Create Jira Source Connector");
+                          final SaasPluginExecutorServiceProvider executorServiceProvider) {
+    log.info("Create SaaS Source Connector");
     this.pluginMetrics = pluginMetrics;
     this.sourceConfig = sourceConfig;
     this.pluginFactory = pluginFactory;

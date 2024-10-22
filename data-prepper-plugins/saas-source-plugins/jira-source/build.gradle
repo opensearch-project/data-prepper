@@ -2,10 +2,6 @@ plugins {
     id 'java'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
 
     implementation project(path: ':data-prepper-plugins:saas-source-plugins:saas-crawler')
@@ -13,8 +9,6 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
     implementation project(path: ':data-prepper-plugins:common')
-
-
 
     implementation libs.commons.io
     implementation 'io.micrometer:micrometer-core'
