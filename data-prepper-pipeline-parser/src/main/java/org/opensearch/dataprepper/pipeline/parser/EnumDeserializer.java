@@ -44,21 +44,25 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
         final String enumValue = node.asText();
 
         final Optional<Method> jsonCreator = findJsonCreatorMethod();
-        jsonCreator.ifPresent(method -> method.setAccessible(true));
 
-        for (Object enumConstant : enumClass.getEnumConstants()) {
-            try {
-                if (jsonCreator.isPresent() && enumConstant.equals(jsonCreator.get().invoke(null, enumValue))) {
-                    return (Enum<?>) enumConstant;
-                } else if (jsonCreator.isEmpty() && enumConstant.toString().toLowerCase().equals(enumValue)) {
-                    return (Enum<?>) enumConstant;
+        try {
+            jsonCreator.ifPresent(method -> method.setAccessible(true));
+
+            for (Object enumConstant : enumClass.getEnumConstants()) {
+                try {
+                    if (jsonCreator.isPresent() && enumConstant.equals(jsonCreator.get().invoke(null, enumValue))) {
+                        return (Enum<?>) enumConstant;
+                    } else if (jsonCreator.isEmpty() && enumConstant.toString().toLowerCase().equals(enumValue)) {
+                        return (Enum<?>) enumConstant;
+                    }
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
                 }
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
             }
+        } finally {
+            jsonCreator.ifPresent(method -> method.setAccessible(false));
         }
 
-        jsonCreator.ifPresent(method -> method.setAccessible(false));
 
 
         final Optional<Method> jsonValueMethod = findJsonValueMethodForClass();
