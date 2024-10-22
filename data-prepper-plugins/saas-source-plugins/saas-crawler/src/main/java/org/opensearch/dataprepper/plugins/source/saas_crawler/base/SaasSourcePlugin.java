@@ -36,7 +36,6 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
 
 
   private static final Logger log = LoggerFactory.getLogger(SaasSourcePlugin.class);
-  public static final int DEFAULT_THREAD_COUNT = 20;
   private final PluginMetrics pluginMetrics;
   private final PluginFactory pluginFactory;
 
@@ -76,9 +75,6 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
     Objects.requireNonNull(coordinator);
     log.info("Starting SaaS Source Plugin... ");
     this.buffer = buffer;
-
-    log.info("Validate the source config");
-    //sourceConfig.isValid();
 
     boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
     log.info("Leader partition creation status: {}", isPartitionCreated);

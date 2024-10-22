@@ -30,8 +30,9 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
         } else {
             // Unable to acquire other partitions.
             // Probably we will introduce Global state in the future but for now, we don't expect to reach here.
-             throw new RuntimeException("Unable to acquire other partitions. " +
-                    "Probably we will introduce Global state in the future but for now, we don't expect to reach here.");
+             throw new RuntimeException(String.format("Unable to acquire other partition : %s. " +
+                     "Probably we will introduce Global state in the future but for now, " +
+                     "we don't expect to reach here.", partitionType));
         }
     }
 
