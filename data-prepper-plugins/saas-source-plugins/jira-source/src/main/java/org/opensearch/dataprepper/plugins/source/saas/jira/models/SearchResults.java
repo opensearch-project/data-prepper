@@ -127,31 +127,6 @@ public class SearchResults {
     return schema;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this
-        == o) {
-      return true;
-    }
-    if (Objects.isNull(o) || getClass() != o.getClass()) {
-      return false;
-    }
-    SearchResults searchResults = (SearchResults) o;
-    return Objects.equals(this.expand, searchResults.expand)
-        && Objects.equals(this.startAt, searchResults.startAt)
-        && Objects.equals(this.maxResults, searchResults.maxResults)
-        && Objects.equals(this.total, searchResults.total)
-        && Objects.equals(this.issues, searchResults.issues)
-        && Objects.equals(this.warningMessages, searchResults.warningMessages)
-        && Objects.equals(this.names, searchResults.names)
-        && Objects.equals(this.schema, searchResults.schema);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects
-        .hash(expand, startAt, maxResults, total, issues, warningMessages, names, schema);
-  }
 
   @Override
   public String toString() {
