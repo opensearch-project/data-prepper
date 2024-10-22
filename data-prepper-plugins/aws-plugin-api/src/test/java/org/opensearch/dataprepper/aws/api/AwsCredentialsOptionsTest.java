@@ -155,16 +155,17 @@ class AwsCredentialsOptionsTest {
 
     @Test
     void with_DefaultRole() {
-        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.defaultOptionsWithDefaultCreds();
+        final AwsCredentialsOptions awsCredentialsOptionsWithDefaultCredentialsProvider
+                = AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider();
 
-        assertThat(awsCredentialsOptions, notNullValue());
-        assertThat(awsCredentialsOptions.getStsRoleArn(), nullValue());
-        assertTrue(awsCredentialsOptions.isUseDefaultCredentials());
+        assertThat(awsCredentialsOptionsWithDefaultCredentialsProvider, notNullValue());
+        assertThat(awsCredentialsOptionsWithDefaultCredentialsProvider.getStsRoleArn(), nullValue());
+        assertTrue(awsCredentialsOptionsWithDefaultCredentialsProvider.isUseDefaultCredentialsProvider());
     }
 
     @Test
     void defaultCredentialsOptions_returns_same_instance_on_multiple_calls() {
-        assertThat(AwsCredentialsOptions.defaultOptionsWithDefaultCreds(),
-                sameInstance(AwsCredentialsOptions.defaultOptionsWithDefaultCreds()));
+        assertThat(AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider(),
+                sameInstance(AwsCredentialsOptions.defaultOptionsWithDefaultCredentialsProvider()));
     }
 }

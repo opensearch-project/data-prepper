@@ -175,7 +175,7 @@ public class AwsPluginIT {
 
         final AwsCredentialsOptions awsCredentialsOptions1 = AwsCredentialsOptions.builder()
                 .withRegion(Region.US_EAST_1)
-                .withUseDefaultCredentials(true)
+                .withUseDefaultCredentialsProvider(true)
                 .build();
 
         final AwsCredentialsProvider awsCredentialsProvider1 = awsCredentialsSupplier.getProvider(awsCredentialsOptions1);
@@ -184,7 +184,7 @@ public class AwsPluginIT {
 
         final AwsCredentialsOptions awsCredentialsOptions2 = AwsCredentialsOptions.builder()
                 .withRegion(Region.US_EAST_1)
-                .withUseDefaultCredentials(true)
+                .withUseDefaultCredentialsProvider(true)
                 .build();
 
         final AwsCredentialsProvider awsCredentialsProvider2 = awsCredentialsSupplier.getProvider(awsCredentialsOptions2);

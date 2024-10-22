@@ -16,20 +16,20 @@ import java.util.Map;
  */
 public class AwsCredentialsOptions {
     private static final AwsCredentialsOptions DEFAULT_OPTIONS = new AwsCredentialsOptions();
-    private static final AwsCredentialsOptions DEFAULT_OPTIONS_WITH_DEFAULT_CREDS =
-            AwsCredentialsOptions.builder().withUseDefaultCredentials(true).build();
+    private static final AwsCredentialsOptions DEFAULT_OPTIONS_WITH_DEFAULT_CREDS_PROVIDER =
+            AwsCredentialsOptions.builder().withUseDefaultCredentialsProvider(true).build();
     private final String stsRoleArn;
     private final String stsExternalId;
     private final Region region;
     private final Map<String, String> stsHeaderOverrides;
-    private final boolean useDefaultCredentials;
+    private final boolean useDefaultCredentialsProvider;
 
     private AwsCredentialsOptions(final Builder builder) {
         this.stsRoleArn = builder.stsRoleArn;
         this.stsExternalId = builder.stsExternalId;
         this.region = builder.region;
         this.stsHeaderOverrides = builder.stsHeaderOverrides != null ? new HashMap<>(builder.stsHeaderOverrides) : Collections.emptyMap();
-        this.useDefaultCredentials = builder.useDefaultCredentials;
+        this.useDefaultCredentialsProvider = builder.useDefaultCredentialsProvider;
     }
 
     private AwsCredentialsOptions() {
@@ -37,7 +37,7 @@ public class AwsCredentialsOptions {
         this.stsExternalId = null;
         this.region = null;
         this.stsHeaderOverrides = Collections.emptyMap();
-        this.useDefaultCredentials = false;
+        this.useDefaultCredentialsProvider = false;
     }
 
     /**
@@ -54,8 +54,8 @@ public class AwsCredentialsOptions {
         return DEFAULT_OPTIONS;
     }
 
-    public static AwsCredentialsOptions defaultOptionsWithDefaultCreds() {
-        return DEFAULT_OPTIONS_WITH_DEFAULT_CREDS;
+    public static AwsCredentialsOptions defaultOptionsWithDefaultCredentialsProvider() {
+        return DEFAULT_OPTIONS_WITH_DEFAULT_CREDS_PROVIDER;
     }
 
     public String getStsRoleArn() {
@@ -74,8 +74,8 @@ public class AwsCredentialsOptions {
         return stsHeaderOverrides;
     }
 
-    public boolean isUseDefaultCredentials() {
-        return useDefaultCredentials;
+    public boolean isUseDefaultCredentialsProvider() {
+        return useDefaultCredentialsProvider;
     }
 
     /**
@@ -86,7 +86,7 @@ public class AwsCredentialsOptions {
         private String stsExternalId;
         private Region region;
         private Map<String, String> stsHeaderOverrides = Collections.emptyMap();
-        private boolean useDefaultCredentials = false;
+        private boolean useDefaultCredentialsProvider = false;
 
         /**
          * Sets the STS role ARN to use.
@@ -139,11 +139,11 @@ public class AwsCredentialsOptions {
         /**
          * Configures whether to use default credentials.
          *
-         * @param useDefaultCredentials
+         * @param useDefaultCredentialsProvider
          * @return The {@link Builder} for continuing to build
          */
-        public Builder withUseDefaultCredentials(final boolean useDefaultCredentials) {
-            this.useDefaultCredentials = useDefaultCredentials;
+        public Builder withUseDefaultCredentialsProvider(final boolean useDefaultCredentialsProvider) {
+            this.useDefaultCredentialsProvider = useDefaultCredentialsProvider;
             return this;
         }
 

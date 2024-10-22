@@ -50,7 +50,7 @@ class CredentialsProviderFactory {
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 
-        if (credentialsOptions.isUseDefaultCredentials()) {
+        if (credentialsOptions.isUseDefaultCredentialsProvider()) {
             return DefaultCredentialsProvider.create();
         }
 
