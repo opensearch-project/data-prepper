@@ -65,12 +65,12 @@ public class JsonTypeBeanTest {
 
         jsonTypeBean = objectMapper.readValue(jsonString, JsonTypeBean.class);
 
-        assert(jsonTypeBean.getType().equals(type));
-        assert(jsonTypeBean.getItems().equals(items));
-        assert(jsonTypeBean.getSystem().equals(system));
-        assert(jsonTypeBean.getCustom().equals(custom));
-        assert(jsonTypeBean.getCustomId().equals(customId));
-        assert(jsonTypeBean.getConfiguration().equals(testConfiguration));
+        assertEquals(jsonTypeBean.getType(), type);
+        assertEquals(jsonTypeBean.getItems(), items);
+        assertEquals(jsonTypeBean.getSystem(), system);
+        assertEquals(jsonTypeBean.getCustom(), custom);
+        assertEquals(jsonTypeBean.getCustomId(), customId);
+        assertEquals(jsonTypeBean.getConfiguration(), testConfiguration);
     }
 
     @Test

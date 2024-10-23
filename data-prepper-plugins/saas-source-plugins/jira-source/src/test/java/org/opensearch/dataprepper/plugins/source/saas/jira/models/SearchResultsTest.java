@@ -81,13 +81,13 @@ public class SearchResultsTest {
 
         searchResults = objectMapper.readValue(jsonString, SearchResults.class);
 
-        assert(searchResults.getExpand().equals(expand));
-        assert(searchResults.getStartAt().equals(startAt));
-        assert(searchResults.getMaxResults().equals(maxResults));
-        assert(searchResults.getTotal().equals(total));
-        assert(searchResults.getWarningMessages().equals(testWarnings));
-        assert(searchResults.getNames().equals(names));
-        assert(searchResults.getSchema().equals(schema));
+        assertEquals(searchResults.getExpand(), expand);
+        assertEquals(searchResults.getStartAt(), startAt);
+        assertEquals(searchResults.getMaxResults(), maxResults);
+        assertEquals(searchResults.getTotal(), total);
+        assertEquals(searchResults.getWarningMessages(), testWarnings);
+        assertEquals(searchResults.getNames(), names);
+        assertEquals(searchResults.getSchema(), schema);
 
 
         List<IssueBean> returnedIssues = searchResults.getIssues();

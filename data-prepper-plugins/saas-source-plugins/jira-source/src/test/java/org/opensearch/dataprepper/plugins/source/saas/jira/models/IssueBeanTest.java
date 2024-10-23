@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -58,26 +59,26 @@ public class IssueBeanTest {
         String expand = "expandTest";
 
         issueBean.setExpand(expand);
-        assert(issueBean.getExpand().equals(expand));;
+        assertEquals(issueBean.getExpand(), expand);;
         issueBean.setId(id);
-        assert(issueBean.getId().equals(id));
+        assertEquals(issueBean.getId(), id);
         issueBean.setSelf(self);
-        assert(issueBean.getSelf().equals(self));
+        assertEquals(issueBean.getSelf(), self);
         issueBean.setKey(key);
-        assert(issueBean.getKey().equals(key));
+        assertEquals(issueBean.getKey(), key);
     }
 
     @Test
     public void testMapSettersAndGetters(){
 
         issueBean.setRenderedFields(renderedFieldsTestObject);
-        assert(issueBean.getRenderedFields().equals(renderedFieldsTestObject));
+        assertEquals(issueBean.getRenderedFields(), renderedFieldsTestObject);
         issueBean.setProperties(propertiesTestObject);
-        assert(issueBean.getProperties().equals(propertiesTestObject));
+        assertEquals(issueBean.getProperties(), propertiesTestObject);
         issueBean.setNames(namesTestObject);
-        assert(issueBean.getNames().equals(namesTestObject));
+        assertEquals(issueBean.getNames(), namesTestObject);
         issueBean.setFields(fieldsTestObject);
-        assert(issueBean.getFields().equals(fieldsTestObject));
+        assertEquals(issueBean.getFields(), fieldsTestObject);
     }
 
 }
