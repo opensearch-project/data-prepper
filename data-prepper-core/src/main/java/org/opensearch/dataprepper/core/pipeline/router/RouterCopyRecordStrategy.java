@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementS
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -95,13 +94,13 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
                 final Event recordEvent = (Event) record.getData();
                 JacksonEvent newRecordEvent;
                 Record newRecord;
-                DefaultEventHandle eventHandle = (DefaultEventHandle)recordEvent.getEventHandle();
-                if (eventHandle != null && eventHandle.getAcknowledgementSet() != null) {
+                InternalEventHandle internalHandle = (InternalEventHandle)recordEvent.getEventHandle();
+                if (internalHandle != null && internalHandle.hasAcknowledgementSet()) {
                     final EventMetadata eventMetadata = recordEvent.getMetadata();
                     final EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withEventMetadata(eventMetadata).withData(recordEvent.toMap());
                     newRecordEvent = (JacksonEvent) eventBuilder.build();
 
-                    eventHandle.getAcknowledgementSet().add(newRecordEvent);
+                    internalHandle.addEventHandle(newRecordEvent.getEventHandle());
                     newRecord = new Record<>(newRecordEvent);
                     acquireEventReference(newRecord);
                 } else {

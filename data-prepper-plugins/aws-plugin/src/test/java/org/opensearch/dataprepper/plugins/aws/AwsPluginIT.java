@@ -157,6 +157,42 @@ public class AwsPluginIT {
         assertThat(awsCredentialsProvider2, sameInstance(awsCredentialsProvider1));
     }
 
+    @Test
+    void test_AwsPlugin_without_STS_role_and_without_default_role_uses_default_role() {
+
+        createObjectUnderTest().apply(extensionPoints);
+
+        final ArgumentCaptor<ExtensionProvider<AwsCredentialsSupplier>> extensionProviderArgumentCaptor = ArgumentCaptor.forClass(ExtensionProvider.class);
+        verify(extensionPoints).addExtensionProvider(extensionProviderArgumentCaptor.capture());
+
+        final ExtensionProvider<AwsCredentialsSupplier> extensionProvider = extensionProviderArgumentCaptor.getValue();
+
+        final Optional<AwsCredentialsSupplier> optionalSupplier = extensionProvider.provideInstance(context);
+        assertThat(optionalSupplier, notNullValue());
+        assertThat(optionalSupplier.isPresent(), equalTo(true));
+
+        final AwsCredentialsSupplier awsCredentialsSupplier = optionalSupplier.get();
+
+        final AwsCredentialsOptions awsCredentialsOptions1 = AwsCredentialsOptions.builder()
+                .withRegion(Region.US_EAST_1)
+                .withUseDefaultCredentialsProvider(true)
+                .build();
+
+        final AwsCredentialsProvider awsCredentialsProvider1 = awsCredentialsSupplier.getProvider(awsCredentialsOptions1);
+
+        assertThat(awsCredentialsProvider1, instanceOf(DefaultCredentialsProvider.class));
+
+        final AwsCredentialsOptions awsCredentialsOptions2 = AwsCredentialsOptions.builder()
+                .withRegion(Region.US_EAST_1)
+                .withUseDefaultCredentialsProvider(true)
+                .build();
+
+        final AwsCredentialsProvider awsCredentialsProvider2 = awsCredentialsSupplier.getProvider(awsCredentialsOptions2);
+
+        assertThat(awsCredentialsProvider2, instanceOf(DefaultCredentialsProvider.class));
+        assertThat(awsCredentialsProvider2, sameInstance(awsCredentialsProvider1));
+    }
+
     private String createStsRole() {
         return String.format("arn:aws:iam::123456789012:role/%s", UUID.randomUUID());
     }
