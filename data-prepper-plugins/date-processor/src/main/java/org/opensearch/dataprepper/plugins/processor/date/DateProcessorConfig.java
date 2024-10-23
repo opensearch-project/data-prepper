@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -49,9 +50,9 @@ public class DateProcessorConfig {
                 "which represent the timestamp as the number of seconds, milliseconds, and nanoseconds since the epoch. " +
                 "Epoch values always use the UTC time zone.")
         @ExampleValues({
-                @ExampleValues.Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Matches ISO-8601 formatted strings."),
-                @ExampleValues.Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Matches Apache Common Log Format."),
-                @ExampleValues.Example(value = "epoch_second", description = "Matches against strings that represent seconds since Unix epoch time.")
+                @Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Matches ISO-8601 formatted strings."),
+                @Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Matches Apache Common Log Format."),
+                @Example(value = "epoch_second", description = "Matches against strings that represent seconds since Unix epoch time.")
         })
         private List<String> patterns;
 
@@ -136,8 +137,8 @@ public class DateProcessorConfig {
     @JsonProperty(value = "output_format", defaultValue = DEFAULT_OUTPUT_FORMAT)
     @JsonPropertyDescription("Determines the format of the timestamp added to an event.")
     @ExampleValues({
-            @ExampleValues.Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Outputs ISO-8601 formatted strings."),
-            @ExampleValues.Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Outputs in Apache Common Log Format.")
+            @Example(value = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", description = "Outputs ISO-8601 formatted strings."),
+            @Example(value = "dd/MMM/yyyy:HH:mm:ss Z", description = "Outputs in Apache Common Log Format.")
     })
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
@@ -152,8 +153,8 @@ public class DateProcessorConfig {
             "A list of all the available time zones is contained in the TZ database name column of " +
             "<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List\">this table</a>.")
     @ExampleValues({
-            @ExampleValues.Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
-            @ExampleValues.Example(value = "US/Pacific", description = "United States Pacific time zone.")
+            @Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
+            @Example(value = "US/Pacific", description = "United States Pacific time zone.")
     })
     private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
 
@@ -162,8 +163,8 @@ public class DateProcessorConfig {
             "A list of all the available time zones is contained in the TZ database name column of " +
             "<a href=\"https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List\">this table</a>.")
     @ExampleValues({
-            @ExampleValues.Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
-            @ExampleValues.Example(value = "US/Pacific", description = "United States Pacific time zone.")
+            @Example(value = "UTC", description = "Coordinated Universal Time (UTC)."),
+            @Example(value = "US/Pacific", description = "United States Pacific time zone.")
     })
     private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
@@ -176,8 +177,8 @@ public class DateProcessorConfig {
             "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>." +
             "Default is <code>Locale.ROOT</code>.")
     @ExampleValues({
-            @ExampleValues.Example("en-US"),
-            @ExampleValues.Example("fr-FR")
+            @Example("en-US"),
+            @Example("fr-FR")
     })
     private String locale;
 
