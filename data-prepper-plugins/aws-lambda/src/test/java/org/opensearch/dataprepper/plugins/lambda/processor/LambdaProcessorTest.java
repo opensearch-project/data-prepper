@@ -225,7 +225,7 @@ public class LambdaProcessorTest {
         SdkBytes sdkBytes = SdkBytes.fromByteArray(payloadString.getBytes());
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Ensure success status code
-
+        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
         // Mock responseCodec parsing
         doAnswer(invocation -> {
             InputStream inputStream = (InputStream) invocation.getArgument(0);
@@ -352,7 +352,7 @@ public class LambdaProcessorTest {
         SdkBytes sdkBytes = SdkBytes.fromByteArray(payloadString.getBytes());
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
-
+        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
         // Mock the responseCodec.parse to add three events
         doAnswer(invocation -> {
             InputStream inputStream = (InputStream) invocation.getArgument(0);

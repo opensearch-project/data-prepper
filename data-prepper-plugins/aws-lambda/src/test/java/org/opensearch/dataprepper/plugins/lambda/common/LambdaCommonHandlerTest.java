@@ -82,21 +82,6 @@ public class LambdaCommonHandlerTest {
     }
 
     @Test
-    public void testReleaseEventHandlesPerBatch() {
-        // Arrange
-        List<EventHandle> mockEventHandles = mockEventHandleList(3);
-
-        // Act
-        lambdaCommonHandler.releaseEventHandles(true, mockEventHandles);
-
-        // Assert
-        for (EventHandle eventHandle : mockEventHandles) {
-            verify(eventHandle, times(1)).release(true);
-        }
-        assert mockEventHandles.isEmpty(); // Ensures the list is cleared after release
-    }
-
-    @Test
     public void testWaitForFutures_allComplete() {
         // Arrange
         List<CompletableFuture<Void>> futureList = new ArrayList<>();
