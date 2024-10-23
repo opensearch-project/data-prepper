@@ -46,12 +46,32 @@ class ConnectionConfigurationTest {
     }
 
     @Test
+    void testDeserializeConnectionConfigurationWithAwsSigV4() {
+        final String stsRoleArn = "arn:aws:iam::123456789012:role/TestRole";
+        final Map<String, Object> pluginSetting = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, stsRoleArn, null, false);
+        final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
+                pluginSetting, ConnectionConfiguration.class);
+        assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
+        assertNull(connectionConfiguration.getUsername());
+        assertNull(connectionConfiguration.getPassword());
+        assertTrue(connectionConfiguration.isAwsSigv4());
+        assertNull(connectionConfiguration.getCertPath());
+        assertNull(connectionConfiguration.getConnectTimeout());
+        assertNull(connectionConfiguration.getSocketTimeout());
+        assertTrue(connectionConfiguration.isValidAwsAuth());
+        assertTrue(connectionConfiguration.isValidStsRoleArn());
+    }
+
+    @Test
     void testDeserializeConnectionConfigurationAwsOptionServerlessDefault() {
         final String testArn = TEST_ROLE;
         final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, null, TEST_CERT_PATH, false, Collections.emptyMap());
         final ConnectionConfiguration connectionConfiguration = OBJECT_MAPPER.convertValue(
                 configMetadata, ConnectionConfiguration.class);
+        assertTrue(connectionConfiguration.isValidAwsAuth());
         assertTrue(connectionConfiguration.getAwsOption().isServerless());
+        assertTrue(connectionConfiguration.getAwsOption().isValidStsRoleArn());
     }
 
     @Test
