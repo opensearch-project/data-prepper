@@ -52,7 +52,7 @@ public class WorkerScheduler implements Runnable {
                     processPartition(partition.get(), buffer, sourceConfig);
 
                 } else {
-                    log.info("No partition available. Going to Sleep for a while ");
+                    log.debug("No partition available. Going to Sleep for a while ");
                     try {
                         Thread.sleep(10000);
                     } catch (final InterruptedException e) {

@@ -77,7 +77,7 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
     this.buffer = buffer;
 
     boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
-    log.info("Leader partition creation status: {}", isPartitionCreated);
+    log.debug("Leader partition creation status: {}", isPartitionCreated);
 
     Runnable leaderScheduler = new LeaderScheduler(coordinator, this, crawler);
     this.executorService.submit(leaderScheduler);
