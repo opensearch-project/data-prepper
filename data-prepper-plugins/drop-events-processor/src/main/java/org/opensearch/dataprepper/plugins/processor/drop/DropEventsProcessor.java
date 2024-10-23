@@ -36,7 +36,8 @@ public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record
 
         if (dropEventProcessorConfig.getDropWhen() != null &&
                 (!expressionEvaluator.isValidExpressionStatement(dropEventProcessorConfig.getDropWhen()))) {
-            throw new InvalidPluginConfigurationException("drop_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(String.format("drop_when \"%s\" is not a valid expression statement. " +
+                    "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", dropEventProcessorConfig.getDropWhen()));
         }
 
         whenCondition = new DropEventsWhenCondition.Builder()
