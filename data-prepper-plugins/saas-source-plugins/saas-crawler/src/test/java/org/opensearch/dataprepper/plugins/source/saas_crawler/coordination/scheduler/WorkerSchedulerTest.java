@@ -80,7 +80,28 @@ public class WorkerSchedulerTest {
         SaasWorkerProgressState stateObj = (SaasWorkerProgressState)sourcePartition.getProgressState().get();
         verify(crawler, atLeast(1)).executePartition(stateObj, buffer, sourceConfig);
         verify(coordinator, atLeast(1)).completePartition(eq(sourcePartition));
+    }
 
+    @Test
+    void testEmptyProgressState() throws InterruptedException {
+        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+
+        String sourceId =  UUID.randomUUID() + "|" + SaasSourcePartition.PARTITION_TYPE;
+        when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(null);
+        when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
+        PartitionFactory factory = new PartitionFactory();
+        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.of(sourcePartition));
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(workerScheduler);
+
+        Thread.sleep(50);
+        executorService.shutdownNow();
+
+        // Check if crawler was invoked and updated leader lease renewal time
+        verifyNoInteractions(crawler);
+        verify(coordinator, atLeast(1)).completePartition(eq(sourcePartition));
     }
 
     @Test

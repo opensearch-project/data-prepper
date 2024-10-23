@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -55,6 +56,7 @@ public class LeaderSchedulerTest {
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(0L);
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        doThrow(RuntimeException.class).when(coordinator).saveProgressStateForPartition(any(LeaderPartition.class), any(Duration.class));
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(leaderScheduler);
