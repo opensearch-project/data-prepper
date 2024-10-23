@@ -1,9 +1,6 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.slf4j.Logger;
@@ -45,35 +42,13 @@ public class LambdaCommonHandler {
         }
     }
 
-    public void checkStatusCode(InvokeResponse response) {
+    public boolean checkStatusCode(InvokeResponse response) {
         int statusCode = response.statusCode();
         if (statusCode < 200 || statusCode >= 300) {
-            LOG.warn("Lambda invocation returned with non-success status code: {}", statusCode);
+            LOG.error("Lambda invocation returned with non-success status code: {}", statusCode);
+            return false;
         }
-    }
-
-    /*
-     * Release events per batch
-     */
-    public void releaseEventHandles(final boolean result, List<EventHandle> bufferedEventHandles) {
-        for (EventHandle eventHandle : bufferedEventHandles) {
-            eventHandle.release(result);
-        }
-        bufferedEventHandles.clear();
-    }
-
-    /*
-     * Release events per batch
-     */
-    public void releaseEventHandlesPerBatch(boolean success, Buffer flushedBuffer) {
-        List<Record<Event>> records = flushedBuffer.getRecords();
-        for (Record<Event> record : records) {
-            Event event = record.getData();
-            EventHandle eventHandle = event.getEventHandle();
-            if (eventHandle != null) {
-                eventHandle.release(success);
-            }
-        }
+        return true;
     }
 
     public void waitForFutures(List<CompletableFuture<Void>> futureList) {

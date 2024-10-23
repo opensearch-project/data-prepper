@@ -198,7 +198,7 @@ public class LambdaSinkServiceTest {
         CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(invokeResponse);
         when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(future);
         when(invokeResponse.statusCode()).thenReturn(202);
-        doNothing().when(lambdaCommonHandler).checkStatusCode(eq(invokeResponse));
+        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
         doNothing().when(lambdaLatencyMetric).record(any(Duration.class));
 
         lambdaSinkService.output(records);
@@ -220,7 +220,6 @@ public class LambdaSinkServiceTest {
 
         verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
         verify(dlqPushHandler, times(1)).perform(eq(pluginSetting), any(LambdaSinkFailedDlqData.class));
-        verify(lambdaCommonHandler, times(1)).releaseEventHandlesPerBatch(eq(true), eq(currentBufferPerBatch));
     }
 
     @Test
@@ -231,9 +230,8 @@ public class LambdaSinkServiceTest {
 
         lambdaSinkService.handleFailure(throwable, currentBufferPerBatch);
 
-        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+        verify(numberOfRecordsFailedCounter, times(1)).increment(1);
         verify(dlqPushHandler, never()).perform(any(), any());
-        verify(lambdaCommonHandler, times(1)).releaseEventHandlesPerBatch(eq(false), eq(currentBufferPerBatch));
     }
 
     @Test
@@ -247,7 +245,7 @@ public class LambdaSinkServiceTest {
         when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
 
         // Mock event handling to throw exception when writeEvent is called
-        when(currentBufferPerBatch.getEventCount()).thenReturn(0,1);
+        when(currentBufferPerBatch.getEventCount()).thenReturn(0);
         doNothing().when(requestCodec).start(any(), eq(event), any());
         doThrow(new IOException("Test IOException")).when(requestCodec).writeEvent(eq(event), any());
 
@@ -264,8 +262,7 @@ public class LambdaSinkServiceTest {
         // Assert
         verify(requestCodec, times(1)).start(any(), eq(event), any());
         verify(requestCodec, times(1)).writeEvent(eq(event), any());
-        verify(currentBufferPerBatch, times(1)).reset();
-        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+        verify(numberOfRecordsFailedCounter, times(1)).increment();
     }
 
 

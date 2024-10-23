@@ -224,16 +224,22 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 // Handle future
                 CompletableFuture<Void> processingFuture = future.thenAccept(response -> {
                     //Success handler
-                    lambdaCommonHandler.checkStatusCode(response);
-                    LOG.info("Successfully flushed {} events", eventCount);
+                    boolean success = lambdaCommonHandler.checkStatusCode(response);
+                    if(success) {
+                        LOG.info("Successfully flushed {} events", eventCount);
 
-                    //metrics
-                    numberOfRecordsSuccessCounter.increment(eventCount);
-                    Duration latency = flushedBuffer.stopLatencyWatch();
-                    lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                        //metrics
+                        numberOfRecordsSuccessCounter.increment(eventCount);
+                        Duration latency = flushedBuffer.stopLatencyWatch();
+                        lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
 
-                    synchronized (resultRecords) {
-                        convertLambdaResponseToEvent(resultRecords, response, flushedBuffer);
+                        synchronized (resultRecords) {
+                            convertLambdaResponseToEvent(resultRecords, response, flushedBuffer);
+                        }
+                    } else {
+                        // Non-2xx status code treated as failure
+                        handleFailure(new RuntimeException("Non-success Lambda status code: " + response.statusCode()),
+                                flushedBuffer, resultRecords);
                     }
                 }).exceptionally(throwable -> {
                     //Failure handler
@@ -356,7 +362,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * Batch fails and tag each event in that Batch.
      */
     void handleFailure(Throwable e, Buffer flushedBuffer, List<Record<Event>> resultRecords) {
-        numberOfRecordsFailedCounter.increment(flushedBuffer.getEventCount());
+        if (flushedBuffer.getEventCount() > 0) {
+            numberOfRecordsFailedCounter.increment(flushedBuffer.getEventCount());
+        } else {
+            numberOfRecordsFailedCounter.increment();
+        }
+
         // Add failure tags to each event in the batch
         for (Record<Event> record : flushedBuffer.getRecords()) {
             Event event = record.getData();

@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
@@ -145,6 +146,9 @@ public class LambdaSinkService {
                     currentBufferPerBatch.addRecord(record);
 
                     flushToLambdaIfNeeded(resultRecords, false);
+                } catch (IOException e) {
+                    LOG.error("Exception while writing to codec {}", event, e);
+                    handleFailure(e, currentBufferPerBatch);
                 } catch (Exception e) {
                     LOG.error("Exception while processing event {}", event, e);
                     handleFailure(e, currentBufferPerBatch);
@@ -184,12 +188,18 @@ public class LambdaSinkService {
                 // Handle future
                 CompletableFuture<Void> processingFuture = future.thenAccept(response -> {
                     // Success handler
-                    lambdaCommonHandler.checkStatusCode(response);
-                    LOG.info("Successfully flushed {} events", eventCount);
-                    numberOfRecordsSuccessCounter.increment(eventCount);
-                    requestPayloadMetric.set(flushedBuffer.getPayloadRequestSize());
-                    Duration latency = flushedBuffer.stopLatencyWatch();
-                    lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                    boolean success = lambdaCommonHandler.checkStatusCode(response);
+                    if(success) {
+                        LOG.info("Successfully flushed {} events", eventCount);
+                        numberOfRecordsSuccessCounter.increment(eventCount);
+                        requestPayloadMetric.set(flushedBuffer.getPayloadRequestSize());
+                        Duration latency = flushedBuffer.stopLatencyWatch();
+                        lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                    } else {
+                        // Non-2xx status code treated as failure
+                        handleFailure(new RuntimeException("Non-success Lambda status code: " + response.statusCode()),
+                                flushedBuffer);
+                    }
                 }).exceptionally(throwable -> {
                     // Failure handler
                     LOG.error("Exception occurred while invoking Lambda. Function: {}, event in batch:{} | Exception: ", functionName, currentBufferPerBatch.getRecords().get(0), throwable);
@@ -214,13 +224,33 @@ public class LambdaSinkService {
     }
 
     void handleFailure(Throwable throwable, Buffer flushedBuffer) {
-        numberOfRecordsFailedCounter.increment(currentBufferPerBatch.getEventCount());
-            SdkBytes payload = currentBufferPerBatch.getPayload();
-            if (dlqPushHandler != null) {
-                dlqPushHandler.perform(pluginSetting, new LambdaSinkFailedDlqData(payload, throwable.getMessage(), 0));
-                lambdaCommonHandler.releaseEventHandlesPerBatch(true, flushedBuffer);
-            } else {
-                lambdaCommonHandler.releaseEventHandlesPerBatch(false, flushedBuffer);
-            }
+        if (currentBufferPerBatch.getEventCount() > 0) {
+            numberOfRecordsFailedCounter.increment(currentBufferPerBatch.getEventCount());
+        } else {
+            numberOfRecordsFailedCounter.increment();
+        }
+
+        SdkBytes payload = currentBufferPerBatch.getPayload();
+        if (dlqPushHandler != null) {
+            dlqPushHandler.perform(pluginSetting, new LambdaSinkFailedDlqData(payload, throwable.getMessage(), 0));
+            releaseEventHandlesPerBatch(true, flushedBuffer);
+        } else {
+            releaseEventHandlesPerBatch(false, flushedBuffer);
+        }
     }
+
+    /*
+     * Release events per batch
+     */
+    private void releaseEventHandlesPerBatch(boolean success, Buffer flushedBuffer) {
+        List<Record<Event>> records = flushedBuffer.getRecords();
+        for (Record<Event> record : records) {
+            Event event = record.getData();
+            EventHandle eventHandle = event.getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(success);
+            }
+        }
+    }
+
 }
