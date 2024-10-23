@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -123,7 +125,7 @@ public class CrawlerTest {
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
         long updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-        assert(updatedPollTime != 0);
+        assertNotEquals(0, updatedPollTime);
     }
 
     @Test
@@ -134,7 +136,7 @@ public class CrawlerTest {
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
         long updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-        assert(updatedPollTime == 11);
+        assertEquals(10, updatedPollTime);
     }
     @Test
     void testUpdatedPollTimeNiUpdatedLarger() {
@@ -144,7 +146,7 @@ public class CrawlerTest {
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
         long updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-        assert(updatedPollTime == 11);
+        assertEquals( 10, updatedPollTime);
     }
 
 
