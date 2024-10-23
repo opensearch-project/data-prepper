@@ -1,0 +1,21 @@
+package org.opensearch.dataprepper.plugins.source.saas.jira.utils;
+
+import org.junit.jupiter.api.Test;
+
+import javax.print.DocFlavor;
+
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class ConstantsTest {
+    private Constants constants;
+
+    @Test
+    public void testInitialization() {
+        constants = new Constants();
+        assertNotNull(Constants.SOLUTION_FOR_JIRA_ISSUE_TYPE_FILTER);
+        assertNotNull(constants);
+    }
+
+}
