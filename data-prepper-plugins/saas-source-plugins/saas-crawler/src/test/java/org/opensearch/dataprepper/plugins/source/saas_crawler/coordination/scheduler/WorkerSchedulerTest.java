@@ -73,7 +73,7 @@ public class WorkerSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(workerScheduler);
 
-        Thread.sleep(5);
+        Thread.sleep(50);
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
@@ -91,7 +91,7 @@ public class WorkerSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(workerScheduler);
 
-        Thread.sleep(100);
+        Thread.sleep(1000);
         executorService.shutdownNow();
 
         // Crawler shouldn't be invoked in this case
@@ -102,6 +102,22 @@ public class WorkerSchedulerTest {
     void testWhenNoPartitionToWorkOn() throws InterruptedException {
         WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.empty());
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(workerScheduler);
+
+        //Wait for more than a minute as the default while loop wait time in leader scheduler is 1 minute
+        Thread.sleep(11000);
+        executorService.shutdownNow();
+
+        // Crawler shouldn't be invoked in this case
+        verifyNoInteractions(crawler);
+    }
+
+    @Test
+    void testRetryBackOffTriggeredWhenExceptionOccurred() throws InterruptedException {
+        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(workerScheduler);

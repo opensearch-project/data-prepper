@@ -3,11 +3,10 @@ package org.opensearch.dataprepper.plugins.source.saas_crawler.model;
 
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 
 import java.util.Map;
 
-@Setter
+
 @Getter
 public abstract class ItemInfo {
 

@@ -40,8 +40,8 @@ public class ItemInfoTest {
     void testItemInfoSimpleConstructor() {
         String itemId = UUID.randomUUID().toString();
         TestItemInfo itemInfo = new TestItemInfo(itemId);
-        assert itemInfo.itemId.equals(itemId);
-        assert itemInfo.metadata == null;
+        assert itemInfo.getItemId().equals(itemId);
+        assert itemInfo.getMetadata() == null;
         assert itemInfo.getPartitionKey().equals("partitionKey");
         assert itemInfo.getId().equals("id");
         assert itemInfo.getKeyAttributes().isEmpty();
@@ -62,21 +62,13 @@ public class ItemInfoTest {
         String itemId = UUID.randomUUID().toString();
         TestItemInfo itemInfo = new TestItemInfo(itemId, Map.of("k1", "v1"), 1L);
 
-        assert itemInfo.itemId.equals(itemId);
-        assert !itemInfo.metadata.isEmpty();
+        assert itemInfo.getItemId().equals(itemId);
+        assert !itemInfo.getMetadata().isEmpty();
         assert itemInfo.getMetadata().get("k1").equals("v1");
         assert itemInfo.getEventTime() == 1L;
         assert itemInfo.getPartitionKey().equals("partitionKey");
         assert itemInfo.getId().equals("id");
         assert itemInfo.getKeyAttributes().isEmpty();
-
-        //Modify a few fields
-        itemInfo.setEventTime(1234L);
-        itemInfo.setItemId("updatedItemId");
-        itemInfo.setMetadata(Map.of("k2", "v2"));
-        assert itemInfo.getEventTime() == 1234L;
-        assert itemInfo.itemId.equals("updatedItemId");
-        assert itemInfo.getMetadata().get("k2").equals("v2");
 
     }
 }
