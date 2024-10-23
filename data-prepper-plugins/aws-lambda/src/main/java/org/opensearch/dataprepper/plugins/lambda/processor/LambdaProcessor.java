@@ -37,7 +37,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffe
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.invocationTypeMap;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
@@ -77,6 +76,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRecordsFailedCounter;
     private final Timer lambdaLatencyMetric;
     private final String invocationType;
+    private final String responseProcessingMode;
     private final List<String> tagsOnMatchFailure;
     private final BatchOptions batchOptions;
     private final BufferFactory bufferFactory;
@@ -105,6 +105,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.responsePayloadMetric = pluginMetrics.gauge(RESPONSE_PAYLOAD_SIZE, new AtomicLong());
 
         functionName = lambdaProcessorConfig.getFunctionName();
+        responseProcessingMode = lambdaProcessorConfig.getResponseProcessingMode();
         whenCondition = lambdaProcessorConfig.getWhenCondition();
         maxRetries = lambdaProcessorConfig.getMaxConnectionRetries();
         batchOptions = lambdaProcessorConfig.getBatchOptions();
@@ -127,15 +128,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         maxEvents = batchOptions.getThresholdOptions().getEventCount();
         maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-
-        //EVENT type will soon be supported.
-        if(lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.EVENT) &&
-                !lambdaProcessorConfig.getInvocationType().equals(LambdaCommonConfig.REQUEST_RESPONSE)){
-            throw new RuntimeException("Unsupported invocation type " + lambdaProcessorConfig.getInvocationType());
-        }
-
         invocationType = invocationTypeMap.get(lambdaProcessorConfig.getInvocationType());
-
         futureList = new ArrayList<>();
 
         lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(),
@@ -143,6 +136,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 , awsCredentialsSupplier,lambdaProcessorConfig.getSdkTimeout());
 
         bufferFactory = new InMemoryBufferFactory();
+
+        lambdaProcessorConfig.validateInvocationType();
+        lambdaProcessorConfig.validateResponseProcessingMode();;
 
         // Initialize LambdaCommonHandler
         lambdaCommonHandler = new LambdaCommonHandler(
@@ -307,7 +303,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             // Check if the response is a JSON array and the codec is JSON
             if (isJsonCodec) {
                 if (parsedEvents.size() == flushedBuffer.getEventCount()) {
-                    LOG.info("Parsed event size = buffer event count");
+                    LOG.debug("Parsed event size from lambda = event count sent to lambda");
                     for (int i = 0; i < parsedEvents.size(); i++) {
                         Event responseEvent = parsedEvents.get(i);
                         Event originalEvent = originalRecords.get(i).getData();
@@ -328,13 +324,18 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                         resultRecords.add(originalRecords.get(i));
                     }
                 } else {
-                    LOG.debug("Parsed event size != buffer event count");
+                    LOG.debug("Parsed event size from lambda != event count sent to lambda");
+                    if(responseProcessingMode.equals(LambdaProcessorConfig.STRICT)){
+                        LOG.error("Response Processing Mode is configured as strict. The events in the " +
+                                "response from lambda does not seem to match the number of events sent to lambda." +
+                                "If this is the expected behaviour, please configure response_processing_mode: aggregate");
+
+                        throw new RuntimeException("Response Processing Mode is configured as Strict mode but behaviour is aggregate mode");
+                    }
                     Event originalEvent = originalRecords.get(0).getData();
                     DefaultEventHandle eventHandle = (DefaultEventHandle) originalEvent.getEventHandle();
                     AcknowledgementSet originalAcknowledgementSet = eventHandle.getAcknowledgementSet();
-                    if(originalAcknowledgementSet==null){
-                        LOG.warn("Acknowledgement set is null");
-                    }
+
                     // Sizes are not equal, create new events
                     // Add new event to the original acknowledgement set
                     // Old event will be released by core later
