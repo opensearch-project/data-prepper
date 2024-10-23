@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
@@ -23,7 +24,10 @@ import java.util.Collections;
 import java.util.List;
 
 public class LambdaProcessorConfig {
-
+    //Ensures 1:1 mapping of events input to lambda and response from lambda
+    public static final String STRICT = "strict";
+    //When #input events to lambda is not equal to the response from lambda
+    public static final String AGGREGATE = "aggregate";
 
     @JsonProperty("aws")
     @NotNull
@@ -47,6 +51,10 @@ public class LambdaProcessorConfig {
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("sdk_timeout")
     private Duration sdkTimeout = DEFAULT_SDK_TIMEOUT;
+
+    @JsonPropertyDescription("mode defines the way dataprepper treats the response from lambda")
+    @JsonProperty("response_processing_mode")
+    private String responseProcessingMode = STRICT;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
@@ -96,4 +104,22 @@ public class LambdaProcessorConfig {
     }
 
     public Duration getSdkTimeout() { return sdkTimeout;}
+
+    public String getResponseProcessingMode() {
+        return responseProcessingMode;
+    }
+
+    public void validateInvocationType() {
+        //EVENT type will soon be supported.
+        if (!getInvocationType().equals(LambdaCommonConfig.REQUEST_RESPONSE)) {
+            throw new IllegalArgumentException("Unsupported invocation type " + getInvocationType());
+        }
+    }
+
+    public void validateResponseProcessingMode(){
+        if(!getResponseProcessingMode().equals(STRICT) &&
+        !getResponseProcessingMode().equals(AGGREGATE)){
+            throw new IllegalArgumentException("Response processing mode not supported:" + getResponseProcessingMode());
+        }
+    }
 }

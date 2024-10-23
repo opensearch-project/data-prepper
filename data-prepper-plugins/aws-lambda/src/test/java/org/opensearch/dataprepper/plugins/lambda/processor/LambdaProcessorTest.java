@@ -41,7 +41,6 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -102,6 +101,7 @@ public class LambdaProcessorTest {
     private EventMetadata eventMetadata;
 
     private LambdaProcessor lambdaProcessor;
+
     @BeforeEach
     public void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
@@ -115,6 +115,7 @@ public class LambdaProcessorTest {
         when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
         when(lambdaProcessorConfig.getWhenCondition()).thenReturn(null);
         when(lambdaProcessorConfig.getInvocationType()).thenReturn("request-response");
+        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("strict");
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
@@ -132,12 +133,21 @@ public class LambdaProcessorTest {
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("6mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(30));
 
-        List<String> tagsOnMatchFailure = Collections.singletonList("failure_tag");
+        // Mock lambdaCommonHandler.createBuffer() to return currentBufferPerBatch
+        when(lambdaCommonHandler.createBuffer(any())).thenReturn(currentBufferPerBatch);
 
+        // Mock currentBufferPerBatch.reset()
+        doNothing().when(currentBufferPerBatch).reset();
+    }
+
+    private void setupTestObject() {
         // Create the LambdaProcessor instance
         lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig,
                 awsCredentialsSupplier, expressionEvaluator);
+    }
 
+    private void populatePrivateFields() throws Exception {
+        List<String> tagsOnMatchFailure = Collections.singletonList("failure_tag");
         // Use reflection to set the private fields
         setPrivateField(lambdaProcessor, "lambdaCommonHandler", lambdaCommonHandler);
         setPrivateField(lambdaProcessor, "requestCodec", requestCodec);
@@ -147,14 +157,7 @@ public class LambdaProcessorTest {
         setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
         setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
         setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
-
-        // Mock lambdaCommonHandler.createBuffer() to return currentBufferPerBatch
-        when(lambdaCommonHandler.createBuffer(any())).thenReturn(currentBufferPerBatch);
-
-        // Mock currentBufferPerBatch.reset()
-        doNothing().when(currentBufferPerBatch).reset();
     }
-
 
 
     // Helper method to set private fields via reflection
@@ -165,8 +168,10 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testDoExecute_WithEmptyRecords() {
+    public void testDoExecute_WithEmptyRecords() throws Exception {
         // Arrange
+        setupTestObject();
+        populatePrivateFields();
         Collection<Record<Event>> records = Collections.emptyList();
 
         // Act
@@ -177,7 +182,7 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testDoExecute_WithRecords_WhenConditionFalse() {
+    public void testDoExecute_WithRecords_WhenConditionFalse() throws Exception {
         // Arrange
         Event event = mock(Event.class);
         Record<Event> record = new Record<>(event);
@@ -185,8 +190,8 @@ public class LambdaProcessorTest {
 
         when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(false);
         when(lambdaProcessorConfig.getWhenCondition()).thenReturn("some_condition");
-        lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+        setupTestObject();
+        populatePrivateFields();
 
         // Act
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
@@ -237,6 +242,8 @@ public class LambdaProcessorTest {
 
         // Mock lambdaCommonHandler.createBuffer() to return currentBufferPerBatch
         when(lambdaCommonHandler.createBuffer(any())).thenReturn(currentBufferPerBatch);
+        setupTestObject();
+        populatePrivateFields();
 
         // Act
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
@@ -260,18 +267,14 @@ public class LambdaProcessorTest {
     @Test
     public void testHandleFailure() throws Exception {
         // Arrange
+        setupTestObject();
+        populatePrivateFields();
         Throwable throwable = new RuntimeException("Test Exception");
         Buffer flushedBuffer = mock(InMemoryBuffer.class);
         List<Record<Event>> originalRecords = new ArrayList<>();
         Event event = JacksonEvent.builder().withEventType("event").withData("{\"status\":true}").build();
         Record<Event> record = new Record<>(event);
         originalRecords.add(record);
-
-        // Prepare tagsOnMatchFailure
-        List<String> tagsOnMatchFailure = Collections.singletonList("failure_tag");
-        setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
-
-
         when(flushedBuffer.getEventCount()).thenReturn(1);
         when(flushedBuffer.getRecords()).thenReturn(originalRecords);
 
@@ -283,8 +286,10 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing() throws IOException {
+    public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing() throws Exception {
         // Arrange
+        setupTestObject();
+        populatePrivateFields();
         List<Record<Event>> resultRecords = new ArrayList<>();
 
         // Mock LambdaResponse with a valid payload
@@ -343,8 +348,11 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing() throws IOException {
+    public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing() throws Exception {
         // Arrange
+        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("aggregate");
+        setupTestObject();
+        populatePrivateFields();
         List<Record<Event>> resultRecords = new ArrayList<>();
 
         // Mock LambdaResponse with a valid payload containing three events
@@ -353,6 +361,8 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
         when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
+        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("aggregate");
+//        when(responseProcessingMode.equals("strict")).thenReturn(false);
         // Mock the responseCodec.parse to add three events
         doAnswer(invocation -> {
             InputStream inputStream = (InputStream) invocation.getArgument(0);
@@ -410,6 +420,74 @@ public class LambdaProcessorTest {
         verify(originalEvent1, times(0)).clear();
         verify(originalEvent2, times(0)).clear();
         verify(acknowledgementSet, times(3)).add(any(Event.class));
+    }
+
+    @Test
+    public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_FailOn_STRICT_Mode() throws Exception {
+        // Arrange
+        List<Record<Event>> resultRecords = new ArrayList<>();
+
+        // Mock LambdaResponse with a valid payload containing three events
+        String payloadString = "[{\"key\":\"value1\"}, {\"key\":\"value2\"}, {\"key\":\"value3\"}]";
+        SdkBytes sdkBytes = SdkBytes.fromByteArray(payloadString.getBytes());
+        when(invokeResponse.payload()).thenReturn(sdkBytes);
+        when(invokeResponse.statusCode()).thenReturn(200); // Success status code
+        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
+        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("strict");
+//        when(responseProcessingMode.equals("strict")).thenReturn(false);
+        // Mock the responseCodec.parse to add three events
+        doAnswer(invocation -> {
+            InputStream inputStream = (InputStream) invocation.getArgument(0);
+            Consumer<Record<Event>> consumer = (Consumer<Record<Event>>) invocation.getArgument(1);
+            Event parsedEvent1 = mock(Event.class);
+            EventMetadata parsedEventMetadata1 = mock(EventMetadata.class);
+            when(parsedEvent1.getMetadata()).thenReturn(parsedEventMetadata1);
+
+            Event parsedEvent2 = mock(Event.class);
+            EventMetadata parsedEventMetadata2 = mock(EventMetadata.class);
+            when(parsedEvent2.getMetadata()).thenReturn(parsedEventMetadata2);
+
+            Event parsedEvent3 = mock(Event.class);
+            EventMetadata parsedEventMetadata3 = mock(EventMetadata.class);
+            when(parsedEvent3.getMetadata()).thenReturn(parsedEventMetadata3);
+
+            consumer.accept(new Record<>(parsedEvent1));
+            consumer.accept(new Record<>(parsedEvent2));
+            consumer.accept(new Record<>(parsedEvent3));
+            return null;
+        }).when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
+
+        // Mock buffer with two original events
+        Event originalEvent1 = mock(Event.class);
+        EventMetadata originalEventMetadata1 = mock(EventMetadata.class);
+        when(originalEvent1.getMetadata()).thenReturn(originalEventMetadata1);
+
+        Event originalEvent2 = mock(Event.class);
+        EventMetadata originalEventMetadata2 = mock(EventMetadata.class);
+        when(originalEvent2.getMetadata()).thenReturn(originalEventMetadata2);
+
+        List<Record<Event>> originalRecords = Arrays.asList(
+                new Record<>(originalEvent1),
+                new Record<>(originalEvent2)
+        );
+
+        Buffer flushedBuffer = mock(Buffer.class);
+        when(flushedBuffer.getEventCount()).thenReturn(2);
+        when(flushedBuffer.getRecords()).thenReturn(originalRecords);
+
+        // Mock acknowledgement set
+        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        when(originalEvent1.getEventHandle()).thenReturn(eventHandle);
+        when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+        setupTestObject();
+        populatePrivateFields();
+
+        // Act
+        lambdaProcessor.convertLambdaResponseToEvent(resultRecords, invokeResponse, flushedBuffer);
+
+        verify(numberOfRecordsFailedCounter, times(1)).increment(2);
+
     }
 
 }
