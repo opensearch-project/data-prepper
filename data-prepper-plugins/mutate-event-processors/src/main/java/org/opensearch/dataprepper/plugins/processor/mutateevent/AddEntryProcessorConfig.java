@@ -14,10 +14,42 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 
 import java.util.List;
 import java.util.stream.Stream;
 
+@ConditionalRequired(value = {
+        @ConditionalRequired.IfThenElse(
+                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "key", value = "null")},
+                thenExpect = {@ConditionalRequired.SchemaProperty(field = "metadata_key")}
+        ),
+        @ConditionalRequired.IfThenElse(
+                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "metadata_key", value = "null")},
+                thenExpect = {@ConditionalRequired.SchemaProperty(field = "key")}
+        ),
+        @ConditionalRequired.IfThenElse(
+                ifFulfilled = {
+                        @ConditionalRequired.SchemaProperty(field = "format", value = "null"),
+                        @ConditionalRequired.SchemaProperty(field = "value", value = "null"),
+                },
+                thenExpect = {@ConditionalRequired.SchemaProperty(field = "value_expression")}
+        ),
+        @ConditionalRequired.IfThenElse(
+                ifFulfilled = {
+                        @ConditionalRequired.SchemaProperty(field = "format", value = "null"),
+                        @ConditionalRequired.SchemaProperty(field = "value_expression", value = "null"),
+                },
+                thenExpect = {@ConditionalRequired.SchemaProperty(field = "value")}
+        ),
+        @ConditionalRequired.IfThenElse(
+                ifFulfilled = {
+                        @ConditionalRequired.SchemaProperty(field = "value", value = "null"),
+                        @ConditionalRequired.SchemaProperty(field = "value_expression", value = "null"),
+                },
+                thenExpect = {@ConditionalRequired.SchemaProperty(field = "format")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>add_entries</code> processor adds entries to an event.")
 public class AddEntryProcessorConfig {
