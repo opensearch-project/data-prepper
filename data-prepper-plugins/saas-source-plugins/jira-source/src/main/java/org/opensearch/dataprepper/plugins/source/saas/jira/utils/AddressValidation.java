@@ -49,7 +49,8 @@ public class AddressValidation {
    */
   public static void validateInetAddress(@NonNull final InetAddress address) {
     if (address.isMulticastAddress() || address.isAnyLocalAddress() || address.isLinkLocalAddress()
-        || address.isSiteLocalAddress() || address.isLoopbackAddress()) {
+            || address.isSiteLocalAddress() || address.isLoopbackAddress())
+    {
       throw new BadRequestException(INVALID_URL);
     }
   }
