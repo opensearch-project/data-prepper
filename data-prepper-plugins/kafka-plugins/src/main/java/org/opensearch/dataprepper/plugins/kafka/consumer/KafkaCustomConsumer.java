@@ -149,10 +149,10 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         final long nowMs = Instant.now().toEpochMilli();
         int partition = consumerRecord.partition();
         if (receivedTimeStamp > nowMs) {
+            topicMetrics.getNumberOfInvalidTimeStamps().increment();
             if (lastReceivedTimeStampMap.containsKey(partition)) {
                 return lastReceivedTimeStampMap.get(partition);
             } else {
-                topicMetrics.getNumberOfInvalidTimeStamps().increment();
                 return nowMs;
             }
         } else {
