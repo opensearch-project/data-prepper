@@ -4,7 +4,6 @@ package org.opensearch.dataprepper.plugins.source.saas_crawler.base;
 import lombok.Getter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
@@ -52,7 +51,6 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
   private final Crawler crawler;
 
 
-  @DataPrepperPluginConstructor
   public SaasSourcePlugin(final PluginMetrics pluginMetrics,
                           final SaasSourceConfig sourceConfig,
                           final PluginFactory pluginFactory,
@@ -93,11 +91,6 @@ public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnh
   public void stop() {
     log.info("Stop Source Connector");
     this.executorService.shutdownNow();
-  }
-
-  @Override
-  public boolean areAcknowledgementsEnabled() {
-    return Source.super.areAcknowledgementsEnabled();
   }
 
 

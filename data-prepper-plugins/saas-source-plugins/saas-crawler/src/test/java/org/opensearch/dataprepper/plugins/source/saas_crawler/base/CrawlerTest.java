@@ -157,7 +157,7 @@ public class CrawlerTest {
     }
 
     private static class TestItemInfo extends ItemInfo {
-        public TestItemInfo(String itemId, Map<String, String> metadata, Long eventTime) {
+        public TestItemInfo(String itemId, Map<String, Object> metadata, Long eventTime) {
             super(itemId, metadata, eventTime);
 
         }
@@ -178,7 +178,7 @@ public class CrawlerTest {
     }
 
     private ItemInfo createTestItemInfo(String id, String created, String updated) {
-        Map<String, String> metadata = new HashMap<>();
+        Map<String, Object> metadata = new HashMap<>();
         if (created != null) metadata.put(Crawler.CREATED, created);
         if (updated != null) metadata.put(Crawler.UPDATED, updated);
 

@@ -46,9 +46,9 @@ public class Crawler {
                     continue;
                 }
                 itemInfoList.add(nextItem);
-                Map<String, String> metadata = nextItem.getMetadata();
-                long niCreated = Long.parseLong(metadata.get(CREATED)!=null? metadata.get(CREATED):"0");
-                long niUpdated = Long.parseLong(metadata.get(UPDATED)!=null? metadata.get(UPDATED):"0");
+                Map<String, Object> metadata = nextItem.getMetadata();
+                long niCreated = Long.parseLong(metadata.get(CREATED)!=null? (String)metadata.get(CREATED):"0");
+                long niUpdated = Long.parseLong(metadata.get(UPDATED)!=null? (String)metadata.get(UPDATED):"0");
                 updatedPollTime = Math.max(updatedPollTime, niCreated);
                 updatedPollTime = Math.max(updatedPollTime, niUpdated);
             }

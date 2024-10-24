@@ -22,7 +22,7 @@ public abstract class ItemInfo {
      * contents itself which can be used to apply regex filtering, change data capture etc. general
      * assumption here is that fetching metadata should be faster than fetching entire Item
      */
-    Map<String, String> metadata;
+    Map<String, Object> metadata;
 
     /**
      * Process your change log events serially (preferably in a single thread) and ensure that you are
@@ -37,7 +37,7 @@ public abstract class ItemInfo {
         this.itemId = itemId;
     }
 
-    public ItemInfo(@NonNull String itemId, Map<String, String> metadata, @NonNull Long eventTime) {
+    public ItemInfo(@NonNull String itemId, Map<String, Object> metadata, @NonNull Long eventTime) {
         this.itemId = itemId;
         this.metadata = metadata;
         this.eventTime = eventTime;

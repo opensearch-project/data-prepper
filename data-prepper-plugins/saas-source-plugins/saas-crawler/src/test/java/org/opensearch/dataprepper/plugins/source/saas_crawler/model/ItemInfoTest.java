@@ -12,7 +12,7 @@ public class ItemInfoTest {
 
     static class TestItemInfo extends ItemInfo {
 
-        public TestItemInfo(@NonNull String itemId, Map<String, String> metadata, @NonNull Long eventTime) {
+        public TestItemInfo(@NonNull String itemId, Map<String, Object> metadata, @NonNull Long eventTime) {
             super(itemId, metadata, eventTime);
         }
 

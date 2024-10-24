@@ -25,7 +25,19 @@ public interface SaasClient {
     Iterator<ItemInfo> listItems();
 
 
+    /**
+     * Method to set the last time we polled the service to check for any changes.
+     *
+     * @param lastPollTime time in milliseconds
+     */
     void setLastPollTime(long lastPollTime);
 
+    /**
+     * Method for executing a particular partition or a chunk of work
+     *
+     * @param state worker node state holds the details of this particular chunk of work
+     * @param buffer pipeline buffer to write the results into
+     * @param sourceConfig pipeline configuration from the yaml
+     */
     void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig);
 }
