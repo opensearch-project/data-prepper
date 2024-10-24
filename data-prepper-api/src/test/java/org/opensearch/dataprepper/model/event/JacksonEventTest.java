@@ -33,6 +33,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -875,7 +876,7 @@ public class JacksonEventTest {
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
         assertThat(event.getEventHandle(), is(notNullValue()));
-        assertTrue(event.getEventHandle() instanceof(DefaultEventHandle.class));
+        assertThat(event.getEventHandle(), instanceOf(DefaultEventHandle.class));
         assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));
