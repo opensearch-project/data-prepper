@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.time.Instant;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
@@ -89,6 +92,24 @@ class JacksonGaugeTest {
     public void testGetName() {
         final String name = gauge.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
+    }
+
+    @Test
+    public void testGetDefaultEventHandle() {
+        EventHandle eventHandle = new DefaultEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        JacksonGauge gauge = builder.build();
+        final EventHandle handle = gauge.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
+    }
+
+    @Test
+    public void testGetAggregateEventHandle() {
+        EventHandle eventHandle = new AggregateEventHandle(Instant.now());
+        builder.withEventHandle(eventHandle);
+        JacksonGauge gauge = builder.build();
+        final EventHandle handle = gauge.getEventHandle();
+        assertThat(handle, is(sameInstance(eventHandle)));
     }
 
     @Test

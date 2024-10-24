@@ -33,9 +33,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -578,6 +580,20 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testBuild_withEventHandle() {
+        final Instant now = Instant.now();
+
+        EventHandle eventHandle = new DefaultEventHandle(now);
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withEventHandle(eventHandle)
+                .build();
+
+        assertThat(event.getEventHandle(), is(eventHandle));
+        assertThat(event.getEventHandle().getInternalOriginationTime(), is(equalTo(now)));
+    }
+
+    @Test
     public void testBuild_withTimeReceived() {
 
         final Instant now = Instant.now();
@@ -860,6 +876,7 @@ public class JacksonEventTest {
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
         assertThat(event.getEventHandle(), is(notNullValue()));
+        assertThat(event.getEventHandle(), instanceOf(DefaultEventHandle.class));
         assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));

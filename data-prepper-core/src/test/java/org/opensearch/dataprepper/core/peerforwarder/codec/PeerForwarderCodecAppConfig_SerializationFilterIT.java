@@ -196,7 +196,6 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
     void filter_will_deserialize_known_Event_classes(final JacksonEvent.Builder jacksonEventBuilder) throws IOException, ClassNotFoundException {
         final Event event = jacksonEventBuilder
                 .withEventType(UUID.randomUUID().toString())
-                .withData(Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString()))
                 .build();
         final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(Collections.singletonList(event), UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final byte[] serializedBytes = createByteArrayWithObject(peerForwardingEvents);
@@ -267,7 +266,6 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                 .filter(b -> b instanceof JacksonEvent.Builder)
                 .map(b -> (JacksonEvent.Builder) b)
                 .map(b -> b.withEventType(UUID.randomUUID().toString()))
-                .map(b -> b.withData(Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString())))
                 .map(b -> b.build())
                 .map(e -> e.getClass())
                 .collect(Collectors.toSet());
