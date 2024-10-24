@@ -222,16 +222,11 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
         verify(dataPrepperConfiguration).getPipelineExtensions();
-        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
+        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
         final PluginError sourcePluginError = pluginErrorCollector.getPluginErrors().get(0);
         assertThat(sourcePluginError.getPipelineName(), equalTo("test-pipeline-1"));
         assertThat(sourcePluginError.getPluginName(), equalTo("file"));
         assertThat(sourcePluginError.getException(), notNullValue());
-        // Buffer plugin gets error due to instantiated source is null
-        final PluginError bufferPluginError = pluginErrorCollector.getPluginErrors().get(1);
-        assertThat(bufferPluginError.getPipelineName(), equalTo("test-pipeline-1"));
-        assertThat(bufferPluginError.getPluginName(), equalTo("bounded_blocking"));
-        assertThat(bufferPluginError.getException(), notNullValue());
     }
 
     @ParameterizedTest
