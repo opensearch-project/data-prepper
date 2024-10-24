@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
 
-    implementation project(path: ':data-prepper-plugins:saas-source-plugins:saas-crawler')
+    implementation project(path: ':data-prepper-plugins:saas-source-plugins:source-crawler')
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
@@ -15,8 +15,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'javax.inject:javax.inject:1'
-    implementation 'org.springframework:spring-web:5.3.39'
-    implementation 'org.springframework.retry:spring-retry:1.3.4'
+    implementation("org.springframework:spring-web:${libs.versions.spring.get()}")
 
     implementation 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
