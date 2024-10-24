@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
@@ -33,7 +34,7 @@ public class InMemoryBuffer implements Buffer {
 
     private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
-    private final String invocationType;
+    private final InvocationType invocationType;
     private int eventCount;
     private StopWatch bufferWatch;
     private StopWatch lambdaLatencyWatch;
@@ -43,7 +44,7 @@ public class InMemoryBuffer implements Buffer {
     private final List<Record<Event>> records;
 
 
-    public InMemoryBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType) {
+    public InMemoryBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, InvocationType invocationType) {
         this.lambdaAsyncClient = lambdaAsyncClient;
         this.functionName = functionName;
         this.invocationType = invocationType;
@@ -92,7 +93,7 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public CompletableFuture<InvokeResponse> flushToLambda(String invocationType) {
+    public CompletableFuture<InvokeResponse> flushToLambda(InvocationType invocationType) {
         SdkBytes payload = getPayload();
         payloadRequestSize = payload.asByteArray().length;
 
@@ -100,7 +101,7 @@ public class InMemoryBuffer implements Buffer {
         InvokeRequest request = InvokeRequest.builder()
                 .functionName(functionName)
                 .payload(payload)
-                .invocationType(invocationType)
+                .invocationType(invocationType.getAwsLambdaValue())
                 .build();
 
         synchronized (this) {

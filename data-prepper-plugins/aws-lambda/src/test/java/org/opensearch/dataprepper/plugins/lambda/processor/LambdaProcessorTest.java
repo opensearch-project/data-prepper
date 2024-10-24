@@ -36,6 +36,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -114,8 +115,8 @@ public class LambdaProcessorTest {
         // Mock lambdaProcessorConfig
         when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
         when(lambdaProcessorConfig.getWhenCondition()).thenReturn(null);
-        when(lambdaProcessorConfig.getInvocationType()).thenReturn("request-response");
-        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("strict");
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
+        when(lambdaProcessorConfig.getResponseCardinality()).thenReturn(ResponseCardinality.STRICT);
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
@@ -127,7 +128,7 @@ public class LambdaProcessorTest {
 
         // Set up the mocks to return default values
         when(lambdaProcessorConfig.getBatchOptions()).thenReturn(batchOptions);
-        when(lambdaProcessorConfig.getSdkTimeout()).thenReturn(Duration.ofSeconds(5));
+        when(lambdaProcessorConfig.getConnectionTimeout()).thenReturn(Duration.ofSeconds(5));
         when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
         when(thresholdOptions.getEventCount()).thenReturn(100); // Set a default event count
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("6mb"));
@@ -222,7 +223,7 @@ public class LambdaProcessorTest {
         // Mocking Lambda invocation
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
-        when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(invokeFuture);
+        when(currentBufferPerBatch.flushToLambda(any())).thenReturn(invokeFuture);
         doNothing().when(requestCodec).complete(any());
 
         // Set up invokeResponse payload and status code
@@ -350,7 +351,7 @@ public class LambdaProcessorTest {
     @Test
     public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing() throws Exception {
         // Arrange
-        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("aggregate");
+        when(lambdaProcessorConfig.getResponseCardinality()).thenReturn(ResponseCardinality.AGGREGATE);
         setupTestObject();
         populatePrivateFields();
         List<Record<Event>> resultRecords = new ArrayList<>();
@@ -361,8 +362,7 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
         when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
-        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("aggregate");
-//        when(responseProcessingMode.equals("strict")).thenReturn(false);
+        when(lambdaProcessorConfig.getResponseCardinality()).thenReturn(ResponseCardinality.AGGREGATE);
         // Mock the responseCodec.parse to add three events
         doAnswer(invocation -> {
             InputStream inputStream = (InputStream) invocation.getArgument(0);
@@ -433,8 +433,8 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
         when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
-        when(lambdaProcessorConfig.getResponseProcessingMode()).thenReturn("strict");
-//        when(responseProcessingMode.equals("strict")).thenReturn(false);
+        when(lambdaProcessorConfig.getResponseCardinality()).thenReturn(ResponseCardinality.STRICT);
+
         // Mock the responseCodec.parse to add three events
         doAnswer(invocation -> {
             InputStream inputStream = (InputStream) invocation.getArgument(0);

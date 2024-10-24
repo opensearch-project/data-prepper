@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
@@ -125,7 +126,7 @@ public class LambdaSinkServiceTest {
         // Mock lambdaSinkConfig
         when(lambdaSinkConfig.getFunctionName()).thenReturn("test-function");
         when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
-        when(lambdaSinkConfig.getInvocationType()).thenReturn("event");
+        when(lambdaSinkConfig.getInvocationType()).thenReturn(InvocationType.EVENT);
 
         // Mock BatchOptions and ThresholdOptions
         BatchOptions batchOptions = mock(BatchOptions.class);
@@ -196,7 +197,7 @@ public class LambdaSinkServiceTest {
         when(currentBufferPerBatch.getSize()).thenReturn(100L);
         when(currentBufferPerBatch.getDuration()).thenReturn(Duration.ofMillis(500));
         CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(invokeResponse);
-        when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(future);
+        when(currentBufferPerBatch.flushToLambda(any())).thenReturn(future);
         when(invokeResponse.statusCode()).thenReturn(202);
         when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
         doNothing().when(lambdaLatencyMetric).record(any(Duration.class));
@@ -204,7 +205,7 @@ public class LambdaSinkServiceTest {
         lambdaSinkService.output(records);
 
         verify(currentBufferPerBatch, times(1)).addRecord(eq(record));
-        verify(currentBufferPerBatch, times(1)).flushToLambda(anyString());
+        verify(currentBufferPerBatch, times(1)).flushToLambda(any());
         verify(lambdaCommonHandler, times(1)).checkStatusCode(eq(invokeResponse));
         verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
     }
@@ -254,7 +255,7 @@ public class LambdaSinkServiceTest {
 
         // Mock flushToLambda to prevent NullPointerException
         CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(invokeResponse);
-        when(currentBufferPerBatch.flushToLambda(anyString())).thenReturn(future);
+        when(currentBufferPerBatch.flushToLambda(any())).thenReturn(future);
 
         // Act
         lambdaSinkService.output(records);

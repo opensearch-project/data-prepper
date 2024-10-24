@@ -13,21 +13,15 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.REQUEST_RESPONSE;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_TIMEOUT;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
 public class LambdaProcessorConfig {
-    //Ensures 1:1 mapping of events input to lambda and response from lambda
-    public static final String STRICT = "strict";
-    //When #input events to lambda is not equal to the response from lambda
-    public static final String AGGREGATE = "aggregate";
 
     @JsonProperty("aws")
     @NotNull
@@ -46,15 +40,15 @@ public class LambdaProcessorConfig {
 
     @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
     @JsonProperty("invocation_type")
-    private String invocationType = REQUEST_RESPONSE;
+    private String invocationType;
+
+    @JsonPropertyDescription("Defines the way Data Prepper treats the response from Lambda")
+    @JsonProperty("response_cardinality")
+    private String responseCardinality;
 
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
-    @JsonProperty("sdk_timeout")
-    private Duration sdkTimeout = DEFAULT_SDK_TIMEOUT;
-
-    @JsonPropertyDescription("mode defines the way dataprepper treats the response from lambda")
-    @JsonProperty("response_processing_mode")
-    private String responseProcessingMode = STRICT;
+    @JsonProperty("connection_timeout")
+    private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
     @JsonProperty("batch")
     private BatchOptions batchOptions;
@@ -66,7 +60,6 @@ public class LambdaProcessorConfig {
     @JsonPropertyDescription("Codec configuration for parsing Lambda responses")
     @JsonProperty("response_codec")
     @Valid
-    @Nullable
     private PluginModel responseCodecConfig;
 
     @JsonProperty("tags_on_match_failure")
@@ -75,7 +68,6 @@ public class LambdaProcessorConfig {
             "other parts of the configuration")
     private List<String> tagsOnMatchFailure = Collections.emptyList();
 
-    // Getter for codecConfig
     public PluginModel getResponseCodecConfig() {
         return responseCodecConfig;
     }
@@ -97,29 +89,17 @@ public class LambdaProcessorConfig {
         return maxConnectionRetries;
     }
 
-    public String getInvocationType(){return invocationType;}
-
     public String getWhenCondition() {
         return whenCondition;
     }
 
-    public Duration getSdkTimeout() { return sdkTimeout;}
+    public Duration getConnectionTimeout() { return connectionTimeout;}
 
-    public String getResponseProcessingMode() {
-        return responseProcessingMode;
+    public InvocationType getInvocationType() {
+        return InvocationType.fromStringDefaultsToRequestResponse(invocationType);
     }
 
-    public void validateInvocationType() {
-        //EVENT type will soon be supported.
-        if (!getInvocationType().equals(LambdaCommonConfig.REQUEST_RESPONSE)) {
-            throw new IllegalArgumentException("Unsupported invocation type " + getInvocationType());
-        }
-    }
-
-    public void validateResponseProcessingMode(){
-        if(!getResponseProcessingMode().equals(STRICT) &&
-        !getResponseProcessingMode().equals(AGGREGATE)){
-            throw new IllegalArgumentException("Response processing mode not supported:" + getResponseProcessingMode());
-        }
+    public ResponseCardinality getResponseCardinality() {
+        return ResponseCardinality.fromString(responseCardinality);
     }
 }

@@ -15,6 +15,7 @@ import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.slf4j.Logger;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
@@ -45,7 +46,7 @@ public class LambdaCommonHandlerTest {
     private LambdaCommonHandler lambdaCommonHandler;
 
     private String functionName = "test-function";
-    private String invocationType = "RequestResponse";
+    private InvocationType invocationType;
 
     @BeforeEach
     public void setUp() {
@@ -56,7 +57,7 @@ public class LambdaCommonHandlerTest {
     @Test
     public void testCreateBuffer_success() throws IOException {
         // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), anyString())).thenReturn(mockBuffer);
+        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenReturn(mockBuffer);
 
         // Act
         Buffer result = lambdaCommonHandler.createBuffer(mockBuffer);
@@ -70,7 +71,7 @@ public class LambdaCommonHandlerTest {
     @Test
     public void testCreateBuffer_throwsException() throws IOException {
         // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), anyString())).thenThrow(new IOException("Test Exception"));
+        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenThrow(new IOException("Test Exception"));
 
         // Act & Assert
         try {

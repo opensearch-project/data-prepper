@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -39,9 +40,9 @@ class InMemoryBufferTest {
     @Mock
     private LambdaAsyncClient lambdaAsyncClient;
 
-    private final String functionName = "testFunction";
+    private final InvocationType invocationType = InvocationType.REQUEST_RESPONSE;
 
-    private final String invocationType = "Event";
+    private final String functionName = "testFunction";
 
     private InMemoryBuffer inMemoryBuffer;
 

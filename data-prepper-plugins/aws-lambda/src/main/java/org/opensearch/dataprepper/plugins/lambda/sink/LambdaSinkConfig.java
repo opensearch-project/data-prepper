@@ -13,9 +13,9 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_RETRIES;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_SDK_TIMEOUT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
+import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.DEFAULT_CONNECTION_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.STS_REGION;
 import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.STS_ROLE_ARN;
 
@@ -43,7 +43,7 @@ public class LambdaSinkConfig {
 
     @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
     @JsonProperty("invocation_type")
-    private String invocationType = EVENT;
+    private String invocationType;
 
     @JsonProperty("dlq")
     private PluginModel dlq;
@@ -56,10 +56,10 @@ public class LambdaSinkConfig {
     private String whenCondition;
 
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
-    @JsonProperty("sdk_timeout")
-    private Duration sdkTimeout = DEFAULT_SDK_TIMEOUT;
+    @JsonProperty("connection_timeout")
+    private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
 
-    public Duration getSdkTimeout(){return sdkTimeout;}
+    public Duration getConnectionTimeout(){return connectionTimeout;}
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
@@ -95,7 +95,9 @@ public class LambdaSinkConfig {
         return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
 
-    public String getInvocationType(){return invocationType;}
+    public InvocationType getInvocationType() {
+        return InvocationType.fromStringDefaultsToEvent(invocationType);
+    }
 
     public String getWhenCondition() {
         return whenCondition;
