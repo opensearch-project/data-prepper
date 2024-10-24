@@ -35,6 +35,7 @@ public class ObjectMapperConfiguration {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(Enum.class, new EnumDeserializer());
+
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
 
         return new ObjectMapper()
