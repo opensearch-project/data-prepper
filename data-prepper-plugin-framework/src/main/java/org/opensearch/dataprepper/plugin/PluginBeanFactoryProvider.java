@@ -5,13 +5,16 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Provider;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -25,7 +28,7 @@ import java.util.Objects;
  * <p><i>publicContext</i> is the root {@link ApplicationContext}</p>
  */
 @Named
-class PluginBeanFactoryProvider implements Provider<BeanFactory> {
+class PluginBeanFactoryProvider {
     private final GenericApplicationContext sharedPluginApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
 
@@ -57,8 +60,21 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
      * instead, a new isolated {@link ApplicationContext} should be created.
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
-    public BeanFactory get() {
-        final GenericApplicationContext isolatedPluginApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext);
-        return isolatedPluginApplicationContext.getBeanFactory();
+    public BeanFactory createPluginSpecificContext(Class[] markersToScan, Object configuration) {
+        AnnotationConfigApplicationContext isolatedPluginApplicationContext = new AnnotationConfigApplicationContext();
+        DefaultListableBeanFactory beanFactory = (DefaultListableBeanFactory) isolatedPluginApplicationContext.getBeanFactory();
+        if(markersToScan !=null && markersToScan.length>0) {
+            if(configuration !=null && !(configuration instanceof PluginSetting)) {
+                beanFactory.registerSingleton(configuration.getClass().getName(), configuration);
+            }
+            // If packages to scan is provided in this plugin annotation, which indicates
+            // that this plugin is interested in using Dependency Injection isolated for its module
+            Arrays.stream(markersToScan)
+                    .map(Class::getPackageName)
+                    .forEach(isolatedPluginApplicationContext::scan);
+            isolatedPluginApplicationContext.refresh();
+        }
+        isolatedPluginApplicationContext.setParent(sharedPluginApplicationContext);
+        return beanFactory;
     }
 }

@@ -245,6 +245,10 @@ subprojects {
         javaLauncher = javaToolchains.launcherFor {
             languageVersion = JavaLanguageVersion.current()
         }
+        testLogging {
+            exceptionFormat "full"
+            showStackTraces false
+        }
         reports {
             junitXml.required
             html.required
@@ -265,7 +269,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('software.amazon.awssdk:bom:2.21.23')
+        implementation platform('software.amazon.awssdk:bom:2.25.11')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
     }
 }

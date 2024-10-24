@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import org.opensearch.dataprepper.plugins.geoip.GeoIPField;
@@ -15,6 +17,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 
+@JsonPropertyOrder
+@JsonClassDescription("Defines a single entry for geolocation.")
 public class EntryConfig {
     static final String DEFAULT_TARGET = "geo";
 
@@ -23,15 +27,17 @@ public class EntryConfig {
     @NotEmpty
     private String source;
 
-    @JsonPropertyDescription("The key of the target field in which to save the geolocation data. Default is geo.")
-    @JsonProperty("target")
+    @JsonPropertyDescription("The key of the target field in which to set the geolocation data.")
+    @JsonProperty(value = "target", defaultValue = DEFAULT_TARGET)
     private String target = DEFAULT_TARGET;
 
-    @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases.")
+    @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases. " +
+            "For example, if you wish to only obtain the actual location, you can specify <code>location</code>.")
     @JsonProperty("include_fields")
     private List<String> includeFields;
 
-    @JsonPropertyDescription("The list of geolocation fields to exclude from the target object.")
+    @JsonPropertyDescription("The list of geolocation fields to exclude from the target object. " +
+            "For example, you can exclude ASN fields by including <code>asn</code>, <code>asn_organization</code>, <code>network</code>, <code>ip</code>.")
     @JsonProperty("exclude_fields")
     private List<String> excludeFields;
 

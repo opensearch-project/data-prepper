@@ -1,0 +1,673 @@
+"<<pipeline-name>>":
+  workers: "<<$.<<pipeline-name>>.workers>>"
+  delay: "<<$.<<pipeline-name>>.delay>>"
+  buffer: "<<$.<<pipeline-name>>.buffer>>"
+  source: "<<$.<<pipeline-name>>.source>>"
+  sink: "<<$.<<pipeline-name>>.sink>>"
+  processor:
+    - date:
+        match:
+          - key: Start_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: time_dt
+        output_format: 'yyyy-MM-dd''T''HH:mm:ss'
+    - date:
+        match:
+          - key: Start_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: time
+        output_format: epoch_second
+    - date:
+        match:
+          - key: Generated_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: metadata/processed_time
+        output_format: epoch_second
+    - date:
+        match:
+          - key: Generated_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: metadata/processed_time_dt
+        output_format: 'yyyy-MM-dd''T''HH:mm:ss'
+    - date:
+        match:
+          - key: Receive_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: metadata/logged_time
+        output_format: epoch_second
+    - date:
+        match:
+          - key: Receive_Time
+            patterns:
+              - 'yyyy-MM-dd''T''HH:mm:ss'
+              - 'yyyy-MM-dd''T''HH:mm:ss''Z'''
+        destination: metadata/logged_time_dt
+        output_format: 'yyyy-MM-dd''T''HH:mm:ss'
+    - convert_type:
+        key: time
+        type: integer
+    - convert_type:
+        key: metadata/processed_time
+        type: integer
+    - add_entries:
+        entries:
+          - key: category_uid
+            value: 4
+          - key: category_name
+            value: Network Activity
+          - key: class_uid
+            value: 4001
+          - key: class_name
+            value: Network Activity
+          - key: metadata/product/name
+            value: Palo Alto Networks Next-Generation Firewall
+          - key: metadata/product/vendor_name
+            value: Palo Alto Networks
+          - key: metadata/profiles
+            value:
+              - security_control
+              - network_proxy
+              - host
+              - datetime
+          - key: metadata/version
+            value: 1.1.0
+          - key: severity_id
+            value: 1
+          - key: severity
+            value: Informational
+          - key: device/type_id
+            value: 9
+          - key: connection_info/direction_id
+            value: 1
+    - add_entries:
+        entries:
+          - key: observables_0/name
+            value: src_endpoint.ip
+          - key: observables_0/type
+            value: IP Address
+          - key: observables_0/type_id
+            value: '2'
+          - key: observables_0/value
+            format: '${Source_Address}'
+    - add_entries:
+        entries:
+          - key: observables_1/name
+            value: dst_endpoint.ip
+          - key: observables_1/type
+            value: IP Address
+          - key: observables_1/type_id
+            value: '2'
+          - key: observables_1/value
+            format: '${Destination_Address}'
+    - add_entries:
+        entries:
+          - key: observables_2/name
+            value: firewall_rule.uid
+          - key: observables_2/type
+            value: Resource UID
+          - key: observables_2/type_id
+            value: '10'
+          - key: observables_2/value
+            format: '${Rule_UUID}'
+    - convert_type:
+        key: observables_0/type_id
+        type: integer
+    - convert_type:
+        key: observables_1/type_id
+        type: integer
+    - convert_type:
+        key: observables_2/type_id
+        type: integer
+    - add_entries:
+        entries:
+          - key: observables
+            value: []
+          - key: observables
+            value_expression: /observables_0
+            append_if_key_exists: true
+    - add_entries:
+        entries:
+          - key: observables
+            value_expression: /observables_1
+            append_if_key_exists: true
+    - add_entries:
+        entries:
+          - key: observables
+            value_expression: /observables_2
+            append_if_key_exists: true
+    - rename_keys:
+        entries:
+          - from_key: Source_Address
+            to_key: src_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Port
+            to_key: src_endpoint/port
+            overwrite_if_to_key_exists: true
+          - from_key: Virtual_System
+            to_key: src_endpoint/instance_uid
+            overwrite_if_to_key_exists: true
+          - from_key: Virtual_System_Name
+            to_key: src_endpoint/name
+            overwrite_if_to_key_exists: true
+          - from_key: NAT_Source_IP
+            to_key: src_endpoint/proxy_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: NAT_Source_Port
+            to_key: src_endpoint/proxy_endpoint/port
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Zone
+            to_key: src_endpoint/zone
+            overwrite_if_to_key_exists: true
+          - from_key: Inbound_Interface
+            to_key: src_endpoint/interface_uid
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Location
+            to_key: src_endpoint/location/country
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_Category
+            to_key: src_endpoint/type
+            overwrite_if_to_key_exists: true
+          - from_key: Source_MAC_Address
+            to_key: src_endpoint/mac
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Hostname
+            to_key: src_endpoint/hostname
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_OS_Version
+            to_key: src_endpoint/os/version
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_OS_Family
+            to_key: src_endpoint/os/type
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_Model
+            to_key: src_endpoint/device_hw_info/cpu_type
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_Profile
+            to_key: unmapped/Source_Device_Profile
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Device_Vendor
+            to_key: src_endpoint/device_hw_info/bios_manufacturer
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_Category
+            to_key: dst_endpoint/type
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_MAC_Address
+            to_key: dst_endpoint/mac
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Hostname
+            to_key: dst_endpoint/hostname
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_OS_Version
+            to_key: dst_endpoint/os/version
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_OS_Family
+            to_key: dst_endpoint/os/type
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_Model
+            to_key: dst_endpoint/device_hw_info/cpu_type
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_Vendor
+            to_key: dst_endpoint/device_hw_info/bios_manufacturer
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Device_Profile
+            to_key: unmapped/Destination_Device_Profile
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Location
+            to_key: dst_endpoint/location/country
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Zone
+            to_key: dst_endpoint/zone
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Address
+            to_key: dst_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Port
+            to_key: dst_endpoint/port
+            overwrite_if_to_key_exists: true
+          - from_key: NAT_Destination_IP
+            to_key: dst_endpoint/proxy_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: NAT_Destination_Port
+            to_key: dst_endpoint/proxy_endpoint/port
+            overwrite_if_to_key_exists: true
+          - from_key: Outbound_Interface
+            to_key: dst_endpoint/interface_uid
+            overwrite_if_to_key_exists: true
+          - from_key: XFF_Address
+            to_key: proxy_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Subcategory
+            to_key: unmapped/Application_Risk
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Category
+            to_key: unmapped/Application_Category
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Technology
+            to_key: unmapped/Application_Technology
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Risk
+            to_key: unmapped/Application_Risk
+            overwrite_if_to_key_exists: true
+          - from_key: XFF_Address
+            to_key: proxy_endpoint/ip
+            overwrite_if_to_key_exists: true
+          - from_key: Session_ID
+            to_key: connection_info/session/uid
+            overwrite_if_to_key_exists: true
+          - from_key: Repeat_Count
+            to_key: connection_info/session/count
+            overwrite_if_to_key_exists: true
+          - from_key: Flags
+            to_key: connection_info/tcp_flags
+            overwrite_if_to_key_exists: true
+          - from_key: Protocol
+            to_key: connection_info/protocol_name
+            overwrite_if_to_key_exists: true
+          - from_key: Serial_Number
+            to_key: device/hw_info/serial_number
+            overwrite_if_to_key_exists: true
+          - from_key: Device_Name
+            to_key: device/hostname
+            overwrite_if_to_key_exists: true
+          - from_key: Host_ID
+            to_key: device/uid
+            overwrite_if_to_key_exists: true
+          - from_key: Container_ID
+            to_key: device/container/uid
+            overwrite_if_to_key_exists: true
+          - from_key: POD_Namespace
+            to_key: unmapped/POD_Namespace
+            overwrite_if_to_key_exists: true
+          - from_key: POD_Name
+            to_key: device/container/pod_uuid
+            overwrite_if_to_key_exists: true
+          - from_key: HTTP2_Connection
+            to_key: unmapped/HTTP2_Connection
+            overwrite_if_to_key_exists: true
+          - from_key: Parent_Session_ID
+            to_key: unmapped/Parent_Session_ID
+            overwrite_if_to_key_exists: true
+          - from_key: Source_VM_UUID
+            to_key: unmapped/Source_VM_UUID
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_VM_UUID
+            to_key: unmapped/Source_VM_UUID
+            overwrite_if_to_key_exists: true
+          - from_key: Device_Group_Hierarchy_Level_1
+            to_key: unmapped/Device_Group_Hierarchy_Level_1
+            overwrite_if_to_key_exists: true
+          - from_key: Device_Group_Hierarchy_Level_2
+            to_key: unmapped/Device_Group_Hierarchy_Level_2
+            overwrite_if_to_key_exists: true
+          - from_key: Device_Group_Hierarchy_Level_3
+            to_key: unmapped/Device_Group_Hierarchy_Level_3
+            overwrite_if_to_key_exists: true
+          - from_key: Device_Group_Hierarchy_Level_4
+            to_key: unmapped/Device_Group_Hierarchy_Level_4
+            overwrite_if_to_key_exists: true
+          - from_key: High_Resolution_Timestamp
+            to_key: unmapped/High_Resolution_Timestamp
+            overwrite_if_to_key_exists: true
+          - from_key: Log_Action
+            to_key: unmapped/Log_Action
+            overwrite_if_to_key_exists: true
+          - from_key: Action_Flags
+            to_key: unmapped/Action_Flags
+            overwrite_if_to_key_exists: true
+          - from_key: Tunnel_ID_IMSI
+            to_key: unmapped/Tunnel_ID_IMSI
+            overwrite_if_to_key_exists: true
+          - from_key: Monitor_Tag_IMEI
+            to_key: unmapped/Monitor_Tag_IMEI
+            overwrite_if_to_key_exists: true
+          - from_key: Tunnel_Type
+            to_key: unmapped/Tunnel_Type
+            overwrite_if_to_key_exists: true
+          - from_key: SCTP_Association_ID
+            to_key: unmapped/SCTP_Association_ID
+            overwrite_if_to_key_exists: true
+          - from_key: App_Flap_Count
+            to_key: unmapped/App_Flap_Count
+            overwrite_if_to_key_exists: true
+          - from_key: Policy_ID
+            to_key: unmapped/Policy_ID
+            overwrite_if_to_key_exists: true
+          - from_key: SD_WAN_Cluster
+            to_key: unmapped/SD_WAN_Cluster
+            overwrite_if_to_key_exists: true
+          - from_key: SD_WAN_Device_Type
+            to_key: unmapped/SD_WAN_Device_Type
+            overwrite_if_to_key_exists: true
+          - from_key: SD_WAN_Cluster_Type
+            to_key: unmapped/SD_WAN_Cluster_Type
+            overwrite_if_to_key_exists: true
+          - from_key: SD_WAN_Site
+            to_key: unmapped/SD_WAN_Site
+            overwrite_if_to_key_exists: true
+          - from_key: Link_Switches
+            to_key: unmapped/Link_Switches
+            overwrite_if_to_key_exists: true
+          - from_key: A_Slice_Service_Type
+            to_key: unmapped/A_Slice_Service_Type
+            overwrite_if_to_key_exists: true
+          - from_key: A_Slice_Differentiator
+            to_key: unmapped/A_Slice_Differentiator
+            overwrite_if_to_key_exists: true
+          - from_key: Source_External_Dynamic_List
+            to_key: unmapped/Source_External_Dynamic_List
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_External_Dynamic_List
+            to_key: unmapped/Destination_External_Dynamic_List
+            overwrite_if_to_key_exists: true
+          - from_key: Source_Dynamic_Address_Group
+            to_key: unmapped/Source_Dynamic_Address_Group
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_Dynamic_Address_Group
+            to_key: unmapped/Destination_Dynamic_Address_Group
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Characteristic
+            to_key: unmapped/Application_Characteristic
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Container
+            to_key: unmapped/Application_Container
+            overwrite_if_to_key_exists: true
+          - from_key: Tunneled_Application
+            to_key: unmapped/Tunneled_Application
+            overwrite_if_to_key_exists: true
+          - from_key: Application_SaaS
+            to_key: unmapped/Application_SaaS
+            overwrite_if_to_key_exists: true
+          - from_key: Application_Sanctioned_State
+            to_key: unmapped/Application_Sanctioned_State
+            overwrite_if_to_key_exists: true
+          - from_key: Offloaded
+            to_key: unmapped/Offloaded
+            overwrite_if_to_key_exists: true
+          - from_key: Session_Owner
+            to_key: unmapped/Session_Owner
+            overwrite_if_to_key_exists: true
+          - from_key: Packets_Sent
+            to_key: traffic/packets_out
+            overwrite_if_to_key_exists: true
+          - from_key: Packets_Received
+            to_key: traffic/packets_in
+            overwrite_if_to_key_exists: true
+          - from_key: Packets
+            to_key: traffic/packets
+            overwrite_if_to_key_exists: true
+          - from_key: Bytes_Sent
+            to_key: traffic/bytes_out
+            overwrite_if_to_key_exists: true
+          - from_key: Bytes_Received
+            to_key: traffic/bytes_in
+            overwrite_if_to_key_exists: true
+          - from_key: Bytes
+            to_key: traffic/bytes
+            overwrite_if_to_key_exists: true
+          - from_key: SCTP_Chunks_Sent
+            to_key: traffic/chunks_out
+            overwrite_if_to_key_exists: true
+          - from_key: SCTP_Chunks_Received
+            to_key: traffic/chunks_in
+            overwrite_if_to_key_exists: true
+          - from_key: SCTP_Chunks
+            to_key: traffic/chunks
+            overwrite_if_to_key_exists: true
+          - from_key: Application
+            to_key: unmapped/Application
+            overwrite_if_to_key_exists: true
+          - from_key: Source_User
+            to_key: actor/user/name
+            overwrite_if_to_key_exists: true
+          - from_key: Destination_User
+            to_key: actor/invoked_by
+            overwrite_if_to_key_exists: true
+          - from_key: Dynamic_User_Group_Name
+            to_key: unmapped/Dynamic_User_Group_Name
+            overwrite_if_to_key_exists: true
+          - from_key: Rule_Name
+            to_key: firewall_rule/name
+            overwrite_if_to_key_exists: true
+          - from_key: Rule_UUID
+            to_key: firewall_rule/uid
+            overwrite_if_to_key_exists: true
+          - from_key: Session_End_Reason
+            to_key: firewall_rule/condition
+            overwrite_if_to_key_exists: true
+          - from_key: Action_Source
+            to_key: firewall_rule/match_location
+            overwrite_if_to_key_exists: true
+          - from_key: Category
+            to_key: unmapped/Category
+            overwrite_if_to_key_exists: true
+          - from_key: Type
+            to_key: metadata/product/feature/name
+            overwrite_if_to_key_exists: true
+          - from_key: Threat_Content_Type
+            to_key: metadata/log_name
+            overwrite_if_to_key_exists: true
+          - from_key: Sequence_Number
+            to_key: metadata/log_version
+            overwrite_if_to_key_exists: true
+          - from_key: Elapsed_Time
+            to_key: unmapped/Elapsed_Time
+            overwrite_if_to_key_exists: true
+          - from_key: Parent_Start_Time
+            to_key: unmapped/Parent_Start_Time
+            overwrite_if_to_key_exists: true
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: activity_id
+                default: 99
+                map:
+                  allow: 1
+                  deny: 5
+                  drop: 2
+                  drop ICMP: 2
+                  reset both: 3
+                  reset client: 3
+                  reset server: 3
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: activity_name
+                default: Other
+                map:
+                  allow: Open
+                  deny: Refuse
+                  drop: Close
+                  drop ICMP: Close
+                  reset both: Reset
+                  reset client: Reset
+                  reset server: Reset
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: action_id
+                default: 0
+                map:
+                  allow: 1
+                  deny: 2
+                  drop: 99
+                  drop ICMP: 99
+                  reset both: 99
+                  reset client: 99
+                  reset server: 99
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: action
+                default: Other
+                map:
+                  allow: Allowed
+                  deny: Denied
+                  drop: Other
+                  drop ICMP: Other
+                  reset both: Other
+                  reset client: Other
+                  reset server: Other
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: type_uid
+                default: 400199
+                map:
+                  allow: 400101
+                  deny: 400105
+                  drop: 400102
+                  drop ICMP: 400102
+                  reset both: 400103
+                  reset client: 400103
+                  reset server: 400103
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: type_name
+                default: 'Network Activity: Unknown'
+                map:
+                  allow: 'Network Activity: Open'
+                  deny: 'Network Activity: Refuse'
+                  drop: 'Network Activity: Close'
+                  drop ICMP: 'Network Activity: Close'
+                  reset both: 'Network Activity: Reset'
+                  reset client: 'Network Activity: Reset'
+                  reset server: 'Network Activity: Reset'
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: status_id
+                default: 0
+                map:
+                  allow: 1
+                  deny: 2
+                  drop: 99
+                  drop ICMP: 99
+                  reset both: 99
+                  reset client: 99
+                  reset server: 99
+    - translate:
+        mappings:
+          - source: Action
+            targets:
+              - target: status
+                default: 0
+                map:
+                  allow: Success
+                  deny: Failure
+                  drop: Other
+                  drop ICMP: Other
+                  reset both: Other
+                  reset client: Other
+                  reset server: Other
+    - rename_keys:
+        entries:
+          - from_key: Action
+            to_key: unmapped/Action
+            overwrite_if_to_key_exists: true
+    - convert_type:
+        key: status_id
+        type: integer
+    - convert_type:
+        key: action_id
+        type: integer
+    - convert_type:
+        key: type_uid
+        type: integer
+    - convert_type:
+        key: activity_id
+        type: integer
+    - convert_type:
+        key: metadata/log_version
+        type: string
+    - convert_type:
+        key: metadata/logged_time
+        type: integer
+    - convert_type:
+        key: connection_info/uid
+        type: string
+    - convert_type:
+        key: connection_info/session/uid
+        type: string
+    - convert_type:
+        key: connection_info/direction_id
+        type: integer
+    - convert_type:
+        key: connection_info/session/count
+        type: integer
+    - convert_type:
+        key: connection_info/tcp_flags
+        type: integer
+    - convert_type:
+        key: dst_endpoint/port
+        type: integer
+    - convert_type:
+        key: dst_endpoint/proxy_endpoint/port
+        type: integer
+    - convert_type:
+        key: src_endpoint/port
+        type: integer
+    - convert_type:
+        key: src_endpoint/proxy_endpoint/port
+        type: integer
+    - convert_type:
+        key: traffic/bytes
+        type: integer
+    - convert_type:
+        key: traffic/bytes_in
+        type: integer
+    - convert_type:
+        key: traffic/bytes_out
+        type: integer
+    - convert_type:
+        key: traffic/packets
+        type: integer
+    - convert_type:
+        key: traffic/packets_in
+        type: integer
+    - convert_type:
+        key: traffic/packets_out
+        type: integer
+    - convert_type:
+        key: traffic/chunks
+        type: integer
+    - convert_type:
+        key: traffic/chunks_in
+        type: integer
+    - convert_type:
+        key: traffic/chunks_out
+        type: integer
+    - delete_entries:
+        with_keys:
+          - s3
+          - message
+          - Generated_Time
+          - Start_Time
+          - Receive_Time
+          - FUTURE_USE_1
+          - FUTURE_USE_2
+          - FUTURE_USE_3
+          - FUTURE_USE_4
+          - FUTURE_USE_5
+          - observables
+          - observables_0
+          - observables_1
+          - observables_2
+

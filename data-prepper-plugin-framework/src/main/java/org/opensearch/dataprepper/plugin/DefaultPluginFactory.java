@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
@@ -115,13 +116,16 @@ public class DefaultPluginFactory implements PluginFactory {
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
+        Class[] markersToScan = pluginAnnotation.packagesToScan();
+        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan, configuration);
+
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPipelineDescription(pluginSetting)
                 .withPluginConfiguration(configuration)
                 .withPluginFactory(this)
                 .withSinkContext(sinkContext)
-                .withBeanFactory(pluginBeanFactoryProvider.get())
+                .withBeanFactory(beanFactory)
                 .withPluginConfigurationObservable(pluginConfigObservable)
                 .withTypeArgumentSuppliers(applicationContextToTypedSuppliers.getArgumentsSuppliers())
                 .build();

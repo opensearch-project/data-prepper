@@ -1,15 +1,10 @@
 package org.opensearch.dataprepper.schemas;
 
-import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
-import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationModule;
-import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationOption;
-import org.opensearch.dataprepper.schemas.module.CustomJacksonModule;
-import org.reflections.Reflections;
-import org.reflections.scanners.Scanners;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
+import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
+import org.opensearch.dataprepper.plugin.PluginProvider;
+import org.opensearch.dataprepper.schemas.module.DataPrepperModules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -19,14 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_ORDER;
-import static com.github.victools.jsonschema.module.jackson.JacksonOption.RESPECT_JSONPROPERTY_REQUIRED;
 
 public class DataPrepperPluginSchemaExecute implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperPluginSchemaExecute.class);
@@ -53,16 +44,9 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
 
     @Override
     public void run() {
-        final List<Module> modules = List.of(
-                new CustomJacksonModule(RESPECT_JSONPROPERTY_REQUIRED, RESPECT_JSONPROPERTY_ORDER),
-                new JakartaValidationModule(JakartaValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
-                        JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
-        );
-        final Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage(DEFAULT_PLUGINS_CLASSPATH))
-                .setScanners(Scanners.TypesAnnotated, Scanners.SubTypes));
+        final PluginProvider pluginProvider = new ClasspathPluginProvider();
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
-                reflections, new JsonSchemaConverter(modules), siteUrl, siteBaseUrl);
+                pluginProvider, new JsonSchemaConverter(DataPrepperModules.dataPrepperModules(), pluginProvider), siteUrl, siteBaseUrl);
         final Class<?> pluginType = pluginConfigsJsonSchemaConverter.pluginTypeNameToPluginType(pluginTypeName);
         final Map<String, String> pluginNameToJsonSchemaMap = pluginConfigsJsonSchemaConverter.convertPluginConfigsIntoJsonSchemas(
                 SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, pluginType);

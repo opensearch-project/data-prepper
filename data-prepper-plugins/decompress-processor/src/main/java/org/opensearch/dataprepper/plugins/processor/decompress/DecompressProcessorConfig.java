@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderE
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `decompress` processor decompresses any Base64-encoded " +
+@JsonClassDescription("The <code>decompress</code> processor decompresses any Base64-encoded " +
         "compressed fields inside of an event.")
 public class DecompressProcessorConfig {
 
@@ -28,18 +28,18 @@ public class DecompressProcessorConfig {
     @NotNull
     private List<String> keys;
 
-    @JsonPropertyDescription("The type of decompression to use for the keys in the event. Only gzip is supported.")
+    @JsonPropertyDescription("The type of decompression to use for the keys in the event. Only <code>gzip</code> is supported.")
     @JsonProperty("type")
     @NotNull
     private DecompressionType decompressionType;
 
-    @JsonPropertyDescription("A conditional expression that determines when the decompress processor will run on certain events.")
-    @JsonProperty("decompress_when")
-    private String decompressWhen;
-
-    @JsonPropertyDescription("A list of strings with which to tag events when the processor fails to decompress the keys inside an event. Defaults to _decompression_failure.")
+    @JsonPropertyDescription("A list of strings with which to tag events when the processor fails to decompress the keys inside an event. Defaults to <code>_decompression_failure</code>.")
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure = List.of("_decompression_failure");
+
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>/is_compressed == true</code>, that determines when the decompress processor will run on certain events.")
+    @JsonProperty("decompress_when")
+    private String decompressWhen;
 
     @JsonIgnore
     private final EncodingType encodingType = EncodingType.BASE64;

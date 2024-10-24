@@ -27,13 +27,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.rds.RdsService.S3_PATH_DELIMITER;
+
 public class LeaderScheduler implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeaderScheduler.class);
     private static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
+    private static final String S3_EXPORT_PREFIX = "rds";
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
+    private final String s3Prefix;
     private final SchemaManager schemaManager;
     private final DbMetadata dbMetadata;
 
@@ -42,10 +46,12 @@ public class LeaderScheduler implements Runnable {
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
+                           final String s3Prefix,
                            final SchemaManager schemaManager,
                            final DbMetadata dbMetadata) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
+        this.s3Prefix = s3Prefix;
         this.schemaManager = schemaManager;
         this.dbMetadata = dbMetadata;
     }
@@ -127,14 +133,19 @@ public class LeaderScheduler implements Runnable {
 
     private void createExportPartition(RdsSourceConfig sourceConfig) {
         ExportProgressState progressState = new ExportProgressState();
-        progressState.setIamRoleArn(sourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn());
+        progressState.setIamRoleArn(sourceConfig.getExport().getIamRoleArn());
         progressState.setBucket(sourceConfig.getS3Bucket());
-        progressState.setPrefix(sourceConfig.getS3Prefix());
+        // This prefix is for data exported from RDS
+        progressState.setPrefix(getS3PrefixForExport(s3Prefix));
         progressState.setTables(sourceConfig.getTableNames());
         progressState.setKmsKeyId(sourceConfig.getExport().getKmsKeyId());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         ExportPartition exportPartition = new ExportPartition(sourceConfig.getDbIdentifier(), sourceConfig.isCluster(), progressState);
         sourceCoordinator.createPartition(exportPartition);
+    }
+
+    private String getS3PrefixForExport(final String givenS3Prefix) {
+        return givenS3Prefix + S3_PATH_DELIMITER + S3_EXPORT_PREFIX;
     }
 
     private Map<String, List<String>> getPrimaryKeyMap() {

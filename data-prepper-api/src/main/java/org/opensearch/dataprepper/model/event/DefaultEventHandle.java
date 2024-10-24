@@ -38,6 +38,14 @@ public class DefaultEventHandle extends AbstractEventHandle implements Serializa
     }
 
     @Override
+    public void addEventHandle(EventHandle eventHandle) {
+        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(eventHandle);
+        }
+    }
+
+    @Override
     public void acquireReference() {
         synchronized (this) {
             AcknowledgementSet acknowledgementSet = getAcknowledgementSet();

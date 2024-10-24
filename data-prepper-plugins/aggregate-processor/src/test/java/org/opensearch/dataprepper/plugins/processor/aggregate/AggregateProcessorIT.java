@@ -297,7 +297,7 @@ public class AggregateProcessorIT {
     void aggregateWithRateLimiterAction() throws InterruptedException {
         final int eventsPerSecond = 500;
         lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
-        lenient().when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP.toString());
+        lenient().when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP);
 
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -367,7 +367,7 @@ public class AggregateProcessorIT {
     @RepeatedTest(value = 2)
     void aggregateWithCountAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -404,7 +404,7 @@ public class AggregateProcessorIT {
     @RepeatedTest(value = 2)
     void aggregateWithCountAggregateActionWithCondition() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -454,7 +454,7 @@ public class AggregateProcessorIT {
         String tag = UUID.randomUUID().toString();
         when(aggregateProcessorConfig.getAggregatedEventsTag()).thenReturn(tag);
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -496,7 +496,7 @@ public class AggregateProcessorIT {
     void aggregateWithHistogramAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
 
         HistogramAggregateActionConfig histogramAggregateActionConfig = new HistogramAggregateActionConfig();
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         final String testKey = RandomStringUtils.randomAlphabetic(5);
         setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(4)+"_";

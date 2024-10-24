@@ -15,7 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `select_entries` processor selects entries from a Data Prepper event.")
+@JsonClassDescription("The <code>select_entries</code> processor selects entries from an event.")
 public class SelectEntriesProcessorConfig {
     @NotEmpty
     @NotNull
@@ -24,9 +24,9 @@ public class SelectEntriesProcessorConfig {
     private List<String> includeKeys;
 
     @JsonProperty("select_when")
-    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-            "such as `/some-key == \"test\"'`, that will be evaluated to determine whether the processor will be " +
-            "run on the event. Default is `null`. All events will be processed unless otherwise stated.")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
+            "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
+            "run on the event. Default is <code>null</code>. All events will be processed unless otherwise stated.")
     private String selectWhen;
 
     public List<String> getIncludeKeys() {

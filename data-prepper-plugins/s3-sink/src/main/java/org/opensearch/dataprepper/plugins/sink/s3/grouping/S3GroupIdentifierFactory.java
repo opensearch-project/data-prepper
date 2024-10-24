@@ -70,6 +70,6 @@ public class S3GroupIdentifierFactory {
         }
 
 
-        return new S3GroupIdentifier(groupIdentificationHash, fullObjectKey, s3SinkConfig.getPredefinedObjectMetadata(), fullBucketName);
+        return new S3GroupIdentifier(groupIdentificationHash, fullObjectKey, s3SinkConfig.getObjectMetadataConfig(), fullBucketName);
     }
 }

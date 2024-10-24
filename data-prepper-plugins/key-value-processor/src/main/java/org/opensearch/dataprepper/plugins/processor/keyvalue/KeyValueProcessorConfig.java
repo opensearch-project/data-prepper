@@ -13,14 +13,23 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @JsonPropertyOrder
-@JsonClassDescription("You can use the `key_value` processor to parse the specified field into key-value pairs.")
+@JsonClassDescription("You can use the <code>key_value</code> processor to create structured data by parsing key-value pairs from strings.")
 public class KeyValueProcessorConfig {
+    static final String VALUE_GROUPING_KEY = "value_grouping";
+    static final String FIELD_DELIMITER_REGEX_KEY = "field_delimiter_regex";
+    static final String FIELD_SPLIT_CHARACTERS_KEY = "field_split_characters";
+    static final String VALUE_SPLIT_CHARACTERS_KEY = "value_split_characters";
+    static final String KEY_VALUE_DELIMITER_REGEX_KEY = "key_value_delimiter_regex";
+    static final String REMOVE_BRACKETS_KEY = "remove_brackets";
+    static final String SKIP_DUPLICATE_VALUES_KEY = "skip_duplicate_values";
+    static final String WHITESPACE_KEY = "whitespace";
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
@@ -29,176 +38,194 @@ public class KeyValueProcessorConfig {
     static final Map<String, Object> DEFAULT_DEFAULT_VALUES = Map.of();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
-    static final String DEFAULT_PREFIX = "";
-    static final String DEFAULT_DELETE_KEY_REGEX = "";
-    static final String DEFAULT_DELETE_VALUE_REGEX = "";
-    static final String DEFAULT_TRANSFORM_KEY = "";
-    static final String DEFAULT_WHITESPACE = "lenient";
-    static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
-    static final boolean DEFAULT_REMOVE_BRACKETS = false;
-    static final boolean DEFAULT_VALUE_GROUPING = false;
-    static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
-    @JsonPropertyDescription("The message field to be parsed. Optional. Default value is `message`.")
+    @JsonProperty(defaultValue = DEFAULT_SOURCE)
+    @JsonPropertyDescription("The source field to parse for key-value pairs. The default value is <code>message</code>.")
     private String source = DEFAULT_SOURCE;
 
-    @JsonPropertyDescription("The destination field for the parsed source. The parsed source overwrites the " +
-            "preexisting data for that key. Optional. If `destination` is set to `null`, the parsed fields will be " +
-            "written to the root of the event. Default value is `parsed_message`.")
+    @JsonProperty(defaultValue = DEFAULT_DESTINATION)
+    @JsonPropertyDescription("The destination field for the structured data. The destination will be a structured map with the key value pairs extracted from the source. " +
+            "If <code>destination</code> is set to <code>null</code>, the parsed fields will be written to the root of the event. " +
+            "The default value is <code>parsed_message</code>.")
     private String destination = DEFAULT_DESTINATION;
 
-    @JsonProperty("field_delimiter_regex")
-    @JsonPropertyDescription("A regular expression specifying the delimiter that separates key-value pairs. " +
-            "Special regular expression characters such as `[` and `]` must be escaped with `\\\\`. " +
-            "Cannot be defined at the same time as `field_split_characters`. Optional. " +
-            "If this option is not defined, `field_split_characters` is used.")
-    private String fieldDelimiterRegex;
-
-    @JsonProperty("field_split_characters")
+    @JsonProperty(value = FIELD_SPLIT_CHARACTERS_KEY, defaultValue = DEFAULT_FIELD_SPLIT_CHARACTERS)
     @JsonPropertyDescription("A string of characters specifying the delimiter that separates key-value pairs. " +
-            "Special regular expression characters such as `[` and `]` must be escaped with `\\\\`. " +
-            "Cannot be defined at the same time as `field_delimiter_regex`. Optional. Default value is `&`.")
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>field_delimiter_regex</code>. " +
+            "The default value is <code>&amp;</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = FIELD_DELIMITER_REGEX_KEY, allowedValues = {"null"}),
+    })
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
-    @JsonProperty("include_keys")
-    @JsonPropertyDescription("An array specifying the keys that should be added for parsing. " +
+    @JsonProperty(FIELD_DELIMITER_REGEX_KEY)
+    @JsonPropertyDescription("A regular expression specifying the delimiter that separates key-value pairs. " +
+            "For example, to split on multiple <code>&amp;</code> characters use <code>&amp;+</code>. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>field_split_characters</code>. " +
+            "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>field_split_characters</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = VALUE_GROUPING_KEY, allowedValues = {"false"}),
+            @AlsoRequired.Required(name = FIELD_SPLIT_CHARACTERS_KEY, allowedValues = {"null"})
+    })
+    private String fieldDelimiterRegex;
+
+    @JsonProperty(value = VALUE_SPLIT_CHARACTERS_KEY, defaultValue = DEFAULT_VALUE_SPLIT_CHARACTERS)
+    @JsonPropertyDescription("A string of characters specifying the delimiter that separates keys from their values within a key-value pair. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>key_value_delimiter_regex</code>. " +
+            "The default value is <code>=</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = KEY_VALUE_DELIMITER_REGEX_KEY, allowedValues = {"null"})
+    })
+    private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
+
+    @JsonProperty(KEY_VALUE_DELIMITER_REGEX_KEY)
+    @JsonPropertyDescription("A regular expression specifying the delimiter that separates keys from their values within a key-value pair. " +
+            "For example, to split on multiple <code>=</code> characters use <code>=+</code>. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "This field cannot be defined along with <code>value_split_characters</code>. " +
+            "If this option is not defined, the <code>key_value</code> processor will parse the source using <code>value_split_characters</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = VALUE_SPLIT_CHARACTERS_KEY, allowedValues = {"null"})
+    })
+    private String keyValueDelimiterRegex;
+
+    @JsonProperty(value = "default_values", defaultValue = "{}")
+    @JsonPropertyDescription("A map specifying the default keys and their values that should be added " +
+            "to the event in case these keys do not exist in the source field being parsed. " +
+            "If the key was parsed from the source field that value will remain and the default value is not used. " +
+            "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
+    @NotNull
+    private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
+
+    @JsonProperty("non_match_value")
+    @JsonPropertyDescription("Configures a value to use when the processor cannot split a key-value pair. " +
+            "The value specified in this configuration is the value used in <code>destination</code> map. " +
+            "The default behavior is to drop the key-value pair.")
+    private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
+
+    @JsonProperty(value = "include_keys", defaultValue = "[]")
+    @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
-    @JsonProperty("exclude_keys")
-    @JsonPropertyDescription("An array specifying the parsed keys that should not be added to the event. " +
+    @JsonProperty(value = "exclude_keys", defaultValue = "[]")
+    @JsonPropertyDescription("An array specifying the parsed keys that should be excluded from the destination field. " +
             "By default, no keys will be excluded.")
     @NotNull
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
-    @JsonProperty("default_values")
-    @JsonPropertyDescription("A map specifying the default keys and their values that should be added " +
-            "to the event in case these keys do not exist in the source field being parsed. " +
-            "If the default key already exists in the message, the value is not changed. " +
-            "The `include_keys` filter will be applied to the message before `default_values`.")
-    @NotNull
-    private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
-
-    @JsonProperty("key_value_delimiter_regex")
-    @JsonPropertyDescription("A regular expression specifying the delimiter that separates the key and value " +
-            "within a key-value pair. Special regular expression characters such as `[` and `]` must be escaped with " +
-            "`\\\\`. This option cannot be defined at the same time as `value_split_characters`. Optional. " +
-            "If this option is not defined, `value_split_characters` is used.")
-    private String keyValueDelimiterRegex;
-
-    @JsonProperty("value_split_characters")
-    @JsonPropertyDescription("A string of characters specifying the delimiter that separates the key and value within " +
-            "a key-value pair. Special regular expression characters such as `[` and `]` must be escaped with `\\\\`. " +
-            "Cannot be defined at the same time as `key_value_delimiter_regex`. Optional. Default value is `=`.")
-    private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
-
-    @JsonProperty("non_match_value")
-    @JsonPropertyDescription("When a key-value pair cannot be successfully split, the key-value pair is " +
-            "placed in the `key` field, and the specified value is placed in the `value` field. " +
-            "Optional. Default value is `null`.")
-    private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
-
-    @JsonPropertyDescription("A prefix to append before all keys. Optional. Default value is an empty string.")
-    @NotNull
-    private String prefix = DEFAULT_PREFIX;
+    @JsonPropertyDescription("A prefix to append before all keys. By default no prefix is added.")
+    private String prefix = null;
 
     @JsonProperty("delete_key_regex")
-    @JsonPropertyDescription("A regular expression specifying the characters to delete from the key. " +
-            "Special regular expression characters such as `[` and `]` must be escaped with `\\\\`. Cannot be an " +
-            "empty string. Optional. No default value.")
-    @NotNull
-    private String deleteKeyRegex = DEFAULT_DELETE_KEY_REGEX;
+    @JsonPropertyDescription("A regular expression specifying characters to delete from the key. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "Cannot be an empty string. " +
+            "By default, no characters are deleted from the key.")
+    private String deleteKeyRegex;
 
     @JsonProperty("delete_value_regex")
-    @JsonPropertyDescription("A regular expression specifying the characters to delete from the value. " +
-            "Special regular expression characters such as `[` and `]` must be escaped with `\\\\`. " +
-            "Cannot be an empty string. Optional. No default value.")
-    @NotNull
-    private String deleteValueRegex = DEFAULT_DELETE_VALUE_REGEX;
+    @JsonPropertyDescription("A regular expression specifying characters to delete from the value. " +
+            "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
+            "Cannot be an empty string. " +
+            "By default, no characters are deleted from the value.")
+    private String deleteValueRegex;
 
-    @JsonProperty("transform_key")
-    @JsonPropertyDescription("When to lowercase, uppercase, or capitalize keys.")
-    @NotNull
-    private String transformKey = DEFAULT_TRANSFORM_KEY;
+    @JsonProperty(value = "transform_key", defaultValue = "none")
+    @JsonPropertyDescription("Allows transforming the key's name such as making the name all lowercase.")
+    private TransformOption transformKey = TransformOption.NONE;
 
-    @JsonProperty("whitespace")
+    @JsonProperty(value = WHITESPACE_KEY, defaultValue = "lenient")
     @JsonPropertyDescription("Specifies whether to be lenient or strict with the acceptance of " +
-            "unnecessary white space surrounding the configured value-split sequence. Default is `lenient`.")
+            "unnecessary white space surrounding the configured value-split sequence. " +
+            "In this case, strict means that whitespace is trimmed and lenient means it is retained in the key name and in the value. " +
+            "Default is <code>lenient</code>.")
     @NotNull
-    private String whitespace = DEFAULT_WHITESPACE;
+    private WhitespaceOption whitespace = WhitespaceOption.LENIENT;
 
-    @JsonProperty("skip_duplicate_values")
-    @JsonPropertyDescription("A Boolean option for removing duplicate key-value pairs. When set to `true`, " +
-            "only one unique key-value pair will be preserved. Default is `false`.")
+    @JsonProperty(value = SKIP_DUPLICATE_VALUES_KEY, defaultValue = "false")
+    @JsonPropertyDescription("A Boolean option for removing duplicate key-value pairs. When set to <code>true</code>, " +
+            "only one unique key-value pair will be preserved. Default is <code>false</code>.")
     @NotNull
-    private boolean skipDuplicateValues = DEFAULT_SKIP_DUPLICATE_VALUES;
+    private boolean skipDuplicateValues = false;
 
-    @JsonProperty("remove_brackets")
-    @JsonPropertyDescription("Specifies whether to treat square brackets, angle brackets, and parentheses " +
-            "as value “wrappers” that should be removed from the value. Default is `false`.")
-    @NotNull
-    private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
+    @JsonProperty(value = REMOVE_BRACKETS_KEY, defaultValue = "false")
+    @JsonPropertyDescription("Specifies whether to treat certain grouping characters as wrapping text that should be removed from values." +
+            "When set to <code>true</code>, the following grouping characters will be removed: square brackets, angle brackets, and parentheses. " +
+            "The default configuration is <code>false</code> which retains those grouping characters.")
+    private boolean removeBrackets;
 
-    @JsonProperty("value_grouping")
-    @JsonPropertyDescription("Specifies whether to group values using predefined value grouping delimiters: " +
-            "`{...}`, `[...]`, `<...>`, `(...)`, `\"...\"`, `'...'`, `http://... (space)`, and `https:// (space)`. " +
+    @JsonProperty(value = VALUE_GROUPING_KEY, defaultValue = "false")
+    @JsonPropertyDescription("Specifies whether to group values using predefined grouping delimiters. " +
             "If this flag is enabled, then the content between the delimiters is considered to be one entity and " +
-            "is not parsed for key-value pairs. Default is `false`. If `value_grouping` is `true`, then " +
-            "`{\"key1=[a=b,c=d]&key2=value2\"}` parses to `{\"key1\": \"[a=b,c=d]\", \"key2\": \"value2\"}`.")
-    private boolean valueGrouping = DEFAULT_VALUE_GROUPING;
+            "they are not parsed as key-value pairs. The following characters are used a group delimiters: " +
+            "<code>{...}</code>, <code>[...]</code>, <code>&lt;...&gt;</code>, <code>(...)</code>, <code>\"...\"</code>, <code>'...'</code>, <code>http://... (space)</code>, and <code>https:// (space)</code>. " +
+            "Default is <code>false</code>. For example, if <code>value_grouping</code> is <code>true</code>, then " +
+            "<code>{\"key1=[a=b,c=d]&amp;key2=value2\"}</code> parses to <code>{\"key1\": \"[a=b,c=d]\", \"key2\": \"value2\"}</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = FIELD_DELIMITER_REGEX_KEY, allowedValues = {"null"})
+    })
+    private boolean valueGrouping = false;
 
-    @JsonProperty("recursive")
+    @JsonProperty(value = "recursive", defaultValue = "false")
     @JsonPropertyDescription("Specifies whether to recursively obtain additional key-value pairs from values. " +
-            "The extra key-value pairs will be stored as sub-keys of the root key. Default is `false`. " +
+            "The extra key-value pairs will be stored as nested objects within the destination object. Default is <code>false</code>. " +
             "The levels of recursive parsing must be defined by different brackets for each level: " +
-            "`[]`, `()`, and `<>`, in this order. Any other configurations specified will only be applied " +
-            "to the outmost keys.\n" +
-            "When `recursive` is `true`:\n" +
-            "`remove_brackets` cannot also be `true`;\n" +
-            "`skip_duplicate_values` will always be `true`;\n" +
-            "`whitespace` will always be `\"strict\"`.")
-    @NotNull
-    private boolean recursive = DEFAULT_RECURSIVE;
-
-    @JsonProperty("tags_on_failure")
-    @JsonPropertyDescription("When a `kv` operation causes a runtime exception within the processor, " +
-            "the operation is safely stopped without crashing the processor, and the event is tagged " +
-            "with the provided tags.")
-    private List<String> tagsOnFailure;
-
-    @JsonProperty("overwrite_if_destination_exists")
+            "<code>[]</code>, <code>()</code>, and <code>&lt;&gt;</code>, in this order. Any other configurations specified will only be applied " +
+            "to the outermost keys.\n" +
+            "When <code>recursive</code> is <code>true</code>:\n" +
+            "<code>remove_brackets</code> cannot also be <code>true</code>;\n" +
+            "<code>skip_duplicate_values</code> will always be <code>true</code>;\n" +
+            "<code>whitespace</code> will always be <code>\"strict\"</code>.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = REMOVE_BRACKETS_KEY, allowedValues = {"false"}),
+            @AlsoRequired.Required(name = SKIP_DUPLICATE_VALUES_KEY, allowedValues = {"true"}),
+            @AlsoRequired.Required(name = WHITESPACE_KEY, allowedValues = {"strict"})
+    })
+    private boolean recursive = false;
+    
+    @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
     @JsonPropertyDescription("Specifies whether to overwrite existing fields if there are key conflicts " +
-            "when writing parsed fields to the event. Default is `true`.")
+            "when writing parsed fields to the event. Default is <code>true</code>.")
     private boolean overwriteIfDestinationExists = true;
 
-    @JsonProperty("drop_keys_with_no_value")
-    @JsonPropertyDescription("Specifies whether keys should be dropped if they have a null value. Default is `false`. " +
-            "If `drop_keys_with_no_value` is set to `true`, " +
-            "then `{\"key1=value1&key2\"}` parses to `{\"key1\": \"value1\"}`.")
+    @JsonProperty(value = "drop_keys_with_no_value", defaultValue = "false")
+    @JsonPropertyDescription("Specifies whether keys should be dropped if they have a null value. Default is <code>false</code>. " +
+            "For example, if <code>drop_keys_with_no_value</code> is set to <code>true</code>, " +
+            "then <code>{\"key1=value1&amp;key2\"}</code> parses to <code>{\"key1\": \"value1\"}</code>.")
     private boolean dropKeysWithNoValue = false;
 
-    @JsonProperty("key_value_when")
-    @JsonPropertyDescription("Allows you to specify a Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), " +
-            "such as `/some-key == \"test\"`, that will be evaluated to determine whether " +
-            "the processor should be applied to the event.")
-    private String keyValueWhen;
-
-    @JsonProperty("strict_grouping")
+    @JsonProperty(value = "strict_grouping", defaultValue = "false")
     @JsonPropertyDescription("When enabled, groups with unmatched end characters yield errors. " +
             "The event is ignored after the errors are logged. " +
-            "Specifies whether strict grouping should be enabled when the `value_grouping` " +
-            "or `string_literal_character` options are used. Default is `false`.")
+            "Specifies whether strict grouping should be enabled when the <code>value_grouping</code> " +
+            "or <code>string_literal_character</code> options are used. Default is <code>false</code>.")
     private boolean strictGrouping = false;
 
     @JsonProperty("string_literal_character")
-    @JsonPropertyDescription("When this option is used, any text contained within the specified quotation " +
-            "mark character will be ignored and excluded from key-value parsing. " +
-            "Can be set to either a single quotation mark (`'`) or a double quotation mark (`\"`). " +
-            "Default is `null`.")
+    @JsonPropertyDescription("When this option is used, any text contained within the specified literal " +
+            "character will be ignored and excluded from key-value parsing. " +
+            "Can be set to either a single quotation mark (<code>'</code>) or a double quotation mark (<code>\"</code>). " +
+            "Default is <code>null</code>.")
     @Size(min = 0, max = 1, message = "string_literal_character may only have character")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = VALUE_GROUPING_KEY, allowedValues = {"true"})
+    })
     private String stringLiteralCharacter = null;
+
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription("The tags to add to the event metadata if the <code>key_value</code> processor fails to parse the source string.")
+    private List<String> tagsOnFailure;
+
+    @JsonProperty("key_value_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>key_value</code> processor will only run on events when the expression evaluates to true. ")
+    private String keyValueWhen;
 
     @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")
     boolean isValidValueGroupingAndFieldDelimiterRegex() {
@@ -284,11 +311,11 @@ public class KeyValueProcessorConfig {
         return deleteValueRegex;
     }
 
-    public String getTransformKey() {
+    public TransformOption getTransformKey() {
         return transformKey;
     }
 
-    public String getWhitespace() {
+    public WhitespaceOption getWhitespace() {
         return whitespace;
     }
 

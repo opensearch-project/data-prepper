@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.processor.parse.AbstractParseProcessor
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -43,7 +43,7 @@ public class ParseXmlProcessor extends AbstractParseProcessor {
     }
 
     @Override
-    protected Optional<HashMap<String, Object>> readValue(final String message, final Event context) {
+    protected Optional<Map<String, Object>> readValue(final String message, final Event context) {
         try {
             return Optional.of(xmlMapper.readValue(message, new TypeReference<>() {}));
         } catch (JsonProcessingException e) {

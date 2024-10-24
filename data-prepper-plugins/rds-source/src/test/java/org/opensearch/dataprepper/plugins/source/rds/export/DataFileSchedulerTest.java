@@ -88,10 +88,12 @@ class DataFileSchedulerTest {
     private AtomicInteger activeExportS3ObjectConsumersGauge;
 
     private Random random;
+    private String s3Prefix;
 
     @BeforeEach
     void setUp() {
         random = new Random();
+        s3Prefix = UUID.randomUUID().toString();
         when(pluginMetrics.counter(EXPORT_S3_OBJECTS_PROCESSED_COUNT)).thenReturn(exportFileSuccessCounter);
         when(pluginMetrics.counter(eq(DataFileScheduler.EXPORT_S3_OBJECTS_ERROR_COUNT))).thenReturn(exportFileErrorCounter);
         when(pluginMetrics.gauge(eq(ACTIVE_EXPORT_S3_OBJECT_CONSUMERS_GAUGE), any(AtomicInteger.class), any()))
@@ -192,6 +194,6 @@ class DataFileSchedulerTest {
     }
 
     private DataFileScheduler createObjectUnderTest() {
-        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
+        return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Prefix, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
     }
 }

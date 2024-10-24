@@ -19,16 +19,16 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `translate` processor transforms values in events into preconfigured values.")
+@JsonClassDescription("The <code>translate</code> processor transforms values in events into preconfigured values.")
 public class TranslateProcessorConfig {
 
     @JsonProperty("file")
-    @JsonPropertyDescription("Points to the file that contains mapping configurations. For more information, see [file](#file).")
+    @JsonPropertyDescription("Points to the file that contains mapping configurations.")
     @Valid
     private FileParameterConfig fileParameterConfig;
 
     @JsonProperty("mappings")
-    @JsonPropertyDescription("Defines inline mappings. For more information, see [mappings](#mappings).")
+    @JsonPropertyDescription("Defines inline mappings.")
     @Valid
     private List<MappingsParameterConfig> mappingsParameterConfigs = new ArrayList<>();
 

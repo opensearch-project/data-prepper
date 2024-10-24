@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import com.github.wnameless.json.flattener.JsonFlattener;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -44,7 +45,9 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
 
         if (config.getFlattenWhen() != null &&
                 (!expressionEvaluator.isValidExpressionStatement(config.getFlattenWhen()))) {
-            throw new InvalidPluginConfigurationException("flatten_when {} is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax");
+            throw new InvalidPluginConfigurationException(
+                    String.format("flatten_when \"%s\" is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                            config.getFlattenWhen()));
         }
     }
 
@@ -87,7 +90,7 @@ public class FlattenProcessor extends AbstractProcessor<Record<Event>, Record<Ev
 
                 updateEvent(recordEvent, flattenedJson);
             } catch (Exception e) {
-                LOG.error("Fail to perform flatten operation", e);
+                LOG.error(NOISY, "Fail to perform flatten operation", e);
                 recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             } finally {
                 // Add temporarily deleted fields back

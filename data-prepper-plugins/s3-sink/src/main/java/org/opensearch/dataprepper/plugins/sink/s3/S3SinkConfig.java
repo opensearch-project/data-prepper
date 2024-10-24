@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AggregateThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.configuration.ClientOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
 
@@ -44,6 +45,15 @@ public class S3SinkConfig {
 
     @JsonProperty("predefined_object_metadata")
     private PredefinedObjectMetadata predefinedObjectMetadata;
+
+    @JsonProperty("object_metadata")
+    private ObjectMetadataConfig objectMetadataConfig;
+
+    @AssertTrue(message = "Only one of object_metadata and predefined_object_metadata can be used.")
+    boolean isValidMetadataConfig() {
+        // One of them or both should be null
+        return (objectMetadataConfig == null || predefinedObjectMetadata == null);
+    }
 
     @AssertTrue(message = "You may not use both bucket and bucket_selector together in one S3 sink.")
     private boolean isValidBucketConfig() {
@@ -95,6 +105,9 @@ public class S3SinkConfig {
     @AwsAccountId
     private String defaultBucketOwner;
 
+    @JsonProperty("client")
+    private ClientOptions clientOptions;
+
     /**
      * Aws Authentication configuration Options.
      * @return aws authentication options.
@@ -138,8 +151,8 @@ public class S3SinkConfig {
         return objectKeyOptions;
     }
 
-    public PredefinedObjectMetadata getPredefinedObjectMetadata() {
-        return predefinedObjectMetadata;
+    public Object getObjectMetadataConfig() {
+        return objectMetadataConfig != null ? objectMetadataConfig : predefinedObjectMetadata;
     }
 
     /**
@@ -194,5 +207,9 @@ public class S3SinkConfig {
 
     public String getDefaultBucketOwner() {
         return defaultBucketOwner;
+    }
+
+    public ClientOptions getClientOptions() {
+        return clientOptions;
     }
 }

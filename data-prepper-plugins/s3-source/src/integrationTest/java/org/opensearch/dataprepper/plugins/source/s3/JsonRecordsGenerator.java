@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +51,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
 
     @Override
     public InputCodec getCodec() {
-        return new JsonInputCodec();
+        return new JsonInputCodec(new JsonInputCodecConfig());
     }
 
     @Override

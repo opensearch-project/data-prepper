@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -19,14 +21,15 @@ import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-
-@DataPrepperPlugin(name = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
+@DataPrepperPlugin(name = "convert_type", deprecatedName = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
 public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(ConvertEntryTypeProcessor.class);
     private final List<String> convertEntryKeys;
@@ -80,7 +83,18 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                     if (keyVal != null) {
                         if (!nullValues.contains(keyVal.toString())) {
                             try {
-                                recordEvent.put(key, converter.convert(keyVal, converterArguments));
+                                if (keyVal instanceof List || keyVal.getClass().isArray()) {
+                                    Stream<Object> inputStream;
+                                    if (keyVal.getClass().isArray()) {
+                                        inputStream = Arrays.stream((Object[])keyVal);
+                                    } else {
+                                        inputStream = ((List<Object>)keyVal).stream();
+                                    }
+                                    List<?> replacementList = inputStream.map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList());
+                                    recordEvent.put(key, replacementList);
+                                } else {
+                                    recordEvent.put(key, converter.convert(keyVal, converterArguments));
+                                }
                             } catch (final RuntimeException e) {
                                 LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
                                 recordEvent.getMetadata().addTags(tagsOnFailure);
@@ -91,7 +105,13 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                     }
                 }
             } catch (final Exception e) {
-                LOG.error(EVENT, "There was an exception while processing Event [{}]", recordEvent, e);
+                LOG.atError()
+                        .addMarker(EVENT)
+                        .addMarker(NOISY)
+                        .setMessage("There was an exception while processing Event [{}]")
+                        .addArgument(recordEvent)
+                        .setCause(e)
+                        .log();
                 recordEvent.getMetadata().addTags(tagsOnFailure);
             }
         }

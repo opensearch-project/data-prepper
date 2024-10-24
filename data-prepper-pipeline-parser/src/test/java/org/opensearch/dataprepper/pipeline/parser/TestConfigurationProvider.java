@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.pipeline.parser;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
@@ -18,6 +16,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TestConfigurationProvider {
     public static final String TEST_PIPELINE_NAME = "test-pipeline-1";

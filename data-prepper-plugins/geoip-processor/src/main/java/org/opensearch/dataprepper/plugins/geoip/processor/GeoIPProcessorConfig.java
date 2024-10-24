@@ -19,7 +19,7 @@ import java.util.List;
  * An implementation class of GeoIP Processor configuration
  */
 @JsonPropertyOrder
-@JsonClassDescription("The `geoip` processor enriches events with geographic information extracted from IP addresses " +
+@JsonClassDescription("The <code>geoip</code> processor enriches events with geographic information extracted from IP addresses " +
         "contained in the events.")
 public class GeoIPProcessorConfig {
 
@@ -27,25 +27,24 @@ public class GeoIPProcessorConfig {
     @NotNull
     @Size(min = 1)
     @JsonProperty("entries")
-    @JsonPropertyDescription("The list of entries marked for enrichment.")
+    @JsonPropertyDescription("The list of entries for enrichment. Each entry provides a source field with an IP address along with a target for the enriched geolocation data.")
     private List<EntryConfig> entries;
 
     @JsonProperty("tags_on_engine_failure")
-    @JsonPropertyDescription("The tags to add to the event metadata if the geoip processor is unable to enrich an event due to an engine failure.")
+    @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to enrich an event due to an engine failure.")
     private List<String> tagsOnEngineFailure;
 
     @JsonProperty("tags_on_ip_not_found")
-    @JsonPropertyDescription("The tags to add to the event metadata if the geoip processor is unable to find a location for the IP address.")
+    @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to find a location for a valid IP address.")
     private List<String> tagsOnIPNotFound;
 
     @JsonProperty("tags_on_no_valid_ip")
-    @JsonPropertyDescription("The tags to add to the event metadata if the source field is not a valid IP address. This includes the localhost IP address.")
+    @JsonPropertyDescription("The tags to add to the event metadata if the source field is not a valid IP address. A source field may not be valid because it is incorrectly formatted or is the loopback/localhost IP address.")
     private List<String> tagsOnNoValidIp;
 
     @JsonProperty("geoip_when")
-    @JsonPropertyDescription("Specifies a condition for including Events in the `geoip` processor using a Data Prepper [conditional expression]" +
-            "(https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/)." +
-            " If specified, the `geoip` processor will only run when the expression evaluates to true.")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/srcaddr != \"8.8.8.8\"</code>. " +
+            "If specified, the <code>geoip</code> processor will only run on events when the expression evaluates to true. ")
     private String whenCondition;
 
     /**

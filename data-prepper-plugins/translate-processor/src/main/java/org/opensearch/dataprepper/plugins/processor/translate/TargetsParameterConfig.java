@@ -6,6 +6,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.Range;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 
@@ -18,6 +19,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class TargetsParameterConfig {
+    static final String MAP_KEY = "map";
+    static final String REGEX_KEY = "regex";
     private final TypeConverter converter;
     private final LinkedHashMap<Range<Float>, Object> rangeMappings = new LinkedHashMap<>();
     private final Map<String, Object> individualMappings = new HashMap<>();
@@ -27,23 +30,30 @@ public class TargetsParameterConfig {
     @NotNull
     @NotEmpty
     private String target;
-    @JsonProperty("map")
+    @JsonProperty(MAP_KEY)
     @JsonPropertyDescription("A list of key-value pairs that define the translations. Each key represents a possible " +
             "value in the source field, and the corresponding value represents what it should be translated to. " +
-            "For examples, see [map option](#map-option). At least one of `map` and `regex` should be configured.")
+            "At least one of <code>map</code> and <code>regex</code> should be configured.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = REGEX_KEY)
+    })
     private Map<String, Object> map;
     @JsonProperty("translate_when")
-    @JsonPropertyDescription("Uses a [Data Prepper expression]({{site.url}}{{site.baseurl}}/data-prepper/pipelines/expression-syntax/) " +
+    @JsonPropertyDescription("Uses a <a href=\"{{site.url}}{{site.baseurl}}/data-prepper/pipelines/expression-syntax/\">conditional expression</a> " +
             "to specify a condition for performing the translation. When specified, the expression will only translate when the condition is met.")
     private String translateWhen;
-    @JsonProperty("regex")
-    @JsonPropertyDescription("A map of keys that defines the translation map. For more options, see [regex option](#regex-option). " +
-            "At least one of `map` and `regex` should be configured.")
+    @JsonProperty(REGEX_KEY)
+    @JsonPropertyDescription("A map of keys that defines the translation map. " +
+            "At least one of <code>map</code> and <code>regex</code> should be configured.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = MAP_KEY)
+    })
     private RegexParameterConfiguration regexParameterConfig;
     @JsonProperty("default")
     @JsonPropertyDescription("The default value to use when no match is found during translation.")
     private String defaultValue;
-    @JsonProperty("type")
+
+    @JsonProperty(value = "type", defaultValue = "string")
     @JsonPropertyDescription("Specifies the data type for the target value.")
     private TargetType targetType = TargetType.STRING;
 

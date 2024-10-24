@@ -57,8 +57,6 @@ public class KeyValueProcessorTests {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
-    private KeyValueProcessor keyValueProcessor;
-
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
         return new Record<>(JacksonEvent.builder()
                 .withData(data)
@@ -93,12 +91,9 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(false);
 
         final String keyValueWhen = UUID.randomUUID().toString();
-        when(mockConfig.getKeyValueWhen()).thenReturn(keyValueWhen);
-        when(expressionEvaluator.isValidExpressionStatement(keyValueWhen)).thenReturn(true);
+        lenient().when(mockConfig.getKeyValueWhen()).thenReturn(keyValueWhen);
+        lenient().when(expressionEvaluator.isValidExpressionStatement(keyValueWhen)).thenReturn(true);
         lenient().when(expressionEvaluator.evaluateConditional(eq(keyValueWhen), any(Event.class))).thenReturn(true);
-
-
-        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     private KeyValueProcessor createObjectUnderTest() {
@@ -119,7 +114,7 @@ public class KeyValueProcessorTests {
     @Test
     void testSingleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -152,7 +147,7 @@ public class KeyValueProcessorTests {
         final Map<String, Object> testData = new HashMap();
         testData.put("notMessage", "not a message");
         final Record<Event> record = buildRecordWithEvent(testData);
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         assertThat(editedRecords.size(), equalTo(1));
         assertThat(editedRecords.get(0), notNullValue());
         LinkedHashMap<String, Object> parsed_message = editedRecords.get(0).getData().get("parsed_message", LinkedHashMap.class);
@@ -162,7 +157,7 @@ public class KeyValueProcessorTests {
     @Test
     void testMultipleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -174,10 +169,8 @@ public class KeyValueProcessorTests {
     void testDropKeysWithNoValue() {
         lenient().when(mockConfig.getDropKeysWithNoValue()).thenReturn(true);
 
-        keyValueProcessor = createObjectUnderTest();
-
         final Record<Event> record = getMessage("key1=value1&key2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -258,8 +251,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" ,");
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
         final Record<Event> record = getMessage(message);
-        keyValueProcessor = createObjectUnderTest();
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
 
         final Event event = editedRecords.get(0).getData();
         assertThat(event.containsKey("parsed_message"), is(false));
@@ -277,8 +269,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(" &");
         lenient().when(mockConfig.getValueGrouping()).thenReturn(true);
         final Record<Event> record = getMessage(message);
-        keyValueProcessor = createObjectUnderTest();
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
 
         final Event event = editedRecords.get(0).getData();
         assertThat(event.containsKey("parsed_message"), is(false));
@@ -292,7 +283,7 @@ public class KeyValueProcessorTests {
     void testWriteToRoot() {
         when(mockConfig.getDestination()).thenReturn(null);
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
 
         final Event event = editedRecords.get(0).getData();
         assertThat(event.containsKey("parsed_message"), is(false));
@@ -308,7 +299,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDestination()).thenReturn(null);
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         record.getData().put("key1", "value to be overwritten");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
 
         final Event event = editedRecords.get(0).getData();
 
@@ -322,7 +313,7 @@ public class KeyValueProcessorTests {
     void testWriteToDestinationWithOverwrite() {
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         record.getData().put("parsed_message", "value to be overwritten");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -336,7 +327,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         record.getData().put("key1", "value will not be overwritten");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
 
         final Event event = editedRecords.get(0).getData();
 
@@ -351,7 +342,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         record.getData().put("parsed_message", "value will not be overwritten");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final Event event = editedRecords.get(0).getData();
 
         assertThat(event.containsKey("parsed_message"), is(true));
@@ -363,10 +354,8 @@ public class KeyValueProcessorTests {
         when(mockConfig.getFieldDelimiterRegex()).thenReturn(":_*:");
         when(mockConfig.getFieldSplitCharacters()).thenReturn(null);
 
-        keyValueProcessor = createObjectUnderTest();
-
         final Record<Event> record = getMessage("key1=value1:_____:key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         LOG.info("parsedMessage={}", parsed_message);
@@ -394,10 +383,8 @@ public class KeyValueProcessorTests {
         when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(":\\+*:");
         when(mockConfig.getValueSplitCharacters()).thenReturn(null);
 
-        keyValueProcessor = createObjectUnderTest();
-
         final Record<Event> record = getMessage("key1:++:value1&key2:+:value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -440,7 +427,7 @@ public class KeyValueProcessorTests {
     @Test
     void testDuplicateKeyToArrayValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value3");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList<>();
@@ -454,7 +441,7 @@ public class KeyValueProcessorTests {
     @Test
     void testDuplicateKeyToArrayWithNonMatchValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList();
@@ -468,10 +455,9 @@ public class KeyValueProcessorTests {
     @Test
     void testFieldSplitCharactersKeyValueProcessor() {
         when(mockConfig.getFieldSplitCharacters()).thenReturn("&!");
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key1=value2!key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList();
@@ -486,10 +472,9 @@ public class KeyValueProcessorTests {
     void testFieldSplitCharactersDoesntSupercedeDelimiterKeyValueProcessor() {
         when(mockConfig.getFieldDelimiterRegex()).thenReturn(":d+:");
         when(mockConfig.getFieldSplitCharacters()).thenReturn(null);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1:d:key1=value2:d:key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList();
@@ -504,10 +489,9 @@ public class KeyValueProcessorTests {
     void testIncludeKeysKeyValueProcessor() {
         final List<String> includeKeys = List.of("key2", "key3");
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2&key3=value3");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -519,10 +503,9 @@ public class KeyValueProcessorTests {
     void testIncludeKeysNoMatchKeyValueProcessor() {
         final List<String> includeKeys = Collections.singletonList("noMatch");
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(0));
@@ -531,10 +514,9 @@ public class KeyValueProcessorTests {
     @Test
     void testIncludeKeysAsDefaultKeyValueProcessor() {
         when(mockConfig.getIncludeKeys()).thenReturn(List.of());
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -546,10 +528,9 @@ public class KeyValueProcessorTests {
     void testExcludeKeysKeyValueProcessor() {
         final List<String> excludeKeys = List.of("key2");
         when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -559,10 +540,9 @@ public class KeyValueProcessorTests {
     @Test
     void testExcludeKeysAsDefaultKeyValueProcessor() {
         when(mockConfig.getExcludeKeys()).thenReturn(List.of());
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -584,10 +564,9 @@ public class KeyValueProcessorTests {
     void testDefaultKeysNoOverlapsBetweenEventKvProcessor() {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -601,10 +580,9 @@ public class KeyValueProcessorTests {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&dKey=abc");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -620,10 +598,9 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
         when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -638,10 +615,9 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
         when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key1=value1&key2=abc");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -657,10 +633,9 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
         when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("key2=abc");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -682,7 +657,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getPrefix()).thenReturn("TEST_");
 
         final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -692,7 +667,7 @@ public class KeyValueProcessorTests {
     @Test
     void testDefaultNonMatchValueKvProcessor() {
         final Record<Event> record = getMessage("key1+value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -704,7 +679,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getNonMatchValue()).thenReturn("BAD_MATCH");
 
         final Record<Event> record = getMessage("key1+value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -716,7 +691,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getNonMatchValue()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1+value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -728,7 +703,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1  =value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -740,7 +715,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDeleteValueRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1=value1   &key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -754,7 +729,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getNonMatchValue()).thenReturn(3);
 
         final Record<Event> record = getMessage("key1&key2=value2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -768,7 +743,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDeleteValueRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1  =value1  &  key2 = value2 ");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -778,10 +753,10 @@ public class KeyValueProcessorTests {
 
     @Test
     void testLowercaseTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("lowercase");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.LOWERCASE);
 
         final Record<Event> record = getMessage("Key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -790,10 +765,10 @@ public class KeyValueProcessorTests {
 
     @Test
     void testUppercaseTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("uppercase");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.UPPERCASE);
 
         final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -802,10 +777,10 @@ public class KeyValueProcessorTests {
 
     @Test
     void testCapitalizeTransformKvProcessor() {
-        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.CAPITALIZE);
 
         final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsedMessage = getLinkedHashMap(editedRecords);
 
         assertThat(parsedMessage.size(), equalTo(1));
@@ -814,10 +789,10 @@ public class KeyValueProcessorTests {
 
     @Test
     void testStrictWhitespaceKvProcessor() {
-        when(mockConfig.getWhitespace()).thenReturn("strict");
+        when(mockConfig.getWhitespace()).thenReturn(WhitespaceOption.STRICT);
 
         final Record<Event> record = getMessage("key1  =  value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -827,7 +802,7 @@ public class KeyValueProcessorTests {
     @Test
     void testFalseSkipDuplicateValuesKvProcessor() {
         final Record<Event> record = getMessage("key1=value1&key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList();
@@ -843,7 +818,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=value1&key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
@@ -855,7 +830,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final ArrayList<Object> expectedValue = new ArrayList();
@@ -871,7 +846,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getRemoveBrackets()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=(value1)&key2=[value2]&key3=<value3>");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(3));
@@ -885,7 +860,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getRemoveBrackets()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=((value1)&key2=[value1][value2]");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
@@ -898,7 +873,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getRecursive()).thenReturn(true);
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final Map<String, Object> expectedValueMap = new HashMap<>();
@@ -915,7 +890,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getRecursive()).thenReturn(true);
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=(inner1=abc&inner2=xyz)&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final Map<String, Object> expectedValueMap = new HashMap<>();
@@ -934,10 +909,10 @@ public class KeyValueProcessorTests {
     @Test
     void testTransformKeyRecursiveKvProcessor() {
         when(mockConfig.getRecursive()).thenReturn(true);
-        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+        when(mockConfig.getTransformKey()).thenReturn(TransformOption.CAPITALIZE);
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final Map<String, Object> expectedValueMap = new HashMap<>();
@@ -954,10 +929,9 @@ public class KeyValueProcessorTests {
         final List<String> includeKeys = List.of("item1-subitem1");
         when(mockConfig.getRecursive()).thenReturn(true);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(0));
@@ -968,10 +942,9 @@ public class KeyValueProcessorTests {
         final List<String> excludeKeys = List.of("item1-subitem1");
         when(mockConfig.getRecursive()).thenReturn(true);
         when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final Map<String, Object> expectedValueMap = new HashMap<>();
@@ -988,10 +961,9 @@ public class KeyValueProcessorTests {
         final Map<String, Object> defaultMap = Map.of("item1-subitem1", "default");
         when(mockConfig.getRecursive()).thenReturn(true);
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         final Map<String, Object> expectedValueMap = new HashMap<>();
@@ -1008,10 +980,9 @@ public class KeyValueProcessorTests {
     void testTagsAddedWhenParsingFails() {
         when(mockConfig.getRecursive()).thenReturn(true);
         when(mockConfig.getTagsOnFailure()).thenReturn(List.of("tag1", "tag2"));
-        keyValueProcessor = createObjectUnderTest();
 
         final Record<Event> record = getMessage("item1=[]");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(0));
@@ -1020,7 +991,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testShutdownIsReady() {
-        assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
+        assertThat(createObjectUnderTest().isReadyForShutdown(), is(true));
     }
 
     private Record<Event> getMessage(String message) {

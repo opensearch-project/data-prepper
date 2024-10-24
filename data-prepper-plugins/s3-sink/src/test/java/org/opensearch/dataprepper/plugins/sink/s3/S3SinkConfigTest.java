@@ -56,6 +56,39 @@ class S3SinkConfigTest {
     }
 
     @Test
+    void test_default_metadata_config() throws NoSuchFieldException, IllegalAccessException {
+        final String bucketName = UUID.randomUUID().toString();
+        final String bucketNameWithPrefix = S3_PREFIX + bucketName;
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        assertThat(objectUnderTest.isValidMetadataConfig(), equalTo(true));
+        assertThat(objectUnderTest.getObjectMetadataConfig(), equalTo(null));
+    }
+
+    @Test
+    void test_object_metadata_config() throws NoSuchFieldException, IllegalAccessException {
+        final String bucketName = UUID.randomUUID().toString();
+        final String bucketNameWithPrefix = S3_PREFIX + bucketName;
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+
+        ObjectMetadataConfig objectMetadataConfig = new ObjectMetadataConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "objectMetadataConfig", objectMetadataConfig);
+        assertThat(objectUnderTest.isValidMetadataConfig(), equalTo(true));
+        assertThat(objectUnderTest.getObjectMetadataConfig(), equalTo(objectMetadataConfig));
+    }
+
+    @Test
+    void test_predefined_metadata_config() throws NoSuchFieldException, IllegalAccessException {
+        final String bucketName = UUID.randomUUID().toString();
+        final String bucketNameWithPrefix = S3_PREFIX + bucketName;
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+
+        PredefinedObjectMetadata objectMetadataConfig = new PredefinedObjectMetadata();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "predefinedObjectMetadata", objectMetadataConfig);
+        assertThat(objectUnderTest.isValidMetadataConfig(), equalTo(true));
+        assertThat(objectUnderTest.getObjectMetadataConfig(), equalTo(objectMetadataConfig));
+    }
+
+    @Test
     void get_object_key_test() {
         assertThat("Object key is not an instance of ObjectKeyOptions",
                 new S3SinkConfig().getObjectKeyOptions(), instanceOf(ObjectKeyOptions.class));
@@ -75,5 +108,10 @@ class S3SinkConfigTest {
     @Test
     void get_json_codec_test() {
         assertNull(new S3SinkConfig().getCodec());
+    }
+
+    @Test
+    void get_client_option_test() {
+        assertNull(new S3SinkConfig().getClientOptions());
     }
 }

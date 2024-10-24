@@ -10,23 +10,31 @@ import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 import java.util.Map;
 
 @JsonPropertyOrder
-@JsonClassDescription("The `dissect` processor extracts values from an event and maps them to individual fields " +
-        "based on user-defined `dissect` patterns. The processor is well suited for field extraction from log " +
+@JsonClassDescription("The <code>dissect</code> processor extracts values from an event and maps them to individual fields " +
+        "based on user-defined <code>dissect</code> patterns. The processor is well suited for field extraction from log " +
         "messages with a known structure.")
 public class DissectProcessorConfig {
     @NotNull
     @JsonProperty("map")
-    @JsonPropertyDescription("Defines the `dissect` patterns for specific keys. For details on how to define fields " +
-            "in the `dissect` pattern, see (https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/dissect/#field-notations).")
+    @JsonPropertyDescription("Defines the <code>dissect</code> patterns for specific keys. " +
+            "Each key is a field name, and the value is the dissect pattern to use for dissecting it. " +
+            "For details on how to define fields in the <code>dissect</code> pattern, see " + 
+            "<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/dissect/#field-notations\">here</a>. " +
+            "An example dissect pattern is <code>%{Date} %{Time} %{Log_Type}: %{Message}</code>, which will dissect into four fields.")
     private Map<String, String> map;
+
     @JsonProperty("target_types")
-    @JsonPropertyDescription("Specifies the data types for extract fields. Valid options are `integer`, " +
-            "`double`, `string`, `long`, `big_decimal`, and `boolean`. By default, all fields are of the `string` type.")
+    @JsonPropertyDescription("Specifies the data types for extract fields. " +
+            "Each key is a field name, and the value is the data type to use for that field. " +
+            "Valid data types are <code>integer</code>, <code>double</code>, <code>string</code>, <code>long</code>, <code>big_decimal</code>, and <code>boolean</code>. " +
+            "By default, all fields are treated as <code>string</code>.")
     private Map<String, TargetType> targetTypes;
+
     @JsonProperty("dissect_when")
-    @JsonPropertyDescription("Specifies a condition for performing the `dissect` operation using a Data Prepper [conditional expression]" +
-            "(https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/). " +
-            "If specified, the `dissect` operation will only run when the expression evaluates to true.")
+    @JsonPropertyDescription("Specifies a condition for performing the <code>dissect</code> operation using a " +
+            "<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>. " +
+            "If specified, the <code>dissect</code> operation will only run when the expression evaluates to true. " +
+            "For example, <code>/some_value == \"log\"</code>.")
     private String dissectWhen;
 
     public String getDissectWhen(){

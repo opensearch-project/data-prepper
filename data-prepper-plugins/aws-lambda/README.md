@@ -1,4 +1,55 @@
 
+# Lambda Processor
+
+This plugin enables you to send data from your Data Prepper pipeline directly to AWS Lambda functions for further processing.
+
+## Usage
+```aidl
+lambda-pipeline:
+...
+  processor:
+    - aws_lambda:
+        aws:
+            region: "us-east-1"
+            sts_role_arn: "<arn>"
+        function_name: "uploadToS3Lambda"
+        max_retries: 3
+        invocation_type: "RequestResponse"
+        payload_model: "batch_event"
+        batch:
+            key_name: "osi_key"
+            threshold:
+                event_count: 10
+                event_collect_timeout: 15s
+                maximum_size: 3mb
+```
+
+`invocation_type` as request-response is used when the response from aws lambda comes back to dataprepper.
+
+In batch options, an implicit batch threshold option is that if events size is 3mb, we flush it.
+`payload_model` this is used to define how the payload should be constructed from a dataprepper event by converting it to corresponding json.
+`payload_model` as batch_event is used when the output needs to be formed as a batch of multiple events, and a key(key_name) will be associated with the set of events.
+`payload_model` as single_event is used when the output each event is sent to lambda. 
+if batch option is not mentioned along with payload_model: batch_event , then batch will assume default options as follows.
+default batch options:
+    batch_key: "events"
+    threshold: 
+        event_count: 10
+        maximum_size: 3mb
+        event_collect_timeout: 15s
+
+
+## Developer Guide
+
+The integration tests for this plugin do not run as part of the Data Prepper build.
+The following command runs the integration tests:
+
+```
+./gradlew :data-prepper-plugins:aws-lambda:integrationTest -Dtests.processor.lambda.region="us-east-1" -Dtests.processor.lambda.functionName="lambda_test_function"  -Dtests.processor.lambda.sts_role_arn="arn:aws:iam::123456789012:role/dataprepper-role
+
+```
+
+
 # Lambda Sink
 
 This plugin enables you to send data from your Data Prepper pipeline directly to AWS Lambda functions for further processing.
@@ -15,7 +66,7 @@ lambda-pipeline:
         function_name: "uploadToS3Lambda"
         max_retries: 3
         batch:
-            batch_key: "osi_key"
+            key_name: "osi_key"
             threshold:
                 event_count: 3
                 maximum_size: 6mb

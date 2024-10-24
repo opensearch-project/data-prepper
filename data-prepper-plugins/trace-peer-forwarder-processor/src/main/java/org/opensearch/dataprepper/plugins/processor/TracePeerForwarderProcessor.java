@@ -17,11 +17,12 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.util.Collection;
 import java.util.Collections;
 
-@DataPrepperPlugin(name = "trace_peer_forwarder", pluginType = Processor.class)
+@DataPrepperPlugin(name = "trace_peer_forwarder", pluginType = Processor.class,
+        pluginConfigurationType = TracePeerForwarderProcessorConfig.class)
 public class TracePeerForwarderProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
     @DataPrepperPluginConstructor
-    public TracePeerForwarderProcessor(PluginMetrics pluginMetrics) {
+    public TracePeerForwarderProcessor(final PluginMetrics pluginMetrics) {
         super(pluginMetrics);
     }
 

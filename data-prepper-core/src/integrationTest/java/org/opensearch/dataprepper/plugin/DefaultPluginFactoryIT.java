@@ -10,16 +10,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
+import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
+import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
+import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
+import org.opensearch.dataprepper.plugins.test.TestComponent;
+import org.opensearch.dataprepper.plugins.test.TestDISource;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
-import org.opensearch.dataprepper.validation.LoggingPluginErrorsHandler;
-import org.opensearch.dataprepper.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
@@ -30,6 +35,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -94,6 +101,49 @@ class DefaultPluginFactoryIT {
 
         assertThat(configuration.getRequiredString(), equalTo(requiredStringValue));
         assertThat(configuration.getOptionalString(), equalTo(optionalStringValue));
+    }
+
+    @Test
+    void loadPlugin_should_return_a_new_plugin_instance_with_DI_context_initialized() {
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        final PluginSetting pluginSetting = new PluginSetting("test_di_source", pluginSettingMap);
+        pluginSetting.setPipelineName(pipelineName);
+
+        final Source sourcePlugin = createObjectUnderTest().loadPlugin(Source.class, pluginSetting);
+
+        assertThat(sourcePlugin, instanceOf(TestDISource.class));
+        TestDISource plugin = (TestDISource) sourcePlugin;
+        // Testing the auto wired been with the Dependency Injection
+        assertNotNull(plugin.getTestComponent());
+        assertInstanceOf(TestComponent.class, plugin.getTestComponent());
+        assertThat(plugin.getTestComponent().getIdentifier(), equalTo("test-component"));
+    }
+
+    @Test
+    void loadPlugin_should_return_a_new_plugin_instance_with_DI_context_and_config_injected() {
+
+        final String requiredStringValue = UUID.randomUUID().toString();
+        final String optionalStringValue = UUID.randomUUID().toString();
+
+        final Map<String, Object> pluginSettingMap = new HashMap<>();
+        pluginSettingMap.put("required_string", requiredStringValue);
+        pluginSettingMap.put("optional_string", optionalStringValue);
+        final PluginSetting pluginSetting = new PluginSetting("test_di_source_with_config", pluginSettingMap);
+        pluginSetting.setPipelineName("test_di_source_with_config");
+
+        final Source sourcePlugin = createObjectUnderTest().loadPlugin(Source.class, pluginSetting);
+
+        assertThat(sourcePlugin, instanceOf(TestDISourceWithConfig.class));
+        TestDISourceWithConfig plugin = (TestDISourceWithConfig) sourcePlugin;
+        // Testing the auto wired been with the Dependency Injection
+        assertNotNull(plugin.getTestComponent());
+        assertInstanceOf(TestComponentWithConfigInject.class, plugin.getTestComponent());
+        TestPluginConfiguration pluginConfig = plugin.getTestComponent().getConfiguration();
+        assertInstanceOf(TestPluginConfiguration.class, pluginConfig);
+        assertThat(pluginConfig.getRequiredString(), equalTo(requiredStringValue));
+        assertThat(pluginConfig.getOptionalString(), equalTo(optionalStringValue));
+        assertThat(plugin.getTestComponent().getIdentifier(), equalTo("test-component-with-plugin-config-injected"));
     }
 
     @Test

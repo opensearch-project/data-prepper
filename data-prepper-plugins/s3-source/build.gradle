@@ -26,7 +26,7 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    implementation 'org.xerial.snappy:snappy-java:1.1.10.5'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.7'
     implementation libs.parquet.common
     implementation 'dev.failsafe:failsafe:3.3.2'
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
@@ -42,6 +42,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:avro-codecs')
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation project(':data-prepper-test-event')
     testImplementation libs.avro.core

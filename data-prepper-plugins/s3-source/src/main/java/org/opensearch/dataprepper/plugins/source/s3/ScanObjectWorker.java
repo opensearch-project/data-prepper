@@ -56,8 +56,6 @@ public class ScanObjectWorker implements Runnable {
 
     static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofHours(1);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
-
-    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     static final String NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION = "folderPartitionNoObjectsFound";
@@ -99,6 +97,8 @@ public class ScanObjectWorker implements Runnable {
 
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
 
+    private final Duration acknowledgmentSetTimeout;
+
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
                             final S3ObjectHandler s3ObjectHandler,
@@ -127,6 +127,7 @@ public class ScanObjectWorker implements Runnable {
         this.sourceCoordinator.initialize();
         this.partitionKeys = new ArrayList<>();
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
+        this.acknowledgmentSetTimeout = s3SourceConfig.getS3ScanScanOptions().getAcknowledgmentTimeout();
 
         this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions());
         this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
@@ -214,18 +215,9 @@ public class ScanObjectWorker implements Runnable {
                         sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey());
                     }
                     partitionKeys.remove(objectToProcess.get().getPartitionKey());
-                }, ACKNOWLEDGEMENT_SET_TIMEOUT);
+                }, acknowledgmentSetTimeout);
 
-                acknowledgementSet.addProgressCheck(
-                        (ratio) -> {
-                            try {
-                                sourceCoordinator.renewPartitionOwnership(objectToProcess.get().getPartitionKey());
-                            } catch (final PartitionUpdateException | PartitionNotOwnedException | PartitionNotFoundException e) {
-                                LOG.debug("Failed to update partition ownership for {} in the acknowledgment progress check", objectToProcess.get().getPartitionKey());
-                                partitionOwnershipUpdateFailures.increment();
-                            }
-                        },
-                        CHECKPOINT_OWNERSHIP_INTERVAL);
+                addProgressCheck(acknowledgementSet, objectToProcess.get());
             }
 
 
@@ -235,7 +227,7 @@ public class ScanObjectWorker implements Runnable {
             if (endToEndAcknowledgementsEnabled) {
                 deleteObjectRequest.ifPresent(deleteRequest -> objectsToDeleteForAcknowledgmentSets.put(objectToProcess.get().getPartitionKey(), Set.of(deleteRequest)));
                 try {
-                    sourceCoordinator.updatePartitionForAcknowledgmentWait(objectToProcess.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+                    sourceCoordinator.updatePartitionForAcknowledgmentWait(objectToProcess.get().getPartitionKey(), acknowledgmentSetTimeout);
                 } catch (final PartitionUpdateException e) {
                     LOG.debug("Failed to update the partition for the acknowledgment wait.");
                 }
@@ -360,6 +352,7 @@ public class ScanObjectWorker implements Runnable {
                 activeAcknowledgmentSetId = acknowledgmentSetId;
 
                 acknowledgementSet = createAcknowledgmentSetForFolderPartition(folderPartition, acknowledgmentSetId);
+                addProgressCheck(acknowledgementSet, folderPartition);
 
                 objectsToDeleteForAcknowledgmentSets.put(acknowledgmentSetId, new HashSet<>());
 
@@ -383,7 +376,7 @@ public class ScanObjectWorker implements Runnable {
             objectIndex++;
         }
 
-        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
+        sourceCoordinator.updatePartitionForAcknowledgmentWait(folderPartition.getPartitionKey(), acknowledgmentSetTimeout);
 
         if (acknowledgementSet != null) {
             acknowledgementSet.complete();
@@ -410,6 +403,19 @@ public class ScanObjectWorker implements Runnable {
                 LOG.info("Received all acknowledgments for folder partition {}, giving up this partition", folderPartition.getPartitionKey());
                 sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
             }
-        }, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        }, acknowledgmentSetTimeout);
+    }
+
+    private void addProgressCheck(final AcknowledgementSet acknowledgementSet, final SourcePartition<S3SourceProgressState> objectToProcess) {
+        acknowledgementSet.addProgressCheck(
+                (ratio) -> {
+                    try {
+                        sourceCoordinator.renewPartitionOwnership(objectToProcess.getPartitionKey());
+                    } catch (final PartitionUpdateException | PartitionNotOwnedException | PartitionNotFoundException e) {
+                        LOG.debug("Failed to update partition ownership for {} in the acknowledgment progress check", objectToProcess.getPartitionKey());
+                        partitionOwnershipUpdateFailures.increment();
+                    }
+                },
+                CHECKPOINT_OWNERSHIP_INTERVAL);
     }
 }

@@ -5,7 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.parse.json;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -47,6 +50,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class ParseJsonProcessorTest {
     private static final String DEEPLY_NESTED_KEY_NAME = "base";
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     protected CommonParseConfig processorConfig;
 
@@ -124,6 +129,69 @@ public class ParseJsonProcessorTest {
         verifyNoInteractions(parseErrorsCounter);
         verifyNoInteractions(handleFailedEventsOption);
     }
+
+    @Test
+    void test_simple_depth_value_1() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(1);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+	
+	Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key5", Map.of("key6", "value6")));
+	Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", "{\"key5\":{\"key6\":\"value6\"}}");
+        final String serializedMessage = objectMapper.writeValueAsString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+    }
+
+    @Test
+    void test_simple_depth_value_2() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(2);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+	
+	Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key4", 4, "key5", Map.of("key6", "value6")));
+	Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key4", 4, "key5", "{\"key6\":\"value6\"}"));
+        final String serializedMessage = objectMapper.writeValueAsString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0,1,2,3,4,5,6,7,8,9,10})
+    void test_depth_option_with_same_source_and_destination(int depth) throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(depth);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+
+        Map<String, Object> mapValue = new HashMap<>();
+        Map<String, Object> prevMap = null;
+        Object expectedResult = null;
+        // Create a map with 12 nested levels
+        for (int i = 11; i >= 0; i--) {
+            Map<String, Object> m = (prevMap == null) ?
+                    Map.of("key" + i, i, "key" + (100 + i), "value" + i) :
+                    Map.of("key" + i, i, "key" + (100 + i), "value" + i, "key"+(1000+i), prevMap);
+            if (i == depth) {
+                expectedResult = (depth == 0) ? m : objectMapper.writeValueAsString(m);
+            } else if (i < depth) {
+                expectedResult = Map.of("key" + i, i, "key" + (100 + i), "value" + i, "key"+(1000+i), expectedResult);
+            }
+            prevMap = m;
+        }
+
+        mapValue = prevMap;
+        final String serializedMessage = objectMapper.writeValueAsString(mapValue);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+
+    }
+
 
     @Test
     void test_when_dataFieldEqualToRootField_then_overwritesOriginalFields() {
