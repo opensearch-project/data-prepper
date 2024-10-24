@@ -99,6 +99,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final LogRateLimiter errLogRateLimiter;
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
+    private final Map<Integer, Long> lastReceivedTimeStampMap;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -118,6 +119,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.paused = false;
         this.byteDecoder = byteDecoder;
         this.topicMetrics = topicMetrics;
+        this.lastReceivedTimeStampMap = new HashMap<Integer, Long>();
         this.maxRetriesOnException = topicConfig.getMaxPollInterval().toMillis() / (2 * RETRY_ON_EXCEPTION_SLEEP_MS);
         this.pauseConsumePredicate = pauseConsumePredicate;
         this.topicMetrics.register(consumer);
@@ -140,6 +142,23 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
         return topicMetrics;
+    }
+
+    private <T> long getReceivedTime(final ConsumerRecord<String, T> consumerRecord) {
+        final long receivedTimeStamp = consumerRecord.timestamp();
+        final long nowMs = Instant.now().toEpochMilli();
+        int partition = consumerRecord.partition();
+        if (receivedTimeStamp > nowMs) {
+            topicMetrics.getNumberOfInvalidTimeStamps().increment();
+            if (lastReceivedTimeStampMap.containsKey(partition)) {
+                return lastReceivedTimeStampMap.get(partition);
+            } else {
+                return nowMs;
+            }
+        } else {
+            lastReceivedTimeStampMap.put(partition, receivedTimeStamp);
+            return receivedTimeStamp;
+        }
     }
 
     private long getCurrentTimeNanos() {
@@ -436,12 +455,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             }
             eventMetadata.setAttribute("kafka_headers", headerData);
         }
-        eventMetadata.setAttribute("kafka_timestamp", consumerRecord.timestamp());
+        final long receivedTimeStamp = getReceivedTime(consumerRecord);
+        eventMetadata.setAttribute("kafka_timestamp", receivedTimeStamp);
         eventMetadata.setAttribute("kafka_timestamp_type", consumerRecord.timestampType().toString());
         eventMetadata.setAttribute("kafka_topic", topicName);
         eventMetadata.setAttribute("kafka_partition", String.valueOf(partition));
-        eventMetadata.setExternalOriginationTime(Instant.ofEpochMilli(consumerRecord.timestamp()));
-        event.getEventHandle().setExternalOriginationTime(Instant.ofEpochMilli(consumerRecord.timestamp()));
+        eventMetadata.setExternalOriginationTime(Instant.ofEpochMilli(receivedTimeStamp));
+        event.getEventHandle().setExternalOriginationTime(Instant.ofEpochMilli(receivedTimeStamp));
 
         return new Record<Event>(event);
     }
@@ -511,7 +531,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                 if (schema == MessageFormat.BYTES) {
                     InputStream inputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
                     if(byteDecoder != null) {
-                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(consumerRecord.timestamp()), (record) -> {
+                        final long receivedTimeStamp = getReceivedTime(consumerRecord);
+                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {
