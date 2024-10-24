@@ -16,8 +16,8 @@ raw-pipeline:
     - otel_traces:
   sink:
     - opensearch:
-        hosts: [ "https://node-0.example.com:9200" ]
-        cert: "/usr/share/opensearch-test/root-ca.pem"
+        hosts: [ "https://opensearch:9200" ]
+        insecure: "true"
         username: "admin"
         password: "yourStrongPassword123!"
         index_type: trace-analytics-raw
@@ -30,8 +30,8 @@ service-map-pipeline:
     - service_map:
   sink:
     - opensearch:
-        hosts: ["https://node-0.example.com:9200"]
-        cert: "/usr/share/opensearch-test/root-ca.pem"
+        hosts: ["https://opensearch:9200"]
+        insecure: "true"
         username: "admin"
         password: "yourStrongPassword123!"
         index_type: trace-analytics-service-map
