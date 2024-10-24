@@ -19,7 +19,6 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
-import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -55,6 +54,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -521,7 +521,8 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionHandler(any(
+                    GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");
@@ -563,7 +564,8 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionHandler(any(
+                    GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");
