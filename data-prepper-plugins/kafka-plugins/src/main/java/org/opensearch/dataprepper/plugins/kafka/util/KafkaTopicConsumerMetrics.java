@@ -21,6 +21,7 @@ public class KafkaTopicConsumerMetrics {
     static final String NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS = "numberOfNegativeAcknowledgements";
     static final String NUMBER_OF_RECORDS_FAILED_TO_PARSE = "numberOfRecordsFailedToParse";
     static final String NUMBER_OF_DESERIALIZATION_ERRORS = "numberOfDeserializationErrors";
+    static final String NUMBER_OF_INVALID_TIMESTAMPS = "numberOfInvalidTimeStamps";
     static final String NUMBER_OF_BUFFER_SIZE_OVERFLOWS = "numberOfBufferSizeOverflows";
     static final String NUMBER_OF_POLL_AUTH_ERRORS = "numberOfPollAuthErrors";
     static final String NUMBER_OF_RECORDS_COMMITTED = "numberOfRecordsCommitted";
@@ -37,6 +38,7 @@ public class KafkaTopicConsumerMetrics {
     private final Counter numberOfRecordsFailedToParse;
     private final Counter numberOfDeserializationErrors;
     private final Counter numberOfBufferSizeOverflows;
+    private final Counter numberOfInvalidTimeStamps;
     private final Counter numberOfPollAuthErrors;
     private final Counter numberOfRecordsCommitted;
     private final Counter numberOfRecordsConsumed;
@@ -52,6 +54,7 @@ public class KafkaTopicConsumerMetrics {
         this.numberOfRecordsConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_CONSUMED, topicNameInMetrics));
         this.numberOfBytesConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BYTES_CONSUMED, topicNameInMetrics));
         this.numberOfRecordsCommitted = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_COMMITTED, topicNameInMetrics));
+        this.numberOfInvalidTimeStamps = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_INVALID_TIMESTAMPS, topicNameInMetrics));
         this.numberOfRecordsFailedToParse = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_FAILED_TO_PARSE, topicNameInMetrics));
         this.numberOfDeserializationErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_DESERIALIZATION_ERRORS, topicNameInMetrics));
         this.numberOfBufferSizeOverflows = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BUFFER_SIZE_OVERFLOWS, topicNameInMetrics));
@@ -145,6 +148,10 @@ public class KafkaTopicConsumerMetrics {
 
     public Counter getNumberOfRecordsFailedToParse() {
         return numberOfRecordsFailedToParse;
+    }
+
+    public Counter getNumberOfInvalidTimeStamps() {
+        return numberOfInvalidTimeStamps;
     }
 
     public Counter getNumberOfNegativeAcknowledgements() {
