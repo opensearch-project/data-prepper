@@ -587,7 +587,7 @@ public class JacksonEvent implements Event {
          * @return returns the builder
          * @since 2.10
          */
-        public Builder<T> withEventHandle(final EventHandle eventHandle) {
+        protected Builder<T> withEventHandle(final EventHandle eventHandle) {
             this.eventHandle = eventHandle;
             return this;
         }

@@ -875,7 +875,7 @@ public class JacksonEventTest {
         assertThat(createdEvent, notNullValue());
         assertThat(createdEvent, not(sameInstance(originalEvent)));
         assertThat(event.getEventHandle(), is(notNullValue()));
-        assertTrue(event.getEventHandle() instanceof DefaultEventHandle);
+        assertTrue(event.getEventHandle() instanceof(DefaultEventHandle.class));
         assertThat(event.getEventHandle().getInternalOriginationTime(), is(notNullValue()));
 
         assertThat(createdEvent.toMap(), equalTo(dataObject));
