@@ -52,7 +52,9 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
                 try {
                     if (jsonCreator.isPresent() && enumConstant.equals(jsonCreator.get().invoke(null, enumValue))) {
                         return (Enum<?>) enumConstant;
-                    } else if (jsonCreator.isEmpty() && enumConstant.toString().toLowerCase().equals(enumValue)) {
+                    } else if (jsonCreator.isEmpty() &&
+                            (enumConstant.toString().toLowerCase().equals(enumValue)
+                                    || enumConstant.toString().equals(enumValue))) {
                         return (Enum<?>) enumConstant;
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {

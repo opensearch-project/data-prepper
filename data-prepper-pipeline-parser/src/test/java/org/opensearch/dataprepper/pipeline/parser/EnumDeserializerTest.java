@@ -67,6 +67,21 @@ public class EnumDeserializerTest {
     }
 
     @ParameterizedTest
+    @EnumSource(TestEnumOnlyUppercase.class)
+    void enum_class_with_just_enum_values_returns_expected_enum_constant(final TestEnumOnlyUppercase testEnumOption) throws IOException {
+        final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumOnlyUppercase.class);
+        final JsonParser jsonParser = mock(JsonParser.class);
+        final DeserializationContext deserializationContext = mock(DeserializationContext.class);
+        when(jsonParser.getCodec()).thenReturn(objectMapper);
+
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(testEnumOption.toString()));
+
+        Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
+
+        assertThat(result, equalTo(testEnumOption));
+    }
+
+    @ParameterizedTest
     @EnumSource(TestEnumWithoutJsonCreator.class)
     void enum_class_without_json_creator_annotation_returns_expected_enum_constant(final TestEnumWithoutJsonCreator enumWithoutJsonCreator) throws IOException {
         final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumWithoutJsonCreator.class);
@@ -170,5 +185,10 @@ public class EnumDeserializerTest {
         static TestEnumWithoutJsonCreator fromOptionValue(final String option) {
             return NAMES_MAP.get(option);
         }
+    }
+
+    private enum TestEnumOnlyUppercase {
+        VALUE_ONE,
+        VALUE_TWO;
     }
 }
