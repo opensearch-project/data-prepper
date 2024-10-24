@@ -207,18 +207,37 @@ class PipelineTransformerTests {
         assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(false));
     }
 
-
     @Test
-    void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap() {
+    void parseConfiguration_with_invalid_root_source_pipeline_creates_empty_pipelinesMap() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
+        assertThat(connectedPipelines.size(), equalTo(0));
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
+        final PluginError sourcePluginError = pluginErrorCollector.getPluginErrors().get(0);
+        assertThat(sourcePluginError.getPipelineName(), equalTo("test-pipeline-1"));
+        assertThat(sourcePluginError.getPluginName(), equalTo("file"));
+        assertThat(sourcePluginError.getException(), notNullValue());
+        // Buffer plugin gets error due to instantiated source is null
+        final PluginError bufferPluginError = pluginErrorCollector.getPluginErrors().get(1);
+        assertThat(bufferPluginError.getPipelineName(), equalTo("test-pipeline-1"));
+        assertThat(bufferPluginError.getPluginName(), equalTo("bounded_blocking"));
+        assertThat(bufferPluginError.getException(), notNullValue());
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidPipelineResourceAndFailedPluginNameArgs")
+    void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap(
+            final String pipelineResourcePath, final String failedPluginName) {
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(pipelineResourcePath);
         final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
         final PluginError pluginError = pluginErrorCollector.getPluginErrors().get(0);
         assertThat(pluginError.getPipelineName(), equalTo("test-pipeline-1"));
-        assertThat(pluginError.getPluginName(), equalTo("file"));
+        assertThat(pluginError.getPluginName(), equalTo(failedPluginName));
         assertThat(pluginError.getException(), notNullValue());
     }
 
@@ -522,6 +541,14 @@ class PipelineTransformerTests {
                 Arguments.of(1, 3),
                 Arguments.of(2, 2),
                 Arguments.of(new Random().nextInt(5) + 3, new Random().nextInt(5) + 1)
+        );
+    }
+
+    private static Stream<Arguments> provideInvalidPipelineResourceAndFailedPluginNameArgs() {
+        return Stream.of(
+                Arguments.of(TestDataProvider.CONNECTED_PIPELINE_BUFFER_INCORRECT, "invalid_buffer"),
+                Arguments.of(TestDataProvider.CONNECTED_PIPELINE_PROCESSOR_INCORRECT, "invalid_processor"),
+                Arguments.of(TestDataProvider.CONNECTED_PIPELINE_SINK_INCORRECT, "invalid_sink")
         );
     }
 
