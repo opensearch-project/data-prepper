@@ -54,7 +54,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 lambdaSinkConfig.getAwsAuthenticationOptions(),
                 lambdaSinkConfig.getMaxConnectionRetries(),
                 awsCredentialsSupplier,
-                lambdaSinkConfig.getSdkTimeout()
+                lambdaSinkConfig.getConnectionTimeout()
         );
         if(lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory,

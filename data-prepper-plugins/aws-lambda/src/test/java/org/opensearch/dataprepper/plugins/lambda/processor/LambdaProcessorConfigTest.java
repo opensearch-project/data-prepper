@@ -24,7 +24,7 @@ public class LambdaProcessorConfigTest {
 
     @Test
     void lambda_processor_default_sdk_timeout_test() {
-        assertThat(new LambdaProcessorConfig().getSdkTimeout(), equalTo(DEFAULT_SDK_TIMEOUT));
+        assertThat(new LambdaProcessorConfig().getConnectionTimeout(), equalTo(DEFAULT_SDK_TIMEOUT));
     }
 
     @Test

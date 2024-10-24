@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
@@ -26,7 +27,7 @@ public interface Buffer {
 
     Duration getDuration();
 
-    CompletableFuture<InvokeResponse> flushToLambda(String invocationType);
+    CompletableFuture<InvokeResponse> flushToLambda(InvocationType invocationType);
 
     OutputStream getOutputStream();
 
@@ -38,10 +39,12 @@ public interface Buffer {
 
     public List<Record<Event>> getRecords();
 
-    //Metrics
     public Duration getFlushLambdaLatencyMetric();
+
     public Long getPayloadRequestSize();
+
     public Long getPayloadResponseSize();
+
     public Duration stopLatencyWatch();
 
 

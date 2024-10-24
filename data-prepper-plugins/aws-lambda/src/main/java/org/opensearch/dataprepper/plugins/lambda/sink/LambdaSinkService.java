@@ -24,8 +24,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.EVENT;
-import static org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig.invocationTypeMap;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
@@ -66,7 +65,7 @@ public class LambdaSinkService {
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final Timer lambdaLatencyMetric;
-    private final String invocationType;
+    private final InvocationType invocationType;
     private final BufferFactory bufferFactory;
     private final DlqPushHandler dlqPushHandler;
     private final List<Event> events;
@@ -108,16 +107,13 @@ public class LambdaSinkService {
         maxEvents = batchOptions.getThresholdOptions().getEventCount();
         maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-        invocationType = invocationTypeMap.get(lambdaSinkConfig.getInvocationType());
-        if(!lambdaSinkConfig.getInvocationType().equals(EVENT)){
-            throw new RuntimeException("Only Event invocation type is supported for sink");
-        }
+        invocationType = lambdaSinkConfig.getInvocationType();
         events = new ArrayList();
         futureList = new ArrayList<>();
 
         this.bufferFactory = bufferFactory;
 
-        LOG.info("LambdaFunctionName:{} , invocationType:{}", functionName, invocationType);
+        LOG.info("LambdaFunctionName:{} , invocationType:{}", functionName, invocationType.getUserInputValue());
         // Initialize LambdaCommonHandler
         lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, functionName, invocationType, bufferFactory);
     }

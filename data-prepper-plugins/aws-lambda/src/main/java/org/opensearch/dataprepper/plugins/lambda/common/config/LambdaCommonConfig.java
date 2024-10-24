@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class LambdaCommonConfig {
     public static final int DEFAULT_CONNECTION_RETRIES = 3;
-    public static final Duration DEFAULT_SDK_TIMEOUT = Duration.ofSeconds(60);
+    public static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(60);
 
     public static final String REQUEST_RESPONSE = "request-response";
     public static final String EVENT = "event";
