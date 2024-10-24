@@ -135,17 +135,20 @@ class JsonSchemaConverterTest {
         assertThat(thenPropertiesNode2.isEmpty(), is(false));
         final JsonNode thenAttributeNode2 = thenPropertiesNode2.at("/test_mutually_exclusive_attribute_c");
         assertThat(thenAttributeNode2, instanceOf(ObjectNode.class));
+        final JsonNode thenAttributeValueNode2 = thenAttributeNode2.at("/const");
+        assertThat(thenAttributeValueNode2, instanceOf(TextNode.class));
+        assertThat(thenAttributeValueNode2.asText(), equalTo("\"option1\""));
         final JsonNode elseNode2 = ifThenElseNode2.at("/else");
         assertThat(elseNode2, instanceOf(ObjectNode.class));
         assertThat(elseNode2.has("required"), is(false));
         final JsonNode elsePropertiesNode2 = elseNode2.at("/properties");
         assertThat(elsePropertiesNode2, instanceOf(ObjectNode.class));
         assertThat(elsePropertiesNode2.isEmpty(), is(false));
-        final JsonNode elseAttributeNode2 = thenPropertiesNode2.at("/test_mutually_exclusive_attribute_c");
+        final JsonNode elseAttributeNode2 = elsePropertiesNode2.at("/test_mutually_exclusive_attribute_c");
         assertThat(elseAttributeNode2, instanceOf(ObjectNode.class));
-//        assertThat(propertiesNode.has("testAttributeEventKey"), is(equalTo(true)));
-//        assertThat(propertiesNode.get("testAttributeEventKey"), is(notNullValue()));
-//        assertThat(propertiesNode.get("testAttributeEventKey").get("type"), is(equalTo(TextNode.valueOf("string"))));
+        final JsonNode elseAttributeValueNode2 = elseAttributeNode2.at("/const");
+        assertThat(elseAttributeValueNode2, instanceOf(TextNode.class));
+        assertThat(elseAttributeValueNode2.asText(), equalTo("\"option2\""));
     }
 
     @ConditionalRequired(value = {
