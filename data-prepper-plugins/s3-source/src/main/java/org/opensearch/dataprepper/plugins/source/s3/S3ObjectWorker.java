@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,6 +44,7 @@ class S3ObjectWorker implements S3ObjectHandler {
     private final int numberOfRecordsToAccumulate;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
+    private Instant lastModified;
 
     public S3ObjectWorker(final S3ObjectRequest s3ObjectRequest) {
         this.buffer = s3ObjectRequest.getBuffer();
@@ -53,6 +55,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
         this.eventConsumer = s3ObjectRequest.getEventConsumer();
         this.s3Client = s3ObjectRequest.getS3Client();
+        this.lastModified = Instant.now();
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
     }
 
@@ -95,16 +98,22 @@ class S3ObjectWorker implements S3ObjectHandler {
         final AtomicInteger saveStateCounter = new AtomicInteger();
         try {
             s3ObjectSize = inputFile.getLength();
+            final Instant lastModifiedTime = inputFile.getLastModified();
+            final Instant now = Instant.now();
+            final Instant originationTime = (lastModifiedTime == null || lastModifiedTime.isAfter(now)) ? now : lastModifiedTime;
 
             codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
                 try {
-                    eventConsumer.accept(record.getData(), s3ObjectReference);
+                    Event event = record.getData();
+                    eventConsumer.accept(event, s3ObjectReference);
+                    event.getMetadata().setExternalOriginationTime(originationTime);
+                    event.getEventHandle().setExternalOriginationTime(originationTime);
                     // Always add record to acknowledgementSet before adding to
                     // buffer because another thread may take and process
                     // buffer contents before the event record is added
                     // to acknowledgement set
                     if (acknowledgementSet != null) {
-                        acknowledgementSet.add(record.getData());
+                        acknowledgementSet.add(event);
                     }
                     bufferAccumulator.add(record);
 

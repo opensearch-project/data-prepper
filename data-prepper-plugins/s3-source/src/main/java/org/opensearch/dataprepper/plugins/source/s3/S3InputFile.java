@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
 import java.time.Duration;
+import java.time.Instant;
 
 public class S3InputFile implements InputFile {
 
@@ -44,6 +45,15 @@ public class S3InputFile implements InputFile {
     @Override
     public long getLength() {
         return getMetadata().contentLength();
+    }
+
+    /**
+     * Return the last modified time of the file
+     *
+     * @return last modified time
+     */
+    public Instant getLastModified() {
+        return getMetadata().lastModified();
     }
 
     /**
