@@ -21,7 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @DataPrepperPlugin(name = "rename_keys", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -44,6 +46,12 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                         String.format("rename_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                                 entry.getRenameWhen()));
             }
+            if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
+                throw new InvalidPluginConfigurationException("Either from_key or from_key_pattern must be specified. Both cannot be set together.");
+            }
+            if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
+                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_pattern should be specified.");
+            }
         });
     }
 
@@ -59,14 +67,29 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                         continue;
                     }
 
-                    if (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
+                    if (Objects.nonNull(entry.getFromKey()) && (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey()))) {
                         continue;
                     }
-
                     if (!recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists()) {
-                        final Object source = recordEvent.get(entry.getFromKey(), Object.class);
-                        recordEvent.put(entry.getToKey(), source);
-                        recordEvent.delete(entry.getFromKey());
+                        if(Objects.nonNull(entry.getFromKey())) {
+                            final Object source = recordEvent.get(entry.getFromKey(), Object.class);
+                            recordEvent.put(entry.getToKey(), source);
+                            recordEvent.delete(entry.getFromKey());
+                        }
+                        if(Objects.nonNull(entry.getFromKeyCompiledPattern())) {
+                            Map<String,Object> eventMap = recordEvent.toMap();
+                            Pattern fromKeyCompiledPattern = entry.getFromKeyCompiledPattern();
+                            for (Map.Entry<String, Object> eventEntry : eventMap.entrySet()) {
+                                final String key = eventEntry.getKey();
+                                final Object value = eventEntry.getValue();
+                                if (fromKeyCompiledPattern.matcher(key).matches()) {
+                                    recordEvent.put(entry.getToKey(), value);
+                                    recordEvent.delete(key);
+                                    if(!entry.getOverwriteIfToKeyExists()) break;
+
+                                }
+                            }
+                        }
                     }
                 }
             } catch (final Exception e) {
