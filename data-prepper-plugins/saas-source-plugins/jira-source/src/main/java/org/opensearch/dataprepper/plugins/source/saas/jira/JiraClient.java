@@ -3,10 +3,10 @@ package org.opensearch.dataprepper.plugins.source.saas.jira;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.base.SaasClient;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.base.SaasSourceConfig;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.coordination.state.SaasWorkerProgressState;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.model.ItemInfo;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasClient;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

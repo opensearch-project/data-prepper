@@ -11,9 +11,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.SaasCrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.saas_crawler.base.SaasPluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.SaasCrawlerApplicationContextMarker;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasPluginExecutorServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
