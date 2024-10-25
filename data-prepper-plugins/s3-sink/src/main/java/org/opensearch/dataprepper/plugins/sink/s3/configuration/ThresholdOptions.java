@@ -28,7 +28,7 @@ public class ThresholdOptions {
     private int eventCount;
 
     @JsonProperty("maximum_size")
-    private ByteCount maximumSize = ByteCount.parse(DEFAULT_BYTE_CAPACITY);
+    private String maximumSize = DEFAULT_BYTE_CAPACITY;
 
     @JsonProperty("event_collect_timeout")
     @DurationMin(seconds = 1)
@@ -49,7 +49,7 @@ public class ThresholdOptions {
      * @return maximum byte count.
      */
     public ByteCount getMaximumSize() {
-        return maximumSize;
+        return ByteCount.parse(maximumSize);
     }
 
     /**
