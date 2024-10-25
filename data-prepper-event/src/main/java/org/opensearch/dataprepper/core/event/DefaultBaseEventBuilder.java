@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuil
     private Object data;
     private String eventType;
     private Instant timeReceived;
+    private EventHandle eventHandle;
     private Map<String, Object> attributes;
 
     public DefaultBaseEventBuilder() {
@@ -80,5 +82,11 @@ abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuil
         this.data = data;
         return this;
     }
+
+    public BaseEventBuilder<T> withEventHandle(final EventHandle eventHandle) {
+        this.eventHandle = eventHandle;
+        return this;
+    }
+
 }
 

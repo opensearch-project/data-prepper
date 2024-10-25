@@ -117,7 +117,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withSum(double sum) {
-            data.put(SUM_KEY, sum);
+            put(SUM_KEY, sum);
             return this;
         }
 
@@ -129,7 +129,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withMin(Double min) {
             if (min != null) {
-                data.put(MIN_KEY, min);
+                put(MIN_KEY, min);
             }
             return this;
         }
@@ -142,7 +142,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withMax(Double max) {
             if (max != null) {
-                data.put(MAX_KEY, max);
+                put(MAX_KEY, max);
             }
             return this;
         }
@@ -154,7 +154,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withCount(long count) {
-            data.put(COUNT_KEY, count);
+            put(COUNT_KEY, count);
             return this;
         }
 
@@ -165,7 +165,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withBucketCount(int bucketCount) {
-            data.put(BUCKET_COUNTS_KEY, bucketCount);
+            put(BUCKET_COUNTS_KEY, bucketCount);
             return this;
         }
 
@@ -176,7 +176,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withExplicitBoundsCount(int explicitBoundsCount) {
-            data.put(EXPLICIT_BOUNDS_COUNT_KEY, explicitBoundsCount);
+            put(EXPLICIT_BOUNDS_COUNT_KEY, explicitBoundsCount);
             return this;
         }
 
@@ -187,7 +187,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public  JacksonHistogram.Builder withAggregationTemporality(String aggregationTemporality) {
-            data.put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
+            put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
             return this;
         }
 
@@ -210,7 +210,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withBuckets(List<Bucket> buckets) {
-            data.put(BUCKETS_KEY, buckets);
+            put(BUCKETS_KEY, buckets);
             return this;
         }
 
@@ -221,7 +221,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withBucketCountsList(List<Long> bucketCountsList) {
-            data.put(BUCKET_COUNTS_LIST_KEY, bucketCountsList);
+            put(BUCKET_COUNTS_LIST_KEY, bucketCountsList);
             return this;
         }
 
@@ -232,7 +232,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withExplicitBoundsList(List<Double> explicitBoundsList) {
-            data.put(EXPLICIT_BOUNDS_KEY, explicitBoundsList);
+            put(EXPLICIT_BOUNDS_KEY, explicitBoundsList);
             return this;
         }
 
@@ -256,13 +256,13 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
             this.withEventKind(KIND.HISTOGRAM.toString());
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
+            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
 
             return new JacksonHistogram(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
 
     }

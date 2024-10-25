@@ -63,7 +63,7 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
          */
         public Builder withValue(final Double value) {
             if (value != null) {
-                data.put(VALUE_KEY, value);
+                put(VALUE_KEY, value);
             }
             return this;
         }
@@ -100,12 +100,12 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
             this.withData(data);
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
+            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
             return new JacksonGauge(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
     }
 }

@@ -8,12 +8,14 @@ package org.opensearch.dataprepper.model.metric;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * A Jackson implementation for {@link Metric}s.
@@ -130,10 +132,22 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
      */
     public abstract static class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
 
-        protected final Map<String, Object> data;
+        private final Map<String, Object> mdata;
 
         public Builder() {
-            data = new HashMap<>();
+            if (data == null) {
+                data = new HashMap<String, Object>();
+            }
+            mdata = (HashMap<String, Object>)data;
+            eventHandle = null;
+        }
+
+	public void put(String key, Object value) {
+            mdata.put(key, value);
+	}
+
+        public void computeIfAbsent(String key, Function<? super String,? extends Object> f) {
+            mdata.computeIfAbsent(key, f);
         }
 
         /**
@@ -143,7 +157,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withEventKind(final String kind) {
-            data.put(KIND_KEY, kind);
+            put(KIND_KEY, kind);
             return getThis();
         }
 
@@ -154,9 +168,14 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withUnit(final String unit) {
-            data.put(UNIT_KEY, unit);
+            put(UNIT_KEY, unit);
             return getThis();
         }
+
+	public T withEventHandle(final EventHandle eventHandle) {
+            this.eventHandle = eventHandle;
+            return getThis();
+	}
 
         /**
          * Optional - sets the attributes for this event. Default is an empty map.
@@ -165,7 +184,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withAttributes(final Map<String, Object> attributes) {
-            data.put(ATTRIBUTES_KEY, attributes);
+            put(ATTRIBUTES_KEY, attributes);
             return getThis();
         }
 
@@ -176,7 +195,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withName(final String name) {
-            data.put(NAME_KEY, name);
+            put(NAME_KEY, name);
             return getThis();
         }
 
@@ -187,7 +206,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withDescription(final String description) {
-            data.put(DESCRIPTION_KEY, description);
+            put(DESCRIPTION_KEY, description);
             return getThis();
         }
 
@@ -198,7 +217,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withStartTime(final String startTime) {
-            data.put(START_TIME_KEY, startTime);
+            put(START_TIME_KEY, startTime);
             return getThis();
         }
 
@@ -209,7 +228,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withTime(final String time) {
-            data.put(TIME_KEY, time);
+            put(TIME_KEY, time);
             return getThis();
         }
 
@@ -220,7 +239,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withServiceName(final String serviceName) {
-            data.put(SERVICE_NAME_KEY, serviceName);
+            put(SERVICE_NAME_KEY, serviceName);
             return getThis();
         }
 
@@ -231,7 +250,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withSchemaUrl(final String schemaUrl) {
-            data.put(SCHEMA_URL_KEY, schemaUrl);
+            put(SCHEMA_URL_KEY, schemaUrl);
             return getThis();
         }
 
@@ -255,7 +274,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withExemplars(final List<Exemplar> exemplars) {
-            data.put(EXEMPLARS_KEY, exemplars);
+            put(EXEMPLARS_KEY, exemplars);
             return getThis();
         }
 
@@ -266,8 +285,9 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withFlags(final Integer flags) {
-            data.put(FLAGS_KEY, flags);
+            put(FLAGS_KEY, flags);
             return getThis();
         }
+
     }
 }
