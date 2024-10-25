@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
-import org.opensearch.dataprepper.pipeline.parser.EnumDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.EventKeyDeserializer;
 import org.springframework.context.annotation.Bean;
 
@@ -34,7 +33,6 @@ public class ObjectMapperConfiguration {
     ObjectMapper extensionPluginConfigObjectMapper() {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-        simpleModule.addDeserializer(Enum.class, new EnumDeserializer());
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
 
         return new ObjectMapper()
@@ -49,7 +47,6 @@ public class ObjectMapperConfiguration {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
-        simpleModule.addDeserializer(Enum.class, new EnumDeserializer());
         simpleModule.addDeserializer(EventKey.class, new EventKeyDeserializer(eventKeyFactory));
         TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES.stream().forEach(clazz -> simpleModule.addDeserializer(
                 clazz, new DataPrepperScalarTypeDeserializer<>(variableExpander, clazz)));

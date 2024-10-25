@@ -79,13 +79,11 @@ public class ByteCount {
         final String unitString = matcher.group("unit");
 
         if(unitString == null) {
-            throw new ByteCountInvalidInputException("Byte counts must have a unit. Valid byte units include: " +
-                    Arrays.stream(Unit.values()).map(unitValue -> unitValue.unitString).collect(Collectors.toList()));
+            throw new ByteCountInvalidInputException("Byte counts must have a unit.");
         }
 
         final Unit unit = Unit.fromString(unitString)
-                .orElseThrow(() -> new ByteCountInvalidInputException("Invalid byte unit: '" + unitString + "'. Valid byte units include: "
-                        + Arrays.stream(Unit.values()).map(unitValue -> unitValue.unitString).collect(Collectors.toList())));
+                .orElseThrow(() -> new ByteCountInvalidInputException("Invalid byte unit: '" + unitString + "'"));
 
         final BigDecimal valueBigDecimal = new BigDecimal(valueString);
 
