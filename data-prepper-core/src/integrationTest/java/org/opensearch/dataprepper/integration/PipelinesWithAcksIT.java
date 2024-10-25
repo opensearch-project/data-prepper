@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.integration;
 
+import org.junit.FixMethodOrder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
@@ -28,6 +29,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@FixMethodOrder()
 class PipelinesWithAcksIT {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);
     private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";

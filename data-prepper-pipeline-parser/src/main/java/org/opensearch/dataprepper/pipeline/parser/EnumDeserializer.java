@@ -44,6 +44,7 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
         final String enumValue = node.asText();
 
         final Optional<Method> jsonCreator = findJsonCreatorMethod();
+        final Optional<Method> jsonValueMethod = findJsonValueMethodForClass();
 
         try {
             jsonCreator.ifPresent(method -> method.setAccessible(true));
@@ -52,7 +53,11 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
                 try {
                     if (jsonCreator.isPresent() && enumConstant.equals(jsonCreator.get().invoke(null, enumValue))) {
                         return (Enum<?>) enumConstant;
-                    } else if (jsonCreator.isEmpty() && enumConstant.toString().toLowerCase().equals(enumValue)) {
+                    } else if (jsonCreator.isEmpty() && jsonValueMethod.isPresent()
+                            && jsonValueMethod.get().invoke(enumConstant).equals(enumValue)) {
+                        return (Enum<?>) enumConstant;
+                    } else if (jsonCreator.isEmpty() && jsonValueMethod.isEmpty() &&
+                            ((Enum<?>) enumConstant).name().equals(enumValue)) {
                         return (Enum<?>) enumConstant;
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {
@@ -63,9 +68,6 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
             jsonCreator.ifPresent(method -> method.setAccessible(false));
         }
 
-
-
-        final Optional<Method> jsonValueMethod = findJsonValueMethodForClass();
         final List<Object> listOfEnums = jsonValueMethod.map(method -> Arrays.stream(enumClass.getEnumConstants())
                 .map(valueEnum -> {
                     try {
@@ -75,7 +77,7 @@ public class EnumDeserializer extends JsonDeserializer<Enum<?>> implements Conte
                     }
                 })
                 .collect(Collectors.toList())).orElseGet(() -> Arrays.stream(enumClass.getEnumConstants())
-                .map(valueEnum -> valueEnum.toString().toLowerCase())
+                .map(valueEnum -> ((Enum<?>) valueEnum).name())
                 .collect(Collectors.toList()));
 
         throw new IllegalArgumentException(String.format(INVALID_ENUM_VALUE_ERROR_FORMAT, enumValue, listOfEnums));

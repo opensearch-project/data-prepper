@@ -67,14 +67,44 @@ public class EnumDeserializerTest {
     }
 
     @ParameterizedTest
+    @EnumSource(TestEnumWithJsonValue.class)
+    void enum_class_with_no_json_creator_and_a_json_value_annotation_returns_expected_enum_constant(final TestEnumWithJsonValue testEnumOption) throws IOException {
+        final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumWithJsonValue.class);
+        final JsonParser jsonParser = mock(JsonParser.class);
+        final DeserializationContext deserializationContext = mock(DeserializationContext.class);
+        when(jsonParser.getCodec()).thenReturn(objectMapper);
+
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(testEnumOption.toString()));
+
+        Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
+
+        assertThat(result, equalTo(testEnumOption));
+    }
+
+    @ParameterizedTest
+    @EnumSource(TestEnumOnlyUppercase.class)
+    void enum_class_with_just_enum_values_returns_expected_enum_constant(final TestEnumOnlyUppercase testEnumOption) throws IOException {
+        final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumOnlyUppercase.class);
+        final JsonParser jsonParser = mock(JsonParser.class);
+        final DeserializationContext deserializationContext = mock(DeserializationContext.class);
+        when(jsonParser.getCodec()).thenReturn(objectMapper);
+
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(testEnumOption.name()));
+
+        Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
+
+        assertThat(result, equalTo(testEnumOption));
+    }
+
+    @ParameterizedTest
     @EnumSource(TestEnumWithoutJsonCreator.class)
-    void enum_class_without_json_creator_annotation_returns_expected_enum_constant(final TestEnumWithoutJsonCreator enumWithoutJsonCreator) throws IOException {
+    void enum_class_without_json_creator_or_json_value_annotation_returns_expected_enum_constant(final TestEnumWithoutJsonCreator enumWithoutJsonCreator) throws IOException {
         final EnumDeserializer objectUnderTest = createObjectUnderTest(TestEnumWithoutJsonCreator.class);
         final JsonParser jsonParser = mock(JsonParser.class);
         final DeserializationContext deserializationContext = mock(DeserializationContext.class);
         when(jsonParser.getCodec()).thenReturn(objectMapper);
 
-        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(enumWithoutJsonCreator.toString()));
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(enumWithoutJsonCreator.name()));
 
         Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
 
@@ -116,7 +146,7 @@ public class EnumDeserializerTest {
         assertThat(exception, notNullValue());
         final String expectedErrorMessage = "Invalid value \"" + invalidValue + "\". Valid options include";
         assertThat(exception.getMessage(), Matchers.startsWith(expectedErrorMessage));
-
+        assertThat(exception.getMessage(), containsString("[TEST]"));
     }
 
     @Test
@@ -155,6 +185,27 @@ public class EnumDeserializerTest {
         }
     }
 
+    private enum TestEnumWithJsonValue {
+        TEST_ONE("test_json_value_one"),
+        TEST_TWO("test_json_value_two"),
+        TEST_THREE("test_json_value_three");
+        private static final Map<String, TestEnum> NAMES_MAP = Arrays.stream(TestEnum.values())
+                .collect(Collectors.toMap(TestEnum::toString, Function.identity()));
+        private final String name;
+        TestEnumWithJsonValue(final String name) {
+            this.name = name;
+        }
+
+        @JsonValue
+        public String toString() {
+            return this.name;
+        }
+
+        static TestEnum fromOptionValue(final String option) {
+            return NAMES_MAP.get(option);
+        }
+    }
+
     private enum TestEnumWithoutJsonCreator {
         TEST("test");
         private static final Map<String, TestEnumWithoutJsonCreator> NAMES_MAP = Arrays.stream(TestEnumWithoutJsonCreator.values())
@@ -164,11 +215,16 @@ public class EnumDeserializerTest {
             this.name = name;
         }
         public String toString() {
-            return this.name;
+            return UUID.randomUUID().toString();
         }
 
         static TestEnumWithoutJsonCreator fromOptionValue(final String option) {
             return NAMES_MAP.get(option);
         }
+    }
+
+    private enum TestEnumOnlyUppercase {
+        VALUE_ONE,
+        VALUE_TWO;
     }
 }
