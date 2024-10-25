@@ -151,9 +151,7 @@ public class PipelineTransformer {
             Buffer pipelineDefinedBuffer = null;
             final PluginSetting bufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
             try {
-                if (source != null) {
-                    pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, bufferPluginSetting, source.getDecoder());
-                }
+                pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, bufferPluginSetting, source.getDecoder());
             } catch (Exception e) {
                 final PluginError pluginError = PluginError.builder()
                         .componentType(PipelineModel.BUFFER_PLUGIN_TYPE)
