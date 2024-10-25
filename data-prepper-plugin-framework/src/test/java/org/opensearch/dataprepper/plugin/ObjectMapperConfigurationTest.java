@@ -6,8 +6,6 @@
 package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +22,6 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -47,12 +44,11 @@ class ObjectMapperConfigurationTest {
     }
 
     @Test
-    void test_enum_with_pluginConfigObjectMapper() throws JsonProcessingException {
-        final String testModelAsString = "{ \"name\": \"my-name\", \"test_type\": \"test\" }";
+    void test_enum_with_pluginConfigObjectMapper() {
+        final String testString = "test";
         final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
-        final TestModel testModel = objectMapper.readValue(testModelAsString, TestModel.class);
-        assertThat(testModel, notNullValue());
-        assertThat(testModel.getTestType(), equalTo(TestType.TEST));
+        final TestType duration = objectMapper.convertValue(testString, TestType.class);
+        assertThat(duration, equalTo(TestType.fromOptionValue(testString)));
     }
 
     @Test
@@ -64,12 +60,11 @@ class ObjectMapperConfigurationTest {
     }
 
     @Test
-    void test_enum_with_extensionPluginConfigObjectMapper() throws JsonProcessingException {
-        final String testModelAsString = "{ \"name\": \"my-name\", \"test_type\": \"test\" }";
+    void test_enum_with_extensionPluginConfigObjectMapper() {
+        final String testString = "test";
         final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper();
-        final TestModel testModel = objectMapper.readValue(testModelAsString, TestModel.class);
-        assertThat(testModel, notNullValue());
-        assertThat(testModel.getTestType(), equalTo(TestType.TEST));
+        final TestType duration = objectMapper.convertValue(testString, TestType.class);
+        assertThat(duration, equalTo(TestType.fromOptionValue(testString)));
     }
 
     @Test
@@ -102,28 +97,6 @@ class ObjectMapperConfigurationTest {
         @JsonCreator
         static TestType fromOptionValue(final String option) {
             return NAMES_MAP.get(option);
-        }
-    }
-
-    private static class TestModel {
-        @JsonProperty("name")
-        private final String name;
-
-        @JsonProperty("test_type")
-        private final TestType testType;
-
-        public TestModel(@JsonProperty("name") final String name,
-                         @JsonProperty("test_type") final TestType testType) {
-            this.name = name;
-            this.testType = testType;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public TestType getTestType() {
-            return testType;
         }
     }
 

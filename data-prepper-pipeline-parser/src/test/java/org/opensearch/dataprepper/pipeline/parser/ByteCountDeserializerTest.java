@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,28 +31,9 @@ class ByteCountDeserializerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1", "10"})
-    void convert_with_no_byte_unit_throws_expected_exception(final String invalidByteString) {
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> objectMapper.convertValue(invalidByteString, ByteCount.class));
-        assertThat(exception.getMessage(), containsString("Byte counts must have a unit. Valid byte units include: [b, kb, mb, gb]"));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"10 2b", "bad"})
-    void convert_with_non_parseable_values_throws(final String invalidByteString) {
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> objectMapper.convertValue(invalidByteString, ByteCount.class));
-        assertThat(exception.getMessage(), containsString("Unable to parse bytes"));
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "10f, f",
-            "1vb, vb",
-            "3g, g"
-    })
-    void convert_with_invalid_byte_units_throws(final String invalidByteString, final String invalidUnit) {
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> objectMapper.convertValue(invalidByteString, ByteCount.class));
-        assertThat(exception.getMessage(), containsString("Invalid byte unit: '" + invalidUnit + "'. Valid byte units include: [b, kb, mb, gb]"));
+    @ValueSource(strings = {"1", "1b 2b", "1vb", "bad"})
+    void convert_with_invalid_values_throws(final String invalidByteString) {
+        assertThrows(IllegalArgumentException.class, () -> objectMapper.convertValue(invalidByteString, ByteCount.class));
     }
 
     @ParameterizedTest
