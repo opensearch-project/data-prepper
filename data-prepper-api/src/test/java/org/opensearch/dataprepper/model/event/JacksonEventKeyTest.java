@@ -68,7 +68,8 @@ class JacksonEventKeyTest {
             "key-with-hyphen",
             "key_with_underscore",
             "key@with@at",
-            "key[with]brackets"
+            "key[with]brackets",
+            "key~1withtilda"
     })
     void getKey_returns_expected_result(final String key) {
         assertThat(new JacksonEventKey(key).getKey(), equalTo(key));
