@@ -6,8 +6,10 @@ import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
 import java.util.Map;
 
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class DissectProcessorConfigTest {
@@ -37,9 +39,15 @@ class DissectProcessorConfigTest {
 
     @Test
     void test_get_targets_types() throws NoSuchFieldException, IllegalAccessException {
-        Map<String, TargetType> targetTypeMap = Map.of("field1", TargetType.INTEGER);
+        Map<String, String> targetTypeMap = Map.of("field1", "integer");
         setField(DissectProcessorConfig.class, dissectProcessorConfig, "targetTypes", targetTypeMap);
-        assertThat(dissectProcessorConfig.getTargetTypes(), is(targetTypeMap));
+
+        assertTrue(dissectProcessorConfig.isTargetTypeValid());
+        final Map<String, TargetType> actualMap = dissectProcessorConfig.getTargetTypes();
+
+        assertThat(actualMap.size(), equalTo(targetTypeMap.size()));
+        assertThat(actualMap.containsKey("field1"), equalTo(true));
+        assertThat(actualMap.get("field1"), equalTo(TargetType.INTEGER));
     }
 
 }

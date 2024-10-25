@@ -51,7 +51,7 @@ public enum TargetType {
     }
 
     @JsonCreator
-    static TargetType fromOptionValue(final String option) {
+    public static TargetType fromOptionValue(final String option) {
         return OPTIONS_MAP.get(DataType.fromTypeName(option));
     }
 
