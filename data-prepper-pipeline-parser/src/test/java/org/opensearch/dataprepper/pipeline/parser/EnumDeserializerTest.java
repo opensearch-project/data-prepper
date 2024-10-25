@@ -89,7 +89,7 @@ public class EnumDeserializerTest {
         final DeserializationContext deserializationContext = mock(DeserializationContext.class);
         when(jsonParser.getCodec()).thenReturn(objectMapper);
 
-        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(testEnumOption.toString()));
+        when(objectMapper.readTree(jsonParser)).thenReturn(new TextNode(testEnumOption.name()));
 
         Enum<?> result = objectUnderTest.deserialize(jsonParser, deserializationContext);
 
@@ -215,7 +215,7 @@ public class EnumDeserializerTest {
             this.name = name;
         }
         public String toString() {
-            return this.name;
+            return UUID.randomUUID().toString();
         }
 
         static TestEnumWithoutJsonCreator fromOptionValue(final String option) {
