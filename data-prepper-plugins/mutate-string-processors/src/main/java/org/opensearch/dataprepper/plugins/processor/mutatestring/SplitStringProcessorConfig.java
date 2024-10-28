@@ -15,10 +15,23 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter_regex")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter_regex", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>split_string</code> processor splits a field into an array using a delimiting character.")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {

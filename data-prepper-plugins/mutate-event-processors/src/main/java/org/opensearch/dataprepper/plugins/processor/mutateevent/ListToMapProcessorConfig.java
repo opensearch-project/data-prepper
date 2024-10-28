@@ -13,12 +13,21 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "use_source_key", value = "false")},
+                thenExpect = {@SchemaProperty(field = "key")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>list_to_map</code> processor converts a list of objects from an event, " +
         "where each object contains a <code>key</code> field, into a map of target keys.")

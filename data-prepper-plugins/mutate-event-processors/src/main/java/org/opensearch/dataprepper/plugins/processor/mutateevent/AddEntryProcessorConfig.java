@@ -14,10 +14,44 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 
 import java.util.List;
 import java.util.stream.Stream;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "metadata_key")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "metadata_key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "key")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {
+                        @SchemaProperty(field = "format", value = "null"),
+                        @SchemaProperty(field = "value", value = "null"),
+                },
+                thenExpect = {@SchemaProperty(field = "value_expression")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {
+                        @SchemaProperty(field = "format", value = "null"),
+                        @SchemaProperty(field = "value_expression", value = "null"),
+                },
+                thenExpect = {@SchemaProperty(field = "value")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {
+                        @SchemaProperty(field = "value", value = "null"),
+                        @SchemaProperty(field = "value_expression", value = "null"),
+                },
+                thenExpect = {@SchemaProperty(field = "format")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>add_entries</code> processor adds entries to an event.")
 public class AddEntryProcessorConfig {
