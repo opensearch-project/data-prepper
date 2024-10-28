@@ -18,7 +18,20 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter_regex")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter_regex", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>split_event</code> processor is used to split events based on a delimiter and " +
         "generates multiple events from a user-specified field.")

@@ -12,6 +12,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
@@ -20,6 +23,16 @@ import java.util.List;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "match", value = "null")},
+                thenExpect = {@SchemaProperty(field = "from_time_received", value = "true")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "from_time_received", value = "false")},
+                thenExpect = {@SchemaProperty(field = "match")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>date</code> processor adds a default timestamp to an event, parses timestamp fields, " +
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +

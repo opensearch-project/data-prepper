@@ -10,11 +10,24 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
 import java.util.Optional;
 
+@ConditionalRequired(value = {
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "keys")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "keys", value = "null")},
+                thenExpect = {@SchemaProperty(field = "key")}
+        )
+})
 @JsonPropertyOrder
 @JsonClassDescription("The <code>convert_type</code> processor converts a value associated with the specified key in " +
         "a event to the specified type. It is a casting processor that changes the types of specified fields in events.")
