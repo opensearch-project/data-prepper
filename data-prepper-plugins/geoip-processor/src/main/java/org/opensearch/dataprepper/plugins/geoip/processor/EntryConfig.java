@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.geoip.processor;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -69,6 +70,7 @@ public class EntryConfig {
      * Gets the desired {@link GeoIPField} based on the configuration.
      * @return A collection of {@link GeoIPField}
      */
+    @JsonIgnore
     public Collection<GeoIPField> getGeoIPFields() {
 
         if (includeFields != null && !includeFields.isEmpty()) {
