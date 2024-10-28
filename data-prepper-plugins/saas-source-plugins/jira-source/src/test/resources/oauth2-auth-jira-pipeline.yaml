@@ -1,0 +1,9 @@
+account_url: "https://jira.com/"
+connector_credentials:
+  auth_type: "OAuth2"
+  jira_id: "jira_id"
+  client_id: "client_id"
+  client_secret: "client_secret"
+  access_token: "access_token"
+  refresh_token: "refresh_token"
+

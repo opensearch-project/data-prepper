@@ -55,9 +55,10 @@ public class JiraItemInfo implements ItemInfo {
 
     @Override
     public Instant getLastModifiedAt() {
-        Instant updatedAt = (Instant) this.metadata.getOrDefault("updated", Instant.ofEpochMilli(0));
-        Instant createdAt = (Instant) this.metadata.getOrDefault("created", Instant.ofEpochMilli(0));
-        return createdAt.isAfter(updatedAt) ? createdAt : updatedAt;
+        long updatedAtMillis = Long.parseLong((String) this.metadata.getOrDefault("updated", "0"));
+        long createdAtMillis = Long.parseLong((String) this.metadata.getOrDefault("created", "0"));
+        return createdAtMillis > updatedAtMillis ?
+                Instant.ofEpochMilli(createdAtMillis) : Instant.ofEpochMilli(updatedAtMillis);
     }
 
     public static class JiraItemInfoBuilder {

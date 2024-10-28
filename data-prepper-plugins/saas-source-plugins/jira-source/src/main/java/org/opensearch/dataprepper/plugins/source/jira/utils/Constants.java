@@ -29,7 +29,7 @@ public class Constants {
     public static final String ACCESS_TOKEN = "access_token";
     public static final String REFRESH_TOKEN = "refresh_token";
     public static final String ERR_MSG = "errorMessages";
-    public static final String PLUGIN_NAME = "Jira";
+    public static final String PLUGIN_NAME = "jira";
 
     public static final String BAD_REQUEST_EXCEPTION = "Bad request exception occurred "
             + "Invalid project key found in filter configuration for ";
@@ -68,7 +68,6 @@ public class Constants {
     public static final String CUSTOM = "    custom: ";
     public static final String _SYSTEM = "    system: ";
     public static final String EXPAND_WITH_SPACE = "    expand: ";
-    public static final String TITLE = "    title: ";
 
 
     public static final String ACCEPT = "Accept";
