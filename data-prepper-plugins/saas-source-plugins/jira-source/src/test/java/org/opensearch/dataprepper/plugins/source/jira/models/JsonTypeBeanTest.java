@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -74,9 +75,10 @@ public class JsonTypeBeanTest {
 
     @Test
     public void testEquals() throws JsonProcessingException {
-        
-        assertNotEquals(null, jsonTypeBean);
-        assertNotEquals(jsonTypeBean, new Object());
+        assertTrue(jsonTypeBean.equals(jsonTypeBean));
+
+        assertFalse(jsonTypeBean.equals(null));
+        assertFalse(jsonTypeBean.equals(new Object()));
 
         JsonTypeBean sameEntryBean;
         JsonTypeBean differentEntryBean;
@@ -157,3 +159,4 @@ public class JsonTypeBeanTest {
 
     }
 }
+
