@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
@@ -36,7 +36,7 @@ public class WorkerSchedulerTest {
     @Mock
     private EnhancedSourceCoordinator coordinator;
     @Mock
-    private SaasSourceConfig sourceConfig;
+    private CrawlerSourceConfig sourceConfig;
     @Mock
     private Crawler crawler;
 

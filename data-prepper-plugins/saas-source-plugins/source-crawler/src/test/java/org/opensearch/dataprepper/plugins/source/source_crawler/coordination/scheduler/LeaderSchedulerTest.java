@@ -8,7 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 
 import java.time.Duration;
@@ -33,7 +33,7 @@ public class LeaderSchedulerTest {
     @Mock
     private EnhancedSourceCoordinator coordinator;
     @Mock
-    private SaasSourcePlugin saasSourcePlugin;
+    private CrawlerSourcePlugin saasSourcePlugin;
     @Mock
     private Crawler crawler;
 

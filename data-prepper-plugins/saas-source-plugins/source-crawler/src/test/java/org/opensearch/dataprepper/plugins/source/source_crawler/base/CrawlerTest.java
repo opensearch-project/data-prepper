@@ -33,7 +33,7 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 @ExtendWith(MockitoExtension.class)
 public class CrawlerTest {
     @Mock
-    private SaasSourceConfig sourceConfig;
+    private CrawlerSourceConfig sourceConfig;
 
     @Mock
     private EnhancedSourceCoordinator coordinator;

@@ -1,10 +1,10 @@
-package org.opensearch.dataprepper.plugins.source.saas.jira;
+package org.opensearch.dataprepper.plugins.source.jira;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ public class JiraClient implements CrawlerClient {
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig configuration) {
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig configuration) {
         log.info("Logic for executing the partitions");
     }
 }

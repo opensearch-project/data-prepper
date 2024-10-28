@@ -18,18 +18,18 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class SaasPluginExecutorServiceProviderTest {
+public class PluginExecutorServiceProviderTest {
 
-    private SaasPluginExecutorServiceProvider provider;
+    private PluginExecutorServiceProvider provider;
     private ExecutorService executorService;
 
-    private SaasPluginExecutorServiceProvider provider2;
+    private PluginExecutorServiceProvider provider2;
     @Mock
     private ExecutorService mockExecutorService;
 
     @BeforeEach
     void setUp() {
-        provider = new SaasPluginExecutorServiceProvider();
+        provider = new PluginExecutorServiceProvider();
         executorService = provider.get();
     }
 
@@ -53,7 +53,7 @@ public class SaasPluginExecutorServiceProviderTest {
 
     @Test
     void terminateExecutorInterruptionTest() throws InterruptedException {
-        provider2 = new SaasPluginExecutorServiceProvider(mockExecutorService);
+        provider2 = new PluginExecutorServiceProvider(mockExecutorService);
         when(mockExecutorService.awaitTermination(anyLong(), any(TimeUnit.class))).thenThrow(new InterruptedException());
         AtomicBoolean wasInterrupted = new AtomicBoolean(false);
 
