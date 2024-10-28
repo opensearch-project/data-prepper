@@ -15,39 +15,41 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 
 import java.util.List;
 import java.util.stream.Stream;
 
 @ConditionalRequired(value = {
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "key", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "metadata_key")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "metadata_key")}
         ),
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "metadata_key", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "key")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "metadata_key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "key")}
         ),
-        @ConditionalRequired.IfThenElse(
+        @IfThenElse(
                 ifFulfilled = {
-                        @ConditionalRequired.SchemaProperty(field = "format", value = "null"),
-                        @ConditionalRequired.SchemaProperty(field = "value", value = "null"),
+                        @SchemaProperty(field = "format", value = "null"),
+                        @SchemaProperty(field = "value", value = "null"),
                 },
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "value_expression")}
+                thenExpect = {@SchemaProperty(field = "value_expression")}
         ),
-        @ConditionalRequired.IfThenElse(
+        @IfThenElse(
                 ifFulfilled = {
-                        @ConditionalRequired.SchemaProperty(field = "format", value = "null"),
-                        @ConditionalRequired.SchemaProperty(field = "value_expression", value = "null"),
+                        @SchemaProperty(field = "format", value = "null"),
+                        @SchemaProperty(field = "value_expression", value = "null"),
                 },
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "value")}
+                thenExpect = {@SchemaProperty(field = "value")}
         ),
-        @ConditionalRequired.IfThenElse(
+        @IfThenElse(
                 ifFulfilled = {
-                        @ConditionalRequired.SchemaProperty(field = "value", value = "null"),
-                        @ConditionalRequired.SchemaProperty(field = "value_expression", value = "null"),
+                        @SchemaProperty(field = "value", value = "null"),
+                        @SchemaProperty(field = "value_expression", value = "null"),
                 },
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "format")}
+                thenExpect = {@SchemaProperty(field = "format")}
         )
 })
 @JsonPropertyOrder

@@ -16,18 +16,20 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
 
 @ConditionalRequired(value = {
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "delimiter", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "delimiter_regex")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter_regex")}
         ),
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "delimiter_regex", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "delimiter")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "delimiter_regex", value = "null")},
+                thenExpect = {@SchemaProperty(field = "delimiter")}
         )
 })
 @JsonPropertyOrder

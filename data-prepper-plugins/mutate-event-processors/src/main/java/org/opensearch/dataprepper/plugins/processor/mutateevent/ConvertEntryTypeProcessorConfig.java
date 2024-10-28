@@ -11,19 +11,21 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
 import java.util.Optional;
 
 @ConditionalRequired(value = {
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "key", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "keys")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "key", value = "null")},
+                thenExpect = {@SchemaProperty(field = "keys")}
         ),
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "keys", value = "null")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "key")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "keys", value = "null")},
+                thenExpect = {@SchemaProperty(field = "key")}
         )
 })
 @JsonPropertyOrder

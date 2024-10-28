@@ -14,6 +14,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
+import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,9 +23,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @ConditionalRequired(value = {
-        @ConditionalRequired.IfThenElse(
-                ifFulfilled = {@ConditionalRequired.SchemaProperty(field = "use_source_key", value = "false")},
-                thenExpect = {@ConditionalRequired.SchemaProperty(field = "key")}
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "use_source_key", value = "false")},
+                thenExpect = {@SchemaProperty(field = "key")}
         )
 })
 @JsonPropertyOrder
