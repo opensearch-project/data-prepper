@@ -6,9 +6,9 @@
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -46,7 +46,8 @@ import java.util.stream.Stream;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
-@DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class)
+@DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class,
+        pluginConfigurationType = OTelTraceGroupProcessorConfig.class)
 public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
@@ -63,10 +64,14 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     private final Counter recordsOutMissingTraceGroupCounter;
 
     @DataPrepperPluginConstructor
-    public OTelTraceGroupProcessor(final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier) {
-        super(pluginSetting);
-        otelTraceGroupProcessorConfig = OTelTraceGroupProcessorConfig.buildConfig(pluginSetting);
-        restHighLevelClient = otelTraceGroupProcessorConfig.getEsConnectionConfig().createClient(awsCredentialsSupplier);
+    public OTelTraceGroupProcessor(final PluginMetrics pluginMetrics,
+                                   final OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig,
+                                   final AwsCredentialsSupplier awsCredentialsSupplier) {
+        super(pluginMetrics);
+        this.otelTraceGroupProcessorConfig = otelTraceGroupProcessorConfig;
+        final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.fromConnectionConfiguration(
+                otelTraceGroupProcessorConfig.getEsConnectionConfig());
+        restHighLevelClient = openSearchClientFactory.createRestHighLevelClient(awsCredentialsSupplier);
 
         recordsInMissingTraceGroupCounter = pluginMetrics.counter(RECORDS_IN_MISSING_TRACE_GROUP);
         recordsOutFixedTraceGroupCounter = pluginMetrics.counter(RECORDS_OUT_FIXED_TRACE_GROUP);
