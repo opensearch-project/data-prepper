@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.saas.jira;
+package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.saas.jira.rest.auth;
+package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
