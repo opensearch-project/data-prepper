@@ -29,30 +29,30 @@ import java.util.function.Function;
  * JiraConnector connector entry point.
  */
 
-public abstract class SaasSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
+public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, UsesEnhancedSourceCoordination {
 
 
-    private static final Logger log = LoggerFactory.getLogger(SaasSourcePlugin.class);
+    private static final Logger log = LoggerFactory.getLogger(CrawlerSourcePlugin.class);
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
 
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private final ExecutorService executorService;
-    private final SaasSourceConfig sourceConfig;
+    private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final String sourcePluginName;
     private EnhancedSourceCoordinator coordinator;
     private Buffer<Record<Event>> buffer;
 
 
-    public SaasSourcePlugin(final String sourcePluginName,
-                            final PluginMetrics pluginMetrics,
-                            final SaasSourceConfig sourceConfig,
-                            final PluginFactory pluginFactory,
-                            final AcknowledgementSetManager acknowledgementSetManager,
-                            final Crawler crawler,
-                            final SaasPluginExecutorServiceProvider executorServiceProvider) {
+    public CrawlerSourcePlugin(final String sourcePluginName,
+                               final PluginMetrics pluginMetrics,
+                               final CrawlerSourceConfig sourceConfig,
+                               final PluginFactory pluginFactory,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final Crawler crawler,
+                               final PluginExecutorServiceProvider executorServiceProvider) {
         log.debug("Creating {} Source Plugin", sourcePluginName);
         this.sourcePluginName = sourcePluginName;
         this.pluginMetrics = pluginMetrics;

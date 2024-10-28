@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 @ExtendWith(MockitoExtension.class)
-public class SaasSourcePluginTest {
+public class CrawlerSourcePluginTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -42,13 +42,13 @@ public class SaasSourcePluginTest {
     private Crawler crawler;
 
     @Mock
-    private SaasPluginExecutorServiceProvider executorServiceProvider;
+    private PluginExecutorServiceProvider executorServiceProvider;
 
     @Mock
     private ExecutorService executorService;
 
     @Mock
-    private SaasSourceConfig sourceConfig;
+    private CrawlerSourceConfig sourceConfig;
 
     @Mock
     private Buffer<Record<Event>> buffer;
@@ -60,12 +60,12 @@ public class SaasSourcePluginTest {
     @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
-    private testSaasSourcePlugin saasSourcePlugin;
+    private testCrawlerSourcePlugin saasSourcePlugin;
 
     @BeforeEach
     void setUp() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        saasSourcePlugin = new testSaasSourcePlugin(pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        saasSourcePlugin = new testCrawlerSourcePlugin(pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class SaasSourcePluginTest {
         saasSourcePlugin.setEnhancedSourceCoordinator(sourceCoordinator);
         saasSourcePlugin.start(buffer);
         verify(executorService, times(1)).submit(any(LeaderScheduler.class));
-        verify(executorService, times(SaasSourceConfig.DEFAULT_NUMBER_OF_WORKERS))
+        verify(executorService, times(CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS))
                 .submit(any(Thread.class));
     }
 
@@ -123,13 +123,13 @@ public class SaasSourcePluginTest {
     }
 
     @Nested
-    public class testSaasSourcePlugin extends SaasSourcePlugin {
-        public testSaasSourcePlugin(final PluginMetrics pluginMetrics,
-                                    final SaasSourceConfig sourceConfig,
-                                    final PluginFactory pluginFactory,
-                                    final AcknowledgementSetManager acknowledgementSetManager,
-                                    final Crawler crawler,
-                                    final SaasPluginExecutorServiceProvider executorServiceProvider) {
+    public class testCrawlerSourcePlugin extends CrawlerSourcePlugin {
+        public testCrawlerSourcePlugin(final PluginMetrics pluginMetrics,
+                                       final CrawlerSourceConfig sourceConfig,
+                                       final PluginFactory pluginFactory,
+                                       final AcknowledgementSetManager acknowledgementSetManager,
+                                       final Crawler crawler,
+                                       final PluginExecutorServiceProvider executorServiceProvider) {
             super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         }
     }

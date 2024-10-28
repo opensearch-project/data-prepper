@@ -6,7 +6,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 import org.slf4j.Logger;
@@ -26,14 +26,14 @@ public class WorkerScheduler implements Runnable {
     private static final Duration DEFAULT_SLEEP_DURATION_MILLIS = Duration.ofMillis(10000);
 
     private final EnhancedSourceCoordinator sourceCoordinator;
-    private final SaasSourceConfig sourceConfig;
+    private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final Buffer<Record<Event>> buffer;
 
 
     public WorkerScheduler(Buffer<Record<Event>> buffer,
                            EnhancedSourceCoordinator sourceCoordinator,
-                           SaasSourceConfig sourceConfig,
+                           CrawlerSourceConfig sourceConfig,
                            Crawler crawler) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
@@ -75,7 +75,7 @@ public class WorkerScheduler implements Runnable {
         log.warn("SourceItemWorker Scheduler is interrupted, looks like shutdown has triggered");
     }
 
-    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig) {
+    private void processPartition(EnhancedSourcePartition partition, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig) {
         // Implement your source extraction logic here
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed

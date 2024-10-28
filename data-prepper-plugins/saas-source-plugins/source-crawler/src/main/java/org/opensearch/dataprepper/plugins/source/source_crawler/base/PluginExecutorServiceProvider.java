@@ -10,19 +10,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Named
-public class SaasPluginExecutorServiceProvider {
-    private static final Logger log = LoggerFactory.getLogger(SaasPluginExecutorServiceProvider.class);
+public class PluginExecutorServiceProvider {
+    private static final Logger log = LoggerFactory.getLogger(PluginExecutorServiceProvider.class);
     private static final int DEFAULT_THREAD_COUNT = 50;
     private final ExecutorService executorService;
 
-    public SaasPluginExecutorServiceProvider() {
+    public PluginExecutorServiceProvider() {
         executorService = Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT);
     }
 
     /**
      * Constructor for testing
      */
-    public SaasPluginExecutorServiceProvider(ExecutorService testExecutorService) {
+    public PluginExecutorServiceProvider(ExecutorService testExecutorService) {
         executorService = testExecutorService;
     }
 

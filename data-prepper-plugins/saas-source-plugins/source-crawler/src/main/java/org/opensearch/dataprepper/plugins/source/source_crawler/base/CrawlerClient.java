@@ -18,7 +18,7 @@ public interface CrawlerClient {
 
     /**
      * This will be the main API called by crawler. This method assumes that {@link
-     * SaasSourceConfig} is available as a member to {@link CrawlerClient}, as a result of
+     * CrawlerSourceConfig} is available as a member to {@link CrawlerClient}, as a result of
      * which, other scanning properties will also be available to this method
      *
      * @return returns an {@link Iterator} of {@link ItemInfo}
@@ -40,5 +40,5 @@ public interface CrawlerClient {
      * @param buffer       pipeline buffer to write the results into
      * @param sourceConfig pipeline configuration from the yaml
      */
-    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, SaasSourceConfig sourceConfig);
+    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig);
 }

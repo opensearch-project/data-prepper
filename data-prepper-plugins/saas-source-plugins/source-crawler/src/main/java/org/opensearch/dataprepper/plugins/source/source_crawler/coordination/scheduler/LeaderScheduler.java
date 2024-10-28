@@ -4,7 +4,7 @@ import lombok.Setter;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.LeaderProgressState;
 import org.slf4j.Logger;
@@ -29,14 +29,14 @@ public class LeaderScheduler implements Runnable {
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
 
     private final EnhancedSourceCoordinator coordinator;
-    private final SaasSourcePlugin sourcePlugin;
+    private final CrawlerSourcePlugin sourcePlugin;
     private final Crawler crawler;
     @Setter
     private Duration leaseInterval;
     private LeaderPartition leaderPartition;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                           SaasSourcePlugin sourcePlugin,
+                           CrawlerSourcePlugin sourcePlugin,
                            Crawler crawler) {
         this.coordinator = coordinator;
         this.leaseInterval = DEFAULT_LEASE_INTERVAL;
