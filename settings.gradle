@@ -186,3 +186,7 @@ include 'data-prepper-plugins:aws-lambda'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'
 include 'data-prepper-plugins:opensearch-api-source'
+include 'data-prepper-plugins:saas-source-plugins'
+include 'data-prepper-plugins:saas-source-plugins:source-crawler'
+include 'data-prepper-plugins:saas-source-plugins:jira-source'
+

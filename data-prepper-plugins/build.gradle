@@ -13,5 +13,5 @@ subprojects {
 }
 
 dependencies {
-    subprojects.forEach { api project(':data-prepper-plugins:' + it.name) }
+    subprojects.findAll { api project(it.path) }
 }

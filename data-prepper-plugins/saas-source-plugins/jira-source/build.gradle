@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+
+    implementation project(path: ':data-prepper-plugins:saas-source-plugins:source-crawler')
+    implementation project(path: ':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(path: ':data-prepper-plugins:common')
+
+    implementation libs.commons.io
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'javax.inject:javax.inject:1'
+    implementation("org.springframework:spring-web:${libs.versions.spring.get()}")
+
+    implementation 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    implementation(libs.spring.context) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
