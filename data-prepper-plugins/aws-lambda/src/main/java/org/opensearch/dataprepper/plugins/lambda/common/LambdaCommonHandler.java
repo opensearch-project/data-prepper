@@ -3,7 +3,6 @@ package org.opensearch.dataprepper.plugins.lambda.common;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.slf4j.Logger;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
@@ -16,7 +15,7 @@ public class LambdaCommonHandler {
     private final Logger LOG;
     private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
-    private final InvocationType invocationType;
+    private final String invocationType;
     BufferFactory bufferFactory;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -24,7 +23,7 @@ public class LambdaCommonHandler {
             final Logger log,
             final LambdaAsyncClient lambdaAsyncClient,
             final String functionName,
-            final InvocationType invocationType,
+            final String invocationType,
             BufferFactory bufferFactory){
         this.LOG = log;
         this.lambdaAsyncClient = lambdaAsyncClient;

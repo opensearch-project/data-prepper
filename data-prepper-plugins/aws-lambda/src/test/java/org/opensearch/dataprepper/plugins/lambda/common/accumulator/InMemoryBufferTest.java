@@ -40,7 +40,7 @@ class InMemoryBufferTest {
     @Mock
     private LambdaAsyncClient lambdaAsyncClient;
 
-    private final InvocationType invocationType = InvocationType.REQUEST_RESPONSE;
+    private final String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
 
     private final String functionName = "testFunction";
 

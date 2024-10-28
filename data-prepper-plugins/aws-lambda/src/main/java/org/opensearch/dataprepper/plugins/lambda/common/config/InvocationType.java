@@ -1,5 +1,8 @@
 package org.opensearch.dataprepper.plugins.lambda.common.config;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,6 +18,7 @@ public enum InvocationType {
         this.awsLambdaValue = awsLambdaValue;
     }
 
+    @JsonValue
     public String getUserInputValue() {
         return userInputValue;
     }
@@ -31,22 +35,9 @@ public enum InvocationType {
         }
     }
 
+    @JsonCreator
     public static InvocationType fromString(String value) {
         return INVOCATION_TYPE_MAP.get(value.toLowerCase());
-    }
-
-    public static InvocationType fromStringDefaultsToRequestResponse(String value) {
-        if (value == null) {
-            return REQUEST_RESPONSE;
-        }
-        return INVOCATION_TYPE_MAP.getOrDefault(value.toLowerCase(), REQUEST_RESPONSE);
-    }
-
-    public static InvocationType fromStringDefaultsToEvent(String value) {
-        if (value == null) {
-            return EVENT;
-        }
-        return INVOCATION_TYPE_MAP.getOrDefault(value.toLowerCase(), EVENT);
     }
 }
 

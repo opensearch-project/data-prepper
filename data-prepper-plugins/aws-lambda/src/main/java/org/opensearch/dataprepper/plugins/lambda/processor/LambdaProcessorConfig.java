@@ -40,11 +40,11 @@ public class LambdaProcessorConfig {
 
     @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
     @JsonProperty("invocation_type")
-    private String invocationType;
+    private InvocationType invocationType = InvocationType.REQUEST_RESPONSE;
 
     @JsonPropertyDescription("Defines the way Data Prepper treats the response from Lambda")
     @JsonProperty("response_cardinality")
-    private String responseCardinality;
+    private ResponseCardinality responseCardinality = ResponseCardinality.STRICT;
 
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("connection_timeout")
@@ -96,10 +96,10 @@ public class LambdaProcessorConfig {
     public Duration getConnectionTimeout() { return connectionTimeout;}
 
     public InvocationType getInvocationType() {
-        return InvocationType.fromStringDefaultsToRequestResponse(invocationType);
+        return invocationType;
     }
 
     public ResponseCardinality getResponseCardinality() {
-        return ResponseCardinality.fromString(responseCardinality);
+        return responseCardinality;
     }
 }

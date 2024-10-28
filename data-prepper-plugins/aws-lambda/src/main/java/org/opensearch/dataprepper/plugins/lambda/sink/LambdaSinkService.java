@@ -24,7 +24,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
@@ -65,7 +64,7 @@ public class LambdaSinkService {
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final Timer lambdaLatencyMetric;
-    private final InvocationType invocationType;
+    private final String invocationType;
     private final BufferFactory bufferFactory;
     private final DlqPushHandler dlqPushHandler;
     private final List<Event> events;
@@ -107,13 +106,13 @@ public class LambdaSinkService {
         maxEvents = batchOptions.getThresholdOptions().getEventCount();
         maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-        invocationType = lambdaSinkConfig.getInvocationType();
+        invocationType = lambdaSinkConfig.getInvocationType().getAwsLambdaValue();
         events = new ArrayList();
         futureList = new ArrayList<>();
 
         this.bufferFactory = bufferFactory;
 
-        LOG.info("LambdaFunctionName:{} , invocationType:{}", functionName, invocationType.getUserInputValue());
+        LOG.info("LambdaFunctionName:{} , invocationType:{}", functionName, invocationType);
         // Initialize LambdaCommonHandler
         lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, functionName, invocationType, bufferFactory);
     }

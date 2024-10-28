@@ -1,5 +1,8 @@
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,6 +16,7 @@ public enum ResponseCardinality {
         this.value = value;
     }
 
+    @JsonValue
     public String getValue() {
         return value;
     }
@@ -25,7 +29,7 @@ public enum ResponseCardinality {
         }
     }
 
-    // Default value is STRICT
+    @JsonCreator
     public static ResponseCardinality fromString(String value) {
         if (value == null) {
             return STRICT;

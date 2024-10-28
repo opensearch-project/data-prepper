@@ -46,7 +46,8 @@ public class LambdaCommonHandlerTest {
     private LambdaCommonHandler lambdaCommonHandler;
 
     private String functionName = "test-function";
-    private InvocationType invocationType;
+
+    private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
 
     @BeforeEach
     public void setUp() {

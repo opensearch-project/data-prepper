@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 public class InMemoryBufferFactory implements BufferFactory {
     @Override
-    public Buffer getBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, InvocationType invocationType){
+    public Buffer getBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType){
         return new InMemoryBuffer(lambdaAsyncClient, functionName, invocationType);
     }
 }

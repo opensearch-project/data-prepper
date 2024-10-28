@@ -43,7 +43,7 @@ public class LambdaSinkConfig {
 
     @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
     @JsonProperty("invocation_type")
-    private String invocationType;
+    private InvocationType invocationType = InvocationType.EVENT;
 
     @JsonProperty("dlq")
     private PluginModel dlq;
@@ -96,7 +96,7 @@ public class LambdaSinkConfig {
     }
 
     public InvocationType getInvocationType() {
-        return InvocationType.fromStringDefaultsToEvent(invocationType);
+        return invocationType;
     }
 
     public String getWhenCondition() {

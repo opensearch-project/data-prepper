@@ -33,7 +33,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +69,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final Timer lambdaLatencyMetric;
-    private final InvocationType invocationType;
+    private final String invocationType;
     private final ResponseCardinality responseCardinality;
     private final List<String> tagsOnMatchFailure;
     private final BatchOptions batchOptions;
@@ -124,7 +123,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         maxEvents = batchOptions.getThresholdOptions().getEventCount();
         maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
-        invocationType = lambdaProcessorConfig.getInvocationType();
+        invocationType = lambdaProcessorConfig.getInvocationType().getAwsLambdaValue();
         futureList = new ArrayList<>();
 
         lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(), lambdaProcessorConfig.getMaxConnectionRetries(), awsCredentialsSupplier, lambdaProcessorConfig.getConnectionTimeout());
@@ -294,48 +293,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(), flushedBuffer.getSize());
 
             responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
-//            if (parsedEvents.size() == flushedBuffer.getEventCount()) {
-//                LOG.debug("Parsed event size from lambda = event count sent to lambda");
-//                for (int i = 0; i < parsedEvents.size(); i++) {
-//                    Event responseEvent = parsedEvents.get(i);
-//                    Event originalEvent = originalRecords.get(i).getData();
-//
-//                    // Delete the original event's data
-//                    originalEvent.clear();
-//
-//                    // Replace data from responseEvent into originalEvent
-//                    Map<String, Object> responseData = responseEvent.toMap();
-//                    for (Map.Entry<String, Object> entry : responseData.entrySet()) {
-//                        String key = entry.getKey();
-//                        Object value = entry.getValue();
-//                        originalEvent.put(key, value);
-//                    }
-//
-//                    // Add the updated event to resultRecords
-//                    // Reuse original record
-//                    resultRecords.add(originalRecords.get(i));
-//                }
-//            } else {
-//                LOG.debug("Parsed event size from lambda != event count sent to lambda");
-//                if (responseProcessingMode.equals(LambdaProcessorConfig.STRICT)) {
-//                    LOG.error("Response Processing Mode is configured as strict. The events in the " + "response from lambda does not seem to match the number of events sent to lambda." + "If this is the expected behaviour, please configure response_processing_mode: aggregate");
-//
-//                    throw new RuntimeException("Response Processing Mode is configured as Strict mode but behaviour is aggregate mode");
-//                }
-//                Event originalEvent = originalRecords.get(0).getData();
-//                DefaultEventHandle eventHandle = (DefaultEventHandle) originalEvent.getEventHandle();
-//                AcknowledgementSet originalAcknowledgementSet = eventHandle.getAcknowledgementSet();
-//
-//                // Sizes are not equal, create new events
-//                // Add new event to the original acknowledgement set
-//                // Old event will be released by core later
-//                for (Event responseEvent : parsedEvents) {
-//                    resultRecords.add(new Record<>(responseEvent));
-//                    if (originalAcknowledgementSet != null) {
-//                        originalAcknowledgementSet.add(responseEvent);
-//                    }
-//                }
-//            }
 
         } catch (Exception e) {
             LOG.error(NOISY, "Error converting Lambda response to Event");

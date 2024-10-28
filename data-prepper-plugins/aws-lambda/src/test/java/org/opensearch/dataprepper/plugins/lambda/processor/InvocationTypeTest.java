@@ -13,12 +13,6 @@ public class InvocationTypeTest {
     }
 
     @Test
-    public void testFromStringWithNullValue() {
-        assertEquals(InvocationType.REQUEST_RESPONSE, InvocationType.fromStringDefaultsToRequestResponse(null));
-        assertEquals(InvocationType.EVENT, InvocationType.fromStringDefaultsToEvent(null));
-    }
-
-    @Test
     public void testGetValue() {
         assertEquals("request-response", InvocationType.REQUEST_RESPONSE.getUserInputValue());
         assertEquals("event", InvocationType.EVENT.getUserInputValue());
