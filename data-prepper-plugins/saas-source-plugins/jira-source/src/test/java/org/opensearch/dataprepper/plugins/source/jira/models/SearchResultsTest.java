@@ -67,17 +67,17 @@ public class SearchResultsTest {
         testIssues.add(issue2);
         List<String> testWarnings = Arrays.asList("Warning1", "Warning2");
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("expand", expand);
-        map.put("startAt", startAt);
-        map.put("maxResults", maxResults);
-        map.put("total", total);
-        map.put("issues", testIssues);
-        map.put("warningMessages", testWarnings);
-        map.put("names", names);
-        map.put("schema", schema);
+        Map<String, Object> searchResultsMap = new HashMap<>();
+        searchResultsMap.put("expand", expand);
+        searchResultsMap.put("startAt", startAt);
+        searchResultsMap.put("maxResults", maxResults);
+        searchResultsMap.put("total", total);
+        searchResultsMap.put("issues", testIssues);
+        searchResultsMap.put("warningMessages", testWarnings);
+        searchResultsMap.put("names", names);
+        searchResultsMap.put("schema", schema);
 
-        String jsonString = objectMapper.writeValueAsString(map);
+        String jsonString = objectMapper.writeValueAsString(searchResultsMap);
 
         searchResults = objectMapper.readValue(jsonString, SearchResults.class);
 

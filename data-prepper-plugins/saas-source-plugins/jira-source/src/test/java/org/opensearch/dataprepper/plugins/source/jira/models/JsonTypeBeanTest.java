@@ -53,15 +53,15 @@ public class JsonTypeBeanTest {
         String system = "systemTest";
         String custom = "customTest";
         Long customId = 123L;
-        Map<String, Object> map = new HashMap<>();
-        map.put("type", type);
-        map.put("items", items);
-        map.put("system", system);
-        map.put("custom", custom);
-        map.put("customId", customId);
-        map.put("configuration", testConfiguration);
+        Map<String, Object> jsonTypeBeanMap = new HashMap<>();
+        jsonTypeBeanMap.put("type", type);
+        jsonTypeBeanMap.put("items", items);
+        jsonTypeBeanMap.put("system", system);
+        jsonTypeBeanMap.put("custom", custom);
+        jsonTypeBeanMap.put("customId", customId);
+        jsonTypeBeanMap.put("configuration", testConfiguration);
 
-        String jsonString = objectMapper.writeValueAsString(map);
+        String jsonString = objectMapper.writeValueAsString(jsonTypeBeanMap);
 
         jsonTypeBean = objectMapper.readValue(jsonString, JsonTypeBean.class);
 
@@ -89,40 +89,40 @@ public class JsonTypeBeanTest {
         String custom = "customTest";
         Long customId = 123L;
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("type", type);
-        map.put("items", items);
-        map.put("system", system);
-        map.put("custom", custom);
-        map.put("customId", customId);
-        map.put("configuration", testConfiguration);
+        Map<String, Object> jsonTypeBeanMap = new HashMap<>();
+        jsonTypeBeanMap.put("type", type);
+        jsonTypeBeanMap.put("items", items);
+        jsonTypeBeanMap.put("system", system);
+        jsonTypeBeanMap.put("custom", custom);
+        jsonTypeBeanMap.put("customId", customId);
+        jsonTypeBeanMap.put("configuration", testConfiguration);
 
-        String jsonString = objectMapper.writeValueAsString(map);
+        String jsonString = objectMapper.writeValueAsString(jsonTypeBeanMap);
 
         jsonTypeBean = objectMapper.readValue(jsonString, JsonTypeBean.class);
         sameEntryBean = objectMapper.readValue(jsonString, JsonTypeBean.class);
 
-        for (String key : map.keySet()) {
+        for (String key : jsonTypeBeanMap.keySet()) {
             String oldString = "";
             if (key.equals("customId")) {
-                map.put(key, 456L);
+                jsonTypeBeanMap.put(key, 456L);
             } else if (key.equals("configuration")) {
                 Map<String, Object> differentTestConfiguration = new HashMap<>();
                 differentTestConfiguration.put("differentKey", new JsonTypeBean());
-                map.put("configuration", differentTestConfiguration);
+                jsonTypeBeanMap.put("configuration", differentTestConfiguration);
             } else {
-                oldString = map.get(key).toString();
-                map.put(key, "different");
+                oldString = jsonTypeBeanMap.get(key).toString();
+                jsonTypeBeanMap.put(key, "different");
             }
-            differentEntryBean = objectMapper.readValue(objectMapper.writeValueAsString(map), JsonTypeBean.class);
+            differentEntryBean = objectMapper.readValue(objectMapper.writeValueAsString(jsonTypeBeanMap), JsonTypeBean.class);
             assertEquals(jsonTypeBean, sameEntryBean);
             assertNotEquals(jsonTypeBean, differentEntryBean);
             if (key.equals("customId")) {
-                map.put(key, 123);
+                jsonTypeBeanMap.put(key, 123);
             } else if (key.equals("configuration")) {
-                map.put("configuration", testConfiguration);
+                jsonTypeBeanMap.put("configuration", testConfiguration);
             } else {
-                map.put(key, oldString);
+                jsonTypeBeanMap.put(key, oldString);
             }
         }
     }
