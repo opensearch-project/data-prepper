@@ -25,16 +25,13 @@ public enum ResponseCardinality {
 
     static {
         for (ResponseCardinality type : ResponseCardinality.values()) {
-            RESPONSE_CARDINALITY_MAP.put(type.getValue().toLowerCase(), type);
+            RESPONSE_CARDINALITY_MAP.put(type.getValue(), type);
         }
     }
 
     @JsonCreator
     public static ResponseCardinality fromString(String value) {
-        if (value == null) {
-            return STRICT;
-        }
-        return RESPONSE_CARDINALITY_MAP.getOrDefault(value.toLowerCase(), STRICT);
+        return RESPONSE_CARDINALITY_MAP.get(value);
     }
 }
 

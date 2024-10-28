@@ -31,13 +31,13 @@ public enum InvocationType {
 
     static {
         for (InvocationType type : InvocationType.values()) {
-            INVOCATION_TYPE_MAP.put(type.getUserInputValue().toLowerCase(), type);
+            INVOCATION_TYPE_MAP.put(type.getUserInputValue(), type);
         }
     }
 
     @JsonCreator
     public static InvocationType fromString(String value) {
-        return INVOCATION_TYPE_MAP.get(value.toLowerCase());
+        return INVOCATION_TYPE_MAP.get(value);
     }
 }
 

@@ -13,12 +13,7 @@ public class ResponseCardinalityTest {
 
     @Test
     public void testFromStringWithInvalidValue() {
-        assertEquals(ResponseCardinality.STRICT, ResponseCardinality.fromString("invalid-value"));
-    }
-
-    @Test
-    public void testFromStringWithNullValue() {
-        assertEquals(ResponseCardinality.STRICT, ResponseCardinality.fromString(null));
+        assertEquals(null, ResponseCardinality.fromString("invalid-value"));
     }
 
     @Test
