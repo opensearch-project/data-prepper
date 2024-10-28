@@ -9,6 +9,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -31,7 +32,7 @@ public class DissectProcessorConfig {
             "Each key is a field name, and the value is the data type to use for that field. " +
             "Valid data types are <code>integer</code>, <code>double</code>, <code>string</code>, <code>long</code>, <code>big_decimal</code>, and <code>boolean</code>. " +
             "By default, all fields are treated as <code>string</code>.")
-    private Map<String, String> targetTypes;
+    private Map<String, String> targetTypes = Collections.emptyMap();;
 
     @JsonIgnore
     private Map<String, TargetType> targetTypeMap;
