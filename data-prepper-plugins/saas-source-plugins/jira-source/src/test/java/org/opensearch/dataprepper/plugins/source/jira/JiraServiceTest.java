@@ -14,9 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
+import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthFactory;
-import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
@@ -24,7 +24,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import javax.inject.Named;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
@@ -60,7 +59,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
  * The type Jira service.
  */
 @ExtendWith(MockitoExtension.class)
-@Named
 public class JiraServiceTest {
 
     @Mock

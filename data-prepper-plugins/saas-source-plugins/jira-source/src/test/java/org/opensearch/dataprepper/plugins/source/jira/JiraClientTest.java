@@ -1,7 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -10,11 +8,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
-import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
@@ -56,23 +52,21 @@ public class JiraClientTest {
     private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
     private JiraClient jiraClient;
 
-    @BeforeEach
-    void setUp() throws JsonProcessingException {
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
-    }
-
     @Test
     void testConstructor() {
+        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         assertNotNull(jiraClient);
     }
 
     @Test
     void testListItems() {
+        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         assertNotNull(jiraClient.listItems());
     }
 
     @Test
     void testSetLastPollTime() throws NoSuchFieldException, IllegalAccessException {
+        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         jiraClient.setLastPollTime(Instant.ofEpochSecond(1234L));
         Field pollTime = jiraClient.getClass().getDeclaredField("lastPollTime");
         pollTime.setAccessible(true);
@@ -86,6 +80,7 @@ public class JiraClientTest {
 
     @Test
     void testExecutePartition() throws Exception {
+        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
         keyAttributes.put("project", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
@@ -107,6 +102,4 @@ public class JiraClientTest {
             assertNotNull(record.getData());
         }
     }
-
-
 }
