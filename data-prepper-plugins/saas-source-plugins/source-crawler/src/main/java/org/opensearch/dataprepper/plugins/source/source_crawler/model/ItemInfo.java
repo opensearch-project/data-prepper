@@ -42,7 +42,7 @@ public interface ItemInfo {
      *
      * @return A map of key attributes of this Item.
      */
-    Map<String, String> getKeyAttributes();
+    Map<String, Object> getKeyAttributes();
 
     /**
      * Service specific Item's last modified time

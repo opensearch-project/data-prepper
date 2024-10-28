@@ -30,7 +30,7 @@ public class SaasWorkerProgressState {
     @JsonDeserialize(using = CustomInstantDeserializer.class)
     private Instant exportStartTime;
 
-    private Map<String, String> keyAttributes = new HashMap<>();
+    private Map<String, Object> keyAttributes = new HashMap<>();
 
     @JsonProperty("itemIds")
     private List<String> itemIds;
