@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 
