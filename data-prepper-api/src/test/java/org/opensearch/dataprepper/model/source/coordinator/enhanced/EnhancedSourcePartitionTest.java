@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,14 +23,17 @@ import static org.mockito.Mockito.mock;
 
 public class EnhancedSourcePartitionTest {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private String partitionKey;
     private TestPartitionProgressState testPartitionProgressState;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private TestInstantTypeProgressState testInstantTypeProgressState;
 
     @BeforeEach
     void setup() {
         partitionKey = UUID.randomUUID().toString();
         testPartitionProgressState = new TestPartitionProgressState(UUID.randomUUID().toString());
+        testInstantTypeProgressState = new TestInstantTypeProgressState(Instant.now());
+
     }
 
     private EnhancedSourcePartition<TestPartitionProgressState> createObjectUnderTest() {
@@ -80,6 +84,19 @@ public class EnhancedSourcePartitionTest {
     }
 
     @Test
+    void convertFromInstantToPartitionState_converts_as_expected() {
+        final EnhancedSourcePartition<TestInstantTypeProgressState> objectUnderTest =
+                new TestInstantTypeSourcePartition(partitionKey, testInstantTypeProgressState);
+
+        final String serializedString = objectUnderTest.convertPartitionProgressStatetoString(Optional.of(testInstantTypeProgressState));
+
+        final TestInstantTypeProgressState result =
+                objectUnderTest.convertStringToPartitionProgressState(TestInstantTypeProgressState.class, serializedString);
+        assertThat(result, notNullValue());
+        assertThat(result.getTestValue(), equalTo(testInstantTypeProgressState.getTestValue()));
+    }
+
+    @Test
     void convertPartitionStateToStringWithEmptyState_returns_null() {
         final String result = createObjectUnderTest().convertPartitionProgressStatetoString(Optional.empty());
         assertThat(result, equalTo(null));
@@ -116,6 +133,31 @@ public class EnhancedSourcePartitionTest {
         assertThat(resultWithNullClass, equalTo(stateMap));
     }
 
+    public static class TestInstantTypeSourcePartition extends EnhancedSourcePartition<TestInstantTypeProgressState> {
+
+        private final String partitionKey;
+        private final TestInstantTypeProgressState testPartitionProgressState;
+
+        public TestInstantTypeSourcePartition(final String partitionKey, final TestInstantTypeProgressState partitionProgressState) {
+            this.partitionKey = partitionKey;
+            this.testPartitionProgressState = partitionProgressState;
+        }
+
+        @Override
+        public String getPartitionType() {
+            return "TEST";
+        }
+
+        @Override
+        public String getPartitionKey() {
+            return partitionKey;
+        }
+
+        @Override
+        public Optional<TestInstantTypeProgressState> getProgressState() {
+            return Optional.of(testPartitionProgressState);
+        }
+    }
 
     public class TestEnhancedSourcePartition extends EnhancedSourcePartition<TestPartitionProgressState> {
 
