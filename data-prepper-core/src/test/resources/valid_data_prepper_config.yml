@@ -1,2 +1,3 @@
 server_port: 5678
+exclude_identification_keys: [ ["key1"], ["key2", "key3"]]
 ssl: false

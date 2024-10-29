@@ -203,7 +203,9 @@ public class PipelineTransformer {
                         final List<Processor> processors = processorComponentList.stream().map(IdentifiedComponent::getComponent).collect(Collectors.toList());
                         if (!processors.isEmpty() && processors.get(0) instanceof RequiresPeerForwarding) {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
-                                    processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(), pipelineConfiguration.getWorkers()
+                                    processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(),
+				    dataPrepperConfiguration.getExcludeIdentificationKeys(),
+				    pipelineConfiguration.getWorkers()
                             );
                         }
                         return processors;

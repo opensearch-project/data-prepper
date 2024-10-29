@@ -32,6 +32,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.lenient;
@@ -72,7 +73,11 @@ class PeerForwardingProcessingDecoratorTest {
     }
 
     private List<Processor> createObjectUnderTestDecoratedProcessors(final List<Processor> processors) {
-        return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, PIPELINE_WORKER_THREADS);
+        return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, null, PIPELINE_WORKER_THREADS);
+    }
+
+    private List<Processor> createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(final List<Processor> processors, List<Set<String>> excludeIdentificationKeys) {
+        return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, excludeIdentificationKeys, PIPELINE_WORKER_THREADS);
     }
 
     @Test
@@ -99,6 +104,27 @@ class PeerForwardingProcessingDecoratorTest {
         when(requiresPeerForwardingCopy.getIdentificationKeys()).thenReturn(Set.of(UUID.randomUUID().toString()));
 
         assertThrows(RuntimeException.class, () -> createObjectUnderTestDecoratedProcessors(List.of(((Processor) requiresPeerForwarding), (Processor) requiresPeerForwardingCopy)));
+    }
+
+    @Test
+    void decorateProcessors_with_excludeIdentificationKeys() {
+        Set<String> identificationKeys = Set.of("key1", "key2");
+        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
+        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), List.of(identificationKeys));
+        for (final Processor processor: processors) {
+            assertTrue(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
+        }
+    }
+
+    @Test
+    void decorateProcessors_with_notmatching_excludeIdentificationKeys() {
+        Set<String> identificationKeys = Set.of("key1", "key2");
+        Set<String> notMatchingIdentificationKeys = Set.of("key1", "key3");
+        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
+        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), List.of(notMatchingIdentificationKeys));
+        for (final Processor processor: processors) {
+            assertFalse(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
+        }
     }
 
     @Test

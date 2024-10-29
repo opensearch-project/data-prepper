@@ -22,10 +22,13 @@ import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.stream.Collectors;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 
 /**
@@ -56,6 +59,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
     private PipelineExtensions pipelineExtensions;
+    private List<List<String>> excludeIdentificationKeys;
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
@@ -73,6 +77,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             @JsonProperty("private_key_password")
             @JsonAlias("privateKeyPassword")
             final String privateKeyPassword,
+            @JsonProperty("exclude_identification_keys")
+            final List<List<String>> excludeIdentificationKeys,
             @JsonProperty("server_port")
             @JsonAlias("serverPort")
             final String serverPort,
@@ -127,6 +133,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
         }
         this.pipelineExtensions = pipelineExtensions;
+        this.excludeIdentificationKeys = excludeIdentificationKeys;
     }
 
     public int getServerPort() {
@@ -135,6 +142,13 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
 
     public boolean ssl() {
         return ssl;
+    }
+
+    public List<Set<String>> getExcludeIdentificationKeys() {
+        if (excludeIdentificationKeys == null) {
+            return null;
+        }
+        return excludeIdentificationKeys.stream().map(HashSet::new).collect(Collectors.toList());
     }
 
     public String getKeyStoreFilePath() {
