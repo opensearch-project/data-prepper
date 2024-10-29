@@ -36,7 +36,7 @@ import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter
 import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter.RECORDS_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
-class ExportRecordBufferWriterTest {
+class RecordBufferWriterTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
