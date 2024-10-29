@@ -36,7 +36,7 @@ import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttr
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 
 @ExtendWith(MockitoExtension.class)
-class RecordConverterTest {
+class StreamRecordConverterTest {
     private CollectionConfig collectionConfig;
 
     final Random random = new Random();
