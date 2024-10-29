@@ -51,8 +51,8 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
      * Note that this should be called on a regular basis even there are no changes to resume token
      * As the checkpoint will also extend the timeout for the lease
      *
-     * @param commitNum The commit number of the starting record to read from Neptune change-log stream
-     * @param opNum The operation sequence number within the specified commit to start reading from in Neptune change-log stream data
+     * @param commitNum   The commit number of the starting record to read from Neptune change-log stream
+     * @param opNum       The operation sequence number within the specified commit to start reading from in Neptune change-log stream data
      * @param recordCount The last processed record count
      */
     public void checkpoint(final long commitNum, final long opNum, final long recordCount) {
@@ -80,8 +80,8 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
 
     public Optional<StreamLoadStatus> getGlobalStreamLoadStatus() {
         final Optional<EnhancedSourcePartition> partition = enhancedSourceCoordinator.getPartition(STREAM_PREFIX + streamPartition.getPartitionKey());
-        if(partition.isPresent()) {
-            final GlobalState globalState = (GlobalState)partition.get();
+        if (partition.isPresent()) {
+            final GlobalState globalState = (GlobalState) partition.get();
             return Optional.of(StreamLoadStatus.fromMap(globalState.getProgressState().get()));
         } else {
             return Optional.empty();

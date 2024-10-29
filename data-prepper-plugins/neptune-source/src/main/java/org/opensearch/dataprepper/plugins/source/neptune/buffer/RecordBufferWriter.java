@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.neptune.buffer;
 
 //import io.micrometer.core.instrument.Counter;
+
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -19,7 +20,7 @@ public class RecordBufferWriter {
     private static final Logger LOG = LoggerFactory.getLogger(RecordBufferWriter.class);
     static final String RECORDS_PROCESSED_COUNT = "recordsProcessed";
     static final String RECORDS_PROCESSING_ERROR_COUNT = "recordProcessingErrors";
-//    private final PluginMetrics pluginMetrics;
+    //    private final PluginMetrics pluginMetrics;
 //    private final Counter recordSuccessCounter;
 //    private final Counter recordErrorCounter;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
@@ -44,8 +45,8 @@ public class RecordBufferWriter {
     /**
      * Add event record to buffer
      *
-     * @param acknowledgementSet      acknowledgmentSet keeps track of set of events
-     * @param record                  record to be written to buffer
+     * @param acknowledgementSet acknowledgmentSet keeps track of set of events
+     * @param record             record to be written to buffer
      * @throws Exception Exception if failed to write to buffer.
      */
     public void addToBuffer(final AcknowledgementSet acknowledgementSet,

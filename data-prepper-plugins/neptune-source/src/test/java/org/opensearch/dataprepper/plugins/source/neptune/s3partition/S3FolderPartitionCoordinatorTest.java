@@ -6,20 +6,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.mongo.coordination.partition.GlobalState;
-import org.opensearch.dataprepper.plugins.mongo.model.S3PartitionStatus;
-import org.opensearch.dataprepper.plugins.source.neptune.s3partition.S3FolderPartitionCoordinator;
-import org.opensearch.dataprepper.plugins.source.neptune.s3partition.S3PartitionCreatorScheduler;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class S3FolderPartitionCoordinatorTest {

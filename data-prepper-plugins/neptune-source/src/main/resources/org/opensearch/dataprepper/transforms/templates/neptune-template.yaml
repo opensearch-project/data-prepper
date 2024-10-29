@@ -12,7 +12,7 @@
         routes:
           - initial_load
         aws:
-          region:  "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
+          region: "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
           sts_role_arn: "<<$.<<pipeline-name>>.source.neptune.aws.sts_role_arn>>"
           sts_external_id: "<<$.<<pipeline-name>>.source.neptune.aws.sts_external_id>>"
           sts_header_overrides: "<<$.<<pipeline-name>>.source.neptune.aws.sts_header_overrides>>"
@@ -32,7 +32,7 @@
         routes:
           - stream_load
         aws:
-          region:  "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
+          region: "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
           sts_role_arn: "<<$.<<pipeline-name>>.source.neptune.aws.sts_role_arn>>"
           sts_external_id: "<<$.<<pipeline-name>>.source.neptune.aws.sts_external_id>>"
           sts_header_overrides: "<<$.<<pipeline-name>>.source.neptune.aws.sts_header_overrides>>"
@@ -58,7 +58,7 @@
         event_json:
       compression: "none"
       aws:
-        region:  "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
+        region: "<<$.<<pipeline-name>>.source.neptune.s3_region>>"
         sts_role_arn: "<<$.<<pipeline-name>>.source.neptune.aws.sts_role_arn>>"
         sts_external_id: "<<$.<<pipeline-name>>.source.neptune.aws.sts_external_id>>"
         sts_header_overrides: "<<$.<<pipeline-name>>.source.neptune.aws.sts_header_overrides>>"
@@ -74,7 +74,7 @@
           - bucket:
               name: "<<$.<<pipeline-name>>.source.neptune.s3_bucket>>"
               filter:
-                include_prefix: ["<<FUNCTION_NAME:getSourceCoordinationIdentifierEnvVariable,PARAMETER:$.<<pipeline-name>>.source.neptune.s3_prefix>>"]
+                include_prefix: [ "<<FUNCTION_NAME:getSourceCoordinationIdentifierEnvVariable,PARAMETER:$.<<pipeline-name>>.source.neptune.s3_prefix>>" ]
         scheduling:
           interval: "20s"
   processor: "<<$.<<pipeline-name>>.processor>>"

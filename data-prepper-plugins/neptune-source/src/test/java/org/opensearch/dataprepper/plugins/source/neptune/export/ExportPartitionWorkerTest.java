@@ -191,12 +191,12 @@ public class ExportPartitionWorkerTest {
         });
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(mongoClient).getDatabase(eq("test")));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(mongoClient).getDatabase(eq("test")));
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(mockPartitionCheckpoint, times(2)).checkpoint(2));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(mockPartitionCheckpoint, times(2)).checkpoint(2));
 
         future.cancel(true);
 

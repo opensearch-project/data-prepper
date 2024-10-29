@@ -43,13 +43,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.DEFAULT_GET_PARTITION_BACKOFF_MILLIS;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_JOB_FAILURE_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_JOB_SUCCESS_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PARTITION_QUERY_TOTAL_COUNT;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_PREFIX;
 import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.EXPORT_RECORDS_TOTAL_COUNT;
-import static org.opensearch.dataprepper.plugins.mongo.export.ExportScheduler.DEFAULT_GET_PARTITION_BACKOFF_MILLIS;
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LAST_UPDATE_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_PARTITIONS;
 import static org.opensearch.dataprepper.plugins.mongo.model.ExportLoadStatus.LOADED_RECORDS;
@@ -113,8 +112,8 @@ public class ExportSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator).acquireAvailablePartition(eq(ExportPartition.PARTITION_TYPE)));
 
         future.cancel(true);
         verifyNoInteractions(mongoDBExportPartitionSupplier);
@@ -165,8 +164,8 @@ public class ExportSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-            .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
-            .untilAsserted(() -> verify(coordinator, times(1)).createPartition(any()));
+                .atMost(Duration.ofMillis(DEFAULT_GET_PARTITION_BACKOFF_MILLIS).plus(Duration.ofSeconds(2)))
+                .untilAsserted(() -> verify(coordinator, times(1)).createPartition(any()));
 
         future.cancel(true);
 
@@ -180,8 +179,8 @@ public class ExportSchedulerTest {
         verify(coordinator, times(1)).createPartition(argumentCaptor.capture());
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
         var dataQueryPartitions = partitions.stream()
-            .filter(partition -> partition instanceof DataQueryPartition)
-            .map(partition -> (DataQueryPartition)partition).collect(Collectors.toList());
+                .filter(partition -> partition instanceof DataQueryPartition)
+                .map(partition -> (DataQueryPartition) partition).collect(Collectors.toList());
         assertThat(dataQueryPartitions.size(), equalTo(1));
         dataQueryPartitions.forEach(dataQueryPartition -> {
             assertThat(dataQueryPartition.getCollection(), equalTo(collection));
@@ -215,7 +214,7 @@ public class ExportSchedulerTest {
         exportProgressState.setCollectionName(collection);
         exportProgressState.setDatabaseName(collection);
         exportProgressState.setExportTime(exportTime.toString());
-        
+
         exportPartition = new ExportPartition(collection, partitionSize, exportTime, exportProgressState);
         given(partitionIdentifier.getPartitionKey()).willReturn(partitionKey);
         given(mongoDBExportPartitionSupplier.apply(exportPartition)).willReturn(partitionIdentifierBatch);
@@ -236,8 +235,8 @@ public class ExportSchedulerTest {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> exportScheduler.run());
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, times(3)).createPartition(any()));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, times(3)).createPartition(any()));
 
         future.cancel(true);
 
@@ -250,7 +249,7 @@ public class ExportSchedulerTest {
         final List<EnhancedSourcePartition> partitions = argumentCaptor.getAllValues();
         var dataQueryPartitions = partitions.stream()
                 .filter(partition -> partition instanceof DataQueryPartition)
-                .map(partition -> (DataQueryPartition)partition).collect(Collectors.toList());
+                .map(partition -> (DataQueryPartition) partition).collect(Collectors.toList());
         assertThat(dataQueryPartitions.size(), equalTo(3));
         dataQueryPartitions.forEach(dataQueryPartition -> {
             assertThat(dataQueryPartition.getCollection(), equalTo(collection));

@@ -178,8 +178,8 @@ public class StreamWorkerTest {
         when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
         when(streamDoc2.getOperationType()).thenReturn(OperationType.DELETE);
         when(cursor.next())
-            .thenReturn(streamDoc1)
-            .thenReturn(streamDoc2);
+                .thenReturn(streamDoc1)
+                .thenReturn(streamDoc2);
         final String doc1Json1 = UUID.randomUUID().toString();
         final String doc1Json2 = UUID.randomUUID().toString();
         when(doc1Key.get("_id")).thenReturn(new BsonInt64(random.nextLong()));
@@ -214,8 +214,8 @@ public class StreamWorkerTest {
             }
         });
         await()
-            .atMost(Duration.ofSeconds(10))
-            .untilAsserted(() ->  verify(mongoClient).close());
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
@@ -288,7 +288,7 @@ public class StreamWorkerTest {
         when(streamDoc2.getResumeToken()).thenReturn(bsonDoc2);
         when(streamDoc3.getResumeToken()).thenReturn(bsonDoc3);
         when(cursor.next())
-            .thenReturn(streamDoc1, streamDoc2, streamDoc3);
+                .thenReturn(streamDoc1, streamDoc2, streamDoc3);
         when(doc1.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
         when(doc2.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
         when(doc3.toJson(any(JsonWriterSettings.class))).thenReturn(UUID.randomUUID().toString());
@@ -378,8 +378,8 @@ public class StreamWorkerTest {
         });
         streamWorker.stop();
         await()
-            .atMost(Duration.ofSeconds(4))
-            .untilAsserted(() ->  verify(mongoClient).close());
+                .atMost(Duration.ofSeconds(4))
+                .untilAsserted(() -> verify(mongoClient).close());
         future.cancel(true);
         executorService.shutdownNow();
         verify(mongoDatabase).getCollection(eq("collection"));
@@ -445,7 +445,7 @@ public class StreamWorkerTest {
         });
         await()
                 .atMost(Duration.ofSeconds(10))
-                .untilAsserted(() ->  verify(mongoClient).close());
+                .untilAsserted(() -> verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);
@@ -485,7 +485,7 @@ public class StreamWorkerTest {
         when(streamDoc1.getResumeToken()).thenReturn(bsonDoc1);
         when(streamDoc1.getOperationType()).thenReturn(OperationType.INSERT);
         when(cursor.next())
-            .thenReturn(streamDoc1);
+                .thenReturn(streamDoc1);
         when(key1.get("_id")).thenReturn(bsonValue);
         when(streamDoc1.getDocumentKey()).thenReturn(key1);
         when(streamDoc1.getFullDocument()).thenReturn(doc1);
@@ -510,8 +510,8 @@ public class StreamWorkerTest {
             }
         });
         await()
-            .atMost(Duration.ofSeconds(10))
-            .untilAsserted(() ->  verify(mongoClient).close());
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> verify(mongoClient).close());
         verify(mongoDatabase).getCollection(eq("collection"));
         verify(mockPartitionCheckpoint).getGlobalS3FolderCreationStatus(collection);
         verify(mockRecordConverter).initializePartitions(partitions);

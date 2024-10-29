@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +23,7 @@ public class StreamRecordConverter {
     private static final String S3_PATH_DELIMITER = "/";
     private static final String STREAM_INGESTION_TYPE = "STREAM";
     private static final String STREAM_OP_ADD = "ADD";
-    private static final String STREAM_OP_REMOVE = "REMOVE";;
+    private static final String STREAM_OP_REMOVE = "REMOVE";
 
     final String s3PathPrefix;
     private List<String> partitions = new ArrayList<>();
@@ -112,6 +111,7 @@ public class StreamRecordConverter {
             return -1;
         }
     }
+
     private static int bytesToInt(byte[] bytes) {
         int result = 0;
         for (int i = 0; i < 4 && i < bytes.length; i++) {

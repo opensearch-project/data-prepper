@@ -2,9 +2,6 @@ package org.opensearch.dataprepper.plugins.source.neptune;
 
 import com.amazonaws.neptune.auth.NeptuneSigV4SignerException;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
-import org.opensearch.dataprepper.plugins.source.neptune.leader.LeaderScheduler;
-import org.opensearch.dataprepper.plugins.source.neptune.stream.StreamScheduler;
-
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -12,7 +9,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.neptune.configuration.NeptuneSourceConfig;
+import org.opensearch.dataprepper.plugins.source.neptune.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.neptune.s3partition.S3PartitionCreatorScheduler;
+import org.opensearch.dataprepper.plugins.source.neptune.stream.StreamScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +80,7 @@ public class NeptuneService {
 
         final String s3PathPrefix;
         final Instant now = Instant.now();
-        if (sourceCoordinator.getPartitionPrefix() != null ) {
+        if (sourceCoordinator.getPartitionPrefix() != null) {
             s3PathPrefix = s3UserPathPrefix + sourceCoordinator.getPartitionPrefix() + S3_PATH_DELIMITER + now.toEpochMilli() + S3_PATH_DELIMITER;
         } else {
             s3PathPrefix = s3UserPathPrefix + now.toEpochMilli() + S3_PATH_DELIMITER;

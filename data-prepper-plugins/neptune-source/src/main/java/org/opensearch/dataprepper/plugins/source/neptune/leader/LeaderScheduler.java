@@ -92,7 +92,7 @@ public class LeaderScheduler implements Runnable {
             } catch (final Exception e) {
                 LOG.error("Exception occurred in primary leader scheduling loop", e);
             } finally {
-                if(leaderPartition != null) {
+                if (leaderPartition != null) {
                     // Extend the timeout
                     // will always be a leader until shutdown
                     coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));

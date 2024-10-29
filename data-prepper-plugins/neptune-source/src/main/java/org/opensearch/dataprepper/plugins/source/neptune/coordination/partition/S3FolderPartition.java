@@ -37,7 +37,7 @@ public class S3FolderPartition extends EnhancedSourcePartition<String> {
         this.region = region;
         this.partitionCount = partitionCount;
     }
-    
+
     @Override
     public String getPartitionType() {
         return PARTITION_TYPE;
