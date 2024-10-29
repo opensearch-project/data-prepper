@@ -14,8 +14,10 @@ import org.opensearch.dataprepper.core.peerforwarder.discovery.DiscoveryMode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Class to hold configuration for Core Peer Forwarder in {@link DataPrepperConfiguration},
@@ -65,6 +67,7 @@ public class PeerForwarderConfiguration {
     private Integer forwardingBatchQueueDepth = 1;
     private Duration forwardingBatchTimeout = DEFAULT_FORWARDING_BATCH_TIMEOUT;
     private boolean binaryCodec = true;
+    private List<Set<String>> excludeIdentificationKeys;
 
     public PeerForwarderConfiguration() {}
 
@@ -76,6 +79,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("server_thread_count") final Integer serverThreadCount,
             @JsonProperty("max_connection_count") final Integer maxConnectionCount,
             @JsonProperty("max_pending_requests") final Integer maxPendingRequests,
+            @JsonProperty("exclude_identification_keys") final List<Set<String>> excludeIdentificationKeys,
             @JsonProperty("ssl") final Boolean ssl,
             @JsonProperty("ssl_certificate_file") final String sslCertificateFile,
             @JsonProperty("ssl_key_file") final String sslKeyFile,
@@ -139,6 +143,7 @@ public class PeerForwarderConfiguration {
         setBinaryCodec(binaryCodec == null || binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
+        this.excludeIdentificationKeys = excludeIdentificationKeys;
     }
 
     public int getServerPort() {
@@ -167,6 +172,13 @@ public class PeerForwarderConfiguration {
 
     public boolean isSsl() {
         return ssl;
+    }
+
+    public Set<Set<String>> getExcludeIdentificationKeys() {
+        if (excludeIdentificationKeys == null) {
+            return null;
+        }
+        return excludeIdentificationKeys.stream().collect(Collectors.toSet());
     }
 
     public String getSslCertificateFile() {

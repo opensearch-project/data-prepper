@@ -27,7 +27,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -60,7 +59,6 @@ public class DataPrepperConfigurationTests {
                 makeConfig(TestDataProvider.VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE);
         Assert.assertEquals(DataPrepperConfiguration.DEFAULT_CONFIG.getServerPort(), dataPrepperConfiguration.getServerPort());
         Assert.assertNull(dataPrepperConfiguration.getPipelineExtensions());
-        Assert.assertNull(dataPrepperConfiguration.getExcludeIdentificationKeys());
     }
 
     @Test
@@ -68,7 +66,6 @@ public class DataPrepperConfigurationTests {
         final DataPrepperConfiguration dataPrepperConfiguration = DataPrepperConfiguration.DEFAULT_CONFIG;
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(1));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
-        Assert.assertNull(dataPrepperConfiguration.getExcludeIdentificationKeys());
     }
 
     @Test
@@ -86,13 +83,6 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(2));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
-    }
-
-    @Test
-    public void testExcludeIdentificationKeys() throws IOException {
-        final DataPrepperConfiguration dataPrepperConfiguration =
-                makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
-        Assert.assertEquals(Set.of(Set.of("key1"), Set.of("key2", "key3")), dataPrepperConfiguration.getExcludeIdentificationKeys());
     }
 
     @Test

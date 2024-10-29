@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -123,6 +124,14 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
         assertThat(peerForwarderConfiguration.isSslDisableVerification(), equalTo(true));
+        assertThat(peerForwarderConfiguration.getExcludeIdentificationKeys(), equalTo(null));
+    }
+
+    @Test
+    public void testExcludeIdentificationKeys() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration =
+                makeConfig("src/test/resources/valid_peer_forwarder_config.yml");
+        assertThat(Set.of(Set.of("key1"), Set.of("key2", "key3")), equalTo(peerForwarderConfiguration.getExcludeIdentificationKeys()));
     }
 
     @Test
@@ -131,6 +140,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
         assertThat(peerForwarderConfiguration.isSslFingerprintVerificationOnly(), equalTo(true));
+        assertThat(peerForwarderConfiguration.getExcludeIdentificationKeys(), equalTo(null));
     }
 
     @Test

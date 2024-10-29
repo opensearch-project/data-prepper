@@ -204,8 +204,9 @@ public class PipelineTransformer {
                         if (!processors.isEmpty() && processors.get(0) instanceof RequiresPeerForwarding) {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
                                     processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(),
-				    dataPrepperConfiguration.getExcludeIdentificationKeys(),
-				    pipelineConfiguration.getWorkers()
+                                    dataPrepperConfiguration.getPeerForwarderConfiguration() != null ?
+                                        dataPrepperConfiguration.getPeerForwarderConfiguration().getExcludeIdentificationKeys() : null,
+                                    pipelineConfiguration.getWorkers()
                             );
                         }
                         return processors;
