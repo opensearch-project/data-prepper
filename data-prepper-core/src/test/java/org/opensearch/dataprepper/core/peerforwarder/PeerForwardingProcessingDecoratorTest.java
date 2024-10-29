@@ -76,7 +76,7 @@ class PeerForwardingProcessingDecoratorTest {
         return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, null, PIPELINE_WORKER_THREADS);
     }
 
-    private List<Processor> createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(final List<Processor> processors, List<Set<String>> excludeIdentificationKeys) {
+    private List<Processor> createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(final List<Processor> processors, Set<Set<String>> excludeIdentificationKeys) {
         return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, excludeIdentificationKeys, PIPELINE_WORKER_THREADS);
     }
 
@@ -110,7 +110,8 @@ class PeerForwardingProcessingDecoratorTest {
     void decorateProcessors_with_excludeIdentificationKeys() {
         Set<String> identificationKeys = Set.of("key1", "key2");
         when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
-        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), List.of(identificationKeys));
+        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), Set.of(identificationKeys));
+        assertThat(processors.size(), equalTo(1));
         for (final Processor processor: processors) {
             assertTrue(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
         }
@@ -121,7 +122,8 @@ class PeerForwardingProcessingDecoratorTest {
         Set<String> identificationKeys = Set.of("key1", "key2");
         Set<String> notMatchingIdentificationKeys = Set.of("key1", "key3");
         when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
-        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), List.of(notMatchingIdentificationKeys));
+        final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(Collections.singletonList((Processor) requiresPeerForwarding), Set.of(notMatchingIdentificationKeys));
+        assertThat(processors.size(), equalTo(1));
         for (final Processor processor: processors) {
             assertFalse(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
         }
@@ -196,6 +198,9 @@ class PeerForwardingProcessingDecoratorTest {
 
             final List<Processor> processors = createObjectUnderTestDecoratedProcessors(processorList);
             assertThat(processors.size(), equalTo(2));
+            for (final Processor processor: processors) {
+                assertFalse(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
+            }
             verify(peerForwarderProvider, times(1)).register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
             verifyNoMoreInteractions(peerForwarderProvider);
             Collection<Record<Event>> result = processors.get(0).execute(testData);
@@ -245,6 +250,9 @@ class PeerForwardingProcessingDecoratorTest {
 
             final List<Processor> processors = createObjectUnderTestDecoratedProcessors(Collections.singletonList((Processor) requiresPeerForwarding));
             assertThat(processors.size(), equalTo(1));
+            for (final Processor processor: processors) {
+                assertFalse(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
+            }
             final Collection<Record<Event>> records = processors.get(0).execute(forwardTestData);
 
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();

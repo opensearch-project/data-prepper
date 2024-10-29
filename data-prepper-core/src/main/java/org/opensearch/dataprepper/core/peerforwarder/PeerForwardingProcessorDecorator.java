@@ -31,7 +31,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
             final PeerForwarderProvider peerForwarderProvider,
             final String pipelineName,
             final String pluginId,
-			final List<Set<String>> excludeIdentificationKeys,
+			final Set<Set<String>> excludeIdentificationKeys,
             final Integer pipelineWorkerThreads) {
 
         Set<String> identificationKeys;
@@ -76,14 +76,10 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 			).collect(Collectors.toList());
     }
 
-	private static boolean isPeerForwardingDisabled(Processor processor, Collection<Set<String>> excludeIdentificationKeysList) {
-        if (processor instanceof RequiresPeerForwarding && excludeIdentificationKeysList != null && excludeIdentificationKeysList.size() > 0) {
-			Collection<String> identificationKeys = ((RequiresPeerForwarding) processor).getIdentificationKeys();
-			for(Set<String> excludeIdentificationKeys : excludeIdentificationKeysList) {
-				if(excludeIdentificationKeys.equals(identificationKeys)) {
-					return true;
-				}
-			}
+	private static boolean isPeerForwardingDisabled(Processor processor, Set<Set<String>> excludeIdentificationKeysSet) {
+        if (processor instanceof RequiresPeerForwarding && excludeIdentificationKeysSet != null && excludeIdentificationKeysSet.size() > 0) {
+			Set<String> identificationKeys = new HashSet<String>(((RequiresPeerForwarding) processor).getIdentificationKeys());
+            return excludeIdentificationKeysSet.contains(identificationKeys);
 		}
 		return false;
 	}

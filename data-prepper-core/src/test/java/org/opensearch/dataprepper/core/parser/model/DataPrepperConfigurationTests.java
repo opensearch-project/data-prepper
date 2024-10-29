@@ -26,7 +26,6 @@ import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserialize
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -93,7 +92,7 @@ public class DataPrepperConfigurationTests {
     public void testExcludeIdentificationKeys() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
-        Assert.assertEquals(List.of(Set.of("key1"), Set.of("key2", "key3")), dataPrepperConfiguration.getExcludeIdentificationKeys());
+        Assert.assertEquals(Set.of(Set.of("key1"), Set.of("key2", "key3")), dataPrepperConfiguration.getExcludeIdentificationKeys());
     }
 
     @Test
