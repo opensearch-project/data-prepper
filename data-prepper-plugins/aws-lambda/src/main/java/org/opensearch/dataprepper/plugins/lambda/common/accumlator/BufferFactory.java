@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.io.IOException;
 
 public interface BufferFactory {
-    Buffer getBuffer(LambdaClient lambdaClient, String functionName, String invocationType) throws IOException;
+    Buffer getBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType) throws IOException;
 }

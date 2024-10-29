@@ -44,7 +44,7 @@ import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcesso
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.RESPONSE_PAYLOAD_SIZE;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @ExtendWith(MockitoExtension.class)
 class LambdaSinkServiceIT {
 
-    private LambdaClient lambdaClient;
+    private LambdaAsyncClient lambdaAsyncClient;
     private String functionName;
     private String lambdaRegion;
     private String role;
@@ -104,7 +104,7 @@ class LambdaSinkServiceIT {
 
         final Region region = Region.of(lambdaRegion);
 
-        lambdaClient = LambdaClient.builder()
+        lambdaAsyncClient = LambdaAsyncClient.builder()
                 .region(Region.of(lambdaRegion))
                 .build();
 
@@ -130,7 +130,7 @@ class LambdaSinkServiceIT {
         final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
         pluginFactory = null;
-        return new LambdaSinkService(lambdaClient,
+        return new LambdaSinkService(lambdaAsyncClient,
                 lambdaSinkConfig,
                 pluginMetrics,
                 pluginFactory,
@@ -146,7 +146,7 @@ class LambdaSinkServiceIT {
 
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
         pluginFactory = null;
-        return new LambdaSinkService(lambdaClient,
+        return new LambdaSinkService(lambdaAsyncClient,
                 lambdaSinkConfig,
                 pluginMetrics,
                 pluginFactory,
@@ -196,7 +196,7 @@ class LambdaSinkServiceIT {
     @ValueSource(ints = {1,5,10})
     void verify_flushed_records_to_lambda_failed_and_dlq_works(final int recordCount) throws Exception {
         final String LAMBDA_SINK_CONFIG_INVALID_FUNCTION_NAME =
-                          "        function_name: $$$\n" +
+                "        function_name: $$$\n" +
                         "        aws:\n" +
                         "          region: us-east-1\n" +
                         "          sts_role_arn: arn:aws:iam::176893235612:role/osis-s3-opensearch-role\n" +
@@ -211,7 +211,7 @@ class LambdaSinkServiceIT {
         objectUnderTest.output(recordsData);
         Thread.sleep(Duration.ofSeconds(10).toMillis());
 
-       verify( numberOfRecordsFailedCounter, times(recordCount)).increment(1);
+        verify( numberOfRecordsFailedCounter, times(recordCount)).increment(1);
     }
 
     @ParameterizedTest

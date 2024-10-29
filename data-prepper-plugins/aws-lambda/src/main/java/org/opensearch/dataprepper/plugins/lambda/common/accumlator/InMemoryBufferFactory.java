@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 
 public class InMemoryBufferFactory implements BufferFactory {
     @Override
-    public Buffer getBuffer(LambdaClient lambdaClient, String functionName, String invocationType){
-        return new InMemoryBuffer(lambdaClient, functionName, invocationType);
+    public Buffer getBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType){
+        return new InMemoryBuffer(lambdaAsyncClient, functionName, invocationType);
     }
 }
