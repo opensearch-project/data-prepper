@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,9 +43,6 @@ public class JiraClientTest {
     private JiraSourceConfig jiraSourceConfig;
 
     @Mock
-    ObjectMapper objectMapper;
-
-    @Mock
     private JiraService jiraService;
 
     @Mock
@@ -56,31 +52,21 @@ public class JiraClientTest {
 
     @Test
     void testConstructor() {
-        JiraClient jiraClient;
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        jiraClient.setLastPollTime(Instant.ofEpochSecond(1234L));
         assertNotNull(jiraClient);
     }
 
     @Test
     void testListItems() {
-        JiraClient jiraClient;
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         assertNotNull(jiraClient.listItems());
-    }
-
-    @Test
-    void testSetLastPollTime() throws NoSuchFieldException, IllegalAccessException {
-        JiraClient jiraClient;
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
-        jiraClient.setLastPollTime(Instant.ofEpochSecond(1234L));
-
     }
 
 
     @Test
     void testExecutePartition() throws Exception {
-        JiraClient jiraClient;
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
         keyAttributes.put("project", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
@@ -105,8 +91,7 @@ public class JiraClientTest {
 
     @Test
     void bufferWriteRuntimeTest() throws Exception {
-        JiraClient jiraClient;
-        jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
         keyAttributes.put("project", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
