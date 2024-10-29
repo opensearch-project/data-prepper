@@ -53,6 +53,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACC
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 
 
@@ -75,13 +76,7 @@ public class JiraServiceTest {
     private StringBuilder jql;
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraServiceTest.class);
-    private ExecutorService crawlerTaskExecutor;
     private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
-    @BeforeEach
-    void setUp() {
-        crawlerTaskExecutor = executorServiceProvider.get();
-    }
 
     @AfterEach
     void tearDown() {
@@ -116,6 +111,7 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        ExecutorService crawlerTaskExecutor = executorServiceProvider.get();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
         waitForFutures(futureList);
@@ -143,6 +139,7 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        ExecutorService crawlerTaskExecutor = executorServiceProvider.get();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
         waitForFutures(futureList);
@@ -162,6 +159,7 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        ExecutorService crawlerTaskExecutor = executorServiceProvider.get();
         assertThrows(RuntimeException.class, () -> {
             jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
         });
@@ -189,6 +187,17 @@ public class JiraServiceTest {
         });
     }
 
+//    @Test
+//    public void testGetAllIssuesOauth2() throws JsonProcessingException {
+//        List<String> issueType = new ArrayList<>();
+//        issueType.add("Task");
+//        when(authConfig.getUrl()).thenReturn(ACCESSIBLE_RESOURCES);
+//        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(OAUTH2, issueType);
+//        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+//        SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
+//        assertNotNull(results);
+//    }
+
     private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> connectorCredentialsMap = new HashMap<>();
@@ -198,6 +207,7 @@ public class JiraServiceTest {
         jiraSourceConfigMap.put("account_url", ACCESSIBLE_RESOURCES);
         jiraSourceConfigMap.put("connector_credentials", connectorCredentialsMap);
         jiraSourceConfigMap.put("issue_type", issueType);
+
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
