@@ -13,22 +13,18 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -106,23 +102,6 @@ public class JiraClientTest {
             assertNotNull(record.getData());
         }
     }
-
-//    @Test
-//    void executePartitionJsonProcessingExceptionTest() throws Exception {
-//        jiraClient = spy(new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig));
-//        Map<String, Object> keyAttributes = new HashMap<>();
-//        keyAttributes.put("project", "test");
-//        when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
-//        List<String> itemIds = List.of("ID1", "ID2", "ID3", "ID4");
-//        when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);
-//        Instant exportStartTime = Instant.now();
-//        when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
-//
-//        when(jiraService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
-//
-//        jiraClient.setObjectMapper(objectMapper);
-//        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, crawlerSourceConfig));
-//    }
 
     @Test
     void bufferWriteRuntimeTest() throws Exception {
