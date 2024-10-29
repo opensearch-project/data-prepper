@@ -56,6 +56,8 @@ public class KinesisLeaseConfigTest {
         final KinesisLeaseConfig kinesisLeaseConfig = makeConfig(
                 "src/test/resources/simple_pipeline_with_extensions.yaml");
 
+        assertNotNull(kinesisLeaseConfig.getPipelineIdentifier());
+        assertEquals(kinesisLeaseConfig.getPipelineIdentifier(), "sample-kinesis-pipeline-0123");
         assertNotNull(kinesisLeaseConfig.getLeaseCoordinationTable());
         assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getTableName(), "kinesis-pipeline-kcl");
         assertEquals(kinesisLeaseConfig.getLeaseCoordinationTable().getRegion(), "us-east-1");

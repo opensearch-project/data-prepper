@@ -60,7 +60,6 @@ public class KinesisService {
     private final String applicationName;
     private final String tableName;
     private final String kclMetricsNamespaceName;
-    private final String pipelineName;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final KinesisSourceConfig kinesisSourceConfig;
     private final KinesisAsyncClient kinesisClient;
@@ -96,8 +95,11 @@ public class KinesisService {
         this.dynamoDbClient = kinesisClientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
         this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion());
         this.cloudWatchClient = kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
-        this.pipelineName = pipelineDescription.getPipelineName();
-        this.applicationName = pipelineName;
+        if (kinesisLeaseConfig.getPipelineIdentifier().isEmpty()) {
+            this.applicationName = pipelineDescription.getPipelineName();
+        } else {
+            this.applicationName = kinesisLeaseConfig.getPipelineIdentifier();
+            }
         this.workerIdentifierGenerator = workerIdentifierGenerator;
         this.executorService = Executors.newFixedThreadPool(1);
         final PluginModel codecConfiguration = kinesisSourceConfig.getCodec();

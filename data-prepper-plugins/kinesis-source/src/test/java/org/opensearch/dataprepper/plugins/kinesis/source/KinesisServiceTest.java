@@ -70,6 +70,7 @@ public class KinesisServiceTest {
     private final String PIPELINE_NAME = "kinesis-pipeline-test";
     private final String streamId = "stream-1";
     private static final String codec_plugin_name = "json";
+    private static final String PIPELINE_IDENTIFIER = "sample-kinesis-pipeline-0123";
 
     private static final Duration CHECKPOINT_INTERVAL = Duration.ofMillis(0);
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
@@ -149,6 +150,7 @@ public class KinesisServiceTest {
         kinesisLeaseConfigSupplier = mock(KinesisLeaseConfigSupplier.class);
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
         workerIdentifierGenerator = mock(WorkerIdentifierGenerator.class);
+        when(kinesisLeaseConfig.getPipelineIdentifier()).thenReturn(PIPELINE_IDENTIFIER);
         kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
         when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("kinesis-lease-table");

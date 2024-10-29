@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class KinesisLeaseConfigSupplierTest {
     private static final String LEASE_COORDINATION_TABLE = "lease-table";
+    private static final String PIPELINE_IDENTIFIER = "sample-kinesis-pipeline-0123";
     @Mock
     KinesisLeaseConfig kinesisLeaseConfig;
 
@@ -36,12 +37,14 @@ public class KinesisLeaseConfigSupplierTest {
 
     @Test
     void testGetters() {
+        when(kinesisLeaseConfig.getPipelineIdentifier()).thenReturn(PIPELINE_IDENTIFIER);
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
         when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn(LEASE_COORDINATION_TABLE);
         when(kinesisLeaseCoordinationTableConfig.getRegion()).thenReturn("us-east-1");
         KinesisLeaseConfigSupplier kinesisLeaseConfigSupplier = createObjectUnderTest();
         assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable().getTableName(), equalTo(LEASE_COORDINATION_TABLE));
         assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getLeaseCoordinationTable().getRegion(), equalTo("us-east-1"));
+        assertThat(kinesisLeaseConfigSupplier.getKinesisExtensionLeaseConfig().get().getPipelineIdentifier(), equalTo(PIPELINE_IDENTIFIER));
     }
 
     @Test
