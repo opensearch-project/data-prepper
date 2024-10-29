@@ -1,8 +1,8 @@
-<img src="https://raw.githubusercontent.com/opensearch-project/data-prepper/main/docs/images/DataPrepper_auto.svg" height="64px" alt="Data Prepper">
+<img src="https://raw.githubusercontent.com/opensearch-project/data-prepper/main/docs/images/DataPrepper_auto.svg" height="64px" alt="OpenSearch Data Prepper">
 
-The Data Prepper maintainers seek to promote an inclusive and engaged community of contributors.
+The OpenSearch Data Prepper maintainers seek to promote an inclusive and engaged community of contributors.
 In order to facilitate this, weekly triage meetings are open to all and attendance is encouraged for anyone who hopes to contribute, discuss an issue, or learn more about the project.
-To learn more about contributing to the Data Prepper project visit the [Contributing](./CONTRIBUTING.md) documentation.
+To learn more about contributing to the OpenSearch Data Prepper project visit the [Contributing](./CONTRIBUTING.md) documentation.
 
 ### Do I need to attend for my issue to be addressed/triaged?
 
@@ -17,7 +17,7 @@ However, should we run out of time before your issue is discussed, you are alway
 ### How do I join the triage meeting?
 
 Meetings are hosted regularly Tuesdays at 2:30 PM US Central Time (12:30 PM Pacific Time) and can be joined via the links posted on the [OpenSearch Meetup Group](https://www.meetup.com/opensearch/events/) list of events.
-The event will be titled `Data Prepper Triage Meeting`.
+The event will be titled `OpenSearch Data Prepper Triage Meeting`.
 
 After joining the video meeting, you can enable your video / voice to join the discussion.
 If you do not have a webcam or microphone available, you can still join in via the text chat.
@@ -28,9 +28,9 @@ If you have an issue you'd like to bring forth please consider getting a link to
 
 Meetings are 30 minutes and structured as follows:
 
-1. Initial Gathering: As we gather, feel free to turn on video and engage in informal and open-to-all conversation. A volunteer Data Prepper maintainer will share the [Data Prepper Tracking Board](https://github.com/orgs/opensearch-project/projects/82/) and proceed.
+1. Initial Gathering: As we gather, feel free to turn on video and engage in informal and open-to-all conversation. A volunteer OpenSearch Data Prepper maintainer will share the [Data Prepper Tracking Board](https://github.com/orgs/opensearch-project/projects/82/) and proceed.
 2. Announcements: We will make any announcements at the beginning, if necessary.
-3. Untriaged issues: We will review all untriaged [issues](https://github.com/orgs/opensearch-project/projects/82/views/6) for the Data Prepper repository. If you have an item here, you may spend a few minutes to explain your request.
+3. Untriaged issues: We will review all untriaged [issues](https://github.com/orgs/opensearch-project/projects/82/views/6) for the OpenSearch Data Prepper repository. If you have an item here, you may spend a few minutes to explain your request.
 4. Member Requests: Opportunity for any meeting member to ask for consideration of an issue or pull request.
 5. Release review: If time permits, and we find it necessary, we will review [items for the current release](https://github.com/orgs/opensearch-project/projects/82/views/14).
 6. Follow-up issues: If time permits, we will review the [follow up items](https://github.com/orgs/opensearch-project/projects/82/views/18).
@@ -46,15 +46,15 @@ Attending the triage meetings is a great way for a new contributor to learn abou
 If you have an existing issue you would like to discuss, you can always comment on the issue itself.
 Alternatively, you are welcome to come to the triage meeting to discuss.
 
-### Is this meeting a good place to get help using Data Prepper?
+### Is this meeting a good place to get help using OpenSearch Data Prepper?
 
-While we are always happy to help the community, the best resource for usage questions is the [the Data Prepper discussion forum](https://github.com/opensearch-project/data-prepper/discussions) on GitHub.
+While we are always happy to help the community, the best resource for usage questions is the [OpenSearch Data Prepper discussion forum](https://github.com/opensearch-project/data-prepper/discussions) on GitHub.
 
-There you can find answers to many common questions as well as speak with implementation experts and Data Prepper maintainers.
+There you can find answers to many common questions as well as speak with implementation experts and OpenSearch Data Prepper maintainers.
 
 ### What are the issue labels associated with triaging?
 
-There are several labels that are particularly important for triaging in Data Prepper:
+There are several labels that are particularly important for triaging in OpenSearch Data Prepper:
 
 | Label | When applied | Meaning |
 | ----- | ------------ | ------- |
