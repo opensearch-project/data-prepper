@@ -75,13 +75,11 @@ public class JiraServiceTest {
     private StringBuilder jql;
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraServiceTest.class);
-    private Queue<ItemInfo> itemInfoQueue;
     private ExecutorService crawlerTaskExecutor;
     private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @BeforeEach
     void setUp() {
-        itemInfoQueue = new ConcurrentLinkedQueue<>();
         crawlerTaskExecutor = executorServiceProvider.get();
     }
 
@@ -117,6 +115,7 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
         waitForFutures(futureList);
@@ -143,6 +142,7 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
         waitForFutures(futureList);
@@ -161,6 +161,7 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         List<Future<Boolean>> futureList = new ArrayList<>();
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         assertThrows(RuntimeException.class, () -> {
             jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
         });
