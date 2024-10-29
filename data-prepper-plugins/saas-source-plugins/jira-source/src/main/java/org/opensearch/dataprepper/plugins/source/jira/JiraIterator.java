@@ -64,7 +64,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
 
     private boolean isCrawlerRunning() {
         boolean isRunning = Boolean.FALSE;
-        if (Objects.nonNull(futureList)) {
+        if (!futureList.isEmpty()) {
             for (Future<Boolean> future : futureList) {
                 if (!future.isDone()) {
                     isRunning = Boolean.TRUE;

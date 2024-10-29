@@ -289,5 +289,4 @@ public class JiraServiceTest {
         return null;
     }
 
-
 }
