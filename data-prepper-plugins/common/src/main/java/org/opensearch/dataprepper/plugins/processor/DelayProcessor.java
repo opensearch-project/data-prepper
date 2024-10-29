@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import java.time.Duration;
 import java.util.Collection;
