@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -76,18 +77,13 @@ public class JiraServiceTest {
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraServiceTest.class);
     private JiraSourceConfig jiraSourceConfig;
     private Queue<ItemInfo> itemInfoQueue;
-    private List<Future<Boolean>> futureList;
     private ExecutorService crawlerTaskExecutor;
     private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-    private JiraService jiraService;
-    private List<String> issueType;
 
     @BeforeEach
     void setUp() {
         itemInfoQueue = new ConcurrentLinkedQueue<>();
         crawlerTaskExecutor = executorServiceProvider.get();
-        issueType = new ArrayList<>();
-        futureList = new ArrayList<>();
     }
 
     @AfterEach
@@ -97,6 +93,8 @@ public class JiraServiceTest {
 
     @Test
     void testJiraServiceInitialization() throws JsonProcessingException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         assertNotNull(jiraService);
@@ -104,6 +102,8 @@ public class JiraServiceTest {
 
     @Test
     public void testGetJiraEntities() throws JsonProcessingException, InterruptedException, TimeoutException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         issueType.add("Task");
         jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
@@ -119,15 +119,18 @@ public class JiraServiceTest {
         doReturn(mockSearchResults).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
+        List<Future<Boolean>> futureList = new ArrayList<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
-        waitForFutures();
+        waitForFutures(futureList);
 
         assertEquals(mockIssues.size(), itemInfoQueue.size());
     }
 
     @Test
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException, InterruptedException, TimeoutException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         issueType.add("Task");
         jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
@@ -143,15 +146,18 @@ public class JiraServiceTest {
         doReturn(mockSearchResults).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
+        List<Future<Boolean>> futureList = new ArrayList<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
 
-        waitForFutures();
+        waitForFutures(futureList);
 
         assertEquals(100, itemInfoQueue.size());
     }
 
     @Test
     public void testGetJiraEntitiesException() throws JsonProcessingException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         issueType.add("Task");
         jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
@@ -159,6 +165,7 @@ public class JiraServiceTest {
         doThrow(RuntimeException.class).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
+        List<Future<Boolean>> futureList = new ArrayList<>();
         assertThrows(RuntimeException.class, () -> {
             jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
         });
@@ -167,6 +174,8 @@ public class JiraServiceTest {
 
     @Test
     public void testGetAllIssuesBasic() throws JsonProcessingException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         issueType.add("Task");
         jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
@@ -176,6 +185,8 @@ public class JiraServiceTest {
 
     @Test
     public void testGetAllIssuesInvalidAuthType() throws JsonProcessingException {
+        JiraService jiraService;
+        List<String> issueType = new ArrayList<>();
         issueType.add("Task");
         jiraSourceConfig = createJiraConfiguration("Invalid Auth Type", issueType);
         jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
@@ -200,7 +211,7 @@ public class JiraServiceTest {
 
     private IssueBean createIssueBean(boolean nullFields) {
         IssueBean issue1 = new IssueBean();
-        issue1.setId("123");
+        issue1.setId(UUID.randomUUID().toString());
         issue1.setKey("issue_1_key");
         issue1.setSelf("https://example.com/rest/api/2/issue/123");
         issue1.setExpand("operations,versionedRepresentations,editmeta");
@@ -240,7 +251,7 @@ public class JiraServiceTest {
         return issue1;
     }
 
-    private void waitForFutures() throws InterruptedException, TimeoutException {
+    private void waitForFutures(List<Future<Boolean>> futureList) throws InterruptedException, TimeoutException {
         for (Future<?> future : futureList) {
             try {
                 future.get(1000, TimeUnit.MILLISECONDS);

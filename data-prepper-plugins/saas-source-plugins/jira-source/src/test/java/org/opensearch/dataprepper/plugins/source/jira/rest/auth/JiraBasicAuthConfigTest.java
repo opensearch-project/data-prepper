@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraBasicAuthConfig;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
