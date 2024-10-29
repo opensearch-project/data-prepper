@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
