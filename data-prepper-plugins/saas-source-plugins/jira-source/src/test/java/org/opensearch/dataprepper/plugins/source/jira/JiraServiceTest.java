@@ -75,7 +75,6 @@ public class JiraServiceTest {
     private StringBuilder jql;
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraServiceTest.class);
-    private JiraSourceConfig jiraSourceConfig;
     private Queue<ItemInfo> itemInfoQueue;
     private ExecutorService crawlerTaskExecutor;
     private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
@@ -94,7 +93,7 @@ public class JiraServiceTest {
     @Test
     void testJiraServiceInitialization() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
-        jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         assertNotNull(jiraService);
     }
@@ -103,7 +102,7 @@ public class JiraServiceTest {
     public void testGetJiraEntities() throws JsonProcessingException, InterruptedException, TimeoutException {
         List<String> issueType = new ArrayList<>();
         issueType.add("Task");
-        jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
         IssueBean issue1 = createIssueBean(false);
@@ -129,7 +128,7 @@ public class JiraServiceTest {
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException, InterruptedException, TimeoutException {
         List<String> issueType = new ArrayList<>();
         issueType.add("Task");
-        jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -155,7 +154,7 @@ public class JiraServiceTest {
     public void testGetJiraEntitiesException() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         issueType.add("Task");
-        jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
 
         doThrow(RuntimeException.class).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
@@ -172,7 +171,7 @@ public class JiraServiceTest {
     public void testGetAllIssuesBasic() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         issueType.add("Task");
-        jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
@@ -182,7 +181,7 @@ public class JiraServiceTest {
     public void testGetAllIssuesInvalidAuthType() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         issueType.add("Task");
-        jiraSourceConfig = createJiraConfiguration("Invalid Auth Type", issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration("Invalid Auth Type", issueType);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         assertThrows(BadRequestException.class, () -> {
             jiraService.getAllIssues(jql, 0, jiraSourceConfig);
