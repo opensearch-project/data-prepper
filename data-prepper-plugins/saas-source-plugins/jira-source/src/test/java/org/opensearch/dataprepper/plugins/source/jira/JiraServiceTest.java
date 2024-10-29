@@ -187,17 +187,6 @@ public class JiraServiceTest {
         });
     }
 
-//    @Test
-//    public void testGetAllIssuesOauth2() throws JsonProcessingException {
-//        List<String> issueType = new ArrayList<>();
-//        issueType.add("Task");
-//        when(authConfig.getUrl()).thenReturn(ACCESSIBLE_RESOURCES);
-//        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(OAUTH2, issueType);
-//        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-//        SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
-//        assertNotNull(results);
-//    }
-
     private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> connectorCredentialsMap = new HashMap<>();
