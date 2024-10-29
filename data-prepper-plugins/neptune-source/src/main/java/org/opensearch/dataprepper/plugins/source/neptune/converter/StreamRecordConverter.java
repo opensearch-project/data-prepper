@@ -22,7 +22,7 @@ import java.util.Map;
 public class StreamRecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(StreamRecordConverter.class);
     private static final String S3_PATH_DELIMITER = "/";
-    private static final String STREAM_INGESTION_TYPE = "stream";
+    private static final String STREAM_INGESTION_TYPE = "STREAM";
     private static final String STREAM_OP_ADD = "ADD";
     private static final String STREAM_OP_REMOVE = "REMOVE";;
 

@@ -1,0 +1,4 @@
+plugin_name: "neptune"
+apply_when:
+  - "$..source.neptune"
+  - "$..source.neptune.s3_bucket"
