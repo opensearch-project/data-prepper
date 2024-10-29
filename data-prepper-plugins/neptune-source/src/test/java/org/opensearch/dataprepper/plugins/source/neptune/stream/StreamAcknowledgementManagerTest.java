@@ -18,9 +18,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -75,8 +75,8 @@ public class StreamAcknowledgementManagerTest {
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
-           .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
+                .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                        verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
 
@@ -111,8 +111,8 @@ public class StreamAcknowledgementManagerTest {
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
-            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
+                .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                        verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
 
@@ -145,8 +145,8 @@ public class StreamAcknowledgementManagerTest {
         CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
-            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(partitionCheckpoint).giveUpPartition());
+                .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                        verify(partitionCheckpoint).giveUpPartition());
         assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
         verify(stopWorkerConsumer).accept(null);
@@ -171,7 +171,7 @@ public class StreamAcknowledgementManagerTest {
         final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(false));
         await()
-            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(stopWorkerConsumer).accept(null));
+                .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                        verify(stopWorkerConsumer).accept(null));
     }
 }

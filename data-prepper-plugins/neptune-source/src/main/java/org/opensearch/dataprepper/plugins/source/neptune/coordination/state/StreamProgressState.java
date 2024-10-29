@@ -33,6 +33,7 @@ public class StreamProgressState {
     public Long getCommitNum() {
         return this.commitNum;
     }
+
     public void setCommitNum(long commitNum) {
         this.commitNum = commitNum;
     }
@@ -40,6 +41,7 @@ public class StreamProgressState {
     public Long getOpNum() {
         return this.opNum;
     }
+
     public void setOpNum(long opNum) {
         this.opNum = opNum;
     }
@@ -47,6 +49,7 @@ public class StreamProgressState {
     public Long getLoadedRecords() {
         return loadedRecords;
     }
+
     public void setLoadedRecords(long loadedRecords) {
         this.loadedRecords = loadedRecords;
     }
@@ -54,6 +57,7 @@ public class StreamProgressState {
     public long getLastUpdateTimestamp() {
         return lastUpdateTimestamp;
     }
+
     public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
         this.lastUpdateTimestamp = lastUpdateTimestamp;
     }

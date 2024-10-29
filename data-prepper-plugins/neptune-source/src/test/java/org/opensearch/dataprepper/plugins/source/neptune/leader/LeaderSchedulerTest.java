@@ -39,7 +39,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 import static org.opensearch.dataprepper.plugins.mongo.leader.LeaderScheduler.EXPORT_PREFIX;
 
@@ -71,8 +70,8 @@ public class LeaderSchedulerTest {
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> leaderScheduler.run());
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verifyNoInteractions(mongoDBSourceConfig));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verifyNoInteractions(mongoDBSourceConfig));
         executorService.shutdownNow();
     }
 
@@ -96,14 +95,14 @@ public class LeaderSchedulerTest {
 
         // Acquire the init partition
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         future.cancel(true);
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 S3 partition + 2 global table state
         verify(coordinator, times(5)).createPartition(
@@ -155,14 +154,14 @@ public class LeaderSchedulerTest {
 
         // Acquire the init partition
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         future.cancel(true);
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 export partition + 1 stream partitions + 1 S3 partition + 2 global table state
         verify(coordinator, times(4)).createPartition(
@@ -210,14 +209,14 @@ public class LeaderSchedulerTest {
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> leaderScheduler.run());
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator, atLeast(1)).acquireAvailablePartition(eq(LeaderPartition.PARTITION_TYPE)));
 
         future.cancel(true);
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 stream partitions + 1 S3 partition + 1 global table state
         verify(coordinator, times(3)).createPartition(
@@ -263,7 +262,7 @@ public class LeaderSchedulerTest {
 
         await()
                 .atMost(Duration.ofSeconds(2))
-                .untilAsserted(() ->  verify(coordinator).giveUpPartition(leaderPartition));
+                .untilAsserted(() -> verify(coordinator).giveUpPartition(leaderPartition));
 
         // Should create 1 stream partitions + 1 S3 partition + 1 global table state
         verify(coordinator, times(3)).createPartition(

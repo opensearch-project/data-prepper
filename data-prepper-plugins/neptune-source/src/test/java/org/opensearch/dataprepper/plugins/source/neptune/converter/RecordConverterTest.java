@@ -26,12 +26,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
-import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.DOCUMENTDB_EVENT_COLLECTION_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.DOCUMENTDB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.DOCUMENTDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.DOCUMENTDB_EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
+import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.mongo.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 
@@ -55,7 +55,7 @@ class RecordConverterTest {
                 "\"customerId\":" + random.nextInt() + "," +
                 "\"productId\":" + random.nextInt() + "," +
                 "\"quantity\":" + random.nextInt() + "," +
-                "\"orderDate\":{\"date\":\"" + LocalDate.now() +"\"}}";
+                "\"orderDate\":{\"date\":\"" + LocalDate.now() + "\"}}";
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
         final String collection = UUID.randomUUID().toString();
@@ -87,7 +87,7 @@ class RecordConverterTest {
                 "\"customerId\":" + random.nextInt() + "," +
                 "\"productId\":" + random.nextInt() + "," +
                 "\"quantity\":" + random.nextInt() + "," +
-                "\"orderDate\":{\"date\":\"" + LocalDate.now() +"\"}}";
+                "\"orderDate\":{\"date\":\"" + LocalDate.now() + "\"}}";
         final long exportStartTime = Instant.now().toEpochMilli();
         final long eventVersionNumber = random.nextLong();
         final OperationType eventName = OperationType.INSERT;

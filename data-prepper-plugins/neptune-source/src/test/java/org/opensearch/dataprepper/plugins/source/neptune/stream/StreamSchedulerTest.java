@@ -105,16 +105,16 @@ public class StreamSchedulerTest {
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
-                    any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
-                        eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
-                    .thenReturn(streamWorker);
+                                any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                        .thenReturn(streamWorker);
                 streamScheduler.run();
             }
         });
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(streamWorker).processStream(eq(streamPartition)));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(streamWorker).processStream(eq(streamPartition)));
 
         future.cancel(true);
         executorService.shutdownNow();
@@ -142,8 +142,8 @@ public class StreamSchedulerTest {
         });
 
         await()
-            .atMost(Duration.ofSeconds(10))
-            .untilAsserted(() ->  verify(sourceCoordinator).giveUpPartition(streamPartition));
+                .atMost(Duration.ofSeconds(10))
+                .untilAsserted(() -> verify(sourceCoordinator).giveUpPartition(streamPartition));
 
         future.cancel(true);
         executorService.shutdownNow();
@@ -159,8 +159,8 @@ public class StreamSchedulerTest {
         final Future<?> future = executorService.submit(() -> streamScheduler.run());
 
         await()
-            .atMost(Duration.ofSeconds(2))
-            .untilAsserted(() ->  verify(sourceCoordinator, never()).giveUpPartition(streamPartition));
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> verify(sourceCoordinator, never()).giveUpPartition(streamPartition));
 
         future.cancel(true);
         executorService.shutdownNow();

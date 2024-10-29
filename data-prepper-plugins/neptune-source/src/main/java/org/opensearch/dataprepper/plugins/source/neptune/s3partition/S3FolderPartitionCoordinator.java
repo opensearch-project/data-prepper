@@ -24,8 +24,8 @@ public class S3FolderPartitionCoordinator {
 
     public Optional<S3PartitionStatus> getGlobalS3FolderCreationStatus() {
         final Optional<EnhancedSourcePartition> partition = enhancedSourceCoordinator.getPartition(S3PartitionCreatorScheduler.S3_FOLDER_PREFIX);
-        if(partition.isPresent()) {
-            final GlobalState globalState = (GlobalState)partition.get();
+        if (partition.isPresent()) {
+            final GlobalState globalState = (GlobalState) partition.get();
             return Optional.of(S3PartitionStatus.fromMap(globalState.getProgressState().get()));
         } else {
             return Optional.empty();

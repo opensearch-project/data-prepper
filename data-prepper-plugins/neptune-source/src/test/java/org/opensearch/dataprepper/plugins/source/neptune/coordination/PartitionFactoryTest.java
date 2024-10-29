@@ -78,7 +78,7 @@ class PartitionFactoryTest {
     }
 
 
-   @Test
+    @Test
     void testCreateStreamPartition() {
         String sourceId = sourceIdentifier + "|" + StreamPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
@@ -89,7 +89,7 @@ class PartitionFactoryTest {
 
 
         PartitionFactory factory = new PartitionFactory();
-        final StreamPartition streamPartition = (StreamPartition)factory.apply(sourcePartitionStoreItem);
+        final StreamPartition streamPartition = (StreamPartition) factory.apply(sourcePartitionStoreItem);
         assertThat(streamPartition, notNullValue());
         assertThat(streamPartition.getCollection(), equalTo(collection));
         assertThat(streamPartition.getPartitionType(), equalTo(StreamPartition.PARTITION_TYPE));
@@ -153,7 +153,7 @@ class PartitionFactoryTest {
 
     }
 
-   @Test
+    @Test
     void testCreateLeaderPartition() {
         String sourceId = sourceIdentifier + "|" + LeaderPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);

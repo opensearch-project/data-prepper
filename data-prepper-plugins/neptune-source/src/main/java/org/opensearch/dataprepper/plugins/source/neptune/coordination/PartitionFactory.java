@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.
 import java.util.function.Function;
 
 /**
- *  Partition factory for Neptune source.
+ * Partition factory for Neptune source.
  */
 public class PartitionFactory implements Function<SourcePartitionStoreItem, EnhancedSourcePartition> {
 

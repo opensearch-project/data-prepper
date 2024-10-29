@@ -167,7 +167,7 @@ public class StreamWorker {
         while (!Thread.currentThread().isInterrupted() && !stopWorker) {
             final List<NeptuneStreamRecord> streamRecords;
             try {
-               streamRecords = client.getStreamRecords(checkPointCommitNum, checkPointOpNum);
+                streamRecords = client.getStreamRecords(checkPointCommitNum, checkPointOpNum);
             } catch (StreamRecordsNotFoundException | InvalidParameterException exception) {
                 LOG.warn("The change stream cursor didn't return any document. Stopping the change stream. New thread should restart the stream.");
                 stop();
@@ -189,7 +189,7 @@ public class StreamWorker {
             // records specified in the limit parameter. The response does include a threshold-breaching record if the 10 MB limit was reached.
 
             for (int i = 0; i < streamRecords.size(); i++) {
-                final Event event =  streamRecordConverter.convert(streamRecords.get(i));
+                final Event event = streamRecordConverter.convert(streamRecords.get(i));
                 records.add(event);
                 // recordBytes.add(bytes);
                 lock.lock();
@@ -273,7 +273,7 @@ public class StreamWorker {
                 LOG.debug("Writing to buffer due to buffer write delay");
                 try {
                     writeToBuffer();
-                } catch(Exception e){
+                } catch (Exception e) {
                     // this will only happen if writing to buffer gets interrupted from shutdown,
                     // otherwise it's infinite backoff and retry
                     LOG.error("Failed to add records to buffer with error", e);
@@ -293,7 +293,7 @@ public class StreamWorker {
                         LOG.warn("Exception checkpointing the current state. The stream record processing will start from previous checkpoint.", e);
                         stop();
                     } finally {
-                        lock.unlock();;
+                        lock.unlock();
                     }
                     lastCheckpointTime = System.currentTimeMillis();
                 }

@@ -23,8 +23,8 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.mongo.client.BsonHelper.PARTITION_FORMAT;
@@ -44,8 +44,8 @@ public class BsonHelperTest {
     @Test
     public void getBinaryPartitionStringFromMongoDBId() {
         final Binary document = mock(Binary.class);
-        final byte type =  getRandomByte();
-        final byte[] byteData =  new byte[] { getRandomByte() };
+        final byte type = getRandomByte();
+        final byte[] byteData = new byte[]{getRandomByte()};
         when(document.getType()).thenReturn(type);
         when(document.getData()).thenReturn(byteData);
         final String partition = BsonHelper.getPartitionStringFromMongoDBId(document, Binary.class.getName());
@@ -184,8 +184,8 @@ public class BsonHelperTest {
 
     @Test
     public void buildAndQueryForDocumentClass() {
-        final String gteValue = Document.parse(String.format("{\"%s\":\"%s\"}",  UUID.randomUUID(),  UUID.randomUUID())).toJson();
-        final String lteValue = Document.parse(String.format("{\"%s\":\"%s\"}",  UUID.randomUUID(),  UUID.randomUUID())).toJson();
+        final String gteValue = Document.parse(String.format("{\"%s\":\"%s\"}", UUID.randomUUID(), UUID.randomUUID())).toJson();
+        final String lteValue = Document.parse(String.format("{\"%s\":\"%s\"}", UUID.randomUUID(), UUID.randomUUID())).toJson();
         final String expectedGteValueString = String.format("{\"_id\": {\"$gte\": %s}}", gteValue);
         final String expectedLteValueString = String.format("{\"_id\": {\"$lte\": %s}}", lteValue);
         final Bson bson = BsonHelper.buildQuery(gteValue, lteValue, Document.class.getName(), Document.class.getName());
@@ -223,10 +223,10 @@ public class BsonHelperTest {
     public void buildAndQueryForBinaryClass() {
         final String bytes1String = UUID.randomUUID().toString();
         final String bytes1 = new String(Base64.getEncoder().encode(bytes1String.getBytes()));
-        final String bytes1Type = String.format("%02x",(Math.abs(new Random().nextInt(10))));
+        final String bytes1Type = String.format("%02x", (Math.abs(new Random().nextInt(10))));
         final String bytes2String = UUID.randomUUID().toString();
         final String bytes2 = new String(Base64.getEncoder().encode(bytes2String.getBytes()));
-        final String bytes2Type = String.format("%02x",(Math.abs(new Random().nextInt(10))));
+        final String bytes2Type = String.format("%02x", (Math.abs(new Random().nextInt(10))));
         final String gteValue = String.format(PARTITION_FORMAT, bytes1Type, bytes1String);
         final String lteValue = String.format(PARTITION_FORMAT, bytes2Type, bytes2String);
         final String expectedGteValueString = String.format("{\"_id\": {\"$gte\": {\"$binary\": {\"base64\": \"%s\", \"subType\": \"%s\"}}}}", bytes1, bytes1Type);
@@ -241,14 +241,14 @@ public class BsonHelperTest {
         final String gteValue = String.valueOf(Math.abs(new Random(10_000).nextInt()));
         final String bytesString = UUID.randomUUID().toString();
         final String bytes = new String(Base64.getEncoder().encode(bytesString.getBytes()));
-        final String bytesType = String.format("%02x",(Math.abs(new Random().nextInt(10))));
+        final String bytesType = String.format("%02x", (Math.abs(new Random().nextInt(10))));
         final String lteValue = String.format(PARTITION_FORMAT, bytesType, bytesString);
         final String expectedValueString = String.format("{\"$or\": [{\"$or\": [" +
-                "{\"$or\": [{\"_id\": {\"$gte\": %s}}, " +
-                "{\"_id\": {\"$gte\": \"\"}}]}, " +
-                "{\"_id\": {\"$gte\": {}}}]}, " +
-                "{\"_id\": {\"$lte\": {\"$binary\": {\"base64\": \"%s\", \"subType\": \"%s\"}}}}" +
-                "]}",
+                        "{\"$or\": [{\"_id\": {\"$gte\": %s}}, " +
+                        "{\"_id\": {\"$gte\": \"\"}}]}, " +
+                        "{\"_id\": {\"$gte\": {}}}]}, " +
+                        "{\"_id\": {\"$lte\": {\"$binary\": {\"base64\": \"%s\", \"subType\": \"%s\"}}}}" +
+                        "]}",
                 gteValue, bytes, bytesType);
         final Bson bson = BsonHelper.buildQuery(gteValue, lteValue, Integer.class.getName(), Binary.class.getName());
         assertThat(bson.toBsonDocument().toJson(), is(expectedValueString));
@@ -285,18 +285,18 @@ public class BsonHelperTest {
     }
 
     private byte getRandomByte() {
-        return (byte)random.nextInt(256);
+        return (byte) random.nextInt(256);
     }
 
     private int getRandomInteger() {
         return random.nextInt(10000);
     }
 
-    private String getRandomHexStringLength24(){
+    private String getRandomHexStringLength24() {
         final int numOfChars = 24;
         final Random r = new Random();
         final StringBuilder sb = new StringBuilder();
-        while(sb.length() < numOfChars){
+        while (sb.length() < numOfChars) {
             sb.append(Integer.toHexString(r.nextInt()));
         }
 

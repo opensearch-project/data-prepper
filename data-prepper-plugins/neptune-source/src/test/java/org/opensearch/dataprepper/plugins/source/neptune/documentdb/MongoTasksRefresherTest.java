@@ -160,7 +160,7 @@ class MongoTasksRefresherTest {
                 MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
-        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
         when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
         objectUnderTest.update(newSourceConfig);
@@ -188,7 +188,7 @@ class MongoTasksRefresherTest {
                 MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
-        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
         when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
         objectUnderTest.update(newSourceConfig);
@@ -215,7 +215,7 @@ class MongoTasksRefresherTest {
                 MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
-        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
         final ExecutorService newExecutorService = mock(ExecutorService.class);
         when(executorServiceFunction.apply(anyInt())).thenReturn(newExecutorService);
         objectUnderTest.update(newSourceConfig);
@@ -240,7 +240,7 @@ class MongoTasksRefresherTest {
                 MongoDBSourceConfig.AuthenticationConfig.class);
         when(newSourceConfig.getAuthenticationConfig()).thenReturn(newCredentialsConfig);
         when(newCredentialsConfig.getUsername()).thenReturn(TEST_USERNAME);
-        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD  + "_changed");
+        when(newCredentialsConfig.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
         doThrow(RuntimeException.class).when(executorService).shutdownNow();
         objectUnderTest.update(newSourceConfig);
         verify(credentialsChangeCounter).increment();
