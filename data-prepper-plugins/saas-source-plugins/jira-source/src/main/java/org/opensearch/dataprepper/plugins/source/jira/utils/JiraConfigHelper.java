@@ -1,8 +1,8 @@
-package org.opensearch.dataprepper.plugins.source.jira;
+package org.opensearch.dataprepper.plugins.source.jira.utils;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
+import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 
 import java.util.List;
 
