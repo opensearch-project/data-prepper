@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 
 import java.time.Instant;
@@ -11,7 +12,6 @@ import java.util.UUID;
 @Setter
 @Getter
 public class JiraItemInfo implements ItemInfo {
-    public static final String PROJECT = "project";
     private String project;
     private String issueType;
     private String id;
@@ -50,20 +50,20 @@ public class JiraItemInfo implements ItemInfo {
 
     @Override
     public Map<String, Object> getKeyAttributes() {
-        return Map.of(PROJECT, project);
+        return Map.of(Constants.PROJECT, project);
     }
 
     @Override
     public Instant getLastModifiedAt() {
-        long updatedAtMillis = Long.parseLong((String) this.metadata.getOrDefault("updated", "0"));
-        long createdAtMillis = Long.parseLong((String) this.metadata.getOrDefault("created", "0"));
+        long updatedAtMillis = Long.parseLong((String) this.metadata.getOrDefault(Constants.UPDATED, "0"));
+        long createdAtMillis = Long.parseLong((String) this.metadata.getOrDefault(Constants.CREATED, "0"));
         return createdAtMillis > updatedAtMillis ?
                 Instant.ofEpochMilli(createdAtMillis) : Instant.ofEpochMilli(updatedAtMillis);
     }
 
     public static class JiraItemInfoBuilder {
-        Map<String, Object> metadata;
-        Instant eventTime;
+        private Map<String, Object> metadata;
+        private Instant eventTime;
         private String id;
         private String itemId;
         private String project;
