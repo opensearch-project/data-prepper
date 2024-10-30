@@ -41,6 +41,9 @@
         "@timestamp": {
           "type": "date_nanos"
         },
+        "time": {
+          "type": "date_nanos"
+        },
         "observedTimestamp": {
           "type": "date_nanos"
         },
