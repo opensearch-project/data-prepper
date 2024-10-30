@@ -6,14 +6,13 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.http.ResponseEntity;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -80,7 +79,8 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PR
 public class JiraService {
 
     public static final String ISSUES_REQUESTED = "issuesRequested";
-    public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+    public static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
+    public static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     public static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
     static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate;
@@ -88,7 +88,8 @@ public class JiraService {
     private final JiraSourceConfig jiraSourceConfig;
     private final Counter issuesRequestedCounter;
     private final Counter searchResultsFoundCounter;
-    private final Timer requestProcessDuration;
+    private final Timer ticketFetchLatencyTimer;
+    private final Timer searchCallLatencyTimer;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
     public JiraService(RestTemplate restTemplate,
@@ -98,8 +99,9 @@ public class JiraService {
         this.jiraSourceConfig = jiraSourceConfig;
 
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
-        requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
+        searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
         this.authConfig = authConfig;
 
     }
@@ -219,33 +221,49 @@ public class JiraService {
      * @param configuration input parameter.
      * @return InputStream input stream
      */
+    @Timed(SEARCH_CALL_LATENCY_TIMER)
     public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                       JiraSourceConfig configuration) {
-        SearchResults results = null;
-        String url = configuration.getAccountUrl() + REST_API_SEARCH;
 
+        String url = configuration.getAccountUrl() + REST_API_SEARCH;
         if (configuration.getAuthType().equals(OAUTH2)) {
             url = authConfig.getUrl() + REST_API_SEARCH;
         }
 
+        URI uri = UriComponentsBuilder.fromHttpUrl(url)
+                .queryParam(MAX_RESULT, FIFTY)
+                .queryParam(START_AT, startAt)
+                .queryParam(JQL_FIELD, jql)
+                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                .buildAndExpand().toUri();
+        return invokeRestApi(uri, SearchResults.class).getBody();
+    }
+
+    /**
+     * Gets issue.
+     *
+     * @param issueKey the item info
+     * @return the issue
+     */
+    @Timed(TICKET_FETCH_LATENCY_TIMER)
+    public String getIssue(String issueKey) {
+        issuesRequestedCounter.increment();
+        String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+        URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
+        return invokeRestApi(uri, String.class).getBody();
+    }
+
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) {
+
         int retryCount = 0;
-        boolean shouldContinue = Boolean.TRUE;
-        while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
-            URI uri = UriComponentsBuilder.fromHttpUrl(url)
-                    .queryParam(MAX_RESULT, FIFTY)
-                    .queryParam(START_AT, startAt)
-                    .queryParam(JQL_FIELD, jql)
-                    .queryParam(EXPAND_FIELD, EXPAND_VALUE)
-                    .buildAndExpand().toUri();
-            ResponseEntity<SearchResults> responseEntity =
-                    restTemplate.getForEntity(uri, SearchResults.class);
+        while (retryCount < RETRY_ATTEMPT) {
+            ResponseEntity<T> responseEntity = restTemplate.getForEntity(uri, responseType);
             int statusCode = responseEntity.getStatusCode().value();
             if (statusCode == TOKEN_EXPIRED) {
                 authConfig.renewCredentials();
                 retryCount++;
             } else if (statusCode == SUCCESS_RESPONSE) {
-                results = responseEntity.getBody();
-                shouldContinue = Boolean.FALSE;
+                return responseEntity;
             } else {
                 if (Objects.nonNull(responseEntity.getBody())) {
                     log.error("An exception has occurred while "
@@ -255,22 +273,7 @@ public class JiraService {
                 }
             }
         }
-        return results;
-    }
-
-    /**
-     * Gets issue.
-     *
-     * @param issueKey the item info
-     * @return the issue
-     */
-    @Timed(REQUEST_PROCESS_DURATION)
-    @Retryable(value = {RuntimeException.class},
-            maxAttempts = 5, backoff = @Backoff(delay = 1000, multiplier = 2))
-    public String getIssue(String issueKey) {
-        issuesRequestedCounter.increment();
-        String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
-        return restTemplate.getForEntity(url, String.class).getBody();
+        throw new UnAuthorizedException("Exceeded max retry attempts");
     }
 
     /**
