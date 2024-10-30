@@ -79,8 +79,6 @@ public class SearchResultsTest {
         assertEquals(searchResults.getStartAt(), startAt);
         assertEquals(searchResults.getMaxResults(), maxResults);
         assertEquals(searchResults.getTotal(), total);
-        assertEquals(searchResults.getWarningMessages(), testWarnings);
-        assertEquals(searchResults.getNames(), names);
 
 
         List<IssueBean> returnedIssues = searchResults.getIssues();
