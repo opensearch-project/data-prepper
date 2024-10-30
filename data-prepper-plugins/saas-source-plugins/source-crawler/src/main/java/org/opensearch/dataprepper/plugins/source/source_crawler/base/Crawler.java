@@ -53,6 +53,7 @@ public class Crawler {
                 itemInfoList.add(nextItem);
             }
             createPartition(itemInfoList, coordinator);
+            // intermediate updates to master partition state is required here
         } while (itemInfoIterator.hasNext());
         long crawlTimeMillis = System.currentTimeMillis() - startTime;
         log.debug("Crawling completed in {} ms", crawlTimeMillis);

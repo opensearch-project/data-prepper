@@ -81,11 +81,13 @@ public class JiraService {
 
     public static final String ISSUES_REQUESTED = "issuesRequested";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+    public static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
     static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final JiraSourceConfig jiraSourceConfig;
     private final Counter issuesRequestedCounter;
+    private final Counter searchResultsFoundCounter;
     private final Timer requestProcessDuration;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
@@ -97,6 +99,7 @@ public class JiraService {
 
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
         requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
         this.authConfig = authConfig;
 
     }
@@ -115,8 +118,8 @@ public class JiraService {
                                 ExecutorService crawlerTaskExecutor) {
         log.info("Started to fetch entities");
         jiraProjectCache.clear();
-        buildIssueItemInfo(configuration, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
-        log.info("Creating item information and adding in queue");
+        searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
+        log.trace("Creating item information and adding in queue");
         jiraProjectCache.keySet().forEach(key -> {
             Map<String, Object> metadata = new HashMap<>();
             metadata.put(CONTENT_TYPE, JiraContentType.PROJECT.getType());
@@ -132,10 +135,10 @@ public class JiraService {
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
      */
-    private void buildIssueItemInfo(JiraSourceConfig configuration, Instant timestamp,
-                                    Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
-                                    ExecutorService crawlerTaskExecutor) {
-        log.info("Building issue item information");
+    private void searchForNewTicketsAndAddToQueue(JiraSourceConfig configuration, Instant timestamp,
+                                                  Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
+                                                  ExecutorService crawlerTaskExecutor) {
+        log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
         int total;
         int startAt = 0;
@@ -148,6 +151,8 @@ public class JiraService {
                 futureList.add(crawlerTaskExecutor.submit(
                         () -> addItemsToQueue(issueList, itemInfoQueue), false));
             } while (startAt < total);
+            searchResultsFoundCounter.increment(total);
+            log.info("Number of tickets found in search api call: {}", total);
         } catch (RuntimeException ex) {
             log.error("An exception has occurred while fetching"
                     + " issue entity information , Error: {}", ex.getMessage());
