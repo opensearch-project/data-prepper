@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.jira.utils;
 
+import java.util.List;
+
 /**
  * The type Constants.
  */
@@ -8,8 +10,8 @@ public class Constants {
     public static final String TOKEN_LOCATION = "https://auth.atlassian.com/oauth/token";
     public static final int TOKEN_EXPIRED = 401;
     public static final int SUCCESS_RESPONSE = 200;
-    public static final int BAD_RESPONSE = 400;
     public static final int RETRY_ATTEMPT = 6;
+    public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
     public static final String ACCESSIBLE_RESOURCES = "https://api.atlassian.com/oauth/token/accessible-resources";
     public static final String CONTENT_TYPE = "ContentType";
@@ -28,7 +30,6 @@ public class Constants {
     public static final String LIVE = "live";
     public static final String ACCESS_TOKEN = "access_token";
     public static final String REFRESH_TOKEN = "refresh_token";
-    public static final String ERR_MSG = "errorMessages";
     public static final String PLUGIN_NAME = "jira";
 
     public static final String BAD_REQUEST_EXCEPTION = "Bad request exception occurred "
@@ -70,9 +71,6 @@ public class Constants {
     public static final String EXPAND_WITH_SPACE = "    expand: ";
 
 
-    public static final String ACCEPT = "Accept";
-    public static final String Application_JSON = "application/json";
-    public static final String MAX_RESULTS = "maxResults";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String JQL_FIELD = "jql";

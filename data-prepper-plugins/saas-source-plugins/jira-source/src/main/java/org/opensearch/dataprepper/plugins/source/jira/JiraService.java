@@ -60,6 +60,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUCCESS_RESPONSE;
@@ -91,6 +92,7 @@ public class JiraService {
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
+
 
     public JiraService(RestTemplate restTemplate,
                        JiraSourceConfig jiraSourceConfig,
@@ -261,6 +263,11 @@ public class JiraService {
             int statusCode = responseEntity.getStatusCode().value();
             if (statusCode == TOKEN_EXPIRED) {
                 authConfig.renewCredentials();
+                try {
+                    Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                }
                 retryCount++;
             } else if (statusCode == SUCCESS_RESPONSE) {
                 return responseEntity;
