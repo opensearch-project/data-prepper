@@ -44,7 +44,7 @@ public class LambdaProcessorConfig {
 
     @JsonPropertyDescription("Defines the way Data Prepper treats the response from Lambda")
     @JsonProperty("response_events_match")
-    private Boolean responseEventsMatch = Boolean.FALSE;
+    private boolean responseEventsMatch = false;
 
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("connection_timeout")

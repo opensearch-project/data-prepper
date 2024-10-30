@@ -116,7 +116,7 @@ public class LambdaProcessorTest {
         when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
         when(lambdaProcessorConfig.getWhenCondition()).thenReturn(null);
         when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(Boolean.FALSE);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
@@ -205,7 +205,7 @@ public class LambdaProcessorTest {
     @Test
     public void testDoExecute_WithRecords_SuccessfulProcessing() throws Exception {
         // Arrange
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(Boolean.TRUE);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         Event event = mock(Event.class);
         Record<Event> record = new Record<>(event);
         Collection<Record<Event>> records = Collections.singletonList(record);
@@ -290,7 +290,7 @@ public class LambdaProcessorTest {
     @Test
     public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing() throws Exception {
         // Arrange
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(Boolean.TRUE);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         setupTestObject();
         populatePrivateFields();
         List<Record<Event>> resultRecords = new ArrayList<>();
@@ -353,7 +353,7 @@ public class LambdaProcessorTest {
     @Test
     public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing() throws Exception {
         // Arrange
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(Boolean.FALSE);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
         setupTestObject();
         populatePrivateFields();
         List<Record<Event>> resultRecords = new ArrayList<>();
@@ -434,7 +434,7 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(sdkBytes);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
         when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(Boolean.TRUE);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
 
         // Mock the responseCodec.parse to add three events
         doAnswer(invocation -> {
