@@ -68,7 +68,7 @@ public class MapToListProcessorConfig {
             "place them in fields in the target list. Default is <code>false</code>.")
     private boolean convertFieldToList = false;
 
-    @JsonProperty(value = "exclude_keys", defaultValue = DEFAULT_EXCLUDE_KEYS)
+    @JsonProperty("exclude_keys")
     @JsonPropertyDescription("The keys in the source map that will be excluded from processing. Default is an " +
             "empty list (<code>[]</code>).")
     @ExampleValues({

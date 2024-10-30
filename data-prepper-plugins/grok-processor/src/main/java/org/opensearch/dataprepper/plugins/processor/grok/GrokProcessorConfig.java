@@ -57,10 +57,12 @@ public class GrokProcessorConfig {
             "Each key is a source field. The value is a list of possible grok patterns to match on. " +
             "The <code>grok</code> processor will extract values from the first match for each field. " +
             "Default is an empty response body.")
-    @ExampleValues("%{IPV4:clientip} %{WORD:request} %{POSINT:bytes}")
+    @ExampleValues({
+        @Example(value = "%{IPV4:clientip} %{WORD:request} %{POSINT:bytes}", description = "Matches on the specific patterns given.")
+    })
     private Map<String, List<String>> match = Collections.emptyMap();
 
-    @JsonProperty(value = TARGET_KEY, defaultValue = DEFAULT_TARGET_KEY)
+    @JsonProperty(TARGET_KEY)
     @JsonPropertyDescription("Specifies a parent-level key used to store all captures. Default value is <code>null</code> which will write captures into the root of the event.")
     private String targetKey = DEFAULT_TARGET_KEY;
 

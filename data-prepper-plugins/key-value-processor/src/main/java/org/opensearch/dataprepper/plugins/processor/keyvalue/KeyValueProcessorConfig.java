@@ -121,7 +121,9 @@ public class KeyValueProcessorConfig {
             "If the key was parsed from the source field that value will remain and the default value is not used. " +
             "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
     @NotNull
-    @ExampleValues("{\"defaultkey\": \"defaultvalue\"}")
+    @ExampleValues({
+        @Example(value = "{\"defaultkey\": \"defaultvalue\"}", description = "key1=value1 will parse into {\"key1\": \"value1\", \"defaultkey\": \"defaultvalue\"}.")
+    })
     private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
 
     @JsonProperty("non_match_value")

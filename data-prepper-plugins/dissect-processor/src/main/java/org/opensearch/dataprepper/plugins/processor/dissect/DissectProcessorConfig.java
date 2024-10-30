@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
         "based on user-defined <code>dissect</code> patterns. The processor is well suited for field extraction from log " +
         "messages with a known structure.")
 public class DissectProcessorConfig {
-    static final String DEFAULT_TARGET_TYPES = 'string';
+    static final String DEFAULT_TARGET_TYPES = "string";
 
     @NotNull
     @JsonProperty("map")
