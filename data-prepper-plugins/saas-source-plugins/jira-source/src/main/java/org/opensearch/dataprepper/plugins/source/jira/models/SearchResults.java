@@ -13,23 +13,14 @@
 package org.opensearch.dataprepper.plugins.source.jira.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
+import lombok.Getter;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_BRACKET;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NEW_LINE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NEW_LINE_WITH_SPACE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRINT_NULL;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SCHEMA;
 
 /**
  * The result of a JQL search.
  */
+@Getter
 public class SearchResults {
     @JsonProperty("expand")
     private String expand = null;
@@ -46,112 +37,4 @@ public class SearchResults {
     @JsonProperty("issues")
     private List<IssueBean> issues = null;
 
-    @JsonProperty("warningMessages")
-    private List<String> warningMessages = null;
-
-    @JsonProperty("names")
-    private Map<String, String> names = null;
-
-    @JsonProperty("schema")
-    private Map<String, JsonTypeBean> schema = null;
-
-    /**
-     * Expand options that include additional search result details in the response.
-     *
-     * @return expand expand
-     */
-    public String getExpand() {
-        return expand;
-    }
-
-    /**
-     * The index of the first item returned on the page.
-     *
-     * @return startAt start at
-     */
-    public Integer getStartAt() {
-        return startAt;
-    }
-
-    /**
-     * The maximum number of results that could be on the page.
-     *
-     * @return maxResults max results
-     */
-    public Integer getMaxResults() {
-        return maxResults;
-    }
-
-    /**
-     * The number of results on the page.
-     *
-     * @return total total
-     */
-    public Integer getTotal() {
-        return total;
-    }
-
-    /**
-     * The list of issues found by the search.
-     *
-     * @return issues issues
-     */
-    public List<IssueBean> getIssues() {
-        return issues;
-    }
-
-    /**
-     * Any warnings related to the JQL query.
-     *
-     * @return warningMessages warning messages
-     */
-    public List<String> getWarningMessages() {
-        return warningMessages;
-    }
-
-    /**
-     * The ID and name of each field in the search results.
-     *
-     * @return names names
-     */
-    public Map<String, String> getNames() {
-        return names;
-    }
-
-    /**
-     * The schema describing the field types in the search results.
-     *
-     * @return schema schema
-     */
-    public Map<String, JsonTypeBean> getSchema() {
-        return schema;
-    }
-
-
-    @Override
-    public String toString() {
-
-        String sb = Constants.SEARCH_RESULTS +
-                Constants.EXPAND_WITH_SPACE + toIndentedString(expand) + NEW_LINE +
-                Constants.HEAD_WITH_SPACE + toIndentedString(startAt) + NEW_LINE +
-                Constants.MAX_RESULTS_WITH_SPACE + toIndentedString(maxResults) + NEW_LINE +
-                Constants.TOTAL + toIndentedString(total) + NEW_LINE +
-                ISSUE + toIndentedString(issues) + NEW_LINE +
-                Constants.WARN_MSG + toIndentedString(warningMessages) + NEW_LINE +
-                NAME + toIndentedString(names) + NEW_LINE +
-                SCHEMA + toIndentedString(schema) + NEW_LINE +
-                CLOSING_BRACKET;
-        return sb;
-    }
-
-    /**
-     * Convert the given object to string with each line indented by 4 spaces (except the first
-     * line).
-     */
-    private String toIndentedString(Object o) {
-        if (Objects.isNull(o)) {
-            return PRINT_NULL;
-        }
-        return o.toString().replace(NEW_LINE, NEW_LINE_WITH_SPACE);
-    }
 }

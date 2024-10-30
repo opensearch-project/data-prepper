@@ -12,37 +12,25 @@ import java.util.Map;
 public class IssueBean {
 
     /**
-     * -- GETTER --
      * Expand options that include additional issue details in the response.
-     *
-     * @return expand expand
      */
     @JsonProperty("expand")
     private String expand = null;
 
     /**
-     * -- GETTER --
      * The ID of the issue.
-     *
-     * @return id id
      */
     @JsonProperty("id")
     private String id = null;
 
     /**
-     * -- GETTER --
      * The URL of the issue details.
-     *
-     * @return self self
      */
     @JsonProperty("self")
     private String self = null;
 
     /**
-     * -- GETTER --
      * The key of the issue.
-     *
-     * @return key key
      */
     @JsonProperty("key")
     private String key = null;
