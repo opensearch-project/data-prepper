@@ -119,7 +119,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
         } catch (Exception e) {
             if (e.getMessage().contains(AUTHORIZATION_ERROR_CODE)) {
-                log.error("An Authorization Exception exception has occurred while renewing access token {} ", e.getMessage());
+                log.error("Authorization Exception occurred while renewing access token {} ", e.getMessage());
             }
         }
     }
