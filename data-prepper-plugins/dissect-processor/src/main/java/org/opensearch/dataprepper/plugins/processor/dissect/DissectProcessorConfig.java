@@ -29,6 +29,9 @@ public class DissectProcessorConfig {
             "For details on how to define fields in the <code>dissect</code> pattern, see " + 
             "<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/processors/dissect/#field-notations\">here</a>. " +
             "An example dissect pattern is <code>%{Date} %{Time} %{Log_Type}: %{Message}</code>, which will dissect into four fields.")
+    @ExampleValues({
+        @Example(value = "%{Date} %{Time} %{Log_Type}: %{Message}", description = "Extracts the input data into the date, time, log_type, and message fields.")
+    })
     private Map<String, String> map;
 
     @JsonProperty(value = "target_types", defaultValue = DEFAULT_TARGET_TYPES)
