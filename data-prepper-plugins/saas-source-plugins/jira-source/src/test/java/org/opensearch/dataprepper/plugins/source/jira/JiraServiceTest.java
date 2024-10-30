@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -60,20 +61,24 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 @ExtendWith(MockitoExtension.class)
 public class JiraServiceTest {
 
+    private static final Logger log = LoggerFactory.getLogger(JiraServiceTest.class);
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
     @Mock
     private RestTemplate restTemplate;
-
     @Mock
     private JiraAuthConfig authConfig;
-
     @Mock
     private SearchResults mockSearchResults;
-
     @Mock
     private StringBuilder jql;
 
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(JiraServiceTest.class);
-    private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
+    private static InputStream getResourceAsStream(String resourceName) {
+        InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
+        if (inputStream == null) {
+            inputStream = JiraServiceTest.class.getResourceAsStream("/" + resourceName);
+        }
+        return inputStream;
+    }
 
     @AfterEach
     void tearDown() {
@@ -173,7 +178,6 @@ public class JiraServiceTest {
         assertNotNull(results);
     }
 
-
     private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> connectorCredentialsMap = new HashMap<>();
@@ -245,14 +249,6 @@ public class JiraServiceTest {
                 throw new TimeoutException(te.getMessage());
             }
         }
-    }
-
-    private static InputStream getResourceAsStream(String resourceName) {
-        InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
-        if (inputStream == null) {
-            inputStream = JiraServiceTest.class.getResourceAsStream("/" + resourceName);
-        }
-        return inputStream;
     }
 
     @ParameterizedTest
