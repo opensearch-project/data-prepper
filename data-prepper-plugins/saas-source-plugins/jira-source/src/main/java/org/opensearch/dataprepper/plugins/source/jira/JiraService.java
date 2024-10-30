@@ -80,11 +80,11 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PR
 @Named
 public class JiraService {
 
-    public static final String ISSUES_REQUESTED = "issuesRequested";
-    public static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
-    public static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
-    public static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
-    static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
+    private static final String ISSUES_REQUESTED = "issuesRequested";
+    private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
+    private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
+    private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
+    private static final Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final JiraSourceConfig jiraSourceConfig;
