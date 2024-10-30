@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated
 public enum ResponseCardinality {
     STRICT("strict"),
     AGGREGATE("aggregate");
