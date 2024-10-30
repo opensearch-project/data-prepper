@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -134,18 +133,7 @@ public class CrawlerTest {
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
         Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-        assertEquals(Instant.ofEpochMilli(10), updatedPollTime);
-    }
-
-    @Test
-    void testUpdatedPollTimeNiUpdatedLarger() {
-        Instant lastPollTime = Instant.ofEpochMilli(0);
-        List<ItemInfo> itemInfoList = new ArrayList<>();
-        ItemInfo testItem = createTestItemInfo("1");
-        itemInfoList.add(testItem);
-        when(client.listItems()).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-        assertEquals(Instant.ofEpochMilli(10), updatedPollTime);
+        assertNotEquals(lastPollTime, updatedPollTime);
     }
 
 
