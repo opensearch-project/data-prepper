@@ -27,9 +27,6 @@ public class SearchResultsTest {
     @Mock
     private Map<String, String> names;
 
-    @Mock
-    private Map<String, JsonTypeBean> schema;
-
     private SearchResults searchResults;
 
     @BeforeEach
@@ -75,7 +72,6 @@ public class SearchResultsTest {
         searchResultsMap.put("issues", testIssues);
         searchResultsMap.put("warningMessages", testWarnings);
         searchResultsMap.put("names", names);
-        searchResultsMap.put("schema", schema);
 
         String jsonString = objectMapper.writeValueAsString(searchResultsMap);
 
@@ -87,7 +83,6 @@ public class SearchResultsTest {
         assertEquals(searchResults.getTotal(), total);
         assertEquals(searchResults.getWarningMessages(), testWarnings);
         assertEquals(searchResults.getNames(), names);
-        assertEquals(searchResults.getSchema(), schema);
 
 
         List<IssueBean> returnedIssues = searchResults.getIssues();
@@ -116,7 +111,6 @@ public class SearchResultsTest {
         assertTrue(jsonString.contains("ISSUE"));
         assertTrue(jsonString.contains("warningMessages"));
         assertTrue(jsonString.contains("name"));
-        assertTrue(jsonString.contains("schema"));
     }
 
 }

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
-import org.opensearch.dataprepper.plugins.source.jira.models.JsonTypeBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
@@ -52,12 +51,6 @@ public class JiraIteratorTest {
     private JiraSourceConfig jiraSourceConfig;
 
     private JiraIterator jiraIterator;
-
-    @Mock
-    private Map<String, String> names;
-
-    @Mock
-    private Map<String, JsonTypeBean> schema;
 
     @BeforeEach
     void setUp() {
