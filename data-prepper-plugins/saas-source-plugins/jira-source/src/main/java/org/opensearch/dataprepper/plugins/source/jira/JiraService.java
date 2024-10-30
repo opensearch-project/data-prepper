@@ -1,12 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.internal.LinkedTreeMap;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -16,7 +9,6 @@ import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestExcept
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
-import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +16,10 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
+import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -42,16 +36,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCEPT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.Application_JSON;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_RESPONSE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ERR_MSG;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_VALUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.FIFTY;
@@ -62,7 +51,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.JQL
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULTS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PREFIX;
@@ -176,13 +164,13 @@ public class JiraService {
     private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
             Map<String, Object> issueMetadata = new HashMap<>();
-            if (Objects.nonNull(((LinkedTreeMap) issue.getFields().get(PROJECT)).get(KEY))) {
+            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(KEY))) {
                 issueMetadata.put(PROJECT_KEY,
-                        ((LinkedTreeMap) issue.getFields().get(PROJECT)).get(KEY).toString());
+                        ((Map) issue.getFields().get(PROJECT)).get(KEY).toString());
             }
-            if (Objects.nonNull(((LinkedTreeMap) issue.getFields().get(PROJECT)).get(NAME))) {
+            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(NAME))) {
                 issueMetadata.put(PROJECT_NAME,
-                        ((LinkedTreeMap) issue.getFields().get(PROJECT)).get(NAME).toString());
+                        ((Map) issue.getFields().get(PROJECT)).get(NAME).toString());
             }
 
             long created = 0;
@@ -229,68 +217,38 @@ public class JiraService {
     public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                       JiraSourceConfig configuration) {
         SearchResults results = null;
-        HttpResponse<JsonNode> response;
-        com.mashape.unirest.request.HttpRequest request;
-        try {
-            if (configuration.getAuthType().equals(BASIC.trim())) {
-                AddressValidation.validateInetAddress(AddressValidation
-                        .getInetAddress(configuration.getAccountUrl()));
+        String url = configuration.getAccountUrl() + REST_API_SEARCH;
 
-                request = Unirest.get(configuration.getAccountUrl() + REST_API_SEARCH)
-                        .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
-                        .header(ACCEPT, Application_JSON)
-                        .queryString(MAX_RESULTS, FIFTY)
-                        .queryString(START_AT, startAt)
-                        .queryString(JQL_FIELD, jql)
-                        .queryString(EXPAND_FIELD, EXPAND_VALUE);
+        if (configuration.getAuthType().equals(OAUTH2)) {
+            url = authConfig.getUrl() + REST_API_SEARCH;
+        }
 
-                response = request.asJson();
-                if (response.getStatus() == BAD_RESPONSE) {
-                    if (Objects.nonNull(response.getBody())
-                            && Objects.nonNull(response.getBody().getObject())) {
-                        log.error("An exception has occurred while getting"
-                                        + " response from Jira search API {} ",
-                                response.getBody().getObject().get(ERR_MSG).toString());
-                        throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
-                    }
-                }
-                Gson gson = new GsonBuilder().create();
-                results = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
-            } else if (configuration.getAuthType().equals(OAUTH2)) {
-                int retryCount = 0;
-                boolean shouldContinue = Boolean.TRUE;
-                Map<String, Object> params = new HashMap<>();
-                params.put(MAX_RESULT, FIFTY);
-                params.put(START_AT, startAt);
-                params.put(JQL_FIELD, jql);
-                params.put(EXPAND_FIELD, EXPAND_VALUE);
-                String url = authConfig.getUrl() + REST_API_SEARCH;
-                while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
-                    ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class, params);
-                    int statusCode = responseEntity.getStatusCode().value();
-                    if (statusCode == TOKEN_EXPIRED) {
-                        authConfig.renewCredentials();
-                        retryCount++;
-                    } else if (statusCode == SUCCESS_RESPONSE) {
-                        Gson gson = new GsonBuilder().create();
-                        results = gson.fromJson(responseEntity.getBody(), SearchResults.class);
-                        shouldContinue = Boolean.FALSE;
-                    } else {
-                        if (Objects.nonNull(responseEntity.getBody())) {
-                            log.error("An exception has occurred while "
-                                            + "getting response from Jira search API  {}",
-                                    responseEntity.getBody());
-                            throw new BadRequestException(responseEntity.getBody());
-                        }
-                    }
-                }
+        int retryCount = 0;
+        boolean shouldContinue = Boolean.TRUE;
+        while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
+            URI uri = UriComponentsBuilder.fromHttpUrl(url)
+                    .queryParam(MAX_RESULT, FIFTY)
+                    .queryParam(START_AT, startAt)
+                    .queryParam(JQL_FIELD, jql)
+                    .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                    .buildAndExpand().toUri();
+            ResponseEntity<SearchResults> responseEntity =
+                    restTemplate.getForEntity(uri, SearchResults.class);
+            int statusCode = responseEntity.getStatusCode().value();
+            if (statusCode == TOKEN_EXPIRED) {
+                authConfig.renewCredentials();
+                retryCount++;
+            } else if (statusCode == SUCCESS_RESPONSE) {
+                results = responseEntity.getBody();
+                shouldContinue = Boolean.FALSE;
             } else {
-                log.error("Auth type provided in configuration is invalid");
-                throw new BadRequestException("Auth type provided in configuration is invalid");
+                if (Objects.nonNull(responseEntity.getBody())) {
+                    log.error("An exception has occurred while "
+                                    + "getting response from Jira search API  {}",
+                            responseEntity.getBody());
+                    throw new BadRequestException(responseEntity.getBody().toString());
+                }
             }
-        } catch (UnirestException e) {
-            log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
-            throw new BadRequestException(e.getMessage(), e);
         }
         return results;
     }
@@ -305,7 +263,6 @@ public class JiraService {
     @Retryable(value = {RuntimeException.class},
             maxAttempts = 5, backoff = @Backoff(delay = 1000, multiplier = 2))
     public String getIssue(String issueKey) {
-        System.out.printf("Started to fetch issue %s%n", issueKey);
         issuesRequestedCounter.increment();
         String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
         return restTemplate.getForEntity(url, String.class).getBody();

@@ -1,6 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
-import com.google.gson.JsonObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
@@ -39,6 +39,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     private final String clientId;
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private String accessToken;
     private String refreshToken;
     private String url;
@@ -86,12 +87,12 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            JsonObject obj = new JsonObject();
-            obj.addProperty("grant_type", "refresh_token");
-            obj.addProperty("client_id", clientId);
-            obj.addProperty("client_secret", clientSecret);
-            obj.addProperty("refresh_token", refreshToken);
-            String payload = obj.toString();
+            Map<String, String> payloadMap =
+                    Map.of("grant_type", "refresh_token",
+                            "client_id", clientId,
+                            "client_secret", clientSecret,
+                            "refresh_token", refreshToken);
+            String payload = objectMapper.writeValueAsString(payloadMap);
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
             ResponseEntity<Map> exchange = restTemplate.exchange(

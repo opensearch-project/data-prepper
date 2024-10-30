@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
 import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.jira.utils.ErrorCodeEnum;
 import org.opensearch.dataprepper.plugins.source.jira.utils.ExceptionUtil;
@@ -149,6 +150,9 @@ public class JiraConfigHelper {
                 throw new RuntimeException("Access Token or Refresh Token are required for OAuth2 AuthType");
             }
         }
+
+        AddressValidation.validateInetAddress(AddressValidation
+                .getInetAddress(config.getAccountUrl()));
         return true;
     }
 }
