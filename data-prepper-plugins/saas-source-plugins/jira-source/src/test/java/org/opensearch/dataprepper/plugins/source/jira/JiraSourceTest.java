@@ -71,6 +71,6 @@ public class JiraSourceTest {
 //        source.stop();
 //
 //        source.start(mockBuffer);
-
+//
 //    }
 }

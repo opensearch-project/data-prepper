@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.google.gson.internal.LinkedTreeMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -117,7 +117,7 @@ public class JiraIteratorTest {
         issue1.setSelf("https://example.com/rest/api/2/issue/123");
         issue1.setExpand("operations,versionedRepresentations,editmeta");
 
-        Map<String, Object> fieldMap = new LinkedTreeMap<>();
+        Map<String, Object> fieldMap = new HashMap<>();
         if (!nullFields) {
             fieldMap.put(CREATED, Instant.now());
             fieldMap.put(UPDATED, Instant.now());
@@ -126,24 +126,24 @@ public class JiraIteratorTest {
             fieldMap.put(UPDATED, 0);
         }
 
-        Map<String, Object> issueTypeMap = new LinkedTreeMap<>();
+        Map<String, Object> issueTypeMap = new HashMap<>();
         issueTypeMap.put("name", "Task");
         issueTypeMap.put("self", "https://example.com/rest/api/2/issuetype/1");
         issueTypeMap.put("id", "1");
         fieldMap.put("issuetype", issueTypeMap);
 
-        Map<String, Object> projectMap = new LinkedTreeMap<>();
+        Map<String, Object> projectMap = new HashMap<>();
         if (!nullFields) {
             projectMap.put("name", "project name test");
             projectMap.put(KEY, "TEST");
         }
         fieldMap.put("project", projectMap);
 
-        Map<String, Object> priorityMap = new LinkedTreeMap<>();
+        Map<String, Object> priorityMap = new HashMap<>();
         priorityMap.put("name", "Medium");
         fieldMap.put("priority", priorityMap);
 
-        Map<String, Object> statusMap = new LinkedTreeMap<>();
+        Map<String, Object> statusMap = new HashMap<>();
         statusMap.put("name", "In Progress");
         fieldMap.put("status", statusMap);
 
