@@ -61,6 +61,7 @@ public class JiraSource extends CrawlerSourcePlugin {
 
     @Override
     public void stop() {
+        log.info("Stopping Jira Source Plugin");
         super.stop();
     }
 
