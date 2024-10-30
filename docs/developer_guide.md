@@ -1,16 +1,16 @@
-# Data Prepper Developer Guide
+# OpenSearch Data Prepper Developer Guide
 
-This page is for anybody who wishes to contribute code to Data Prepper. Welcome!
+This page is for anybody who wishes to contribute code to OpenSearch Data Prepper. Welcome!
 
 ## Contributions
 
-First, please read our [contribution guide](../CONTRIBUTING.md) for more information on how to contribute to Data Prepper.
+First, please read our [contribution guide](../CONTRIBUTING.md) for more information on how to contribute to OpenSearch Data Prepper.
 
 ## Installation Prerequisites
 
 ### Java Versions
 
-Building Data Prepper requires JDK 11 or 17. The Data Prepper Gradle build runs in a Java 11 or 17 JVM, but uses
+Building OpenSearch Data Prepper requires JDK 11 or 17. The OpenSearch Data Prepper Gradle build runs in a Java 11 or 17 JVM, but uses
 [Gradle toolchains](https://docs.gradle.org/current/userguide/toolchains.html) to compile the Java
 code using Java 11. If you have a JDK 11 installed locally, Gradle will use your installed JDK 11. If you
 do not, Gradle will install JDK 11.
@@ -22,7 +22,7 @@ All main source code builds on JDK 11, so it must be compatible with Java 11. Th
 ## Building from source
 
 The assemble task will build the Jar files and create a runnable distribution without running the integration
-tests. If you are just looking to build Data Prepper from source, this build is faster than running the integration test suite.
+tests. If you are just looking to build OpenSearch Data Prepper from source, this build is faster than running the integration test suite.
 
 To build the project from source, run the following command from the project root:
 
@@ -46,9 +46,9 @@ To build, run the following command from the project root:
 
 ## Running the project
 
-Before running Data Prepper, check that configuration files (see [configuration](configuration.md) docs for more 
-information) have been put in the respective folders under Data Prepper home directory. When building from source, 
-Data Prepper home directory is at `release/archives/linux/build/install/opensearch-data-prepper-$VERSION-linux-x64` 
+Before running OpenSearch Data Prepper, check that configuration files (see [configuration](configuration.md) docs for more 
+information) have been put in the respective folders under OpenSearch Data Prepper home directory. When building from source, 
+OpenSearch Data Prepper home directory is at `release/archives/linux/build/install/opensearch-data-prepper-$VERSION-linux-x64` 
 ($VERSION is the current version as defined in [gradle.properties](../gradle.properties)). The configuration files 
 should be put in the following folders:
 
@@ -60,7 +60,7 @@ Go to home directory:
 cd release/archives/linux/build/install/opensearch-data-prepper-$VERSION-linux-x64
 ```
 
-Data Prepper can then be run with the following commands:
+OpenSearch Data Prepper can then be run with the following commands:
 ```
 bin/data-prepper
 ```
@@ -77,7 +77,7 @@ Additionally, Log4j 2 configuration file is read from `config/log4j2.properties`
 ## Building & Running the Docker Image
 
 In some cases, you may wish to build a local Docker image and run it. This is useful if you are making a change to the
-Docker image, are looking to run a bleeding-edge Docker image, or are needing a custom-built Docker image of Data Prepper.
+Docker image, are looking to run a bleeding-edge Docker image, or are needing a custom-built Docker image of OpenSearch Data Prepper.
 
 ### Building the Docker Image
 
@@ -92,7 +92,7 @@ The repository is `opensearch-data-prepper` and the tag is
 the current version as defined in [gradle.properties](../gradle.properties).
 
 You can run the following command in Linux environments to see
-your Data Prepper Docker images:
+your OpenSearch Data Prepper Docker images:
 
 ```
 docker images | grep opensearch-data-prepper
@@ -117,18 +117,18 @@ opensearch-data-prepper:2.0.0-SNAPSHOT
 ```
 
 
-## Contributing your Code to Data Prepper
+## Contributing your Code to OpenSearch Data Prepper
 
-When you are ready to contribute a change to Data Prepper, please create a GitHub Pull Request (PR). Your PR should target `main`.
+When you are ready to contribute a change to OpenSearch Data Prepper, please create a GitHub Pull Request (PR). Your PR should target `main`.
 
-The Data Prepper maintainers will review your PR and merge it once it is approved.
+The OpenSearch Data Prepper maintainers will review your PR and merge it once it is approved.
 
 Some changes containing bug fixes or security fixes may be eligible for a patch release.
 If you believe your change should be a patch release, please see [Backporting](#backporting)
 
 ### Branches
 
-The Data Prepper maintainers use the `main` branch for the next upcoming release (major or minor).
+The OpenSearch Data Prepper maintainers use the `main` branch for the next upcoming release (major or minor).
 
 Near the time of the next release, we create a release branch for that upcoming
 release (e.g. `1.2`). We perform our release builds from this branch. Any patch
@@ -137,14 +137,14 @@ releases also build from that release branch.
 ### <a name="backporting">Backporting</a>
 
 When you create a PR which targets `main` and need this change as a patch to a previous version
-of Data Prepper, use the auto backport GitHub Action. All you need to do is add the label
+of OpenSearch Data Prepper, use the auto backport GitHub Action. All you need to do is add the label
 `backport <version>` to your PR which is targeting `main`. After the PR is merged, the GitHub
 Action will create a new PR to cherry-pick those changes into the `<version>` branch.
-A Data Prepper maintainer will need to approve and merge the backported code into the target branch.
+A OpenSearch Data Prepper maintainer will need to approve and merge the backported code into the target branch.
 
 The auto-generated PR will be on a branch named `backport/backport-<original PR number>-to-<version>`.
 
-Data Prepper supports patch releases only on the latest version (e.g. 2.1) and on the last version
+OpenSearch Data Prepper supports patch releases only on the latest version (e.g. 2.1) and on the last version
 for the previous major release (e.g. 1.4 after 2.0 has been released). These releases are
 only for bug fixes or security fixes. Please use backports only for bug and security fixes
 and only targeting candidate releases. You can ask about backporting in your PR or by creating a GitHub
@@ -154,7 +154,7 @@ issue to request that a previous change be backported.
 
 ### Documentation
 
-Documentation is very important for users of Data Prepper and contributors. We are using the
+Documentation is very important for users of OpenSearch Data Prepper and contributors. We are using the
 following conventions for documentation.
 
 1. Document features in the OpenSearch [documentation-website](https://github.com/opensearch-project/documentation-website). This makes the documentation available at https://opensearch.org/docs/latest/data-prepper.
@@ -170,7 +170,7 @@ When you submit a feature PR, please be sure to also submit a new "Documentation
 Please include in this feature a link to the GitHub issue which has information on the feature.
 This GitHub issue will often have sample configurations and explanations of the options available to users.
 Please also provide any additional guidance for the team doing the documentation.
-Please include a link to that documentation issue in the PR you created for Data Prepper.
+Please include a link to that documentation issue in the PR you created for OpenSearch Data Prepper.
 
 You are also welcome to submit a PR directly in the [documentation-website](https://github.com/opensearch-project/documentation-website).
 
@@ -205,7 +205,7 @@ If you are using IntelliJ, you can use the unofficial Checkstyle IDEA plugin. [T
 
 ### Dependencies
 
-1. You should first raise an issue in the Data Prepper project if you are interested in adding a new dependency to the core projects.
+1. You should first raise an issue in the OpenSearch Data Prepper project if you are interested in adding a new dependency to the core projects.
 2. Avoid using dependencies which provide similar functionality to existing dependencies.
     1. For example, this project uses Jackson, so do not add Gson
     2. If core Java has the function or feature, prefer it over an external library. Example: Guava’s hashcode and equals methods when Java’s Objects class has them.
@@ -216,7 +216,7 @@ We have the following categories for tests:
 
 * Unit tests - Test a single class in isolation.
 * Integration tests - Test a large component or set of classes in isolation.
-* End-to-end tests - Tests which run an actual Data Prepper. The should generally be in the [`e2e-test`](../e2e-test) project.
+* End-to-end tests - Tests which run an actual OpenSearch Data Prepper. The should generally be in the [`e2e-test`](../e2e-test) project.
 
 
 Testing Guidelines:
@@ -228,7 +228,7 @@ Testing Guidelines:
 4. Each class should have a unit test.
 5. Unit test class names should end with Test.
 6. Each large component should have an integration test.
-   1. A good example is a plugin. Plugins should have their own integration tests which integrate all of the plugin’s classes. However, these tests do not run a full Data Prepper.
+   1. A good example is a plugin. Plugins should have their own integration tests which integrate all of the plugin’s classes. However, these tests do not run a full OpenSearch Data Prepper.
 7. Integration test class names should end with IT.
 8. Test names should indicate what is being tested, if we see a failed test we should be able to look at the test name and have a good idea about what just failed with minimal context about the code being written
    1. Two good approaches may be used, depending on what you are testing:
@@ -243,7 +243,7 @@ Testing Guidelines:
 
 ## CI Builds
 
-Before merging in your PR, the Data Prepper continuous integration (CI) builds must pass. These builds
+Before merging in your PR, the OpenSearch Data Prepper continuous integration (CI) builds must pass. These builds
 run as GitHub Actions.
 
 If an Action is failing, please view the log and determine what is causing your commit to fail. If a test

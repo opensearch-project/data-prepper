@@ -125,7 +125,10 @@ class JacksonEventKey implements EventKey {
     }
 
     private String checkAndTrimKey(final String key) {
-        checkKey(key);
+        if(!supportedActions.equals(Collections.singleton(EventKeyFactory.EventAction.DELETE)))
+        {
+            checkKey(key);
+        }
         return trimTrailingSlashInKey(key);
     }
 
@@ -158,10 +161,12 @@ class JacksonEventKey implements EventKey {
                     || c == '.'
                     || c == '-'
                     || c == '_'
+                    || c == '~'
                     || c == '@'
                     || c == '/'
                     || c == '['
-                    || c == ']')) {
+                    || c == ']'
+            )) {
 
                 return false;
             }

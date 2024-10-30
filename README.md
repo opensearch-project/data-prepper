@@ -1,24 +1,24 @@
-<img src="https://raw.githubusercontent.com/opensearch-project/data-prepper/main/docs/images/DataPrepper_auto.svg" height="64px" alt="Data Prepper">
+<img src="https://raw.githubusercontent.com/opensearch-project/data-prepper/main/docs/images/DataPrepper_auto.svg" height="64px" alt="OpenSearch Data Prepper">
 
 [![codecov](https://codecov.io/gh/opensearch-project/data-prepper/branch/main/graph/badge.svg?token=IS7GOIY622)](https://codecov.io/gh/opensearch-project/data-prepper)
-# Data Prepper
+# OpenSearch Data Prepper
 
-We envision Data Prepper as an open source data collector for observability data (trace, logs, metrics) that can filter, enrich, transform, normalize, and aggregate data for downstream analysis and visualization. It will support stateful processing across multiple instances of data pipelines for observability use cases such as distributed tracing and multi-line log events (e.g. stack traces, aggregations, and log-to-metric transformations). Currently Data Prepper supports processing of distributed trace data and log ingestion with plans to support metric data in the future. 
+We envision OpenSearch Data Prepper as an open source data collector for observability data (trace, logs, metrics) that can filter, enrich, transform, normalize, and aggregate data for downstream analysis and visualization. It will support stateful processing across multiple instances of data pipelines for observability use cases such as distributed tracing and multi-line log events (e.g. stack traces, aggregations, and log-to-metric transformations). Currently OpenSearch Data Prepper supports processing of distributed trace data and log ingestion with plans to support metric data in the future. 
 
-Please read the [Overview](docs/overview.md) to understand what Data Prepper is and how it works.
+Please read the [Overview](docs/overview.md) to understand what OpenSearch Data Prepper is and how it works.
 
 ## Getting Started
 
-Our [Getting Started](docs/getting_started.md) guide is the best starting point for anybody who wants to run Data Prepper.
+Our [Getting Started](docs/getting_started.md) guide is the best starting point for anybody who wants to run OpenSearch Data Prepper.
 
-Please read the [Trace Analytics](docs/trace_analytics.md) guide or [Log Analytics](docs/log_analytics.md) to get started with using Data Prepper for trace or log analytics use cases.
+Please read the [Trace Analytics](docs/trace_analytics.md) guide or [Log Analytics](docs/log_analytics.md) to get started with using OpenSearch Data Prepper for trace or log analytics use cases.
 
 ## Project Resources
 
 * [Downloads](https://opensearch.org/downloads.html)
 * [Documentation](https://opensearch.org/docs/latest/clients/data-prepper/index/)
 * [Configuration Reference](https://opensearch.org/docs/latest/clients/data-prepper/data-prepper-reference/)
-* Need help? Try the [Data Prepper category](https://discuss.opendistrocommunity.dev/c/data-prepper/61) in the OpenSearch forums
+* Need help? Try the [OpenSearch Data Prepper category](https://discuss.opendistrocommunity.dev/c/data-prepper/61) in the OpenSearch forums
 * [Project Principles](https://opensearch.org/#principles)
 
 ## Contribute

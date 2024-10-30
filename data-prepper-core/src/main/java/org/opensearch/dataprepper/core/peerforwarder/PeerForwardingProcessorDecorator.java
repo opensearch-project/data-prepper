@@ -24,12 +24,14 @@ import java.util.stream.Collectors;
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
     private final PeerForwarder peerForwarder;
     private final Processor innerProcessor;
+    private final boolean peerForwardingDisabled;
 
     public static List<Processor> decorateProcessors(
             final List<Processor> processors,
             final PeerForwarderProvider peerForwarderProvider,
             final String pipelineName,
             final String pluginId,
+			final Set<Set<String>> excludeIdentificationKeys,
             final Integer pipelineWorkerThreads) {
 
         Set<String> identificationKeys;
@@ -69,13 +71,27 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
         final PeerForwarder peerForwarder = peerForwarderProvider.register(pipelineName, firstInnerProcessor, pluginId, identificationKeys, pipelineWorkerThreads);
 
-        return processors.stream().map(processor -> new PeerForwardingProcessorDecorator(peerForwarder, processor))
-                .collect(Collectors.toList());
+        return processors.stream().map(processor ->
+				new PeerForwardingProcessorDecorator(peerForwarder, processor, isPeerForwardingDisabled(processor, excludeIdentificationKeys))
+			).collect(Collectors.toList());
     }
 
-    private PeerForwardingProcessorDecorator(final PeerForwarder peerForwarder, final Processor innerProcessor) {
+	private static boolean isPeerForwardingDisabled(Processor processor, Set<Set<String>> excludeIdentificationKeysSet) {
+        if (processor instanceof RequiresPeerForwarding && excludeIdentificationKeysSet != null && excludeIdentificationKeysSet.size() > 0) {
+			Set<String> identificationKeys = new HashSet<String>(((RequiresPeerForwarding) processor).getIdentificationKeys());
+            return excludeIdentificationKeysSet.contains(identificationKeys);
+		}
+		return false;
+	}
+
+    private PeerForwardingProcessorDecorator(final PeerForwarder peerForwarder, final Processor innerProcessor, final boolean peerForwardingDisabled) {
         this.peerForwarder = peerForwarder;
         this.innerProcessor = innerProcessor;
+		this.peerForwardingDisabled = peerForwardingDisabled;
+    }
+
+    boolean isPeerForwardingDisabled() {
+        return peerForwardingDisabled;
     }
 
     @Override
