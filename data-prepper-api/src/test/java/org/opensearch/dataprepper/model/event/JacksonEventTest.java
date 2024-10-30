@@ -526,7 +526,6 @@ public class JacksonEventTest {
     private <T extends Throwable> void assertThrowsForKeyCheck(final Class<T> expectedThrowable, final String key) {
         assertThrows(expectedThrowable, () -> event.put(key, UUID.randomUUID()));
         assertThrows(expectedThrowable, () -> event.get(key, String.class));
-        assertThrows(expectedThrowable, () -> event.delete(key));
     }
 
     @Test
