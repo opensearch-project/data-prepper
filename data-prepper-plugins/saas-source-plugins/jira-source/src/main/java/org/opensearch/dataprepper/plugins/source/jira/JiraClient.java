@@ -55,7 +55,6 @@ public class JiraClient implements CrawlerClient {
         this.configuration = sourceConfig;
     }
 
-
     @Override
     public Iterator<ItemInfo> listItems() {
         jiraIterator.initialize(lastPollTime);

@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -64,7 +63,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
 
     private boolean isCrawlerRunning() {
         boolean isRunning = Boolean.FALSE;
-        if (Objects.nonNull(futureList)) {
+        if (!futureList.isEmpty()) {
             for (Future<Boolean> future : futureList) {
                 if (!future.isDone()) {
                     isRunning = Boolean.TRUE;
