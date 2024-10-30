@@ -189,7 +189,7 @@
         "exemplar": {
           "properties": {
             "time": {
-              "type": "date"
+              "type": "date_nanos"
             },
             "traceId": {
               "ignore_above": 256,
