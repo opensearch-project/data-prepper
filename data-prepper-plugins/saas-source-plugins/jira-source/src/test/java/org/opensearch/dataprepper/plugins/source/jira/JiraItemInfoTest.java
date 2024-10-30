@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 
 import java.time.Instant;
 import java.util.Map;
@@ -15,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.JiraItemInfo.PROJECT;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraItemInfoTest {
@@ -80,7 +80,7 @@ public class JiraItemInfoTest {
 
     @Test
     void testGetKeyAttributes() {
-        assertNotNull(jiraItemInfo.getKeyAttributes().get(PROJECT));
+        assertNotNull(jiraItemInfo.getKeyAttributes().get(Constants.PROJECT));
     }
 
     @Test
