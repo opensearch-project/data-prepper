@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
 import com.amazonaws.SdkClientException;
+import lombok.Getter;
 import lombok.Setter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -41,6 +42,7 @@ import software.amazon.kinesis.exceptions.ThrottlingException;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,7 +59,9 @@ public class KinesisService {
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
 
+    @Getter
     private final String applicationName;
+
     private final String tableName;
     private final String kclMetricsNamespaceName;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -95,7 +99,8 @@ public class KinesisService {
         this.dynamoDbClient = kinesisClientFactory.buildDynamoDBClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
         this.kinesisClient = kinesisClientFactory.buildKinesisAsyncClient(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion());
         this.cloudWatchClient = kinesisClientFactory.buildCloudWatchAsyncClient(kinesisLeaseConfig.getLeaseCoordinationTable().getAwsRegion());
-        if (kinesisLeaseConfig.getPipelineIdentifier().isEmpty()) {
+        final String pipelineIdentifier = kinesisLeaseConfig.getPipelineIdentifier();
+        if (Objects.isNull(pipelineIdentifier) || pipelineIdentifier.isEmpty()) {
             this.applicationName = pipelineDescription.getPipelineName();
         } else {
             this.applicationName = kinesisLeaseConfig.getPipelineIdentifier();

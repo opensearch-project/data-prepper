@@ -53,8 +53,7 @@ public class KinesisSourceTest {
     private final String PIPELINE_NAME = "kinesis-pipeline-test";
     private final String streamId = "stream-1";
     private static final String codec_plugin_name = "json";
-    private static final String PIPELINE_IDENTIFIER = "sample-kinesis-pipeline-0123";
-
+    private String pipelineIdentifier;
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -91,6 +90,7 @@ public class KinesisSourceTest {
 
     @BeforeEach
     void setup() {
+        pipelineIdentifier = UUID.randomUUID().toString();
         pluginMetrics = mock(PluginMetrics.class);
         pluginFactory = mock(PluginFactory.class);
         kinesisSourceConfig = mock(KinesisSourceConfig.class);
@@ -111,7 +111,7 @@ public class KinesisSourceTest {
 
         kinesisLeaseConfigSupplier = mock(KinesisLeaseConfigSupplier.class);
         kinesisLeaseConfig = mock(KinesisLeaseConfig.class);
-        when(kinesisLeaseConfig.getPipelineIdentifier()).thenReturn(PIPELINE_IDENTIFIER);
+        when(kinesisLeaseConfig.getPipelineIdentifier()).thenReturn(pipelineIdentifier);
         kinesisLeaseCoordinationTableConfig = mock(KinesisLeaseCoordinationTableConfig.class);
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
         when(kinesisLeaseCoordinationTableConfig.getTableName()).thenReturn("table-name");
