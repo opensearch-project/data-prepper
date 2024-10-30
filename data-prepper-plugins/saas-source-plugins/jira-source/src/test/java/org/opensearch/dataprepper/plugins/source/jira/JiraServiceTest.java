@@ -10,7 +10,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
@@ -24,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,8 +43,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -164,27 +162,17 @@ public class JiraServiceTest {
         });
     }
 
+    @Test
+    public void testGetAllIssuesBasic() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        issueType.add("Task");
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
+        assertNotNull(results);
+    }
 
-//    @Test
-//    public void testGetAllIssuesBasic() throws JsonProcessingException {
-//        List<String> issueType = new ArrayList<>();
-//        issueType.add("Task");
-//        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
-//        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-//        SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
-//        assertNotNull(results);
-//    }
-
-//    @Test
-//    public void testGetAllIssuesInvalidAuthType() throws JsonProcessingException {
-//        List<String> issueType = new ArrayList<>();
-//        issueType.add("Task");
-//        JiraSourceConfig jiraSourceConfig = createJiraConfiguration("Invalid Auth Type", issueType);
-//        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-//        assertThrows(BadRequestException.class, () -> {
-//            jiraService.getAllIssues(jql, 0, jiraSourceConfig);
-//        });
-//    }
 
     private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -267,17 +255,17 @@ public class JiraServiceTest {
         return inputStream;
     }
 
-//    @ParameterizedTest
-//    @ValueSource(strings = {"basic-auth-jira-pipeline.yaml"})
-//    public void testFetchingJiraIssue(String configFileName) {
-//        doReturn(new ResponseEntity<>("", HttpStatus.OK)).when(restTemplate).getForEntity(anyString(), any(String.class));
-////        when(restTemplate.getForEntity(anyString(), eq(String.class))).thenReturn(new ResponseEntity<>("", HttpStatus.OK));
-//        JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml(configFileName);
-//        JiraAuthConfig authConfig = new JiraAuthFactory(jiraSourceConfig).getObject();
-//        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-//        String ticketDetails = jiraService.getIssue("key");
-//        assertNotNull(ticketDetails);
-//    }
+    @ParameterizedTest
+    @ValueSource(strings = {"basic-auth-jira-pipeline.yaml"})
+    public void testFetchingJiraIssue(String configFileName) {
+        doReturn(new ResponseEntity<>("", HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml(configFileName);
+        JiraAuthConfig authConfig = new JiraAuthFactory(jiraSourceConfig).getObject();
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        String ticketDetails = jiraService.getIssue("key");
+        assertNotNull(ticketDetails);
+    }
+
 
     private JiraSourceConfig createJiraConfigurationFromYaml(String fileName) {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
