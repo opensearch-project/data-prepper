@@ -28,9 +28,10 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -39,10 +40,9 @@ import java.util.HashMap;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
-
 public class LambdaProcessorServiceIT {
 
-    private LambdaClient lambdaClient;
+    private LambdaAsyncClient lambdaAsyncClient;
     private String functionName;
     private String lambdaRegion;
     private String role;
@@ -82,7 +82,7 @@ public class LambdaProcessorServiceIT {
 
         final Region region = Region.of(lambdaRegion);
 
-        lambdaClient = LambdaClient.builder()
+        lambdaAsyncClient = LambdaAsyncClient.builder()
                 .region(Region.of(lambdaRegion))
                 .build();
 
@@ -103,11 +103,11 @@ public class LambdaProcessorServiceIT {
     public LambdaProcessor createObjectUnderTest(final String config) throws JsonProcessingException {
 
         final LambdaProcessorConfig lambdaProcessorConfig = objectMapper.readValue(config, LambdaProcessorConfig.class);
-        return new LambdaProcessor(pluginMetrics,lambdaProcessorConfig,awsCredentialsSupplier,expressionEvaluator);
+        return new LambdaProcessor(pluginFactory,pluginMetrics,lambdaProcessorConfig,awsCredentialsSupplier,expressionEvaluator);
     }
 
     public LambdaProcessor createObjectUnderTest(LambdaProcessorConfig lambdaSinkConfig) throws JsonProcessingException {
-        return new LambdaProcessor(pluginMetrics,lambdaSinkConfig,awsCredentialsSupplier,expressionEvaluator);
+        return new LambdaProcessor(pluginFactory,pluginMetrics,lambdaSinkConfig,awsCredentialsSupplier,expressionEvaluator);
     }
 
 
@@ -131,7 +131,7 @@ public class LambdaProcessorServiceIT {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        when(lambdaProcessorConfig.getInvocationType()).thenReturn("RequestResponse");
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
 
         LambdaProcessor objectUnderTest = createObjectUnderTest(lambdaProcessorConfig);
 
@@ -148,7 +148,7 @@ public class LambdaProcessorServiceIT {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
         when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        when(lambdaProcessorConfig.getInvocationType()).thenReturn("RequestResponse");
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
         when(thresholdOptions.getEventCount()).thenReturn(1);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT10s"));

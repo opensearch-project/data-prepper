@@ -6,10 +6,8 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Getter;
 import lombok.Setter;
-import org.opensearch.dataprepper.plugins.source.source_crawler.util.CustomInstantDeserializer;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -27,7 +25,6 @@ public class SaasWorkerProgressState {
     private int loadedItems;
 
     @JsonProperty("exportStartTime")
-    @JsonDeserialize(using = CustomInstantDeserializer.class)
     private Instant exportStartTime;
 
     private Map<String, Object> keyAttributes = new HashMap<>();

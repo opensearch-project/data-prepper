@@ -17,9 +17,8 @@
 package org.opensearch.dataprepper.plugins.source.jira.exception;
 
 /**
- * Use this exception to wrap all exceptions caused by customer's repository. If such an exception
- * is encountered during connector sync, then connector sync will simply stop and will report
- * this error to customers.
+ * Exception to indicate unauthorized access.
+ * It could either be caused by invalid credentials supplied by the user or failed renew the credentials.
  */
 public final class UnAuthorizedException extends RuntimeException {
     public UnAuthorizedException(final String message, final Throwable throwable) {

@@ -1,31 +1,25 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.internal.LinkedTreeMap;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
-import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
+import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.http.ResponseEntity;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
+import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -42,16 +36,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCEPT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.Application_JSON;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_RESPONSE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ERR_MSG;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_VALUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.FIFTY;
@@ -62,7 +51,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.JQL
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULTS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PREFIX;
@@ -73,6 +61,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUCCESS_RESPONSE;
@@ -92,14 +81,19 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PR
 public class JiraService {
 
     public static final String ISSUES_REQUESTED = "issuesRequested";
-    public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+    public static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
+    public static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
+    public static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
     static Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final JiraSourceConfig jiraSourceConfig;
     private final Counter issuesRequestedCounter;
-    private final Timer requestProcessDuration;
+    private final Counter searchResultsFoundCounter;
+    private final Timer ticketFetchLatencyTimer;
+    private final Timer searchCallLatencyTimer;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
+
 
     public JiraService(RestTemplate restTemplate,
                        JiraSourceConfig jiraSourceConfig,
@@ -108,7 +102,9 @@ public class JiraService {
         this.jiraSourceConfig = jiraSourceConfig;
 
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
-        requestProcessDuration = jiraPluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
+        searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
+        searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
         this.authConfig = authConfig;
 
     }
@@ -127,8 +123,8 @@ public class JiraService {
                                 ExecutorService crawlerTaskExecutor) {
         log.info("Started to fetch entities");
         jiraProjectCache.clear();
-        buildIssueItemInfo(configuration, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
-        log.info("Creating item information and adding in queue");
+        searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
+        log.trace("Creating item information and adding in queue");
         jiraProjectCache.keySet().forEach(key -> {
             Map<String, Object> metadata = new HashMap<>();
             metadata.put(CONTENT_TYPE, JiraContentType.PROJECT.getType());
@@ -144,10 +140,10 @@ public class JiraService {
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
      */
-    private void buildIssueItemInfo(JiraSourceConfig configuration, Instant timestamp,
-                                    Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
-                                    ExecutorService crawlerTaskExecutor) {
-        log.info("Building issue item information");
+    private void searchForNewTicketsAndAddToQueue(JiraSourceConfig configuration, Instant timestamp,
+                                                  Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
+                                                  ExecutorService crawlerTaskExecutor) {
+        log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
         int total;
         int startAt = 0;
@@ -160,6 +156,8 @@ public class JiraService {
                 futureList.add(crawlerTaskExecutor.submit(
                         () -> addItemsToQueue(issueList, itemInfoQueue), false));
             } while (startAt < total);
+            searchResultsFoundCounter.increment(total);
+            log.info("Number of tickets found in search api call: {}", total);
         } catch (RuntimeException ex) {
             log.error("An exception has occurred while fetching"
                     + " issue entity information , Error: {}", ex.getMessage());
@@ -176,13 +174,13 @@ public class JiraService {
     private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
             Map<String, Object> issueMetadata = new HashMap<>();
-            if (Objects.nonNull(((LinkedTreeMap) issue.getFields().get(PROJECT)).get(KEY))) {
+            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(KEY))) {
                 issueMetadata.put(PROJECT_KEY,
-                        ((LinkedTreeMap) issue.getFields().get(PROJECT)).get(KEY).toString());
+                        ((Map) issue.getFields().get(PROJECT)).get(KEY).toString());
             }
-            if (Objects.nonNull(((LinkedTreeMap) issue.getFields().get(PROJECT)).get(NAME))) {
+            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(NAME))) {
                 issueMetadata.put(PROJECT_NAME,
-                        ((LinkedTreeMap) issue.getFields().get(PROJECT)).get(NAME).toString());
+                        ((Map) issue.getFields().get(PROJECT)).get(NAME).toString());
             }
 
             long created = 0;
@@ -226,73 +224,22 @@ public class JiraService {
      * @param configuration input parameter.
      * @return InputStream input stream
      */
+    @Timed(SEARCH_CALL_LATENCY_TIMER)
     public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                       JiraSourceConfig configuration) {
-        SearchResults results = null;
-        HttpResponse<JsonNode> response;
-        com.mashape.unirest.request.HttpRequest request;
-        try {
-            if (configuration.getAuthType().equals(BASIC.trim())) {
-                AddressValidation.validateInetAddress(AddressValidation
-                        .getInetAddress(configuration.getAccountUrl()));
 
-                request = Unirest.get(configuration.getAccountUrl() + REST_API_SEARCH)
-                        .basicAuth(configuration.getJiraId(), configuration.getJiraCredential())
-                        .header(ACCEPT, Application_JSON)
-                        .queryString(MAX_RESULTS, FIFTY)
-                        .queryString(START_AT, startAt)
-                        .queryString(JQL_FIELD, jql)
-                        .queryString(EXPAND_FIELD, EXPAND_VALUE);
-
-                response = request.asJson();
-                if (response.getStatus() == BAD_RESPONSE) {
-                    if (Objects.nonNull(response.getBody())
-                            && Objects.nonNull(response.getBody().getObject())) {
-                        log.error("An exception has occurred while getting"
-                                        + " response from Jira search API {} ",
-                                response.getBody().getObject().get(ERR_MSG).toString());
-                        throw new BadRequestException(response.getBody().getObject().get(ERR_MSG).toString());
-                    }
-                }
-                Gson gson = new GsonBuilder().create();
-                results = gson.fromJson(response.getBody().getObject().toString(), SearchResults.class);
-            } else if (configuration.getAuthType().equals(OAUTH2)) {
-                int retryCount = 0;
-                boolean shouldContinue = Boolean.TRUE;
-                Map<String, Object> params = new HashMap<>();
-                params.put(MAX_RESULT, FIFTY);
-                params.put(START_AT, startAt);
-                params.put(JQL_FIELD, jql);
-                params.put(EXPAND_FIELD, EXPAND_VALUE);
-                String url = authConfig.getUrl() + REST_API_SEARCH;
-                while (shouldContinue && (retryCount < RETRY_ATTEMPT)) {
-                    ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class, params);
-                    int statusCode = responseEntity.getStatusCode().value();
-                    if (statusCode == TOKEN_EXPIRED) {
-                        authConfig.renewCredentials();
-                        retryCount++;
-                    } else if (statusCode == SUCCESS_RESPONSE) {
-                        Gson gson = new GsonBuilder().create();
-                        results = gson.fromJson(responseEntity.getBody(), SearchResults.class);
-                        shouldContinue = Boolean.FALSE;
-                    } else {
-                        if (Objects.nonNull(responseEntity.getBody())) {
-                            log.error("An exception has occurred while "
-                                            + "getting response from Jira search API  {}",
-                                    responseEntity.getBody());
-                            throw new BadRequestException(responseEntity.getBody());
-                        }
-                    }
-                }
-            } else {
-                log.error("Auth type provided in configuration is invalid");
-                throw new BadRequestException("Auth type provided in configuration is invalid");
-            }
-        } catch (UnirestException e) {
-            log.error("An exception has occurred while connecting to Jira search API: {}", e.getMessage());
-            throw new BadRequestException(e.getMessage(), e);
+        String url = configuration.getAccountUrl() + REST_API_SEARCH;
+        if (configuration.getAuthType().equals(OAUTH2)) {
+            url = authConfig.getUrl() + REST_API_SEARCH;
         }
-        return results;
+
+        URI uri = UriComponentsBuilder.fromHttpUrl(url)
+                .queryParam(MAX_RESULT, FIFTY)
+                .queryParam(START_AT, startAt)
+                .queryParam(JQL_FIELD, jql)
+                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                .buildAndExpand().toUri();
+        return invokeRestApi(uri, SearchResults.class).getBody();
     }
 
     /**
@@ -301,14 +248,40 @@ public class JiraService {
      * @param issueKey the item info
      * @return the issue
      */
-    @Timed(REQUEST_PROCESS_DURATION)
-    @Retryable(value = {RuntimeException.class},
-            maxAttempts = 5, backoff = @Backoff(delay = 1000, multiplier = 2))
+    @Timed(TICKET_FETCH_LATENCY_TIMER)
     public String getIssue(String issueKey) {
-        System.out.printf("Started to fetch issue %s%n", issueKey);
         issuesRequestedCounter.increment();
         String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
-        return restTemplate.getForEntity(url, String.class).getBody();
+        URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
+        return invokeRestApi(uri, String.class).getBody();
+    }
+
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) {
+
+        int retryCount = 0;
+        while (retryCount < RETRY_ATTEMPT) {
+            ResponseEntity<T> responseEntity = restTemplate.getForEntity(uri, responseType);
+            int statusCode = responseEntity.getStatusCode().value();
+            if (statusCode == TOKEN_EXPIRED) {
+                authConfig.renewCredentials();
+                try {
+                    Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                }
+                retryCount++;
+            } else if (statusCode == SUCCESS_RESPONSE) {
+                return responseEntity;
+            } else {
+                if (Objects.nonNull(responseEntity.getBody())) {
+                    log.error("An exception has occurred while "
+                                    + "getting response from Jira search API  {}",
+                            responseEntity.getBody());
+                    throw new BadRequestException(responseEntity.getBody().toString());
+                }
+            }
+        }
+        throw new UnAuthorizedException("Exceeded max retry attempts");
     }
 
     /**

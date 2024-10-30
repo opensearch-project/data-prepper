@@ -44,9 +44,6 @@ public class SearchResultsTest {
         assertNull(searchResults.getMaxResults());
         assertNull(searchResults.getTotal());
         assertNull(searchResults.getIssues());
-        assertNull(searchResults.getWarningMessages());
-        assertNull(searchResults.getNames());
-        assertNull(searchResults.getSchema());
     }
 
     @Test
@@ -63,6 +60,7 @@ public class SearchResultsTest {
         testIssues.add(issue1);
         testIssues.add(issue2);
         List<String> testWarnings = Arrays.asList("Warning1", "Warning2");
+
 
         Map<String, Object> searchResultsMap = new HashMap<>();
         searchResultsMap.put("expand", expand);

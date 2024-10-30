@@ -16,7 +16,7 @@ public class CustomRestTemplateConfig {
 
     @Bean
     public RestTemplate basicAuthRestTemplate(JiraSourceConfig config, JiraAuthConfig authConfig) {
-        RestTemplate restTemplate = new RestTemplateRetryable(3);
+        RestTemplate restTemplate = new RestTemplate();
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
         ClientHttpRequestInterceptor httpInterceptor;
         if (OAUTH2.equals(config.getAuthType())) {

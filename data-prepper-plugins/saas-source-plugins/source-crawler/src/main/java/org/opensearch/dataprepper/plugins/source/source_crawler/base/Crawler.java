@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private static final int maxItemsPerPage = 20;
-    private final Timer crawlingTime;
+    private final Timer crawlingTimer;
     private final PluginMetrics pluginMetrics =
             PluginMetrics.fromNames("sourceCrawler", "crawler");
 
@@ -32,7 +32,7 @@ public class Crawler {
 
     public Crawler(CrawlerClient client) {
         this.client = client;
-        this.crawlingTime = pluginMetrics.timer("crawlingTime");
+        this.crawlingTimer = pluginMetrics.timer("crawlingTime");
     }
 
     public Instant crawl(Instant lastPollTime,
@@ -41,7 +41,6 @@ public class Crawler {
         client.setLastPollTime(lastPollTime);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
         log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
-        Instant updatedPollTime = Instant.ofEpochMilli(0);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
             for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
@@ -52,15 +51,14 @@ public class Crawler {
                     continue;
                 }
                 itemInfoList.add(nextItem);
-                Instant lastModifiedTime = nextItem.getLastModifiedAt();
-                updatedPollTime = updatedPollTime.isAfter(lastModifiedTime) ? updatedPollTime : lastModifiedTime;
             }
             createPartition(itemInfoList, coordinator);
+            // intermediate updates to master partition state is required here
         } while (itemInfoIterator.hasNext());
         long crawlTimeMillis = System.currentTimeMillis() - startTime;
         log.debug("Crawling completed in {} ms", crawlTimeMillis);
-        crawlingTime.record(crawlTimeMillis, TimeUnit.MILLISECONDS);
-        return updatedPollTime;
+        crawlingTimer.record(crawlTimeMillis, TimeUnit.MILLISECONDS);
+        return Instant.ofEpochMilli(startTime);
     }
 
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig) {

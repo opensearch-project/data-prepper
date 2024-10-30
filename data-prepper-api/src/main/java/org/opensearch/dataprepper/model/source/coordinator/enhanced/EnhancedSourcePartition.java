@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.model.source.coordinator.enhanced;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,8 @@ import java.util.Optional;
 public abstract class EnhancedSourcePartition<T> implements EnhancedPartition<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(EnhancedSourcePartition.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper(new JsonFactory())
+            .registerModule(new JavaTimeModule());
 
     private SourcePartitionStoreItem sourcePartitionStoreItem;
 
@@ -49,9 +52,8 @@ public abstract class EnhancedSourcePartition<T> implements EnhancedPartition<T>
      * Helper method to convert progress state.
      * This is because the state is currently stored as a String in the coordination store.
      *
-     * @param progressStateClass class of progress state
+     * @param progressStateClass               class of progress state
      * @param serializedPartitionProgressState serialized value of the partition progress state
-     *
      * @return returns the converted value of the progress state
      */
     public T convertStringToPartitionProgressState(Class<T> progressStateClass, final String serializedPartitionProgressState) {

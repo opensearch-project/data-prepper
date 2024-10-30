@@ -63,13 +63,15 @@ public class JiraClient implements CrawlerClient {
 
     @Override
     public void setLastPollTime(Instant lastPollTime) {
-        log.info("Setting the lastPollTime: {}", lastPollTime);
+        log.trace("Setting the lastPollTime: {}", lastPollTime);
         this.lastPollTime = lastPollTime;
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig configuration) {
-        log.info("Executing the partition: {} with {} ticket(s)",
+    public void executePartition(SaasWorkerProgressState state,
+                                 Buffer<Record<Event>> buffer,
+                                 CrawlerSourceConfig configuration) {
+        log.trace("Executing the partition: {} with {} ticket(s)",
                 state.getKeyAttributes(), state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
         Map<String, Object> keyAttributes = state.getKeyAttributes();

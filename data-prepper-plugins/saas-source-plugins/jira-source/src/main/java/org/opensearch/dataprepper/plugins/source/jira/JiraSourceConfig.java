@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,6 +41,7 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * List of projects to ingest
      */
     @JsonProperty("project")
+    @Size(max = 100, message = "Project type filter should not be more than 100")
     private List<String> project = new ArrayList<>();
     /**
      * List of specific issue types to ingest.
@@ -51,6 +53,7 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * Optional Inclusion patterns for filtering some tickets
      */
     @JsonProperty("inclusion_patterns")
+    @Size(max = 100, message = "inclusion pattern filters should not be more than 100")
     private List<String> inclusionPatterns;
     /**
      * Optional Exclusion patterns for excluding some tickets
@@ -61,6 +64,7 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * Optional Status filter to ingest the tickets
      */
     @JsonProperty("status")
+    @Size(max = 1000, message = "Status filter should be less than 1000 characters")
     private String status;
     /**
      * Number of worker threads to spawn to parallel source fetching
