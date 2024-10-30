@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -32,19 +34,31 @@ public class GeoIPProcessorConfig {
 
     @JsonProperty("tags_on_engine_failure")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to enrich an event due to an engine failure.")
+    @ExampleValues({
+        @Example(value = "_engine_failure", description = "Events are tagged with this string when the processor failures to extract geolocation data.")
+    })
     private List<String> tagsOnEngineFailure;
 
     @JsonProperty("tags_on_ip_not_found")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to find a location for a valid IP address.")
+    @ExampleValues({
+        @Example(value = "_ip_not_found", description = "Events are tagged with this string when a location is not found for a valid IP address.")
+    })
     private List<String> tagsOnIPNotFound;
 
     @JsonProperty("tags_on_no_valid_ip")
     @JsonPropertyDescription("The tags to add to the event metadata if the source field is not a valid IP address. A source field may not be valid because it is incorrectly formatted or is the loopback/localhost IP address.")
+    @ExampleValues({
+        @Example(value = "_invalid_ip", description = "Events are tagged with this string when the IP address is invalid.")
+    })
     private List<String> tagsOnNoValidIp;
 
     @JsonProperty("geoip_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/srcaddr != \"8.8.8.8\"</code>. " +
             "If specified, the <code>geoip</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/srcaddr != \"8.8.8.8\"", description = "The processor will only match when the source IP is equivalent to 8.8.8.8.")
+    })
     private String whenCondition;
 
     /**

@@ -14,6 +14,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,12 +44,20 @@ public class KeyValueProcessorConfig {
     @NotEmpty
     @JsonProperty(defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The source field to parse for key-value pairs. The default value is <code>message</code>.")
+    @ExampleValues({
+        @Example(value = "message1", description = "{\"message1\": {\"key1=value1\"}, \"message2\": {\"key2=value2\"}} parses into " +
+        "{\"message1\": {\"key1=value1\"}, \"message2\": {\"key2=value2\"}, \"parsed_message\": {\"key1\": \"value1\"}}.")
+    })
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty(defaultValue = DEFAULT_DESTINATION)
     @JsonPropertyDescription("The destination field for the structured data. The destination will be a structured map with the key value pairs extracted from the source. " +
             "If <code>destination</code> is set to <code>null</code>, the parsed fields will be written to the root of the event. " +
             "The default value is <code>parsed_message</code>.")
+    @ExampleValues({
+        @Example(value = "parsed_data", description = "{\"message\": {\"key1=value1\"}} parses into " +
+        "{\"message\": {\"key1=value1\"}, \"parsed_data\": {\"key1\": \"value1\"}}.")
+    })
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty(value = FIELD_SPLIT_CHARACTERS_KEY, defaultValue = DEFAULT_FIELD_SPLIT_CHARACTERS)
@@ -57,6 +67,9 @@ public class KeyValueProcessorConfig {
             "The default value is <code>&amp;</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FIELD_DELIMITER_REGEX_KEY, allowedValues = {"null"}),
+    })
+    @ExampleValues({
+        @Example(value = "&&", description = "{\"key1=value1&&key2=value2\"} parses into {\"key1\": \"value1\", \"key2\": \"value2\"}.")
     })
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
@@ -70,6 +83,9 @@ public class KeyValueProcessorConfig {
             @AlsoRequired.Required(name = VALUE_GROUPING_KEY, allowedValues = {"false"}),
             @AlsoRequired.Required(name = FIELD_SPLIT_CHARACTERS_KEY, allowedValues = {"null"})
     })
+    @ExampleValues({
+        @Example(value = "&\\{2\\}", description = "{\"key1=value1&&key2=value2\"} parses into {\"key1\": \"value1\", \"key2\": \"value2\"}.")
+    })
     private String fieldDelimiterRegex;
 
     @JsonProperty(value = VALUE_SPLIT_CHARACTERS_KEY, defaultValue = DEFAULT_VALUE_SPLIT_CHARACTERS)
@@ -79,6 +95,9 @@ public class KeyValueProcessorConfig {
             "The default value is <code>=</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = KEY_VALUE_DELIMITER_REGEX_KEY, allowedValues = {"null"})
+    })
+    @ExampleValues({
+        @Example(value = "==", description = "{\"key1==value1=\"} parses into {\"key1\": \"value1\"}.")
     })
     private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
 
@@ -91,6 +110,9 @@ public class KeyValueProcessorConfig {
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = VALUE_SPLIT_CHARACTERS_KEY, allowedValues = {"null"})
     })
+    @ExampleValues({
+        @Example(value = "&\\{2\\}", description = "{\"key1==value1=\"} parses into {\"key1\": \"value1\"}.")
+    })
     private String keyValueDelimiterRegex;
 
     @JsonProperty(value = "default_values", defaultValue = "{}")
@@ -99,27 +121,40 @@ public class KeyValueProcessorConfig {
             "If the key was parsed from the source field that value will remain and the default value is not used. " +
             "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
     @NotNull
+    @ExampleValues("{\"defaultkey\": \"defaultvalue\"}")
     private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
 
     @JsonProperty("non_match_value")
     @JsonPropertyDescription("Configures a value to use when the processor cannot split a key-value pair. " +
             "The value specified in this configuration is the value used in <code>destination</code> map. " +
             "The default behavior is to drop the key-value pair.")
+    @ExampleValues({
+        @Example(value = "none", description = "key1value1&key2=value2 parses into {\"key1value1\": \"none\", \"key2\": \"value2\"}.")
+    })
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
     @JsonProperty(value = "include_keys", defaultValue = "[]")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
     @NotNull
+    @ExampleValues({
+        @Example(value = "[\"key2\"]", description = "key1=value1&key2=value2 will parse into {\"key2\": \"value2\"}.")
+    })
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
     @JsonProperty(value = "exclude_keys", defaultValue = "[]")
     @JsonPropertyDescription("An array specifying the parsed keys that should be excluded from the destination field. " +
             "By default, no keys will be excluded.")
     @NotNull
+    @ExampleValues({
+        @Example(value = "[\"key2\"]", description = "key1=value1&key2=value2 will parse into {\"key1\": \"value1\"}.")
+    })
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonPropertyDescription("A prefix to append before all keys. By default no prefix is added.")
+    @ExampleValues({
+        @Example(value = "custom", description = "{\"key1=value1\"} parses into {\"customkey1\": \"value1\"}.")
+    })
     private String prefix = null;
 
     @JsonProperty("delete_key_regex")
@@ -127,6 +162,9 @@ public class KeyValueProcessorConfig {
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
             "Cannot be an empty string. " +
             "By default, no characters are deleted from the key.")
+    @ExampleValues({
+        @Example(value = "\\s", description = "{\"key1 =value1\"} parses into {\"key1\": \"value1\"}.")
+    })
     private String deleteKeyRegex;
 
     @JsonProperty("delete_value_regex")
@@ -134,10 +172,18 @@ public class KeyValueProcessorConfig {
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
             "Cannot be an empty string. " +
             "By default, no characters are deleted from the value.")
+    @ExampleValues({
+        @Example(value = "\\s", description = "{\"key1=value1 \"} parses into {\"key1\": \"value1\"}.")
+    })
     private String deleteValueRegex;
 
     @JsonProperty(value = "transform_key", defaultValue = "none")
     @JsonPropertyDescription("Allows transforming the key's name such as making the name all lowercase.")
+    @ExampleValues({
+        @Example(value = "lowercase", description = "{\"Key1=value1\"} will parse into {\"key1\": \"value1\"}."),
+        @Example(value = "uppercase", description = "{\"key1=value1\"} will parse into {\"KEY1\": \"value1\"}."),
+        @Example(value = "capitalize", description = "{\"key1=value1\"} will parse into {\"Key1\": \"value1\"}.")
+    })
     private TransformOption transformKey = TransformOption.NONE;
 
     @JsonProperty(value = WHITESPACE_KEY, defaultValue = "lenient")
@@ -146,6 +192,10 @@ public class KeyValueProcessorConfig {
             "In this case, strict means that whitespace is trimmed and lenient means it is retained in the key name and in the value. " +
             "Default is <code>lenient</code>.")
     @NotNull
+    @ExampleValues({
+        @Example(value = "lenient", description = "{\"key1 = value1\"} will parse into {\"key1 \": \" value1\"}."),
+        @Example(value = "strict", description = "{\"key1 = value1\"} will parse into {\"key1\": \"value1\"}.")
+    })
     private WhitespaceOption whitespace = WhitespaceOption.LENIENT;
 
     @JsonProperty(value = SKIP_DUPLICATE_VALUES_KEY, defaultValue = "false")
@@ -212,19 +262,28 @@ public class KeyValueProcessorConfig {
             "character will be ignored and excluded from key-value parsing. " +
             "Can be set to either a single quotation mark (<code>'</code>) or a double quotation mark (<code>\"</code>). " +
             "Default is <code>null</code>.")
-    @Size(min = 0, max = 1, message = "string_literal_character may only have character")
+    @Size(min = 0, max = 1, message = "string_literal_character may only have one character")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = VALUE_GROUPING_KEY, allowedValues = {"true"})
+    })
+    @ExampleValues({
+        @Example(value = "\"", description = "text1 \"key1=value1\" text2 key2=value2 would parse to {\"key2\": \"value2\"}.")
     })
     private String stringLiteralCharacter = null;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>key_value</code> processor fails to parse the source string.")
+    @ExampleValues({
+        @Example(value = "[\"keyvalueprocessor_failure\"]", description = "{\"tags\": [\"keyvalueprocessor_failure\"]} will be added to the event’s metadata in the event of a runtime exception.")
+    })
     private List<String> tagsOnFailure;
 
     @JsonProperty("key_value_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>key_value</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/some-key == \"test\"", description = "When the key is 'test', the processor will be applied to the event.")
+    })
     private String keyValueWhen;
 
     @AssertTrue(message = "Invalid Configuration. value_grouping option and field_delimiter_regex are mutually exclusive")

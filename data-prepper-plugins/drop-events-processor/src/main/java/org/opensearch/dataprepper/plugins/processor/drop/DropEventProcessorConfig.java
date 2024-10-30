@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotEmpty;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 @JsonPropertyOrder
@@ -20,6 +22,9 @@ public class DropEventProcessorConfig {
             "The <code>drop_when</code> processor will drop all events where the condition evaluates to true. Those events will not go to any further processors or sinks.")
     @JsonProperty("drop_when")
     @NotEmpty
+    @ExampleValues({
+        @Example(value = "/log_type == \"DEBUG\"", description = "Drops events if the log type is DEBUG.")
+    })
     private String dropWhen;
 
     @JsonPropertyDescription("Specifies how exceptions are handled when an exception occurs while evaluating an event. Default value is <code>skip</code>, which drops the event so that it is not sent to further processors or sinks.")

@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,20 +30,32 @@ public class MapToListProcessorConfig {
     @JsonProperty("source")
     @JsonPropertyDescription("The source map used to perform the mapping operation. When set to an empty " +
             "string (<code>\"\"</code>), it will use the root of the event as the <code>source</code>.")
+    @ExampleValues({
+        @Example(value = "mymap", description = "The key 'mymap' will have a map of objects as its value to be converted into a list.")
+    })
     private String source;
 
     @NotEmpty
     @NotNull
     @JsonProperty("target")
     @JsonPropertyDescription("The target for the generated list.")
+    @ExampleValues({
+        @Example(value = "mylist", description = "The generated list will be placed at the 'mylist' node.")
+    })
     private String target;
 
     @JsonProperty(value = "key_name", defaultValue = DEFAULT_KEY_NAME)
     @JsonPropertyDescription("The name of the field in which to store the original key. Default is <code>key</code>.")
+    @ExampleValues({
+        @Example(value = "og_key", description = "The original key in the map is stored in 'og_key' in the list.")
+    })
     private String keyName = DEFAULT_KEY_NAME;
 
     @JsonProperty(value = "value_name", defaultValue = DEFAULT_VALUE_NAME)
     @JsonPropertyDescription("The name of the field in which to store the original value. Default is <code>value</code>.")
+    @ExampleValues({
+        @Example(value = "og_value", description = "The original value in the map is stored in 'og_value' in the list.")
+    })
     private String valueName = DEFAULT_VALUE_NAME;
 
     @JsonProperty("remove_processed_fields")
@@ -54,19 +68,28 @@ public class MapToListProcessorConfig {
             "place them in fields in the target list. Default is <code>false</code>.")
     private boolean convertFieldToList = false;
 
-    @JsonProperty("exclude_keys")
+    @JsonProperty(value = "exclude_keys", defaultValue = DEFAULT_EXCLUDE_KEYS)
     @JsonPropertyDescription("The keys in the source map that will be excluded from processing. Default is an " +
             "empty list (<code>[]</code>).")
+    @ExampleValues({
+        @Example(value = "[\"key1\"]", description = "When the key is 'key1', the processor will not include this key-value pair in the list and will leave it in the map.")
+    })
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
+    @ExampleValues({
+        @Example(value = "[\"_failure\"]", description = "{\"tags\": [\"_failure\"]} will be added to the event’s metadata in the event of a processing failure.")
+    })
     private List<String> tagsOnFailure;
 
     @JsonProperty("map_to_list_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
             "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will " +
             "be run on the event. By default, all events will be processed unless otherwise stated.")
+    @ExampleValues({
+        @Example(value = "/some-key == \"test\"", description = "When the key is 'test', the processor will be applied to the event.")
+    })
     private String mapToListWhen;
 
     public String getSource() {
