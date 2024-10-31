@@ -27,8 +27,7 @@ public class SchemaManager {
     static final String BINLOG_POSITION = "Position";
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
-    public static final String COLUMN_NAME1 = "COLUMN_NAME";
-    public static final String TYPE_NAME = "TYPE_NAME";
+    static final String TYPE_NAME = "TYPE_NAME";
     private final ConnectionManager connectionManager;
 
     public SchemaManager(ConnectionManager connectionManager) {
@@ -66,7 +65,7 @@ public class SchemaManager {
                 try (ResultSet columns = metaData.getColumns(database, null, tableName, null)) {
                     while (columns.next()) {
                         columnsToDataType.put(
-                            columns.getString(COLUMN_NAME1),
+                            columns.getString(COLUMN_NAME),
                             columns.getString(TYPE_NAME)
                         );
                     }
