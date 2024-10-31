@@ -44,20 +44,12 @@ public class KeyValueProcessorConfig {
     @NotEmpty
     @JsonProperty(defaultValue = DEFAULT_SOURCE)
     @JsonPropertyDescription("The source field to parse for key-value pairs. The default value is <code>message</code>.")
-    @ExampleValues({
-        @Example(value = "message1", description = "{\"message1\": {\"key1=value1\"}, \"message2\": {\"key2=value2\"}} parses into " +
-        "{\"message1\": {\"key1=value1\"}, \"message2\": {\"key2=value2\"}, \"parsed_message\": {\"key1\": \"value1\"}}.")
-    })
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty(defaultValue = DEFAULT_DESTINATION)
     @JsonPropertyDescription("The destination field for the structured data. The destination will be a structured map with the key value pairs extracted from the source. " +
             "If <code>destination</code> is set to <code>null</code>, the parsed fields will be written to the root of the event. " +
             "The default value is <code>parsed_message</code>.")
-    @ExampleValues({
-        @Example(value = "parsed_data", description = "{\"message\": {\"key1=value1\"}} parses into " +
-        "{\"message\": {\"key1=value1\"}, \"parsed_data\": {\"key1\": \"value1\"}}.")
-    })
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty(value = FIELD_SPLIT_CHARACTERS_KEY, defaultValue = DEFAULT_FIELD_SPLIT_CHARACTERS)
@@ -121,9 +113,6 @@ public class KeyValueProcessorConfig {
             "If the key was parsed from the source field that value will remain and the default value is not used. " +
             "If the default values includes keys which are not part of <code>include_keys</code> those keys and value will be added to the event.")
     @NotNull
-    @ExampleValues({
-        @Example(value = "{\"defaultkey\": \"defaultvalue\"}", description = "key1=value1 will parse into {\"key1\": \"value1\", \"defaultkey\": \"defaultvalue\"}.")
-    })
     private Map<String, Object> defaultValues = DEFAULT_DEFAULT_VALUES;
 
     @JsonProperty("non_match_value")
@@ -139,23 +128,17 @@ public class KeyValueProcessorConfig {
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
     @NotNull
-    @ExampleValues({
-        @Example(value = "[\"key2\"]", description = "key1=value1&key2=value2 will parse into {\"key2\": \"value2\"}.")
-    })
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
     @JsonProperty(value = "exclude_keys", defaultValue = "[]")
     @JsonPropertyDescription("An array specifying the parsed keys that should be excluded from the destination field. " +
             "By default, no keys will be excluded.")
     @NotNull
-    @ExampleValues({
-        @Example(value = "[\"key2\"]", description = "key1=value1&key2=value2 will parse into {\"key1\": \"value1\"}.")
-    })
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonPropertyDescription("A prefix to append before all keys. By default no prefix is added.")
     @ExampleValues({
-        @Example(value = "custom", description = "{\"key1=value1\"} parses into {\"customkey1\": \"value1\"}.")
+        @Example(value = "query:", description = "{\"key1=value1\"} parses into {\"query:key1\": \"value1\"}.")
     })
     private String prefix = null;
 
@@ -181,11 +164,6 @@ public class KeyValueProcessorConfig {
 
     @JsonProperty(value = "transform_key", defaultValue = "none")
     @JsonPropertyDescription("Allows transforming the key's name such as making the name all lowercase.")
-    @ExampleValues({
-        @Example(value = "lowercase", description = "{\"Key1=value1\"} will parse into {\"key1\": \"value1\"}."),
-        @Example(value = "uppercase", description = "{\"key1=value1\"} will parse into {\"KEY1\": \"value1\"}."),
-        @Example(value = "capitalize", description = "{\"key1=value1\"} will parse into {\"Key1\": \"value1\"}.")
-    })
     private TransformOption transformKey = TransformOption.NONE;
 
     @JsonProperty(value = WHITESPACE_KEY, defaultValue = "lenient")
@@ -275,9 +253,6 @@ public class KeyValueProcessorConfig {
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>key_value</code> processor fails to parse the source string.")
-    @ExampleValues({
-        @Example(value = "[\"keyvalueprocessor_failure\"]", description = "{\"tags\": [\"keyvalueprocessor_failure\"]} will be added to the event’s metadata in the event of a runtime exception.")
-    })
     private List<String> tagsOnFailure;
 
     @JsonProperty("key_value_when")

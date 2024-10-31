@@ -40,7 +40,7 @@ public class FlattenProcessorConfig {
     @JsonPropertyDescription("The target key to put into the flattened fields. If set to an empty string (<code>\"\"</code>) " +
             "then the processor uses the root of the event as the target.")
     @ExampleValues({
-        @Example(value = "flattened-key2", description = "The flattened fields from the source key specified are put into the specified target key.")
+        @Example(value = "flattened-key2", description = "The flattened fields from the source key specified are put into a field named 'flattened-key2'.")
     })
     private String target;
 

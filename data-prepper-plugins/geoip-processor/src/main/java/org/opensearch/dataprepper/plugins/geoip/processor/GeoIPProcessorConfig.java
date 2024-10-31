@@ -34,23 +34,14 @@ public class GeoIPProcessorConfig {
 
     @JsonProperty("tags_on_engine_failure")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to enrich an event due to an engine failure.")
-    @ExampleValues({
-        @Example(value = "_engine_failure", description = "Events are tagged with this string when the processor failures to extract geolocation data.")
-    })
     private List<String> tagsOnEngineFailure;
 
     @JsonProperty("tags_on_ip_not_found")
     @JsonPropertyDescription("The tags to add to the event metadata if the <code>geoip</code> processor is unable to find a location for a valid IP address.")
-    @ExampleValues({
-        @Example(value = "_ip_not_found", description = "Events are tagged with this string when a location is not found for a valid IP address.")
-    })
     private List<String> tagsOnIPNotFound;
 
     @JsonProperty("tags_on_no_valid_ip")
     @JsonPropertyDescription("The tags to add to the event metadata if the source field is not a valid IP address. A source field may not be valid because it is incorrectly formatted or is the loopback/localhost IP address.")
-    @ExampleValues({
-        @Example(value = "_invalid_ip", description = "Events are tagged with this string when the IP address is invalid.")
-    })
     private List<String> tagsOnNoValidIp;
 
     @JsonProperty("geoip_when")

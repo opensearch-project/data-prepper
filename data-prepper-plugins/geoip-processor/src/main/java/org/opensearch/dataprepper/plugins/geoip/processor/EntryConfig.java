@@ -28,23 +28,17 @@ public class EntryConfig {
     @JsonPropertyDescription("The key of the source field containing the IP address to geolocate.")
     @JsonProperty("source")
     @NotEmpty
-    @ExampleValues({
-        @Example(value = "clientip", description = "The processor will extract available geolocation data from the IP address provided in the field named 'clientip'")
-    })
     private String source;
 
     @JsonPropertyDescription("The key of the target field in which to set the geolocation data.")
     @JsonProperty(value = "target", defaultValue = DEFAULT_TARGET)
-    @ExampleValues({
-        @Example(value = "clientlocation", description = "The processor will put the geolocation data into a field named 'clientlocation'")
-    })
     private String target = DEFAULT_TARGET;
 
     @JsonPropertyDescription("The list of geolocation fields to include in the target object. By default, this is all the fields provided by the configured databases. " +
             "For example, if you wish to only obtain the actual location, you can specify <code>location</code>.")
     @JsonProperty("include_fields")
     @ExampleValues({
-        @Example(value = "[asn, asn_organization, network]", description = "The processor will include these fields while extracting geolocation data.")
+        @Example(value = "[location, latitude, longitude]", description = "The processor will include these fields while extracting geolocation data.")
     })
     private List<String> includeFields;
 

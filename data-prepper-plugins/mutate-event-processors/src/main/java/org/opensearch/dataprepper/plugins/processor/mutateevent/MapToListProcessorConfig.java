@@ -30,18 +30,12 @@ public class MapToListProcessorConfig {
     @JsonProperty("source")
     @JsonPropertyDescription("The source map used to perform the mapping operation. When set to an empty " +
             "string (<code>\"\"</code>), it will use the root of the event as the <code>source</code>.")
-    @ExampleValues({
-        @Example(value = "mymap", description = "The key 'mymap' will have a map of objects as its value to be converted into a list.")
-    })
     private String source;
 
     @NotEmpty
     @NotNull
     @JsonProperty("target")
     @JsonPropertyDescription("The target for the generated list.")
-    @ExampleValues({
-        @Example(value = "mylist", description = "The generated list will be placed at the 'mylist' node.")
-    })
     private String target;
 
     @JsonProperty(value = "key_name", defaultValue = DEFAULT_KEY_NAME)

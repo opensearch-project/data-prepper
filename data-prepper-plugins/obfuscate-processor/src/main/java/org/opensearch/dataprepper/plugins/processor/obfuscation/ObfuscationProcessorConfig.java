@@ -47,7 +47,7 @@ public class ObfuscationProcessorConfig {
     @JsonProperty("patterns")
     @JsonPropertyDescription("A list of regex patterns that allow you to obfuscate specific parts of a field. Only parts that match the regex pattern will obfuscate. When not provided, the processor obfuscates the whole field.")
     @ExampleValues({
-        @Example(value = "[\"[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}\"]", description = "This pattern represents an email address that will be obfuscated in the given field.")
+        @Example(value = "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}", description = "This pattern represents an email address that will be obfuscated in the given field.")
     })
     private List<String> patterns;
 

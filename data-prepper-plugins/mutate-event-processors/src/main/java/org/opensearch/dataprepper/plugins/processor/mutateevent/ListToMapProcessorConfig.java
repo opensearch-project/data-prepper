@@ -69,17 +69,11 @@ public class ListToMapProcessorConfig {
     @NotNull
     @JsonProperty("source")
     @JsonPropertyDescription("The list of objects with <code>key</code> fields to be converted into keys for the generated map.")
-    @ExampleValues({
-        @Example(value = "mylist", description = "The key 'mylist' will have a list of objects as its value to be converted into a map.")
-    })
     private String source;
 
     @JsonProperty("target")
     @JsonPropertyDescription("The target for the generated map. When not specified, the generated map will be " +
             "placed in the root node.")
-    @ExampleValues({
-        @Example(value = "result", description = "The generated map will be placed at the 'result' node.")
-    })
     private String target = null;
 
     @JsonProperty("use_source_key")
@@ -90,9 +84,6 @@ public class ListToMapProcessorConfig {
     @JsonProperty("key")
     @JsonPropertyDescription("The key of the fields to be extracted as keys in the generated mappings. Must be " +
             "specified if <code>use_source_key</code> is <code>false</code>.")
-    @ExampleValues({
-        @Example(value = "name", description = "In each list object, 'name' will be extracted and used as the key in the generated map.")
-    })
     private String key;
 
     @JsonProperty("value_key")
