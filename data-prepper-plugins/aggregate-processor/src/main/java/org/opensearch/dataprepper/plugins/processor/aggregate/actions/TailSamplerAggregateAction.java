@@ -62,6 +62,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
         }
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
         events.add(event);
+	// TODO: This event shouldn't be acknowledged by data prepper core
         groupState.put(EVENTS_KEY, events);
         if (condition != null && !condition.isEmpty() && expressionEvaluator.evaluateConditional(condition, event)) {
             groupState.put(ERROR_STATUS_KEY, true);

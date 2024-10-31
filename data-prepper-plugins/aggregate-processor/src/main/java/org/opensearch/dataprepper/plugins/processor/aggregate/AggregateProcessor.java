@@ -125,6 +125,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             }
             final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
             final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
+            aggregateGroupForEvent.attachToEventAcknowledgementSet(event);
 
             final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
 
