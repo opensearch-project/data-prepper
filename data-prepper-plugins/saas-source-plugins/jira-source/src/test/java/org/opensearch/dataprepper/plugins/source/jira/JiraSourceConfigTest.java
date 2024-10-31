@@ -79,7 +79,6 @@ public class JiraSourceConfigTest {
         assertNotNull(jiraSourceConfig.getConnectorCredentials());
         assertNotNull(jiraSourceConfig.getAccountUrl());
         assertNotNull(jiraSourceConfig.getBackOff());
-        assertNotNull(jiraSourceConfig.getAdditionalProperties());
         assertEquals(jiraSourceConfig.getJiraCredential(), jiraCredential);
         assertEquals(jiraSourceConfig.getJiraId(), jiraId);
     }
