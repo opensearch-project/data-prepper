@@ -22,6 +22,8 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -196,8 +198,12 @@ class S3ObjectWorkerTest {
         numEventsAdded = 0;
         doAnswer(a -> {
             Record record = mock(Record.class);
-            Event event = mock(Event.class);
+            final Event event = mock(Event.class);
+            final EventMetadata metadata = mock(EventMetadata.class);
+            final EventHandle eventHandle = mock(EventHandle.class);
             when(record.getData()).thenReturn(event);
+            when(event.getMetadata()).thenReturn(metadata);
+            when(event.getEventHandle()).thenReturn(eventHandle);
             Consumer c = (Consumer)a.getArgument(2);
             c.accept(record);
             return null;
@@ -274,7 +280,11 @@ class S3ObjectWorkerTest {
 
         final Record<Event> record = mock(Record.class);
         final Event event = mock(Event.class);
+        final EventMetadata metadata = mock(EventMetadata.class);
+        final EventHandle eventHandle = mock(EventHandle.class);
         when(record.getData()).thenReturn(event);
+        when(event.getMetadata()).thenReturn(metadata);
+        when(event.getEventHandle()).thenReturn(eventHandle);
 
         consumerUnderTest.accept(record);
 
@@ -307,7 +317,11 @@ class S3ObjectWorkerTest {
 
         final Record<Event> record = mock(Record.class);
         final Event event = mock(Event.class);
+        final EventMetadata metadata = mock(EventMetadata.class);
+        final EventHandle eventHandle = mock(EventHandle.class);
         when(record.getData()).thenReturn(event);
+        when(event.getMetadata()).thenReturn(metadata);
+        when(event.getEventHandle()).thenReturn(eventHandle);
         consumerUnderTest.accept(record);
 
         final InOrder inOrder = inOrder(eventConsumer, bufferAccumulator, sourceCoordinator);
