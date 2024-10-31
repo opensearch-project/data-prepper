@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.neptune.converter;
 
+import lombok.Setter;
 import lombok.SneakyThrows;
 import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.event.Event;
@@ -13,7 +14,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * The record convert transform the source data into a JacksonEvent.
@@ -26,29 +26,11 @@ public class StreamRecordConverter {
     private static final String STREAM_OP_REMOVE = "REMOVE";
 
     final String s3PathPrefix;
+    @Setter
     private List<String> partitions = new ArrayList<>();
 
     public StreamRecordConverter(final String s3PathPrefix) {
         this.s3PathPrefix = s3PathPrefix;
-    }
-
-    public void initializePartitions(final List<String> partitions) {
-        this.partitions = partitions;
-    }
-
-    /**
-     * Extract the value based on attribute map
-     *
-     * @param data          A map of attribute name and value
-     * @param attributeName Attribute name
-     * @return the related attribute value, return null if the attribute name doesn't exist.
-     */
-    private String getAttributeValue(final Map<String, Object> data, final String attributeName) {
-        if (data.containsKey(attributeName)) {
-            final Object value = data.get(attributeName);
-            return String.valueOf(value);
-        }
-        return null;
     }
 
     /**

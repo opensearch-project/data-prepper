@@ -1,5 +1,10 @@
 package org.opensearch.dataprepper.plugins.source.neptune.stream;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class CheckpointStatus {
     private final Long commitNum;
     private final Long opNum;
@@ -22,26 +27,6 @@ public class CheckpointStatus {
         this.createTimestamp = createTimestamp;
     }
 
-    public void setAcknowledgedTimestamp(final Long acknowledgedTimestamp) {
-        this.acknowledgedTimestamp = acknowledgedTimestamp;
-    }
-
-    public void setAcknowledged(final AcknowledgmentStatus acknowledgmentStatus) {
-        this.acknowledgeStatus = acknowledgmentStatus;
-    }
-
-    public Long getCommitNum() {
-        return commitNum;
-    }
-
-    public Long getOpNum() {
-        return opNum;
-    }
-
-    public Long getRecordCount() {
-        return recordCount;
-    }
-
     public boolean isPositiveAcknowledgement() {
         return this.acknowledgeStatus == AcknowledgmentStatus.POSITIVE_ACK;
     }
@@ -49,13 +34,4 @@ public class CheckpointStatus {
     public boolean isNegativeAcknowledgement() {
         return this.acknowledgeStatus == AcknowledgmentStatus.NEGATIVE_ACK;
     }
-
-    public long getCreateTimestamp() {
-        return createTimestamp;
-    }
-
-    public long getAcknowledgedTimestamp() {
-        return acknowledgedTimestamp;
-    }
-
 }

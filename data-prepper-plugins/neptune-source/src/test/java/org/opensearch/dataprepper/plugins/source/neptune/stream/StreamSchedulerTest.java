@@ -12,15 +12,13 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter;
-import org.opensearch.dataprepper.plugins.mongo.configuration.CollectionConfig;
-import org.opensearch.dataprepper.plugins.mongo.configuration.MongoDBSourceConfig;
-import org.opensearch.dataprepper.plugins.mongo.converter.PartitionKeyRecordConverter;
-import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.mongo.utils.DocumentDBSourceAggregateMetrics;
+import org.opensearch.dataprepper.plugins.source.neptune.buffer.RecordBufferWriter;
+import org.opensearch.dataprepper.plugins.source.neptune.configuration.NeptuneSourceConfig;
+import org.opensearch.dataprepper.plugins.source.neptune.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.StreamProgressState;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -32,14 +30,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DEFAULT_BUFFER_WRITE_INTERVAL_MILLS;
-import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DEFAULT_CHECKPOINT_INTERVAL_MILLS;
-import static org.opensearch.dataprepper.plugins.mongo.stream.StreamScheduler.DEFAULT_RECORD_FLUSH_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamScheduler.DEFAULT_BUFFER_WRITE_INTERVAL_MILLS;
+import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamScheduler.DEFAULT_CHECKPOINT_INTERVAL_MILLS;
+import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamScheduler.DEFAULT_RECORD_FLUSH_BATCH_SIZE;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -58,13 +55,7 @@ public class StreamSchedulerTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private MongoDBSourceConfig sourceConfig;
-
-    @Mock
-    private CollectionConfig collectionConfig;
-
-    @Mock
-    private DocumentDBSourceAggregateMetrics documentDBSourceAggregateMetrics;
+    private NeptuneSourceConfig sourceConfig;
 
     @Mock
     private StreamWorker streamWorker;
@@ -74,8 +65,7 @@ public class StreamSchedulerTest {
 
     @BeforeEach
     void setup() {
-        lenient().when(sourceConfig.getCollections()).thenReturn(List.of(collectionConfig));
-        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics, documentDBSourceAggregateMetrics);
+        streamScheduler = new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, S3_PATH_PREFIX, pluginMetrics);
     }
 
 
@@ -93,20 +83,17 @@ public class StreamSchedulerTest {
 
     @Test
     void test_stream_run() {
-        final String collection = UUID.randomUUID().toString();
-        final StreamPartition streamPartition = new StreamPartition(collection, null);
+        final StreamProgressState streamProgressState = new StreamProgressState();
+        final StreamPartition streamPartition = new StreamPartition(streamProgressState);
         given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition));
-        given(collectionConfig.getCollection()).willReturn(collection);
-        final int streamBatchSize = 1000;
-        given(collectionConfig.getStreamBatchSize()).willReturn(streamBatchSize);
-        given(sourceConfig.getCollections()).willReturn(List.of(collectionConfig));
+        final int streamBatchSize = 100;
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
-                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(StreamRecordConverter.class), eq(sourceConfig),
                                 any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
-                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize)))
                         .thenReturn(streamWorker);
                 streamScheduler.run();
             }
@@ -123,19 +110,17 @@ public class StreamSchedulerTest {
 
     @Test
     void test_stream_runThrowsException() {
-        final String collection = UUID.randomUUID().toString();
-        final StreamPartition streamPartition = new StreamPartition(collection, null);
+        final StreamProgressState streamProgressState = new StreamProgressState();
+        final StreamPartition streamPartition = new StreamPartition(streamProgressState);
         given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willReturn(Optional.of(streamPartition));
-        given(collectionConfig.getCollection()).willReturn(collection);
-        final int streamBatchSize = 1000;
-        given(collectionConfig.getStreamBatchSize()).willReturn(streamBatchSize);
+        final int streamBatchSize = 100;
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final Future<?> future = executorService.submit(() -> {
             try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class)) {
-                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(PartitionKeyRecordConverter.class), eq(sourceConfig),
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(any(RecordBufferWriter.class), any(StreamRecordConverter.class), eq(sourceConfig),
                                 any(StreamAcknowledgementManager.class), any(DataStreamPartitionCheckpoint.class), eq(pluginMetrics), eq(DEFAULT_RECORD_FLUSH_BATCH_SIZE),
-                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize), any(DocumentDBSourceAggregateMetrics.class)))
+                                eq(DEFAULT_CHECKPOINT_INTERVAL_MILLS), eq(DEFAULT_BUFFER_WRITE_INTERVAL_MILLS), eq(streamBatchSize)))
                         .thenThrow(RuntimeException.class);
                 streamScheduler.run();
             }
@@ -152,7 +137,9 @@ public class StreamSchedulerTest {
 
     @Test
     void test_stream_sourceCoordinatorThrowsException() {
-        final StreamPartition streamPartition = new StreamPartition(UUID.randomUUID().toString(), null);
+        final StreamProgressState streamProgressState = new StreamProgressState();
+
+        final StreamPartition streamPartition = new StreamPartition(streamProgressState);
         given(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -169,6 +156,6 @@ public class StreamSchedulerTest {
 
     @Test
     void test_stream_withNullS3PathPrefix() {
-        assertThrows(IllegalArgumentException.class, () -> new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, null, pluginMetrics, documentDBSourceAggregateMetrics));
+        assertThrows(IllegalArgumentException.class, () -> new StreamScheduler(sourceCoordinator, buffer, acknowledgementSetManager, sourceConfig, null, pluginMetrics));
     }
 }

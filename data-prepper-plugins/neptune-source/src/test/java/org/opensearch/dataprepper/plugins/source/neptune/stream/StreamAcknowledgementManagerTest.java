@@ -50,7 +50,7 @@ public class StreamAcknowledgementManagerTest {
 
     @Test
     public void createAcknowledgementSet_disabled_emptyAckSet() {
-        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(UUID.randomUUID().toString(), new Random().nextInt());
+        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(new Random().nextLong(), new Random().nextLong(), new Random().nextLong());
         assertThat(ackSet.isEmpty(), is(true));
     }
 
@@ -62,21 +62,20 @@ public class StreamAcknowledgementManagerTest {
         final String resumeToken = UUID.randomUUID().toString();
         final long recordCount = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(resumeToken, recordCount);
-        assertThat(ackSet.isEmpty(), is(false));
+        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(1L, 1L, recordCount);
+        assertThat(ackSet.isPresent(), is(true));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount));
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager).create(argumentCaptor.capture(), eq(timeout));
-        final Consumer<Boolean> consumer = argumentCaptor.getValue();
-        consumer.accept(true);
+        argumentCaptor.getValue().accept(true);
         final ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
-        final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
+        final CheckpointStatus ackCheckpointStatus = ackStatus.get("1-1");
+        acknowledgementSet.complete();
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
                 .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                        verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
+                        verify(partitionCheckpoint).checkpoint(1L, 1L, recordCount));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
 
@@ -85,22 +84,18 @@ public class StreamAcknowledgementManagerTest {
         lenient().when(timeout.getSeconds()).thenReturn(10_000L);
         streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
         streamAckManager.init(stopWorkerConsumer);
-        final String resumeToken1 = UUID.randomUUID().toString();
         final long recordCount1 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(resumeToken1, recordCount1);
+        Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(1L, 1L, recordCount1);
         assertThat(ackSet.isEmpty(), is(false));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
 
-        final String resumeToken2 = UUID.randomUUID().toString();
         final long recordCount2 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        ackSet = streamAckManager.createAcknowledgementSet(resumeToken2, recordCount2);
+        ackSet = streamAckManager.createAcknowledgementSet(1L, 2L, recordCount2);
         assertThat(ackSet.isEmpty(), is(false));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
         ArgumentCaptor<Consumer<Boolean>> argumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager, times(2)).create(argumentCaptor.capture(), eq(timeout));
@@ -108,11 +103,11 @@ public class StreamAcknowledgementManagerTest {
         consumers.get(0).accept(true);
         consumers.get(1).accept(true);
         ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
-        CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
+        CheckpointStatus ackCheckpointStatus = ackStatus.get("1-2");
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
                 .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                        verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
+                        verify(partitionCheckpoint).checkpoint(1, 2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
     }
 
@@ -122,19 +117,17 @@ public class StreamAcknowledgementManagerTest {
         final String resumeToken1 = UUID.randomUUID().toString();
         final long recordCount1 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(resumeToken1, recordCount1);
+        Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(1L, 1L, recordCount1);
         assertThat(ackSet.isEmpty(), is(false));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
 
         final String resumeToken2 = UUID.randomUUID().toString();
         final long recordCount2 = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        ackSet = streamAckManager.createAcknowledgementSet(resumeToken2, recordCount2);
+        ackSet = streamAckManager.createAcknowledgementSet(1L, 2L, recordCount2);
         assertThat(ackSet.isEmpty(), is(false));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
         ArgumentCaptor<Consumer<Boolean>> argumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager, times(2)).create(argumentCaptor.capture(), eq(timeout));
@@ -142,12 +135,11 @@ public class StreamAcknowledgementManagerTest {
         consumers.get(0).accept(false);
         consumers.get(1).accept(true);
         ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
-        CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken2);
+        CheckpointStatus ackCheckpointStatus = ackStatus.get("1-2");
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
                 .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                         verify(partitionCheckpoint).giveUpPartition());
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
         verify(stopWorkerConsumer).accept(null);
     }
@@ -158,17 +150,16 @@ public class StreamAcknowledgementManagerTest {
         final String resumeToken = UUID.randomUUID().toString();
         final long recordCount = new Random().nextLong();
         when(acknowledgementSetManager.create(any(Consumer.class), eq(timeout))).thenReturn(acknowledgementSet);
-        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(resumeToken, recordCount);
+        final Optional<AcknowledgementSet> ackSet = streamAckManager.createAcknowledgementSet(1L, 1L, recordCount);
         assertThat(ackSet.isEmpty(), is(false));
         assertThat(ackSet.get(), is(acknowledgementSet));
-        assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount));
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(acknowledgementSetManager).create(argumentCaptor.capture(), eq(timeout));
         final Consumer<Boolean> consumer = argumentCaptor.getValue();
         consumer.accept(false);
         final ConcurrentHashMap<String, CheckpointStatus> ackStatus = streamAckManager.getAcknowledgementStatus();
-        final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
+        final CheckpointStatus ackCheckpointStatus = ackStatus.get("1-1");
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(false));
         await()
                 .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
