@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
-import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySinkAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySourceAccessor;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 
 import java.util.Collections;
@@ -34,7 +34,10 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 class MultiWorkerPipelineIT {
     private static final String IN_MEMORY_IDENTIFIER = "MultiWorkerPipelineIT";
-    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = "multi-worker.yaml";
+    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper/";
+    private static final String DATA_PREPPER_CONFIG_FILE = BASE_PATH + "configuration/data-prepper-config.yaml";
+    private static final String PIPELINE_BASE_PATH = BASE_PATH + "pipeline/";
+    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = PIPELINE_BASE_PATH + "multi-worker.yaml";
     private static final int WORKER_THREADS = 4;
     private static final int BATCH_SIZE = 10;
     private DataPrepperTestRunner dataPrepperTestRunner;
@@ -45,6 +48,7 @@ class MultiWorkerPipelineIT {
     void setUp() {
         dataPrepperTestRunner = DataPrepperTestRunner.builder()
                 .withPipelinesDirectoryOrFile(PIPELINE_CONFIGURATION_UNDER_TEST)
+                .withDataPrepperConfigFile(DATA_PREPPER_CONFIG_FILE)
                 .build();
 
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();

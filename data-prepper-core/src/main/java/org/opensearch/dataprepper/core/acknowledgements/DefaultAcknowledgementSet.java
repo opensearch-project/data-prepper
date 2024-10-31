@@ -73,6 +73,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
 
     @Override
     public void add(EventHandle eventHandle) {
+	System.out.println("============add===="+eventHandle);
         lock.lock();
         try {
             InternalEventHandle internalEventHandle = (InternalEventHandle)eventHandle;
@@ -145,6 +146,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
 
     @Override
     public boolean release(final EventHandle eventHandle, final boolean result) {
+	System.out.println("============rel===="+eventHandle+"...."+result);
         lock.lock();
         // Result indicates negative or positive acknowledgement. Even if one of the
         // events in the set report negative acknowledgement, then the end result

@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.test.framework;
 import org.opensearch.dataprepper.AbstractContextManager;
 import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;
-import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
-import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySinkAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -25,7 +25,6 @@ import javax.annotation.Nullable;
  */
 public class DataPrepperTestRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperTestRunner.class);
-    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper";
     private final String dataPrepperConfigFile;
     private final String pipelinesDirectoryOrFile;
     private final InMemorySourceAccessor inMemorySourceAccessor;
@@ -93,13 +92,13 @@ public class DataPrepperTestRunner {
 
         @Override
         public String getPipelineConfigFileLocation() {
-            return BASE_PATH + "/pipeline/" + pipelinesDirectoryOrFile;
+            return pipelinesDirectoryOrFile;
         }
 
         @Nullable
         @Override
         public String getDataPrepperConfigFileLocation() {
-            return BASE_PATH + "/configuration/" + dataPrepperConfigFile;
+            return dataPrepperConfigFile;
         }
     }
 

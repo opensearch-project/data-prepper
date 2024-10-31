@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.test.framework;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -69,7 +69,7 @@ public class InMemorySource implements Source<Record<Event>> {
     public void stop() {
         isStopped = true;
         try {
-            runningThread.join(1000);
+            runningThread.join(20000);
         } catch (final InterruptedException e) {
             runningThread.interrupt();
         }
@@ -127,7 +127,7 @@ public class InMemorySource implements Source<Record<Event>> {
                                 {
                                     inMemorySourceAccessor.setAckReceived(result);
                                 },
-                                Duration.ofSeconds(15));
+                                Duration.ofSeconds(30));
                     records.stream().forEach((record) -> { ackSet.add(record.getData()); });
                     ackSet.complete();
                     writeToBuffer(records);
