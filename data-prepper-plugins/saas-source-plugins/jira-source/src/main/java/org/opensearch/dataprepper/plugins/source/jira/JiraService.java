@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.jira.utils.JiraContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -64,7 +65,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RET
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUCCESS_RESPONSE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUFFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
@@ -147,22 +147,16 @@ public class JiraService {
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
         int total;
         int startAt = 0;
-        try {
-            do {
-                SearchResults searchIssues = getAllIssues(jql, startAt, configuration);
-                List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
-                total = searchIssues.getTotal();
-                startAt += searchIssues.getIssues().size();
-                futureList.add(crawlerTaskExecutor.submit(
-                        () -> addItemsToQueue(issueList, itemInfoQueue), false));
-            } while (startAt < total);
-            searchResultsFoundCounter.increment(total);
-            log.info("Number of tickets found in search api call: {}", total);
-        } catch (RuntimeException ex) {
-            log.error("An exception has occurred while fetching"
-                    + " issue entity information , Error: {}", ex.getMessage());
-            throw new BadRequestException(ex.getMessage(), ex);
-        }
+        do {
+            SearchResults searchIssues = getAllIssues(jql, startAt, configuration);
+            List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
+            total = searchIssues.getTotal();
+            startAt += searchIssues.getIssues().size();
+            futureList.add(crawlerTaskExecutor.submit(
+                    () -> addItemsToQueue(issueList, itemInfoQueue), false));
+        } while (startAt < total);
+        searchResultsFoundCounter.increment(total);
+        log.info("Number of tickets found in search api call: {}", total);
     }
 
     /**
@@ -260,28 +254,26 @@ public class JiraService {
 
         int retryCount = 0;
         while (retryCount < RETRY_ATTEMPT) {
-            ResponseEntity<T> responseEntity = restTemplate.getForEntity(uri, responseType);
-            int statusCode = responseEntity.getStatusCode().value();
-            if (statusCode == TOKEN_EXPIRED) {
-                authConfig.renewCredentials();
-                try {
-                    Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
-                }
-                retryCount++;
-            } else if (statusCode == SUCCESS_RESPONSE) {
-                return responseEntity;
-            } else {
-                if (Objects.nonNull(responseEntity.getBody())) {
-                    log.error("An exception has occurred while "
-                                    + "getting response from Jira search API  {}",
-                            responseEntity.getBody());
-                    throw new BadRequestException(responseEntity.getBody().toString());
+            try {
+                return restTemplate.getForEntity(uri, responseType);
+            } catch (HttpClientErrorException ex) {
+                int statusCode = ex.getRawStatusCode();
+                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage(), ex);
+                if (statusCode == TOKEN_EXPIRED) {
+                    log.error("Token expired. We will try to renew the tokens now");
+                    authConfig.renewCredentials();
+                    try {
+                        Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                    }
                 }
             }
+            retryCount++;
         }
-        throw new UnAuthorizedException("Exceeded max retry attempts");
+        String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
+        log.error(errorMessage);
+        throw new UnAuthorizedException(errorMessage);
     }
 
     /**
