@@ -22,6 +22,8 @@ public class JiraSourceConfigTest {
     private String refreshToken = "refresh token test";
     private String clientId = "client id test";
     private String clientSecret = "client secret test";
+    private String jiraCredential = "test Jira Credential";
+    private String jiraId = "test Jira Id";
 
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws JsonProcessingException {
@@ -36,6 +38,8 @@ public class JiraSourceConfigTest {
         } else {
             connectorCredentialMap.put("refresh_token", "");
         }
+        connectorCredentialMap.put("jira_id", jiraId);
+        connectorCredentialMap.put("jira_credential", jiraCredential);
         connectorCredentialMap.put("client_id", clientId);
         connectorCredentialMap.put("client_secret", clientSecret);
 
@@ -75,6 +79,8 @@ public class JiraSourceConfigTest {
         assertNotNull(jiraSourceConfig.getConnectorCredentials());
         assertNotNull(jiraSourceConfig.getAccountUrl());
         assertNotNull(jiraSourceConfig.getBackOff());
+        assertEquals(jiraSourceConfig.getJiraCredential(), jiraCredential);
+        assertEquals(jiraSourceConfig.getJiraId(), jiraId);
     }
 
     @Test

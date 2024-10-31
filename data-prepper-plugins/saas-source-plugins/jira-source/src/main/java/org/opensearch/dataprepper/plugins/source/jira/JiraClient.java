@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -37,7 +38,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 public class JiraClient implements CrawlerClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private final JiraService service;
     private final JiraIterator jiraIterator;
@@ -65,6 +66,11 @@ public class JiraClient implements CrawlerClient {
     public void setLastPollTime(Instant lastPollTime) {
         log.trace("Setting the lastPollTime: {}", lastPollTime);
         this.lastPollTime = lastPollTime;
+    }
+
+    @VisibleForTesting
+    void injectObjectMapper(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Override
