@@ -10,10 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class SchemaManager {
@@ -35,11 +38,12 @@ public class SchemaManager {
         while (retry <= NUM_OF_RETRIES) {
             final List<String> primaryKeys = new ArrayList<>();
             try (final Connection connection = connectionManager.getConnection()) {
-                final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table);
-                while (rs.next()) {
-                    primaryKeys.add(rs.getString(COLUMN_NAME));
+                try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table)) {
+                    while (rs.next()) {
+                        primaryKeys.add(rs.getString(COLUMN_NAME));
+                    }
+                    return primaryKeys;
                 }
-                return primaryKeys;
             } catch (Exception e) {
                 LOG.error("Failed to get primary keys for table {}, retrying", table, e);
             }
@@ -48,6 +52,33 @@ public class SchemaManager {
         }
         LOG.warn("Failed to get primary keys for table {}", table);
         return List.of();
+    }
+
+    public Map<String, String> getColumnDataTypes(final String database, final String tableName) {
+        final Map<String, String> columnsToDataType =  new HashMap<>();
+        for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
+            try (Connection connection = connectionManager.getConnection()) {
+                final DatabaseMetaData metaData = connection.getMetaData();
+
+                // Retrieve column metadata
+                try (ResultSet columns = metaData.getColumns(database, null, tableName, null)) {
+                    while (columns.next()) {
+                        columnsToDataType.put(
+                            columns.getString("COLUMN_NAME"),
+                            columns.getString("TYPE_NAME")
+                        );
+                    }
+                }
+            } catch (final Exception e) {
+                LOG.error("Failed to get dataTypes for database {} table {}, retrying", database, tableName, e);
+                if (retry == NUM_OF_RETRIES) {
+                    throw new RuntimeException(String.format("Failed to get dataTypes for database %s table %s after " +
+                            "%d retries", database, tableName, retry), e);
+                }
+            }
+            applyBackoff();
+        }
+        return columnsToDataType;
     }
 
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {
