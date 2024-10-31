@@ -46,7 +46,7 @@ public class NeptuneSource implements Source<Record<Event>>, UsesEnhancedSourceC
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
-        this.acknowledgementsEnabled = sourceConfig.isAcknowledgmentsEnabled();
+        this.acknowledgementsEnabled = sourceConfig.isAcknowledgments();
     }
 
     @Override

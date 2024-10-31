@@ -8,6 +8,7 @@ dependencies {
     implementation 'org.eclipse.rdf4j:rdf4j-rio-nquads:5.0.2'
     implementation 'software.amazon.awssdk:neptunedata'
     implementation 'software.amazon.awssdk:sts'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     compileOnly 'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
 

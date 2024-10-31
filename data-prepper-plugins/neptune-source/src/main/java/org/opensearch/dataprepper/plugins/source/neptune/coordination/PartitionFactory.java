@@ -20,7 +20,6 @@ import java.util.function.Function;
  */
 public class PartitionFactory implements Function<SourcePartitionStoreItem, EnhancedSourcePartition> {
 
-
     @Override
     public EnhancedSourcePartition apply(final SourcePartitionStoreItem partitionStoreItem) {
         String sourceIdentifier = partitionStoreItem.getSourceIdentifier();

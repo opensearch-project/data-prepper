@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.neptune.buffer;
 
-//import io.micrometer.core.instrument.Counter;
-
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -20,17 +19,15 @@ public class RecordBufferWriter {
     private static final Logger LOG = LoggerFactory.getLogger(RecordBufferWriter.class);
     static final String RECORDS_PROCESSED_COUNT = "recordsProcessed";
     static final String RECORDS_PROCESSING_ERROR_COUNT = "recordProcessingErrors";
-    //    private final PluginMetrics pluginMetrics;
-//    private final Counter recordSuccessCounter;
-//    private final Counter recordErrorCounter;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final Counter recordSuccessCounter;
+    private final Counter recordErrorCounter;
 
     private RecordBufferWriter(final BufferAccumulator<Record<Event>> bufferAccumulator,
                                final PluginMetrics pluginMetrics) {
         this.bufferAccumulator = bufferAccumulator;
-//        this.pluginMetrics = pluginMetrics;
-//        this.recordSuccessCounter = pluginMetrics.counter(RECORDS_PROCESSED_COUNT);
-//        this.recordErrorCounter = pluginMetrics.counter(RECORDS_PROCESSING_ERROR_COUNT);
+        this.recordSuccessCounter = pluginMetrics.counter(RECORDS_PROCESSED_COUNT);
+        this.recordErrorCounter = pluginMetrics.counter(RECORDS_PROCESSING_ERROR_COUNT);
     }
 
     public static RecordBufferWriter create(final BufferAccumulator<Record<Event>> bufferAccumulator,
@@ -74,10 +71,10 @@ public class RecordBufferWriter {
 
         try {
             flushBuffer();
-//            recordSuccessCounter.increment(eventCount);
+            recordSuccessCounter.increment(eventCount);
         } catch (Exception e) {
             LOG.error("Failed to write {} events to buffer due to {}", eventCount, e.getMessage());
-//            recordErrorCounter.increment(eventCount);
+            recordErrorCounter.increment(eventCount);
         }
     }
 }

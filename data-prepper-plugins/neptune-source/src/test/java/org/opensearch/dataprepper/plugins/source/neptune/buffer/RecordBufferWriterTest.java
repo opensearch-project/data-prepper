@@ -32,8 +32,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter.RECORDS_PROCESSED_COUNT;
-import static org.opensearch.dataprepper.plugins.mongo.buffer.RecordBufferWriter.RECORDS_PROCESSING_ERROR_COUNT;
+import static org.opensearch.dataprepper.plugins.source.neptune.buffer.RecordBufferWriter.RECORDS_PROCESSED_COUNT;
+import static org.opensearch.dataprepper.plugins.source.neptune.buffer.RecordBufferWriter.RECORDS_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class RecordBufferWriterTest {
@@ -63,7 +63,6 @@ class RecordBufferWriterTest {
     void setup() {
         given(pluginMetrics.counter(RECORDS_PROCESSED_COUNT)).willReturn(exportRecordSuccess);
         given(pluginMetrics.counter(RECORDS_PROCESSING_ERROR_COUNT)).willReturn(exportRecordErrors);
-
     }
 
     private List<Event> generateData(int count) {

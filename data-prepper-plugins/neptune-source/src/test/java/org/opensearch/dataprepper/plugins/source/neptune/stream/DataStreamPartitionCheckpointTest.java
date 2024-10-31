@@ -6,18 +6,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.mongo.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.mongo.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.StreamProgressState;
 
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.mongo.stream.DataStreamPartitionCheckpoint.CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE;
+import static org.opensearch.dataprepper.plugins.source.neptune.stream.DataStreamPartitionCheckpoint.CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE;
 
 @ExtendWith(MockitoExtension.class)
 public class DataStreamPartitionCheckpointTest {
@@ -35,12 +34,16 @@ public class DataStreamPartitionCheckpointTest {
 
     @Test
     public void checkpoint_success() {
-        final int recordNumber = new Random().nextInt();
-        final String checkpointToken = UUID.randomUUID().toString();
+        final long commitNum = new Random().nextLong();
+        final long opNum = new Random().nextLong();
+        final long recordNumber = new Random().nextLong();
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        dataStreamPartitionCheckpoint.checkpoint(checkpointToken, recordNumber);
+
+        dataStreamPartitionCheckpoint.checkpoint(commitNum, opNum, recordNumber);
+
         verify(enhancedSourceCoordinator).saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
-        verify(streamProgressState).setResumeToken(checkpointToken);
+        verify(streamProgressState).setCommitNum(commitNum);
+        verify(streamProgressState).setOpNum(opNum);
         verify(streamProgressState).setLoadedRecords(recordNumber);
         verify(streamProgressState).setLastUpdateTimestamp(anyLong());
     }
@@ -58,8 +61,7 @@ public class DataStreamPartitionCheckpointTest {
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         dataStreamPartitionCheckpoint.resetCheckpoint();
         verify(enhancedSourceCoordinator).giveUpPartition(streamPartition);
-        verify(streamProgressState).setResumeToken(null);
-        verify(streamProgressState).setLoadedRecords(0);
+        verify(streamProgressState).setLoadedRecords(0L);
         verify(streamProgressState).setLastUpdateTimestamp(anyLong());
     }
 

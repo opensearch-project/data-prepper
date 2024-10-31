@@ -91,7 +91,6 @@ public class StreamWorker {
                                       final int checkPointIntervalInMs,
                                       final int bufferWriteIntervalInMs,
                                       final int streamBatchSize
-                                      // final DocumentDBSourceAggregateMetrics documentDBAggregateMetrics
     ) {
         return new StreamWorker(recordBufferWriter, recordConverter, sourceConfig, streamAcknowledgementManager, partitionCheckpoint,
                 pluginMetrics, recordFlushBatchSize, checkPointIntervalInMs, bufferWriteIntervalInMs, streamBatchSize);
@@ -125,7 +124,7 @@ public class StreamWorker {
         this.lock = new ReentrantLock();
         // this.documentDBAggregateMetrics = documentDBAggregateMetrics;
 
-        if (sourceConfig.isAcknowledgmentsEnabled()) {
+        if (sourceConfig.isAcknowledgments()) {
             // starts acknowledgement monitoring thread
             streamAcknowledgementManager.init((Void) -> stop());
         }
@@ -159,7 +158,7 @@ public class StreamWorker {
             // documentDBAggregateMetrics.getStream5xxErrors().increment();
             throw new IllegalStateException("S3 partitions are not created. Please check the S3 partition creator thread.");
         }
-        streamRecordConverter.initializePartitions(s3Partitions);
+        streamRecordConverter.setPartitions(s3Partitions);
         LOG.info("Starting to watch streams for change events.");
         setCheckpointInformation(streamPartition);
 
@@ -218,7 +217,7 @@ public class StreamWorker {
             writeToBuffer(records, checkPointCommitNum, checkPointOpNum, recordCount);
         }
         // Do final checkpoint.
-        if (!sourceConfig.isAcknowledgmentsEnabled()) {
+        if (!sourceConfig.isAcknowledgments()) {
             partitionCheckpoint.checkpoint(checkPointCommitNum, checkPointOpNum, recordCount);
         }
 
@@ -283,7 +282,7 @@ public class StreamWorker {
                 }
             }
 
-            if (!sourceConfig.isAcknowledgmentsEnabled()) {
+            if (!sourceConfig.isAcknowledgments()) {
                 if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
                     try {
                         lock.lock();
