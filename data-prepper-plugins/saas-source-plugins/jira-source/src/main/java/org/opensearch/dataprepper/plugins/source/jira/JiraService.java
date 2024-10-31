@@ -262,14 +262,14 @@ public class JiraService {
                 if (statusCode == TOKEN_EXPIRED) {
                     log.error("Token expired. We will try to renew the tokens now");
                     authConfig.renewCredentials();
-                    try {
-                        Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
-                    }
                 }
             }
             retryCount++;
+            try {
+                Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+            }
         }
         String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
         log.error(errorMessage);
