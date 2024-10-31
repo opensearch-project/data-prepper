@@ -42,7 +42,7 @@ public class StreamAcknowledgementManager {
         this.partitionAcknowledgmentTimeout = partitionAcknowledgmentTimeout;
         this.acknowledgementMonitorWaitTimeInMs = acknowledgementMonitorWaitTimeInMs;
         this.checkPointIntervalInMs = checkPointIntervalInMs;
-        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-ack-monitor"));
+        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("neptune-stream-ack-monitor"));
     }
 
     void init(final Consumer<Void> stopWorkerConsumer) {
