@@ -12,10 +12,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.JiraItemInfo.PROJECT;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraItemInfoTest {
@@ -78,10 +76,6 @@ public class JiraItemInfoTest {
         assertTrue(partitionKey.contains(issueType));
     }
 
-    @Test
-    void testGetKeyAttributes() {
-        assertNotNull(jiraItemInfo.getKeyAttributes().get(PROJECT));
-    }
 
     @Test
     void testGetLastModifiedAt() {

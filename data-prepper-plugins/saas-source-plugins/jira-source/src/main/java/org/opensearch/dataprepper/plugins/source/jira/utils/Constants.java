@@ -40,15 +40,15 @@ public class Constants {
     public static final String CLOSING_ROUND_BRACKET = ")";
 
     public static final String SLASH = "/";
-    public static final String PROJECT_IN = "&project in (";
-    public static final String STATUS_IN = "&status in (";
+    public static final String PROJECT_IN = " AND project in (";
+    public static final String STATUS_IN = " AND status in (";
     public static final String DELIMITER = "\",\"";
     public static final String PREFIX = "\"";
     public static final String SUFFIX = "\"";
     public static final String REST_API_SEARCH = "rest/api/3/search";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
     public static final String MAX_RESULT = "maxResults";
-    public static final String ISSUE_TYPE_ID = "    issueTypeIds: ";
+    public static final String ISSUE_TYPE_IN = " AND issueType in (";
     public static final String INVALID_URL = "URL is not valid ";
 
 

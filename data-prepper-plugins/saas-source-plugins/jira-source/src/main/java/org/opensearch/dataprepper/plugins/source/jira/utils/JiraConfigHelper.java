@@ -25,7 +25,7 @@ public class JiraConfigHelper {
      * @return List Issue Status Filter.
      */
     public static List<String> getIssueStatusFilter(JiraSourceConfig repositoryConfiguration) {
-        return (List<String>) repositoryConfiguration.getAdditionalProperties().get(ISSUE_STATUS_FILTER);
+        return repositoryConfiguration.getStatus();
     }
 
     /**
@@ -34,13 +34,12 @@ public class JiraConfigHelper {
      * @return List Issue Type Filter.
      */
     public static List<String> getIssueTypeFilter(JiraSourceConfig repositoryConfiguration) {
-        return (List<String>)
-                repositoryConfiguration.getAdditionalProperties().get(ISSUE_TYPE_FILTER);
+        return repositoryConfiguration.getIssueType();
     }
 
     /**
-     * Get Project Filter Types from repository configuratio
-     * public static final String ST = "status";n.
+     * Get Project Filter Types from repository configuration.
+     * public static final String ST = "status";
      *
      * @return List Project Filter.
      */
