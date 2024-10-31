@@ -36,6 +36,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_POSITION;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_STATUS_QUERY;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.TYPE_NAME;
 
 @ExtendWith(MockitoExtension.class)
 class SchemaManagerTest {
@@ -154,12 +155,11 @@ class SchemaManagerTest {
         // Setup ResultSet to return our expected columns
         when(resultSet.next())
                 .thenReturn(true, true, true, false); // Three columns, then done
-        when(resultSet.getString("COLUMN_NAME"))
+        when(resultSet.getString(COLUMN_NAME))
                 .thenReturn("id", "name", "created_at");
-        when(resultSet.getString("TYPE_NAME"))
+        when(resultSet.getString(TYPE_NAME))
                 .thenReturn("INTEGER", "VARCHAR", "TIMESTAMP");
 
-        // Act
         Map<String, String> result = schemaManager.getColumnDataTypes(database, tableName);
 
         assertThat(result, notNullValue());
