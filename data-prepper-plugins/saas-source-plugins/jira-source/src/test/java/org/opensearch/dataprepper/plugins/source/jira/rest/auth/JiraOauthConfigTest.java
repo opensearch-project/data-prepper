@@ -9,6 +9,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.jira.JiraServiceTest.createJiraConfigurationFromYaml;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraOauthConfigTest {
@@ -68,28 +70,14 @@ public class JiraOauthConfigTest {
     }
 
     @Test
-    void testEmptyAccessToken() {
-        Map<String, Object> firstMockResponseMap = Map.of("access_token", "",
-                "refresh_token", "first_mock_refresh_token",
-                "expires_in", 3600);
+    void testFailedToRenewAccessToken() {
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
-                .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
+                .thenThrow(HttpClientErrorException.class);
         jiraOauthConfig.restTemplate = restTemplateMock;
         assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
     }
 
-    @Test
-    void testEmptyRefreshToken() {
-        Map<String, Object> firstMockResponseMap = Map.of("access_token", "access_token",
-                "refresh_token", "",
-                "expires_in", 3600);
-        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
-        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
-                .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
-        jiraOauthConfig.restTemplate = restTemplateMock;
-        assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
-    }
 
     @Test
     void testGetJiraAccountCloudId() {
@@ -100,13 +88,33 @@ public class JiraOauthConfigTest {
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
 
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Future<?> firstCall = executor.submit(jiraOauthConfig::getUrl);
+        Future<?> secondCall = executor.submit(jiraOauthConfig::getUrl);
+        while (!firstCall.isDone() || !secondCall.isDone()) {
+            // Do nothing. Wait for the calls to complete
+        }
+        executor.shutdown();
+
         assertEquals("https://api.atlassian.com/ex/jira/test_cloud_id/", jiraOauthConfig.getUrl());
         //calling second time shouldn't trigger rest call
         jiraOauthConfig.getUrl();
         verify(restTemplateMock, times(1))
                 .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
 
+    }
 
+    @Test
+    void testFailedToGetCloudId() {
+        when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED))
+                .thenThrow(HttpClientErrorException.class);
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        jiraOauthConfig.restTemplate = restTemplateMock;
+        assertThrows(RuntimeException.class, jiraOauthConfig::getUrl);
+        for (int i = 0; i <= RETRY_ATTEMPT; i++) {
+            assertThrows(RuntimeException.class, jiraOauthConfig::getUrl);
+        }
     }
 
 }

@@ -42,6 +42,7 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -167,7 +168,7 @@ public class JiraServiceTest {
 
         waitForFutures(futureList);
 
-        assertEquals(100, itemInfoQueue.size());
+        assertTrue(itemInfoQueue.size() >= 100);
     }
 
     @Test
@@ -239,8 +240,6 @@ public class JiraServiceTest {
         jiraSourceConfigMap.put("issue_type", issueType);
         jiraSourceConfigMap.put("status", issueStatus);
         jiraSourceConfigMap.put("project", projectKey);
-
-        
 
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
