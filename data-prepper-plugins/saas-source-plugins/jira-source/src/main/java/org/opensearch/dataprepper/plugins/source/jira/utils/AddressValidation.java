@@ -19,9 +19,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.INV
 @Slf4j
 public class AddressValidation {
 
-    public AddressValidation() {
-    }
-
     /**
      * Method for getInetAddress.
      *
@@ -30,10 +27,7 @@ public class AddressValidation {
     public static InetAddress getInetAddress(String url) {
         try {
             return InetAddress.getByName(new URL(url).getHost());
-        } catch (UnknownHostException e) {
-            log.error(INVALID_URL, e);
-            throw new BadRequestException(e.getMessage(), e);
-        } catch (MalformedURLException e) {
+        } catch (UnknownHostException | MalformedURLException e) {
             log.error(INVALID_URL, e);
             throw new BadRequestException(e.getMessage(), e);
         }

@@ -17,7 +17,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -61,7 +60,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
         this.clientSecret = jiraSourceConfig.getClientSecret();
     }
 
-    private String getJiraAccountCloudId(JiraSourceConfig config) {
+    String getJiraAccountCloudId() {
         log.info("Getting Jira Account Cloud ID");
         if (this.cloudId != null) {
             return this.cloudId;
@@ -73,7 +72,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
             }
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(config.getAccessToken());
+            headers.setBearerAuth(jiraSourceConfig.getAccessToken());
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
             int retryCount = 0;
@@ -82,8 +81,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 try {
                     ResponseEntity<Object> exchangeResponse =
                             restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
-                    List listResponse = (ArrayList) exchangeResponse.getBody();
-                    Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
+                    List<Map<String, Object>> listResponse = (List<Map<String, Object>>) exchangeResponse.getBody();
+                    Map<String, Object> response = listResponse.get(0);
                     return (String) response.get("id");
                 } catch (HttpClientErrorException e) {
                     if (e.getStatusCode().value() == TOKEN_EXPIRED) {
@@ -118,7 +117,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                             "client_id", clientId,
                             "client_secret", clientSecret,
                             "refresh_token", refreshToken);
-            String payload = null;
+            String payload;
             try {
                 payload = objectMapper.writeValueAsString(payloadMap);
             } catch (JsonProcessingException e) {
@@ -162,7 +161,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     @Override
     public String getUrl() {
         if (url == null || url.isEmpty()) {
-            synchronized (this) {
+            synchronized (cloudIdFetchLock) {
                 if (url == null || url.isEmpty()) {
                     initCredentials();
                 }
@@ -177,7 +176,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     @Override
     public void initCredentials() {
         //For OAuth based flow, we use a different Jira url
-        this.cloudId = getJiraAccountCloudId(jiraSourceConfig);
+        this.cloudId = getJiraAccountCloudId();
         this.url = OAuth2_URL + this.cloudId + SLASH;
     }
 }

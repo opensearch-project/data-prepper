@@ -6,11 +6,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,7 +43,6 @@ public class JiraOauthConfigTest {
         Map<String, Object> firstMockResponseMap = Map.of("access_token", "first_mock_access_token",
                 "refresh_token", "first_mock_refresh_token",
                 "expires_in", 3600);
-
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
                 .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
@@ -53,7 +55,6 @@ public class JiraOauthConfigTest {
         }
         executor.shutdown();
         assertNotNull(jiraOauthConfig.getAccessToken());
-        assertNotNull(jiraOauthConfig.getExpiresInSeconds());
         assertNotNull(jiraOauthConfig.getExpireTime());
         assertEquals(jiraOauthConfig.getRefreshToken(), "first_mock_refresh_token");
         assertEquals(jiraOauthConfig.getExpiresInSeconds(), 3600);
@@ -89,4 +90,20 @@ public class JiraOauthConfigTest {
         jiraOauthConfig.restTemplate = restTemplateMock;
         assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
     }
+
+    @Test
+    void testGetJiraAccountCloudId() {
+        Map<String, Object> mockGetCallResponse = new HashMap<>();
+        mockGetCallResponse.put("id", "test_cloud_id");
+        when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                .thenReturn(new ResponseEntity<>(List.of(mockGetCallResponse), HttpStatus.OK));
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        jiraOauthConfig.restTemplate = restTemplateMock;
+        assertEquals(jiraOauthConfig.getJiraAccountCloudId(), "test_cloud_id");
+
+        assertEquals("https://api.atlassian.com/ex/jira/test_cloud_id/", jiraOauthConfig.getUrl());
+
+
+    }
+
 }
