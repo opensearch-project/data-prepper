@@ -60,7 +60,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
         this.clientSecret = jiraSourceConfig.getClientSecret();
     }
 
-    String getJiraAccountCloudId() {
+    private String getJiraAccountCloudId() {
         log.info("Getting Jira Account Cloud ID");
         if (this.cloudId != null) {
             return this.cloudId;

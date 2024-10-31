@@ -99,9 +99,12 @@ public class JiraOauthConfigTest {
                 .thenReturn(new ResponseEntity<>(List.of(mockGetCallResponse), HttpStatus.OK));
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
-        assertEquals(jiraOauthConfig.getJiraAccountCloudId(), "test_cloud_id");
 
         assertEquals("https://api.atlassian.com/ex/jira/test_cloud_id/", jiraOauthConfig.getUrl());
+        //calling second time shouldn't trigger rest call
+        jiraOauthConfig.getUrl();
+        verify(restTemplateMock, times(1))
+                .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
 
 
     }
