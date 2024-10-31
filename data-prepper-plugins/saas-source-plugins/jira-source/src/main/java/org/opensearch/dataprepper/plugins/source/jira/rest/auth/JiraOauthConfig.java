@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
@@ -11,17 +10,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCESSIBLE_RESOURCES;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAuth2_URL;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SLASH;
@@ -31,7 +27,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOK
  * The type Jira service.
  */
 
-@Getter
 public class JiraOauthConfig implements JiraAuthConfig {
 
     private static final Logger log =
@@ -40,15 +35,20 @@ public class JiraOauthConfig implements JiraAuthConfig {
     private final String clientId;
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final Object cloudIdFetchLock = new Object();
     private final Object tokenRenewLock = new Object();
     RestTemplate restTemplate = new RestTemplate();
-    private int expiresInSeconds = 0;
-    private Instant expireTime;
-    private String accessToken;
-    private String refreshToken;
     private String url;
+
+    @Getter
+    private int expiresInSeconds = 0;
+    @Getter
+    private Instant expireTime;
+    @Getter
+    private String accessToken;
+    @Getter
+    private String refreshToken;
+    @Getter
     private String cloudId = null;
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
@@ -59,11 +59,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
         this.clientSecret = jiraSourceConfig.getClientSecret();
     }
 
-    private String getJiraAccountCloudId(JiraSourceConfig config) {
+    private String getJiraAccountCloudId() {
         log.info("Getting Jira Account Cloud ID");
-        if (this.cloudId != null) {
-            return this.cloudId;
-        }
         synchronized (cloudIdFetchLock) {
             if (this.cloudId != null) {
                 //Someone else must have initialized it
@@ -71,7 +68,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
             }
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(config.getAccessToken());
+            headers.setBearerAuth(jiraSourceConfig.getAccessToken());
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
             int retryCount = 0;
@@ -80,11 +77,11 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 try {
                     ResponseEntity<Object> exchangeResponse =
                             restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
-                    List listResponse = (ArrayList) exchangeResponse.getBody();
-                    Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
+                    List<Map<String, Object>> listResponse = (List<Map<String, Object>>) exchangeResponse.getBody();
+                    Map<String, Object> response = listResponse.get(0);
                     return (String) response.get("id");
                 } catch (HttpClientErrorException e) {
-                    if (e.getStatusCode().value() == TOKEN_EXPIRED) {
+                    if (e.getRawStatusCode() == TOKEN_EXPIRED) {
                         renewCredentials();
                     }
                     log.error("Error occurred while accessing resources: ", e);
@@ -108,44 +105,23 @@ public class JiraOauthConfig implements JiraAuthConfig {
             }
 
             log.info("Renewing access-refresh token pair for Jira Connector.");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String payloadTemplate = "{\"grant_type\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"refresh_token\": \"%s\"}";
+            String payload = String.format(payloadTemplate, "refresh_token", clientId, clientSecret, refreshToken);
+            HttpEntity<String> entity = new HttpEntity<>(payload, headers);
+
             try {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                Map<String, String> payloadMap =
-                        Map.of("grant_type", "refresh_token",
-                                "client_id", clientId,
-                                "client_secret", clientSecret,
-                                "refresh_token", refreshToken);
-                String payload = objectMapper.writeValueAsString(payloadMap);
-                HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-
-                ResponseEntity<Map> exchange = restTemplate.postForEntity(
-                        Constants.TOKEN_LOCATION,
-                        entity,
-                        Map.class
-                );
-                Map<String, Object> oauthClientResponse = exchange.getBody();
-                String newAccessToken = (String) oauthClientResponse.get(Constants.ACCESS_TOKEN);
-                String newRefreshToken = (String) oauthClientResponse.get(Constants.REFRESH_TOKEN);
-
-                if (!StringUtils.hasLength(newAccessToken)) {
-                    log.debug("Access token is empty or null");
-                    throw new RuntimeException("Access token is empty or null");
-                }
-                if (!StringUtils.hasLength(newRefreshToken)) {
-                    log.debug("Refresh token is empty or null ");
-                    throw new RuntimeException("Refresh token is empty or null");
-                }
-
-                this.accessToken = newAccessToken;
-                this.refreshToken = newRefreshToken;
+                ResponseEntity<Map> responseEntity = restTemplate.postForEntity(Constants.TOKEN_LOCATION, entity, Map.class);
+                Map<String, Object> oauthClientResponse = responseEntity.getBody();
+                this.accessToken = (String) oauthClientResponse.get(Constants.ACCESS_TOKEN);
+                this.refreshToken = (String) oauthClientResponse.get(Constants.REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(Constants.EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
-
-            } catch (Exception e) {
-                if (e.getMessage().contains(AUTHORIZATION_ERROR_CODE)) {
-                    log.error("Authorization Exception occurred while renewing access token {} ", e.getMessage());
-                }
+            } catch (HttpClientErrorException ex) {
+                log.error("Failed to renew access token. Status code: {}, Error Message: {}",
+                        ex.getRawStatusCode(), ex.getMessage());
+                throw new RuntimeException("Failed to renew access token" + ex.getMessage(), ex);
             }
         }
     }
@@ -153,7 +129,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     @Override
     public String getUrl() {
         if (url == null || url.isEmpty()) {
-            synchronized (this) {
+            synchronized (cloudIdFetchLock) {
                 if (url == null || url.isEmpty()) {
                     initCredentials();
                 }
@@ -168,7 +144,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     @Override
     public void initCredentials() {
         //For OAuth based flow, we use a different Jira url
-        this.cloudId = getJiraAccountCloudId(jiraSourceConfig);
+        this.cloudId = getJiraAccountCloudId();
         this.url = OAuth2_URL + this.cloudId + SLASH;
     }
 }
