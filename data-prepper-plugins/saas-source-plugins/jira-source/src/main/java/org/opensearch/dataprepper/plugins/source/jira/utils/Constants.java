@@ -58,6 +58,6 @@ public class Constants {
     public static final String JQL_FIELD = "jql";
     public static final String EXPAND_FIELD = "expand";
     public static final String EXPAND_VALUE = "all";
-    public static final String AUTHORIZATION_ERROR_CODE = "403";
+    public static final int AUTHORIZATION_ERROR_CODE = 403;
 
 }

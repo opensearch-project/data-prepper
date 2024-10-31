@@ -18,6 +18,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -31,13 +32,15 @@ public class JiraOauthConfigTest {
     @Mock
     RestTemplate restTemplateMock;
 
+    JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+
     @Test
     void testRenewToken() {
         Instant testStartTime = Instant.now();
         Map<String, Object> firstMockResponseMap = Map.of("access_token", "first_mock_access_token",
                 "refresh_token", "first_mock_refresh_token",
                 "expires_in", 3600);
-        JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
                 .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
@@ -61,5 +64,29 @@ public class JiraOauthConfigTest {
                 String.format("Expected that %s time should be before %s", jiraOauthConfig.getExpireTime(), expectedNewExpireTime));
         verify(restTemplateMock, times(1)).postForEntity(any(String.class), any(HttpEntity.class), any(Class.class));
 
+    }
+
+    @Test
+    void testEmptyAccessToken() {
+        Map<String, Object> firstMockResponseMap = Map.of("access_token", "",
+                "refresh_token", "first_mock_refresh_token",
+                "expires_in", 3600);
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
+                .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
+        jiraOauthConfig.restTemplate = restTemplateMock;
+        assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
+    }
+
+    @Test
+    void testEmptyRefreshToken() {
+        Map<String, Object> firstMockResponseMap = Map.of("access_token", "access_token",
+                "refresh_token", "",
+                "expires_in", 3600);
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
+                .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
+        jiraOauthConfig.restTemplate = restTemplateMock;
+        assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
     }
 }
