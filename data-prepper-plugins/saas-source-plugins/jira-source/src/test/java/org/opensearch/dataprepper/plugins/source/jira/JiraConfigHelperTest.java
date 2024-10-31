@@ -7,7 +7,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper.ISSUE_STATUS_FILTER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper.ISSUE_TYPE_FILTER;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraConfigHelperTest {
@@ -33,29 +30,20 @@ public class JiraConfigHelperTest {
     }
 
     @Test
-    void testIssueTypeFilter() {
-        testGetIssue(ISSUE_TYPE_FILTER);
+    void testGetIssueStatusFilter() {
+        assertTrue(JiraConfigHelper.getIssueStatusFilter(jiraSourceConfig).isEmpty());
+        List<String> issueStatusFilter = List.of("Done", "In Progress");
+        when(jiraSourceConfig.getProject()).thenReturn(issueStatusFilter);
+        assertEquals(issueStatusFilter, JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig));
     }
 
     @Test
-    void testIssueStatusFilter() {
-        testGetIssue(ISSUE_STATUS_FILTER);
+    void testGetIssueTypeFilter() {
+        assertTrue(JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig).isEmpty());
+        List<String> issueTypeFilter = List.of("Bug", "Story");
+        when(jiraSourceConfig.getProject()).thenReturn(issueTypeFilter);
+        assertEquals(issueTypeFilter, JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig));
     }
-
-    private void testGetIssue(String filter) {
-        List<String> issueTypeFilter = List.of("Bug", "Task");
-        when(jiraSourceConfig.getAdditionalProperties()).thenReturn(
-                Map.of(filter, issueTypeFilter)
-        );
-        List<String> result = null;
-        if (filter.equals(ISSUE_TYPE_FILTER)) {
-            result = JiraConfigHelper.getIssueTypeFilter(jiraSourceConfig);
-        } else if (filter.equals(ISSUE_STATUS_FILTER)) {
-            result = JiraConfigHelper.getIssueStatusFilter(jiraSourceConfig);
-        }
-        assertEquals(issueTypeFilter, result);
-    }
-
 
     @Test
     void testGetProjectKeyFilter() {

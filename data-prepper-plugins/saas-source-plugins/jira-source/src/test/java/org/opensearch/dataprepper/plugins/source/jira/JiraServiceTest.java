@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
@@ -36,7 +37,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCESSIBLE_RESOURCES;
@@ -67,8 +68,7 @@ public class JiraServiceTest {
     private RestTemplate restTemplate;
     @Mock
     private JiraAuthConfig authConfig;
-    @Mock
-    private SearchResults mockSearchResults;
+
     @Mock
     private StringBuilder jql;
 
@@ -98,16 +98,23 @@ public class JiraServiceTest {
     @Test
     void testJiraServiceInitialization() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         assertNotNull(jiraService);
     }
 
+
     @Test
     public void testGetJiraEntities() throws JsonProcessingException, InterruptedException, TimeoutException {
         List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        issueStatus.add("Done");
+        projectKey.add("KAN");
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
         IssueBean issue1 = createIssueBean(false);
@@ -115,6 +122,7 @@ public class JiraServiceTest {
         IssueBean issue2 = createIssueBean(true);
         mockIssues.add(issue2);
 
+        SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(mockIssues.size());
 
@@ -134,8 +142,10 @@ public class JiraServiceTest {
     @Test
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException, InterruptedException, TimeoutException {
         List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -143,6 +153,7 @@ public class JiraServiceTest {
             mockIssues.add(issue1);
         }
 
+        SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(100);
 
@@ -160,10 +171,36 @@ public class JiraServiceTest {
     }
 
     @Test
+    public void testBadProjectKeys() throws JsonProcessingException, InterruptedException, TimeoutException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        issueType.add("Task");
+        issueStatus.add("Done");
+        projectKey.add("Bad Project Key");
+        projectKey.add("");
+        projectKey.add("!@#$");
+
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
+        List<IssueBean> mockIssues = new ArrayList<>();
+        IssueBean issue1 = createIssueBean(false);
+        mockIssues.add(issue1);
+
+        Instant timestamp = Instant.ofEpochSecond(0);
+        List<Future<Boolean>> futureList = new ArrayList<>();
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        ExecutorService crawlerTaskExecutor = executorServiceProvider.get();
+        assertThrows(BadRequestException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor));
+    }
+
+    @Test
     public void testGetJiraEntitiesException() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
 
         doThrow(RuntimeException.class).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
@@ -180,15 +217,18 @@ public class JiraServiceTest {
     @Test
     public void testGetAllIssuesBasic() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType);
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        SearchResults mockSearchResults = mock(SearchResults.class);
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
     }
 
-    private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType) throws JsonProcessingException {
+    private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType, List<String> issueStatus, List<String> projectKey) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> connectorCredentialsMap = new HashMap<>();
         connectorCredentialsMap.put("auth_type", auth_type);
@@ -197,6 +237,10 @@ public class JiraServiceTest {
         jiraSourceConfigMap.put("account_url", ACCESSIBLE_RESOURCES);
         jiraSourceConfigMap.put("connector_credentials", connectorCredentialsMap);
         jiraSourceConfigMap.put("issue_type", issueType);
+        jiraSourceConfigMap.put("status", issueStatus);
+        jiraSourceConfigMap.put("project", projectKey);
+
+        
 
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
@@ -245,18 +289,15 @@ public class JiraServiceTest {
         return issue1;
     }
 
-    private void waitForFutures(List<Future<Boolean>> futureList) throws InterruptedException, TimeoutException {
+    private void waitForFutures(List<Future<Boolean>> futureList) throws InterruptedException {
         for (Future<?> future : futureList) {
             try {
-                future.get(1000, TimeUnit.MILLISECONDS);
+                future.get();
             } catch (InterruptedException ie) {
                 log.error("Thread interrupted.", ie);
                 throw new InterruptedException(ie.getMessage());
-            } catch (ExecutionException xe) {
-                log.error("The task aborted when attempting to retrieve its result.", xe);
-            } catch (TimeoutException te) {
-                log.error("Future is not done when timeout.", te);
-                throw new TimeoutException(te.getMessage());
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
             }
         }
     }

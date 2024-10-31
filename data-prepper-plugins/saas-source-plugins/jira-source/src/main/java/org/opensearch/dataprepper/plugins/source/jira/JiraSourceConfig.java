@@ -41,31 +41,33 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * List of projects to ingest
      */
     @JsonProperty("project")
-    @Size(max = 100, message = "Project type filter should not be more than 100")
+    @Size(max = 1000, message = "Project type filter should not be more than 1000")
     private List<String> project = new ArrayList<>();
     /**
      * List of specific issue types to ingest.
      * Ex: Story, Epic, Task etc
      */
     @JsonProperty("issue_type")
+    @Size(max = 1000, message = "Issue type filter should be less than 1000")
     private List<String> issueType = new ArrayList<>();
     /**
      * Optional Inclusion patterns for filtering some tickets
      */
     @JsonProperty("inclusion_patterns")
-    @Size(max = 100, message = "inclusion pattern filters should not be more than 100")
+    @Size(max = 100, message = "inclusion pattern filters should not be more than 1000")
     private List<String> inclusionPatterns;
     /**
      * Optional Exclusion patterns for excluding some tickets
      */
     @JsonProperty("exclusion_patterns")
+    @Size(max = 1000, message = "exclusion pattern filter should be less than 1000")
     private List<String> exclusionPatterns;
     /**
      * Optional Status filter to ingest the tickets
      */
     @JsonProperty("status")
-    @Size(max = 1000, message = "Status filter should be less than 1000 characters")
-    private String status;
+    @Size(max = 1000, message = "Status filter should be less than 1000")
+    private List<String> status = new ArrayList<>();
     /**
      * Number of worker threads to spawn to parallel source fetching
      */

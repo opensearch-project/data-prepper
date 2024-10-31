@@ -53,7 +53,8 @@ public class JiraSourceConfigTest {
         List<String> exclusionPatternList = Arrays.asList("pattern 3", "pattern 4");
         configMap.put("exclusion_patterns", exclusionPatternList);
 
-        configMap.put("status", "Test Status");
+        List<String> statusList = Arrays.asList("status 1", "status 2");
+        configMap.put("status", statusList);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonConfig = objectMapper.writeValueAsString(configMap);
@@ -85,7 +86,6 @@ public class JiraSourceConfigTest {
     @Test
     void testFetchGivenOauthAtrribute() throws JsonProcessingException {
         jiraSourceConfig = createJiraSourceConfig(OAUTH2, true);
-//        assertThrows(RuntimeException.class, () -> jiraSourceConfig.getAccessToken("unknown attribute"));
         assertEquals(accessToken, jiraSourceConfig.getAccessToken());
         assertEquals(refreshToken, jiraSourceConfig.getRefreshToken());
         assertEquals(clientId, jiraSourceConfig.getClientId());

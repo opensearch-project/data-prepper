@@ -46,7 +46,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXP
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.FIFTY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_TYPE_ID;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.JQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
@@ -304,7 +304,7 @@ public class JiraService {
                     .append(CLOSING_ROUND_BRACKET);
         }
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeFilter(configuration))) {
-            jiraQl.append(ISSUE_TYPE_ID).append(JiraConfigHelper.getIssueTypeFilter(configuration).stream()
+            jiraQl.append(ISSUE_TYPE_IN).append(JiraConfigHelper.getIssueTypeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }

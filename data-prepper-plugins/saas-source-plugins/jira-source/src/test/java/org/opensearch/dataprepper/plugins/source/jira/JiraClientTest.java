@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecu
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -70,7 +71,10 @@ public class JiraClientTest {
         Map<String, Object> keyAttributes = new HashMap<>();
         keyAttributes.put("project", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
-        List<String> itemIds = List.of("ID1", "ID2", "ID3", "ID4");
+        List<String> itemIds = new ArrayList<>();
+        itemIds.add(null);
+        itemIds.add("ID2");
+        itemIds.add("ID3");
         when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);
         Instant exportStartTime = Instant.now();
         when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
