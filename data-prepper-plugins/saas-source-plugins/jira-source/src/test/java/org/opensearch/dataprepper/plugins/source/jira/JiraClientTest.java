@@ -1,5 +1,8 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -22,9 +25,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,6 +96,29 @@ public class JiraClientTest {
         for (Record<Event> record : capturedRecords) {
             assertNotNull(record.getData());
         }
+    }
+
+    @Test
+    void testExecutePartitionError() throws Exception {
+        JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
+        Map<String, Object> keyAttributes = new HashMap<>();
+        keyAttributes.put("project", "test");
+        when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
+        List<String> itemIds = List.of("ID1", "ID2", "ID3", "ID4");
+        when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);
+        Instant exportStartTime = Instant.now();
+        when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
+
+        when(jiraService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
+
+        ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
+
+        ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
+        when(mockObjectMapper.readValue(any(String.class), any(TypeReference.class))).thenThrow(new JsonProcessingException("test") {
+        });
+        jiraClient.injectObjectMapper(mockObjectMapper);
+
+        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, crawlerSourceConfig));
     }
 
     @Test

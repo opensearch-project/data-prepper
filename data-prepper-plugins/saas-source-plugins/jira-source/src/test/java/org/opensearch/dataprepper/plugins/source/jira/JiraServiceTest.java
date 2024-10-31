@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
@@ -54,6 +55,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACC
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 
 
@@ -229,6 +231,20 @@ public class JiraServiceTest {
         assertNotNull(results);
     }
 
+    @Test
+    public void testGetAllIssuesOauth2() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        issueType.add("Task");
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(OAUTH2, issueType, issueStatus, projectKey);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        SearchResults mockSearchResults = mock(SearchResults.class);
+        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        SearchResults results = jiraService.getAllIssues(jql, 0, jiraSourceConfig);
+        assertNotNull(results);
+    }
+
     private JiraSourceConfig createJiraConfiguration(String auth_type, List<String> issueType, List<String> issueStatus, List<String> projectKey) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> connectorCredentialsMap = new HashMap<>();
@@ -244,6 +260,68 @@ public class JiraServiceTest {
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
+    }
+
+    @Test
+    void testInvokeRestApiTokenExpired() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        doReturn(new ResponseEntity<>("", HttpStatus.UNAUTHORIZED)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        jiraService.setSleepTimeMultiplier(1);
+        assertThrows(UnAuthorizedException.class, () -> jiraService.getIssue("key"));
+    }
+
+    @Test
+    void testInvokeRestApiTokenExpiredInterruptException() throws JsonProcessingException, InterruptedException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        doReturn(new ResponseEntity<>("", HttpStatus.UNAUTHORIZED)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        jiraService.setSleepTimeMultiplier(100000);
+
+        Thread testThread = new Thread(() -> {
+            assertThrows(InterruptedException.class, () -> {
+                try {
+                    jiraService.getIssue("key");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        });
+        testThread.start();
+        Thread.sleep(100);
+        testThread.interrupt();
+    }
+
+    @Test
+    void testInvokeRestApiBadRequest() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        doReturn(new ResponseEntity<>("", HttpStatus.BAD_GATEWAY)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        assertThrows(BadRequestException.class, () -> jiraService.getIssue("key"));
+    }
+
+    @Test
+    void testInvokeRestApiBadRequestNullResponseBody() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        doReturn(new ResponseEntity<>(null, HttpStatus.BAD_GATEWAY)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        assertThrows(UnAuthorizedException.class, () -> jiraService.getIssue("key"));
     }
 
     private IssueBean createIssueBean(boolean nullFields) {
