@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.typeconverter.ConverterArguments;
 
 import java.util.List;
@@ -70,6 +71,10 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
 
     @JsonProperty("convert_when")
     @JsonPropertyDescription("Specifies a condition using a <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> for performing the <code>convert_entry_type</code> operation. If specified, the <code>convert_entry_type</code> operation runs only when the expression evaluates to true. Example: <code>/mykey != \"---\"</code>")
+    @ExampleValues({
+        @ExampleValues.Example(value = "/some_key == null", description = "Only runs the convert_entry_type processor on the Event if the existing key some_key is null or does not exist."),
+        @ExampleValues.Example(value = "/some_key typeof integer", description = "Only runs the convert_entry_type processor on the Event if the key some_key is an integer.")
+    })
     private String convertWhen;
 
     public String getKey() {

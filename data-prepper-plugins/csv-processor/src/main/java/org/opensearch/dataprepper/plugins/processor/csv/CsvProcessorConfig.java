@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 
 import java.util.List;
 
@@ -61,11 +62,17 @@ public class CsvProcessorConfig {
             "the header in <code>column_names_source_key</code> generates the event fields. If too few columns are specified " +
             "in this field, the remaining column names are automatically generated. " +
             "If too many column names are specified in this field, the CSV processor omits the extra column names.")
+    @ExampleValues({
+            @ExampleValues.Example(value = "column_one", description = "Specifies column_one as one of the column names to create")
+    })
     private List<String> columnNames;
 
     @JsonProperty("csv_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>csv</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+            @ExampleValues.Example(value = "/some_key == null", description = "Only runs the csv processor if the key some_key is null or does not exist.")
+    })
     private String csvWhen;
 
     @JsonPropertyDescription("If true, the configured source field will be deleted after the CSV data is parsed into separate fields.")

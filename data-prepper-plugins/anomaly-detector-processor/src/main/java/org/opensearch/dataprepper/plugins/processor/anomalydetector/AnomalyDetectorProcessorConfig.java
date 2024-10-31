@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -34,6 +35,9 @@ public class AnomalyDetectorProcessorConfig {
 
     @JsonPropertyDescription("If provided, anomalies will be detected within each unique instance of these keys. For example, if you provide the ip field, anomalies will be detected separately for each unique IP address.")
     @JsonProperty("identification_keys")
+    @ExampleValues({
+            @ExampleValues.Example(value = "ip_address", description = "Anomalies will be detected separately for each unique IP address from the existing ip_address key of the Event.")
+    })
     private List<String> identificationKeys = Collections.emptyList();
 
     @JsonPropertyDescription("RCF will try to automatically learn and reduce the number of anomalies detected. For example, if latency is consistently between 50 and 100, and then suddenly jumps to around 1000, only the first one or two data points after the transition will be detected (unless there are other spikes/anomalies). Similarly, for repeated spikes to the same level, RCF will likely eliminate many of the spikes after a few initial ones. This is because the default setting is to minimize the number of alerts detected. Setting the verbose setting to true will cause RCF to consistently detect these repeated cases, which may be useful for detecting anomalous behavior that lasts an extended period of time. Default is false.")
@@ -41,7 +45,7 @@ public class AnomalyDetectorProcessorConfig {
     private Boolean verbose = false;
 
     @JsonPropertyDescription("If using the identification_keys settings, a new ML model will be created for every degree of cardinality. This can cause a large amount of memory usage, so it is helpful to set a limit on the number of models. Default limit is 5000.")
-    @JsonProperty("cardinality_limit")
+    @JsonProperty(value = "cardinality_limit", defaultValue = "5000")
     private int cardinalityLimit = 5000;
 
     public PluginModel getDetectorMode() { 

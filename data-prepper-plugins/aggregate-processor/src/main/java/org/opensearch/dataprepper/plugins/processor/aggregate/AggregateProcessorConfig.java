@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -32,6 +33,9 @@ public class AggregateProcessorConfig {
             "At least one <code>identification_key</code> is required. And example configuration is [\"sourceIp\", \"destinationIp\", \"port\"].")
     @JsonProperty("identification_keys")
     @NotEmpty
+    @ExampleValues({
+            @ExampleValues.Example(value = "group_id", description = "Aggregate based on the values of a group_id key in the Events")
+    })
     private List<String> identificationKeys;
 
     @JsonPropertyDescription("The action to be performed on each group. One of the available aggregate actions must be provided.")
@@ -42,6 +46,11 @@ public class AggregateProcessorConfig {
 
     @JsonPropertyDescription("The amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation strings (\"PT20.345S\", \"PT15M\", etc.) as well as simple notation for seconds (\"60s\") and milliseconds (\"1500ms\"). Default value is 180s.")
     @JsonProperty(value = "group_duration", defaultValue = DEFAULT_GROUP_DURATION_SECONDS + "s")
+    @ExampleValues({
+            @ExampleValues.Example(value = "180s", description = "Aggregated groups will be flushed after 180 seconds"),
+            @ExampleValues.Example(value = "1000ms", description = "Aggregated groups will be flushed after 1,000 milliseconds"),
+            @ExampleValues.Example(value = "PT2H", description = "Aggregated groups will be flushed after 2 hours"),
+    })
     private Duration groupDuration = Duration.ofSeconds(DEFAULT_GROUP_DURATION_SECONDS);
 
     @JsonPropertyDescription("When <code>local_mode</code> is set to true, the aggregation is performed locally on each node instead of forwarding events to a specific node based on the <code>identification_keys</code> using a hash function. Default is false.")
@@ -62,6 +71,9 @@ public class AggregateProcessorConfig {
 
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
     @JsonProperty("aggregate_when")
+    @ExampleValues({
+            @ExampleValues.Example(value = "/some_key == null", description = "Only includes events in the aggregations if the key some_key is null or does not exist.")
+    })
     private String whenCondition;
 
     public List<String> getIdentificationKeys() {

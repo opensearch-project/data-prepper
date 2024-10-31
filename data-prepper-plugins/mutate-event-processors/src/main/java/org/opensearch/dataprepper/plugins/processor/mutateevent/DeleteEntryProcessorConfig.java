@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
@@ -32,6 +33,9 @@ public class DeleteEntryProcessorConfig {
     @JsonProperty("delete_when")
     @JsonPropertyDescription("Specifies under what condition the <code>delete_entries</code> processor should perform deletion. " +
             "By default, keys are always deleted. Example: <code>/mykey == \"---\"</code>")
+    @ExampleValues({
+            @ExampleValues.Example(value = "/some_key == null", description = "Only runs the delete_entries processor on the Event if the key some_key is null or does not exist.")
+    })
     private String deleteWhen;
 
     public List<EventKey> getWithKeys() {
