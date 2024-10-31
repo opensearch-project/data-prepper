@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,10 +41,15 @@ public class JiraOauthConfig implements JiraAuthConfig {
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Object cloudIdFetchLock = new Object();
+    private final Object tokenRenewLock = new Object();
+    RestTemplate restTemplate = new RestTemplate();
+    private int expiresInSeconds = 0;
+    private Instant expireTime;
     private String accessToken;
     private String refreshToken;
     private String url;
-    private String cloudId;
+    private String cloudId = null;
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
@@ -53,73 +59,93 @@ public class JiraOauthConfig implements JiraAuthConfig {
         this.clientSecret = jiraSourceConfig.getClientSecret();
     }
 
-    private synchronized String getJiraAccountCloudId(JiraSourceConfig config) {
+    private String getJiraAccountCloudId(JiraSourceConfig config) {
         log.info("Getting Jira Account Cloud ID");
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(config.getAccessToken());
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        int retryCount = 0;
-        while (retryCount < RETRY_ATTEMPT) {
-            retryCount++;
-            try {
-                ResponseEntity<Object> exchangeResponse =
-                        restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
-                List listResponse = (ArrayList) exchangeResponse.getBody();
-                Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
-                return (String) response.get("id");
-            } catch (HttpClientErrorException e) {
-                if (e.getStatusCode().value() == TOKEN_EXPIRED) {
-                    renewCredentials();
-                }
-                log.error("Error occurred while accessing resources: ", e);
-            }
+        if (this.cloudId != null) {
+            return this.cloudId;
         }
-        throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
-    }
-
-    public synchronized void renewCredentials() {
-        log.info("Renewing access-refresh token pair for Jira Connector.");
-        RestTemplate restTemplate = new RestTemplate();
-        try {
-            String tokenEndPoint = Constants.TOKEN_LOCATION;
+        synchronized (cloudIdFetchLock) {
+            if (this.cloudId != null) {
+                //Someone else must have initialized it
+                return this.cloudId;
+            }
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            Map<String, String> payloadMap =
-                    Map.of("grant_type", "refresh_token",
-                            "client_id", clientId,
-                            "client_secret", clientSecret,
-                            "refresh_token", refreshToken);
-            String payload = objectMapper.writeValueAsString(payloadMap);
-            HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-
-            ResponseEntity<Map> exchange = restTemplate.exchange(
-                    tokenEndPoint,
-                    HttpMethod.POST,
-                    entity,
-                    Map.class
-            );
-            Map<String, Object> oauthClientResponse = exchange.getBody();
-            String newAccessToken = (String) oauthClientResponse.get(Constants.ACCESS_TOKEN);
-            String newRefreshToken = (String) oauthClientResponse.get(Constants.REFRESH_TOKEN);
-
-            if (!StringUtils.hasLength(newAccessToken)) {
-                log.debug("Access token is empty or null");
-                throw new RuntimeException("Access token is empty or null");
+            headers.setBearerAuth(config.getAccessToken());
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            int retryCount = 0;
+            while (retryCount < RETRY_ATTEMPT) {
+                retryCount++;
+                try {
+                    ResponseEntity<Object> exchangeResponse =
+                            restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
+                    List listResponse = (ArrayList) exchangeResponse.getBody();
+                    Map<String, Object> response = (Map<String, Object>) listResponse.get(0);
+                    return (String) response.get("id");
+                } catch (HttpClientErrorException e) {
+                    if (e.getStatusCode().value() == TOKEN_EXPIRED) {
+                        renewCredentials();
+                    }
+                    log.error("Error occurred while accessing resources: ", e);
+                }
             }
-            if (!StringUtils.hasLength(newRefreshToken)) {
-                log.debug("Refresh token is empty or null ");
-                throw new RuntimeException("Refresh token is empty or null");
+            throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
+        }
+    }
+
+    public void renewCredentials() {
+        Instant currentTime = Instant.now();
+        if (expireTime != null && expireTime.isAfter(currentTime)) {
+            //There is still time to renew or someone else must have already renewed it
+            return;
+        }
+
+        synchronized (tokenRenewLock) {
+            if (expireTime != null && expireTime.isAfter(currentTime)) {
+                //Someone else must have already renewed it
+                return;
             }
 
-            this.accessToken = newAccessToken;
-            this.refreshToken = newRefreshToken;
+            log.info("Renewing access-refresh token pair for Jira Connector.");
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                Map<String, String> payloadMap =
+                        Map.of("grant_type", "refresh_token",
+                                "client_id", clientId,
+                                "client_secret", clientSecret,
+                                "refresh_token", refreshToken);
+                String payload = objectMapper.writeValueAsString(payloadMap);
+                HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
-        } catch (Exception e) {
-            if (e.getMessage().contains(AUTHORIZATION_ERROR_CODE)) {
-                log.error("Authorization Exception occurred while renewing access token {} ", e.getMessage());
+                ResponseEntity<Map> exchange = restTemplate.postForEntity(
+                        Constants.TOKEN_LOCATION,
+                        entity,
+                        Map.class
+                );
+                Map<String, Object> oauthClientResponse = exchange.getBody();
+                String newAccessToken = (String) oauthClientResponse.get(Constants.ACCESS_TOKEN);
+                String newRefreshToken = (String) oauthClientResponse.get(Constants.REFRESH_TOKEN);
+
+                if (!StringUtils.hasLength(newAccessToken)) {
+                    log.debug("Access token is empty or null");
+                    throw new RuntimeException("Access token is empty or null");
+                }
+                if (!StringUtils.hasLength(newRefreshToken)) {
+                    log.debug("Refresh token is empty or null ");
+                    throw new RuntimeException("Refresh token is empty or null");
+                }
+
+                this.accessToken = newAccessToken;
+                this.refreshToken = newRefreshToken;
+                this.expiresInSeconds = (int) oauthClientResponse.get(Constants.EXPIRES_IN);
+                this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+
+            } catch (Exception e) {
+                if (e.getMessage().contains(AUTHORIZATION_ERROR_CODE)) {
+                    log.error("Authorization Exception occurred while renewing access token {} ", e.getMessage());
+                }
             }
         }
     }

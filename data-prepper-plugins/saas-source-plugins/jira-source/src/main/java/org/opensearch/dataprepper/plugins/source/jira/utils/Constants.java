@@ -30,6 +30,7 @@ public class Constants {
     public static final String LIVE = "live";
     public static final String ACCESS_TOKEN = "access_token";
     public static final String REFRESH_TOKEN = "refresh_token";
+    public static final String EXPIRES_IN = "expires_in";
     public static final String PLUGIN_NAME = "jira";
 
     public static final String BAD_REQUEST_EXCEPTION = "Bad request exception occurred "

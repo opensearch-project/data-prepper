@@ -80,6 +80,16 @@ public class JiraServiceTest {
         return inputStream;
     }
 
+    public static JiraSourceConfig createJiraConfigurationFromYaml(String fileName) {
+        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
+        try (InputStream inputStream = getResourceAsStream(fileName)) {
+            return objectMapper.readValue(inputStream, JiraSourceConfig.class);
+        } catch (IOException ex) {
+            log.error("Failed to parse pipeline Yaml", ex);
+        }
+        return null;
+    }
+
     @AfterEach
     void tearDown() {
         executorServiceProvider.terminateExecutor();
@@ -301,17 +311,6 @@ public class JiraServiceTest {
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         String ticketDetails = jiraService.getIssue("key");
         assertNotNull(ticketDetails);
-    }
-
-
-    private JiraSourceConfig createJiraConfigurationFromYaml(String fileName) {
-        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-        try (InputStream inputStream = getResourceAsStream(fileName)) {
-            return objectMapper.readValue(inputStream, JiraSourceConfig.class);
-        } catch (IOException ex) {
-            log.error("Failed to parse pipeline Yaml", ex);
-        }
-        return null;
     }
 
 }
