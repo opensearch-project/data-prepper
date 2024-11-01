@@ -184,8 +184,9 @@ public class JiraServiceTest {
         issueType.add("Task");
         issueStatus.add("Done");
         projectKey.add("Bad Project Key");
-        projectKey.add("");
+        projectKey.add("A");
         projectKey.add("!@#$");
+        projectKey.add("AAAAAAAAAAAAAA");
 
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
