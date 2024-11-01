@@ -67,14 +67,14 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 return this.cloudId;
             }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(jiraSourceConfig.getAccessToken());
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
             int retryCount = 0;
             while (retryCount < RETRY_ATTEMPT) {
                 retryCount++;
                 try {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setBearerAuth(accessToken);
+                    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                    HttpEntity<Void> entity = new HttpEntity<>(headers);
                     ResponseEntity<Object> exchangeResponse =
                             restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
                     List<Map<String, Object>> listResponse = (List<Map<String, Object>>) exchangeResponse.getBody();
@@ -119,6 +119,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.expiresInSeconds = (int) oauthClientResponse.get(Constants.EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
             } catch (HttpClientErrorException ex) {
+                this.expireTime = null;
+                this.expiresInSeconds = 0;
                 log.error("Failed to renew access token. Status code: {}, Error Message: {}",
                         ex.getRawStatusCode(), ex.getMessage());
                 throw new RuntimeException("Failed to renew access token" + ex.getMessage(), ex);

@@ -19,7 +19,7 @@ import java.util.concurrent.Future;
 @Named
 public class JiraIterator implements Iterator<ItemInfo> {
 
-    private static final int HAS_NEXT_TIMEOUT = 1000;
+    private static final int HAS_NEXT_TIMEOUT = 60;
     private static final Logger log = LoggerFactory.getLogger(JiraIterator.class);
     private final JiraSourceConfig sourceConfig;
     private final JiraService service;
@@ -49,7 +49,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
                 && itemInfoQueue.isEmpty()
                 && (timeout != 0)) {
             try {
-                log.info("Waiting for crawling queue to be filled for next 2 seconds.");
+                log.trace("Waiting for crawling queue to be filled for next 2 seconds.");
                 Thread.sleep(2000);
                 timeout--;
             } catch (InterruptedException e) {
