@@ -40,6 +40,7 @@ import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,6 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -138,6 +140,7 @@ public class KafkaCustomConsumerTest {
         when(topicMetrics.getNumberOfBufferSizeOverflows()).thenReturn(overflowCounter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
+        when(topicMetrics.getNumberOfInvalidTimeStamps()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -194,6 +197,27 @@ public class KafkaCustomConsumerTest {
         final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
         pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         return new BlockingBuffer<>(pluginSetting);
+    }
+
+    @Test
+    public void testGetRecordTimeStamp() {
+        ConsumerRecord<String, Object> consumerRecord1 = mock(ConsumerRecord.class);
+        ConsumerRecord<String, Object> consumerRecord2 = mock(ConsumerRecord.class);
+        ConsumerRecord<String, Object> consumerRecord3 = mock(ConsumerRecord.class);
+        consumer = createObjectUnderTestWithMockBuffer("plaintext");
+        long nowMs = Instant.now().toEpochMilli();
+        long timestamp1 = nowMs - 5;
+        when(consumerRecord1.timestamp()).thenReturn(timestamp1);
+        when(consumerRecord1.partition()).thenReturn(1);
+        assertThat(consumer.getRecordTimeStamp(consumerRecord1, nowMs), equalTo(timestamp1));
+        long timestamp2 = nowMs + 5;
+        when(consumerRecord2.timestamp()).thenReturn(timestamp2);
+        when(consumerRecord2.partition()).thenReturn(1);
+        assertThat(consumer.getRecordTimeStamp(consumerRecord2, nowMs), equalTo(timestamp1));
+        long timestamp3 = nowMs + 10;
+        when(consumerRecord3.timestamp()).thenReturn(timestamp3);
+        when(consumerRecord3.partition()).thenReturn(2);
+        assertThat(consumer.getRecordTimeStamp(consumerRecord3, nowMs), equalTo(nowMs));
     }
 
     @Test

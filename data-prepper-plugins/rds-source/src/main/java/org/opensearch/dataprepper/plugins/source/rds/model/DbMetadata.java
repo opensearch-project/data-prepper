@@ -41,4 +41,12 @@ public class DbMetadata {
                 PORT_KEY, port
         );
     }
+
+    public static DbMetadata fromMap(Map<String, Object> map) {
+        return new DbMetadata(
+                (String) map.get(DB_IDENTIFIER_KEY),
+                (String) map.get(HOST_NAME_KEY),
+                ((Integer) map.get(PORT_KEY))
+        );
+    }
 }

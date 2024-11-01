@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfigSu
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@DataPrepperPlugin(name = "kinesis", pluginType = Source.class, pluginConfigurationType = KinesisSourceConfig.class)
+@DataPrepperPlugin(name = "kinesis", alternateNames = "kinesis-data-streams", pluginType = Source.class, pluginConfigurationType = KinesisSourceConfig.class)
 public class KinesisSource implements Source<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisSource.class);
     private final KinesisSourceConfig kinesisSourceConfig;
