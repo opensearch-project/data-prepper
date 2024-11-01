@@ -14,9 +14,7 @@ import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,15 +26,38 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_ROUND_BRACKET;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CONTENT_TYPE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.DELIMITER;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_FIELD;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.FIFTY;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
+
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_KEY;
+
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_NAME;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RATE_LIMIT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_FETCH_ISSUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_SEARCH;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUFFIX;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._ISSUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
@@ -129,46 +150,14 @@ public class JiraService {
      */
     private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
-            Map<String, Object> issueMetadata = new HashMap<>();
+            itemInfoQueue.add(JiraItemInfo.builder().withEventTime(Instant.now()).withIssueBean(issue).build());
+
             if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(KEY))) {
-                issueMetadata.put(PROJECT_KEY,
-                        ((Map) issue.getFields().get(PROJECT)).get(KEY).toString());
+                String projectKey = ((Map) issue.getFields().get(PROJECT)).get(KEY).toString();
+                if (!jiraProjectCache.containsKey(projectKey)) {
+                    jiraProjectCache.put(projectKey, LIVE);
+                }
             }
-            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(NAME))) {
-                issueMetadata.put(PROJECT_NAME,
-                        ((Map) issue.getFields().get(PROJECT)).get(NAME).toString());
-            }
-
-            long created = 0;
-            if (Objects.nonNull(issue.getFields()) && issue.getFields().get(CREATED)
-                    .toString().length() >= 23) {
-                String charSequence = issue.getFields().get(CREATED).toString().substring(0, 23) + "Z";
-                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
-                new Date(offsetDateTime.toInstant().toEpochMilli());
-                created = offsetDateTime.toEpochSecond() * 1000;
-            }
-            issueMetadata.put(CREATED, String.valueOf(created));
-
-            long updated = 0;
-            if (issue.getFields().get(UPDATED).toString().length() >= 23) {
-                String charSequence = issue.getFields().get(UPDATED).toString().substring(0, 23) + "Z";
-                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
-                new Date(offsetDateTime.toInstant().toEpochMilli());
-                updated = offsetDateTime.toEpochSecond() * 1000;
-            }
-            issueMetadata.put(UPDATED, String.valueOf(updated));
-
-            issueMetadata.put(ISSUE_KEY, issue.getKey());
-            issueMetadata.put(CONTENT_TYPE, JiraContentType.ISSUE.getType());
-            String id = _ISSUE + issueMetadata.get(PROJECT_KEY) + "-" + issue.getKey();
-
-            itemInfoQueue.add(createItemInfo(id, issueMetadata));
-
-            if (Objects.nonNull(issueMetadata.get(PROJECT_KEY)) && !jiraProjectCache
-                    .containsKey(issueMetadata.get(PROJECT_KEY))) {
-                jiraProjectCache.put((String) issueMetadata.get(PROJECT_KEY), LIVE);
-            }
-
         });
     }
 
