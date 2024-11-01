@@ -22,6 +22,7 @@ public class KafkaTopicConsumerMetrics {
     static final String NUMBER_OF_RECORDS_FAILED_TO_PARSE = "numberOfRecordsFailedToParse";
     static final String NUMBER_OF_DESERIALIZATION_ERRORS = "numberOfDeserializationErrors";
     static final String NUMBER_OF_BUFFER_SIZE_OVERFLOWS = "numberOfBufferSizeOverflows";
+    static final String NUMBER_OF_INVALID_TIMESTAMPS = "numberOfInvalidTimeStamps";
     static final String NUMBER_OF_POLL_AUTH_ERRORS = "numberOfPollAuthErrors";
     static final String NUMBER_OF_RECORDS_COMMITTED = "numberOfRecordsCommitted";
     static final String NUMBER_OF_RECORDS_CONSUMED = "numberOfRecordsConsumed";
@@ -38,6 +39,7 @@ public class KafkaTopicConsumerMetrics {
     private final Counter numberOfDeserializationErrors;
     private final Counter numberOfBufferSizeOverflows;
     private final Counter numberOfPollAuthErrors;
+    private final Counter numberOfInvalidTimeStamps;
     private final Counter numberOfRecordsCommitted;
     private final Counter numberOfRecordsConsumed;
     private final Counter numberOfBytesConsumed;
@@ -53,6 +55,7 @@ public class KafkaTopicConsumerMetrics {
         this.numberOfBytesConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BYTES_CONSUMED, topicNameInMetrics));
         this.numberOfRecordsCommitted = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_COMMITTED, topicNameInMetrics));
         this.numberOfRecordsFailedToParse = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_FAILED_TO_PARSE, topicNameInMetrics));
+        this.numberOfInvalidTimeStamps = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_INVALID_TIMESTAMPS, topicNameInMetrics));
         this.numberOfDeserializationErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_DESERIALIZATION_ERRORS, topicNameInMetrics));
         this.numberOfBufferSizeOverflows = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BUFFER_SIZE_OVERFLOWS, topicNameInMetrics));
         this.numberOfPollAuthErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POLL_AUTH_ERRORS, topicNameInMetrics));
@@ -149,6 +152,10 @@ public class KafkaTopicConsumerMetrics {
 
     public Counter getNumberOfNegativeAcknowledgements() {
         return numberOfNegativeAcknowledgements;
+    }
+
+    public Counter getNumberOfInvalidTimeStamps() {
+        return numberOfInvalidTimeStamps;
     }
 
     public Counter getNumberOfPositiveAcknowledgements() {

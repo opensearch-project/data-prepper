@@ -70,7 +70,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRecordsFailedCounter;
     private final Timer lambdaLatencyMetric;
     private final String invocationType;
-    private final ResponseCardinality responseCardinality;
     private final List<String> tagsOnMatchFailure;
     private final BatchOptions batchOptions;
     private final BufferFactory bufferFactory;
@@ -100,7 +99,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.responsePayloadMetric = pluginMetrics.gauge(RESPONSE_PAYLOAD_SIZE, new AtomicLong());
 
         functionName = lambdaProcessorConfig.getFunctionName();
-        responseCardinality = lambdaProcessorConfig.getResponseCardinality();
         whenCondition = lambdaProcessorConfig.getWhenCondition();
         maxRetries = lambdaProcessorConfig.getMaxConnectionRetries();
         batchOptions = lambdaProcessorConfig.getBatchOptions();
@@ -131,7 +129,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         bufferFactory = new InMemoryBufferFactory();
 
         // Select the correct strategy based on the configuration
-        if ((ResponseCardinality.STRICT).equals(lambdaProcessorConfig.getResponseCardinality())) {
+        if (lambdaProcessorConfig.getResponseEventsMatch()) {
             this.responseStrategy = new StrictResponseEventHandlingStrategy();
         } else {
             this.responseStrategy = new AggregateResponseEventHandlingStrategy();
@@ -141,7 +139,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, functionName, invocationType, bufferFactory);
         currentBufferPerBatch = lambdaCommonHandler.createBuffer(currentBufferPerBatch);
 
-        LOG.info("LambdaFunctionName:{} , responseCardinality:{}, invocationType:{}", functionName, responseCardinality.getValue(), invocationType);
+        LOG.info("LambdaFunctionName:{} , responseEventsMatch:{}, invocationType:{}", functionName,
+                lambdaProcessorConfig.getResponseEventsMatch(), invocationType);
     }
 
     @Override
