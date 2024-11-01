@@ -50,7 +50,6 @@ public class JiraOauthConfig implements JiraAuthConfig {
     private String accessToken;
     @Getter
     private String refreshToken;
-    @Getter
     private String cloudId = null;
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
