@@ -9,7 +9,8 @@ public class Constants {
 
     public static final String TOKEN_LOCATION = "https://auth.atlassian.com/oauth/token";
     public static final int TOKEN_EXPIRED = 401;
-    public static final int SUCCESS_RESPONSE = 200;
+    public static final int RATE_LIMIT = 429;
+    public static final int AUTHORIZATION_ERROR_CODE = 403;
     public static final int RETRY_ATTEMPT = 6;
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
@@ -58,6 +59,5 @@ public class Constants {
     public static final String JQL_FIELD = "jql";
     public static final String EXPAND_FIELD = "expand";
     public static final String EXPAND_VALUE = "all";
-    public static final int AUTHORIZATION_ERROR_CODE = 403;
 
 }

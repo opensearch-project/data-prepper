@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -253,27 +254,15 @@ public class JiraServiceTest {
         Map<String, Object> jiraSourceConfigMap = new HashMap<>();
         jiraSourceConfigMap.put("account_url", ACCESSIBLE_RESOURCES);
         jiraSourceConfigMap.put("connector_credentials", connectorCredentialsMap);
-        jiraSourceConfigMap.put("issue_type", issueType);
-        jiraSourceConfigMap.put("status", issueStatus);
-        jiraSourceConfigMap.put("project", projectKey);
+        jiraSourceConfigMap.put("issue_types", issueType);
+        jiraSourceConfigMap.put("statuses", issueStatus);
+        jiraSourceConfigMap.put("projects", projectKey);
 
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
     }
 
-    @Test
-    void testInvokeRestApiTokenExpired() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
-        doReturn(new ResponseEntity<>("", HttpStatus.UNAUTHORIZED)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        jiraService.setSleepTimeMultiplier(1);
-        assertThrows(UnAuthorizedException.class, () -> jiraService.getIssue("key"));
-    }
 
     @Test
     void testInvokeRestApiTokenExpiredInterruptException() throws JsonProcessingException, InterruptedException {
@@ -301,26 +290,15 @@ public class JiraServiceTest {
     }
 
     @Test
-    void testInvokeRestApiBadRequest() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
-        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
-        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
-        doReturn(new ResponseEntity<>("", HttpStatus.BAD_GATEWAY)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        assertThrows(BadRequestException.class, () -> jiraService.getIssue("key"));
-    }
-
-    @Test
     void testInvokeRestApiBadRequestNullResponseBody() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
+        jiraService.setSleepTimeMultiplier(1);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
-        doReturn(new ResponseEntity<>(null, HttpStatus.BAD_GATEWAY)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
         assertThrows(UnAuthorizedException.class, () -> jiraService.getIssue("key"));
     }
 
@@ -351,7 +329,7 @@ public class JiraServiceTest {
             projectMap.put("name", "project name test");
             projectMap.put(KEY, "TEST");
         }
-        fieldMap.put("project", projectMap);
+        fieldMap.put("projects", projectMap);
 
         Map<String, Object> priorityMap = new HashMap<>();
         priorityMap.put("name", "Medium");
@@ -359,7 +337,7 @@ public class JiraServiceTest {
 
         Map<String, Object> statusMap = new HashMap<>();
         statusMap.put("name", "In Progress");
-        fieldMap.put("status", statusMap);
+        fieldMap.put("statuses", statusMap);
 
         issue1.setFields(fieldMap);
 

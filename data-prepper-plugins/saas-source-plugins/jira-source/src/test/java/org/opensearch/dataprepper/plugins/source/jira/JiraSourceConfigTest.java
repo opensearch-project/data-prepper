@@ -16,15 +16,13 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAS
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 
 public class JiraSourceConfigTest {
+    private final String accessToken = "access token test";
+    private final String refreshToken = "refresh token test";
+    private final String clientId = "client id test";
+    private final String clientSecret = "client secret test";
+    private final String jiraCredential = "test Jira Credential";
+    private final String jiraId = "test Jira Id";
     private JiraSourceConfig jiraSourceConfig;
-
-    private String accessToken = "access token test";
-    private String refreshToken = "refresh token test";
-    private String clientId = "client id test";
-    private String clientSecret = "client secret test";
-    private String jiraCredential = "test Jira Credential";
-    private String jiraId = "test Jira Id";
-
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws JsonProcessingException {
         Map<String, Object> configMap = new HashMap<>();
@@ -46,10 +44,10 @@ public class JiraSourceConfigTest {
         configMap.put("connector_credentials", connectorCredentialMap);
 
         List<String> projectList = Arrays.asList("project1", "project2");
-        configMap.put("project", projectList);
+        configMap.put("projects", projectList);
 
         List<String> issueTypeList = Arrays.asList("issue type 1", "issue type 2");
-        configMap.put("issue_type", issueTypeList);
+        configMap.put("issue_types", issueTypeList);
 
         List<String> inclusionPatternList = Arrays.asList("pattern 1", "pattern 2");
         configMap.put("inclusion_patterns", inclusionPatternList);
@@ -58,7 +56,7 @@ public class JiraSourceConfigTest {
         configMap.put("exclusion_patterns", exclusionPatternList);
 
         List<String> statusList = Arrays.asList("status 1", "status 2");
-        configMap.put("status", statusList);
+        configMap.put("statuses", statusList);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonConfig = objectMapper.writeValueAsString(configMap);

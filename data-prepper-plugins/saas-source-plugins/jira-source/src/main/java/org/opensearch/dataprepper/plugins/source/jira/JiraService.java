@@ -38,6 +38,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CONTENT_TYPE;
@@ -60,13 +62,13 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_NAME;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RATE_LIMIT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_FETCH_ISSUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUCCESS_RESPONSE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUFFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
@@ -262,22 +264,27 @@ public class JiraService {
                 return restTemplate.getForEntity(uri, responseType);
             } catch (HttpClientErrorException ex) {
                 int statusCode = ex.getRawStatusCode();
+                String statusMessage = ex.getMessage();
                 log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage(), ex);
-                if (statusCode == TOKEN_EXPIRED) {
-                    log.error("Token expired. We will try to renew the tokens now");
+                if (statusCode == AUTHORIZATION_ERROR_CODE) {
+                    throw new UnAuthorizedException(statusMessage);
+                } else if (statusCode == TOKEN_EXPIRED) {
+                    log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
                     authConfig.renewCredentials();
+                } else if (statusCode == RATE_LIMIT) {
+                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
+                    try {
+                        Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                    }
                 }
             }
             retryCount++;
-            try {
-                Thread.sleep(RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * 1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
-            }
         }
         String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
         log.error(errorMessage);
-        throw new UnAuthorizedException(errorMessage);
+        throw new RuntimeException(errorMessage);
     }
 
     @VisibleForTesting
