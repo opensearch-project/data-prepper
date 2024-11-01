@@ -7,6 +7,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,6 +38,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,12 +52,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 
 
@@ -92,6 +97,14 @@ public class JiraServiceTest {
         return null;
     }
 
+    private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
+        return Stream.of(
+                Arguments.of(HttpStatus.valueOf(AUTHORIZATION_ERROR_CODE), UnAuthorizedException.class),
+                Arguments.of(HttpStatus.valueOf(TOKEN_EXPIRED), RuntimeException.class),
+                Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class)
+        );
+    }
+
     @AfterEach
     void tearDown() {
         executorServiceProvider.terminateExecutor();
@@ -106,7 +119,6 @@ public class JiraServiceTest {
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         assertNotNull(jiraService);
     }
-
 
     @Test
     public void testGetJiraEntities() throws JsonProcessingException {
@@ -244,7 +256,6 @@ public class JiraServiceTest {
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
     }
 
-
     @Test
     void testInvokeRestApiTokenExpiredInterruptException() throws JsonProcessingException, InterruptedException {
         List<String> issueType = new ArrayList<>();
@@ -270,8 +281,9 @@ public class JiraServiceTest {
         testThread.interrupt();
     }
 
-    @Test
-    void testInvokeRestApiBadRequestNullResponseBody() throws JsonProcessingException {
+    @ParameterizedTest
+    @MethodSource("provideHttpStatusCodesWithExceptionClass")
+    void testInvokeRestApiTokenExpired(HttpStatus statusCode, Class expectedExceptionType) throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
@@ -279,8 +291,8 @@ public class JiraServiceTest {
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         jiraService.setSleepTimeMultiplier(1);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
-        when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
-        assertThrows(UnAuthorizedException.class, () -> jiraService.getIssue("key"));
+        when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(statusCode));
+        assertThrows(expectedExceptionType, () -> jiraService.getIssue("key"));
     }
 
     private IssueBean createIssueBean(boolean nullFields) {
