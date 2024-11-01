@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.oteltrace;
+package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -14,11 +14,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 
 import java.time.Duration;
-import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,27 +32,32 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.rpc.RetryInfo;
 import com.linecorp.armeria.client.Clients;
 
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.metrics.v1.Gauge;
+import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
+import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
-class OTelTraceSourceRetryInfoTest {
-    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
+class OTelMetricsSource_RetryInfoTest {
+    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21891/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
@@ -64,32 +68,28 @@ class OTelTraceSourceRetryInfoTest {
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
     @Mock(lenient = true)
-    private OTelTraceSourceConfig oTelTraceSourceConfig;
+    private OTelMetricsSourceConfig oTelMetricsSourceConfig;
 
     @Mock
-    private Buffer<Record<Object>> buffer;
+    private Buffer<Record<? extends Metric>> buffer;
 
-    private PipelineDescription pipelineDescription;
-    private OTelTraceSource SOURCE;
+    private OTelMetricsSource SOURCE;
 
     @BeforeEach
     void beforeEach() throws Exception {
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
         Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
 
-        when(oTelTraceSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
-        when(oTelTraceSourceConfig.isSsl()).thenReturn(false);
-        when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
-        when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
-        when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
-        when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelTraceSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+        when(oTelMetricsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelMetricsSourceConfig.isSsl()).thenReturn(false);
+        when(oTelMetricsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelMetricsSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelMetricsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelMetricsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+        when(oTelMetricsSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
-        configureObjectUnderTest();
-        pipelineDescription = mock(PipelineDescription.class);
-        lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
 
         configureObjectUnderTest();
         SOURCE.start(buffer);
@@ -103,16 +103,16 @@ class OTelTraceSourceRetryInfoTest {
     private void configureObjectUnderTest() {
         PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
 
-        pipelineDescription = mock(PipelineDescription.class);
+        PipelineDescription pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
     @Test
     public void gRPC_failed_request_returns_minimal_delay_in_status() throws Exception {
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-        final StatusRuntimeException statusRuntimeException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportTraceRequest()));
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+        final StatusRuntimeException statusRuntimeException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
 
         RetryInfo retryInfo = extractRetryInfoFromStatusRuntimeException(statusRuntimeException);
         assertThat(Duration.ofNanos(retryInfo.getRetryDelay().getNanos()).toMillis(), equalTo(100L));
@@ -136,27 +136,43 @@ class OTelTraceSourceRetryInfoTest {
     private RetryInfo callService3TimesAndReturnRetryInfo() throws Exception {
         StatusRuntimeException e = null;
         for (int i = 0; i < 3; i++) {
-            final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                    .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-            e = assertThrows(StatusRuntimeException.class, () -> client.export(createExportTraceRequest()));
+            final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                    .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+            e = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
         }
 
         return extractRetryInfoFromStatusRuntimeException(e);
     }
 
-    private ExportTraceServiceRequest createExportTraceRequest() {
-        final Span testSpan = Span.newBuilder()
-                .setTraceId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
-                .setSpanId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
-                .setName(UUID.randomUUID().toString())
-                .setKind(Span.SpanKind.SPAN_KIND_SERVER)
-                .setStartTimeUnixNano(100)
-                .setEndTimeUnixNano(101)
-                .setTraceState("SUCCESS").build();
+    private ExportMetricsServiceRequest createExportMetricsRequest() {
+        final Resource resource = Resource.newBuilder()
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey("service.name")
+                        .setValue(AnyValue.newBuilder().setStringValue("service").build())
+                ).build();
+        NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder().setAsInt(4);
+        Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
 
-        return ExportTraceServiceRequest.newBuilder()
-                .addResourceSpans(ResourceSpans.newBuilder()
-                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+        io.opentelemetry.proto.metrics.v1.Metric.Builder metric = io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
+                .setGauge(gauge)
+                .setUnit("seconds")
+                .setName("name")
+                .setDescription("description");
+        InstrumentationLibraryMetrics isntLib = InstrumentationLibraryMetrics.newBuilder()
+                .addMetrics(metric)
+                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
+                        .setName("ilname")
+                        .setVersion("ilversion")
+                        .build())
                 .build();
+
+
+        final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
+                .setResource(resource)
+                .addInstrumentationLibraryMetrics(isntLib)
+                .build();
+
+        return ExportMetricsServiceRequest.newBuilder()
+                .addResourceMetrics(resourceMetrics).build();
     }
 }

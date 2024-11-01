@@ -55,7 +55,7 @@ import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
-class OtelLogsSourceRetryInfoTest {
+class OtelLogsSource_RetryInfoTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21892/";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
