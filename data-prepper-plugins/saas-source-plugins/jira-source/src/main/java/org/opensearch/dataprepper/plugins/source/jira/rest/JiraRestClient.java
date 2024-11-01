@@ -115,11 +115,11 @@ public class JiraRestClient {
                     authConfig.renewCredentials();
                 } else if (statusCode == RATE_LIMIT) {
                     log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
-                    try {
-                        Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
-                    }
+                }
+                try {
+                    Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
                 }
             }
             retryCount++;
