@@ -167,6 +167,8 @@ public enum MySQLDataType {
                 return 0xFFFFFFL;
             case INT_UNSIGNED:
                 return 0xFFFFFFFFL;
+            case BIGINT_UNSIGNED:
+                return 0xFFFFFFFFFFFFFFFFL;
             default:
                 throw new UnsupportedOperationException("No mask for non-unsigned type: " + this);
         }

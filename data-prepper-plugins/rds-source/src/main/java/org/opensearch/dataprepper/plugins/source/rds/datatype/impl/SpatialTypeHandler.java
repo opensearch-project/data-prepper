@@ -9,10 +9,7 @@ public class SpatialTypeHandler implements DataTypeHandler {
     @Override
     public String handle(final MySQLDataType columnType, final String columnName, final Object value,
                          final TableMetadata metadata) {
-        // Geometry types are typically returned as WKB (Well-Known Binary)
-        // Convert to WKT (Well-Known Text) or handle according to your needs
-        //return Base64.getEncoder().encodeToString((byte[]) value);
-        //return value.toString();
+        // TODO: Implement the transformation
         return new String((byte[]) value);
     }
 }
