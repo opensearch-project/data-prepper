@@ -41,4 +41,12 @@ public interface AggregateAction {
         return new AggregateActionOutput(Collections.emptyList());
     }
 
+    /**
+     * indicates if the action holds the events or not
+     *
+     */
+    default boolean holdsEvents() {
+        return false;
+    }
+
 }

@@ -190,6 +190,11 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     @Override
+    public boolean holdsEvents() {
+        return aggregateAction.holdsEvents();
+    }
+
+    @Override
     public boolean isForLocalProcessingOnly(Event event) {
         // no need to check for when condition here because it is
         // done in doExecute(). isApplicableEventForPeerForwarding()

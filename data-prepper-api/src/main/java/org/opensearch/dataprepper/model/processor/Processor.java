@@ -27,6 +27,14 @@ public interface Processor<InputRecord extends Record<?>, OutputRecord extends R
     Collection<OutputRecord> execute(Collection<InputRecord> records);
 
     /**
+     * indicates if the processor holds the events or not
+     */
+    default boolean holdsEvents() {
+        return false;
+    }
+
+
+    /**
      * @since 1.2
      * Indicates to the processor that shutdown is imminent and any data currently held by the Processor
      * should be flushed downstream.
