@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -112,6 +113,8 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient);
         assertNotNull(jiraService);
+        when(jiraRestClient.getIssue(anyString())).thenReturn("test String");
+        assertNotNull(jiraService.getIssue("test Key"));
     }
 
     @Test
@@ -125,10 +128,12 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
         List<IssueBean> mockIssues = new ArrayList<>();
-        IssueBean issue1 = createIssueBean(false);
+        IssueBean issue1 = createIssueBean(false, false);
         mockIssues.add(issue1);
-        IssueBean issue2 = createIssueBean(true);
+        IssueBean issue2 = createIssueBean(true, false);
         mockIssues.add(issue2);
+        IssueBean issue3 = createIssueBean(false, true);
+        mockIssues.add(issue3);
 
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
@@ -139,7 +144,7 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
-        //one additional item is added for the project
+
         assertEquals(mockIssues.size() + 1, itemInfoQueue.size());
     }
 
@@ -153,7 +158,7 @@ public class JiraServiceTest {
         JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
         List<IssueBean> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
-            IssueBean issue1 = createIssueBean(false);
+            IssueBean issue1 = createIssueBean(false, false);
             mockIssues.add(issue1);
         }
 
@@ -177,8 +182,9 @@ public class JiraServiceTest {
         issueType.add("Task");
         issueStatus.add("Done");
         projectKey.add("Bad Project Key");
-        projectKey.add("");
+        projectKey.add("A");
         projectKey.add("!@#$");
+        projectKey.add("AAAAAAAAAAAAAA");
 
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient);
@@ -204,7 +210,8 @@ public class JiraServiceTest {
         assertThrows(RuntimeException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
     }
 
-    private IssueBean createIssueBean(boolean nullFields) {
+
+    private IssueBean createIssueBean(boolean nullFields, boolean createdNull) {
         IssueBean issue1 = new IssueBean();
         issue1.setId(UUID.randomUUID().toString());
         issue1.setKey("issue_1_key");
@@ -213,11 +220,15 @@ public class JiraServiceTest {
 
         Map<String, Object> fieldMap = new HashMap<>();
         if (!nullFields) {
-            fieldMap.put(CREATED, Instant.now());
-            fieldMap.put(UPDATED, Instant.now());
+            fieldMap.put(CREATED, "2024-07-06T21:12:23.437-0700");
+            fieldMap.put(UPDATED, "2024-07-06T21:12:23.106-0700");
+//            fieldMap.put(UPDATED, Instant.now());
         } else {
             fieldMap.put(CREATED, 0);
             fieldMap.put(UPDATED, 0);
+        }
+        if (createdNull) {
+            fieldMap.put(CREATED, null);
         }
 
         Map<String, Object> issueTypeMap = new HashMap<>();
