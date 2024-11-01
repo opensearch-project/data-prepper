@@ -6,10 +6,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RetryInfoConfig {
 
-    @JsonProperty("min_delay")
+    @JsonProperty(value = "min_delay", defaultValue = "100ms")
     private Duration minDelay;
 
-    @JsonProperty("max_delay")
+    @JsonProperty(value = "max_delay", defaultValue = "2s")
     private Duration maxDelay;
 
     // Jackson needs this constructor
