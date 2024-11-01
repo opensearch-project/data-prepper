@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
+import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS;
 
 public class JiraSourceConfigTest {
     private final String accessToken = "access token test";
@@ -22,13 +23,19 @@ public class JiraSourceConfigTest {
     private final String clientSecret = "client secret test";
     private final String jiraCredential = "test Jira Credential";
     private final String jiraId = "test Jira Id";
+    private final String accountUrl = "https://example.atlassian.net";
+    private List<String> projectList = new ArrayList<>();
+    private List<String> issueTypeList = new ArrayList<>();
+    private List<String> inclusionPatternList = new ArrayList<>();
+    private List<String> exclusionPatternList = new ArrayList<>();
+    private List<String> statusList = new ArrayList<>();
+    private Map<String, String> connectorCredentialMap = new HashMap<>();
     private JiraSourceConfig jiraSourceConfig;
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws JsonProcessingException {
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("account_url", "https://example.atlassian.net");
+        configMap.put("account_url", accountUrl);
 
-        Map<String, String> connectorCredentialMap = new HashMap<>();
         connectorCredentialMap.put("auth_type", authtype);
         if (hasToken) {
             connectorCredentialMap.put("access_token", accessToken);
@@ -43,19 +50,24 @@ public class JiraSourceConfigTest {
 
         configMap.put("connector_credentials", connectorCredentialMap);
 
-        List<String> projectList = Arrays.asList("project1", "project2");
+        projectList.add("project1");
+        projectList.add("project2");
         configMap.put("projects", projectList);
 
-        List<String> issueTypeList = Arrays.asList("issue type 1", "issue type 2");
+        issueTypeList.add("issue type 1");
+        issueTypeList.add("issue type 2");
         configMap.put("issue_types", issueTypeList);
 
-        List<String> inclusionPatternList = Arrays.asList("pattern 1", "pattern 2");
+        inclusionPatternList.add("pattern 1");
+        inclusionPatternList.add("pattern 2");
         configMap.put("inclusion_patterns", inclusionPatternList);
 
-        List<String> exclusionPatternList = Arrays.asList("pattern 3", "pattern 4");
+        exclusionPatternList.add("pattern 3");
+        exclusionPatternList.add("pattern 4");
         configMap.put("exclusion_patterns", exclusionPatternList);
 
-        List<String> statusList = Arrays.asList("status 1", "status 2");
+        statusList.add("status 1");
+        statusList.add("status 2");
         configMap.put("statuses", statusList);
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -67,15 +79,14 @@ public class JiraSourceConfigTest {
     @Test
     void testGetters() throws JsonProcessingException {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
-        assertNotNull(jiraSourceConfig.getInclusionPatterns());
-        assertNotNull(jiraSourceConfig.getIssueType());
-        assertNotNull(jiraSourceConfig.getExclusionPatterns());
-        assertNotNull(jiraSourceConfig.getNumWorkers());
-        assertNotNull(jiraSourceConfig.getIssueType());
-        assertNotNull(jiraSourceConfig.getProject());
-        assertNotNull(jiraSourceConfig.getStatus());
-        assertNotNull(jiraSourceConfig.getConnectorCredentials());
-        assertNotNull(jiraSourceConfig.getAccountUrl());
+        assertEquals(jiraSourceConfig.getInclusionPatterns(), inclusionPatternList);
+        assertEquals(jiraSourceConfig.getIssueType(), issueTypeList);
+        assertEquals(jiraSourceConfig.getExclusionPatterns(), exclusionPatternList);
+        assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
+        assertEquals(jiraSourceConfig.getProject(), projectList);
+        assertEquals(jiraSourceConfig.getStatus(), statusList);
+        assertEquals(jiraSourceConfig.getConnectorCredentials(), connectorCredentialMap);
+        assertEquals(jiraSourceConfig.getAccountUrl(), accountUrl);
         assertNotNull(jiraSourceConfig.getBackOff());
         assertEquals(jiraSourceConfig.getJiraCredential(), jiraCredential);
         assertEquals(jiraSourceConfig.getJiraId(), jiraId);
