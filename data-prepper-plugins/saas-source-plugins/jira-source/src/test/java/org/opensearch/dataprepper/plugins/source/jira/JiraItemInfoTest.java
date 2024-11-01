@@ -5,13 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -51,6 +51,11 @@ public class JiraItemInfoTest {
         assertEquals(jiraItemInfo.getIssueType(), issueType);
         assertEquals(jiraItemInfo.getMetadata(), metadata);
         assertEquals(jiraItemInfo.getEventTime(), eventTime);
+    }
+
+    @Test
+    void testGetKeyAttributes() {
+        assertInstanceOf(Map.class, jiraItemInfo.getKeyAttributes());
     }
 
     @Test
