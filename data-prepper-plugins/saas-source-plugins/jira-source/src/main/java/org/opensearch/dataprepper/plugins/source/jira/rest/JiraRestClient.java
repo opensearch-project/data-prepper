@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -17,27 +18,25 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
 import java.net.URI;
+import java.util.List;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_FIELD;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.EXPAND_VALUE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.FIFTY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.JQL_FIELD;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.MAX_RESULT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RATE_LIMIT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_FETCH_ISSUE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.REST_API_SEARCH;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
 
 @Slf4j
 @Named
 public class JiraRestClient {
 
+    public static final String REST_API_SEARCH = "rest/api/3/search";
+    public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
+    public static final String FIFTY = "50";
+    public static final String START_AT = "startAt";
+    public static final String MAX_RESULT = "maxResults";
+    public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
@@ -105,15 +104,15 @@ public class JiraRestClient {
             try {
                 return restTemplate.getForEntity(uri, responseType);
             } catch (HttpClientErrorException ex) {
-                int statusCode = ex.getRawStatusCode();
+                HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
                 log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage(), ex);
-                if (statusCode == AUTHORIZATION_ERROR_CODE) {
+                if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
-                } else if (statusCode == TOKEN_EXPIRED) {
+                } else if (statusCode == HttpStatus.UNAUTHORIZED) {
                     log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
                     authConfig.renewCredentials();
-                } else if (statusCode == RATE_LIMIT) {
+                } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
                     log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
                 }
                 try {

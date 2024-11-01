@@ -27,27 +27,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAD_REQUEST_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CLOSING_ROUND_BRACKET;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CONTENT_TYPE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_NAME;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUFFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._ISSUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PROJECT;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PREFIX;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PROJECT_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.STATUS_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.SUFFIX;
 
 
 /**
@@ -59,6 +57,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PR
 public class JiraService {
 
 
+    public static final String CONTENT_TYPE = "ContentType";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
     private static final Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
@@ -225,7 +224,8 @@ public class JiraService {
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
             log.error("One or more invalid project keys found in filter configuration: {}", badFilters);
-            throw new BadRequestException(BAD_REQUEST_EXCEPTION
+            throw new BadRequestException("Bad request exception occurred " +
+                    "Invalid project key found in filter configuration for "
                     + filters);
         }
     }

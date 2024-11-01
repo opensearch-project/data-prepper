@@ -32,10 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.AUTHORIZATION_ERROR_CODE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraRestClientTest {
@@ -51,8 +49,8 @@ public class JiraRestClientTest {
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
-                Arguments.of(HttpStatus.valueOf(AUTHORIZATION_ERROR_CODE), UnAuthorizedException.class),
-                Arguments.of(HttpStatus.valueOf(TOKEN_EXPIRED), RuntimeException.class),
+                Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
+                Arguments.of(HttpStatus.UNAUTHORIZED, RuntimeException.class),
                 Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
                 Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)
         );

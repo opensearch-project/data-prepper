@@ -9,8 +9,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.INVALID_URL;
-
 
 /**
  * This is the AddressValidation Class.
@@ -18,6 +16,8 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.INV
 
 @Slf4j
 public class AddressValidation {
+
+    public static final String INVALID_URL = "URL is not valid ";
 
     /**
      * Method for getInetAddress.

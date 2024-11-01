@@ -3,11 +3,11 @@ package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
-import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 import org.slf4j.Logger;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -17,11 +17,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ACCESSIBLE_RESOURCES;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAuth2_URL;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SLASH;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.SLASH;
 
 /**
  * The type Jira service.
@@ -29,9 +26,15 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOK
 
 public class JiraOauthConfig implements JiraAuthConfig {
 
+    public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
+    public static final String ACCESSIBLE_RESOURCES = "https://api.atlassian.com/oauth/token/accessible-resources";
+    public static final String TOKEN_LOCATION = "https://auth.atlassian.com/oauth/token";
+
+    public static final String EXPIRES_IN = "expires_in";
+    public static final String REFRESH_TOKEN = "refresh_token";
+    public static final String ACCESS_TOKEN = "access_token";
     private static final Logger log =
             org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
-
     private final String clientId;
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
@@ -39,7 +42,6 @@ public class JiraOauthConfig implements JiraAuthConfig {
     private final Object tokenRenewLock = new Object();
     RestTemplate restTemplate = new RestTemplate();
     private String url;
-
     @Getter
     private int expiresInSeconds = 0;
     @Getter
@@ -81,7 +83,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     Map<String, Object> response = listResponse.get(0);
                     return (String) response.get("id");
                 } catch (HttpClientErrorException e) {
-                    if (e.getRawStatusCode() == TOKEN_EXPIRED) {
+                    if (e.getRawStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
                         renewCredentials();
                     }
                     log.error("Error occurred while accessing resources: ", e);
@@ -112,11 +114,11 @@ public class JiraOauthConfig implements JiraAuthConfig {
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
             try {
-                ResponseEntity<Map> responseEntity = restTemplate.postForEntity(Constants.TOKEN_LOCATION, entity, Map.class);
+                ResponseEntity<Map> responseEntity = restTemplate.postForEntity(TOKEN_LOCATION, entity, Map.class);
                 Map<String, Object> oauthClientResponse = responseEntity.getBody();
-                this.accessToken = (String) oauthClientResponse.get(Constants.ACCESS_TOKEN);
-                this.refreshToken = (String) oauthClientResponse.get(Constants.REFRESH_TOKEN);
-                this.expiresInSeconds = (int) oauthClientResponse.get(Constants.EXPIRES_IN);
+                this.accessToken = (String) oauthClientResponse.get(ACCESS_TOKEN);
+                this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
+                this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
             } catch (HttpClientErrorException ex) {
                 this.expireTime = null;
