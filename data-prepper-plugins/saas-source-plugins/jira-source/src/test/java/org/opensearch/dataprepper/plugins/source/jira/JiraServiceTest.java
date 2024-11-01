@@ -340,12 +340,13 @@ public class JiraServiceTest {
     @ParameterizedTest
     @ValueSource(strings = {"basic-auth-jira-pipeline.yaml"})
     public void testFetchingJiraIssue(String configFileName) {
-        doReturn(new ResponseEntity<>("", HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        String exampleTicketResponse = "{\"id\":\"123\",\"key\":\"key\",\"self\":\"https://example.com/rest/api/2/issue/123\"}";
+        doReturn(new ResponseEntity<>(exampleTicketResponse, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml(configFileName);
         JiraAuthConfig authConfig = new JiraAuthFactory(jiraSourceConfig).getObject();
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         String ticketDetails = jiraService.getIssue("key");
-        assertNotNull(ticketDetails);
+        assertEquals(exampleTicketResponse, ticketDetails);
     }
 
 }

@@ -38,12 +38,12 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 public class JiraClient implements CrawlerClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
-    private ObjectMapper objectMapper = new ObjectMapper();
-
     private final JiraService service;
     private final JiraIterator jiraIterator;
     private final ExecutorService executorService;
     private final CrawlerSourceConfig configuration;
+    private final int bufferWriteTimeoutInSeconds = 10;
+    private ObjectMapper objectMapper = new ObjectMapper();
     private Instant lastPollTime;
 
     public JiraClient(JiraService service,
@@ -118,7 +118,7 @@ public class JiraClient implements CrawlerClient {
                 .collect(Collectors.toList());
 
         try {
-            buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(10).toMillis());
+            buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
