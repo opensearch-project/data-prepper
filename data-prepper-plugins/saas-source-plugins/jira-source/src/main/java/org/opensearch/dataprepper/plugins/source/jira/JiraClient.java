@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
@@ -97,6 +98,7 @@ public class JiraClient implements CrawlerClient {
             itemInfos.add(itemInfo);
         }
 
+        String eventType = EventType.DOCUMENT.toString();
         List<Record<Event>> recordsToWrite = itemInfos
                 .parallelStream()
                 .map(t -> (Supplier<String>) (() -> service.getIssue(t.getId())))
@@ -111,7 +113,7 @@ public class JiraClient implements CrawlerClient {
                     }
                 })
                 .map(t -> (Event) JacksonEvent.builder()
-                        .withEventType("Ticket")
+                        .withEventType(eventType)
                         .withData(t)
                         .build())
                 .map(event -> new Record<>(event))

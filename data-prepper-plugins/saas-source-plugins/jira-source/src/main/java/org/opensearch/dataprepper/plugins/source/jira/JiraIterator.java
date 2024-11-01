@@ -42,7 +42,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
         if (firstTime) {
             log.info("Crawling has been started");
             startCrawlerThreads();
-            firstTime = Boolean.FALSE;
+            firstTime = false;
         }
         int timeout = HAS_NEXT_TIMEOUT;
         while (isCrawlerRunning()
@@ -62,11 +62,11 @@ public class JiraIterator implements Iterator<ItemInfo> {
     }
 
     private boolean isCrawlerRunning() {
-        boolean isRunning = Boolean.FALSE;
+        boolean isRunning = false;
         if (!futureList.isEmpty()) {
             for (Future<Boolean> future : futureList) {
                 if (!future.isDone()) {
-                    isRunning = Boolean.TRUE;
+                    isRunning = true;
                     break;
                 }
             }

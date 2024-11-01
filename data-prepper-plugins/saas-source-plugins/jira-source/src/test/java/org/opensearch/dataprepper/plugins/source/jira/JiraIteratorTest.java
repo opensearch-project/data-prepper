@@ -7,9 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
+import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,19 +33,13 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 @ExtendWith(MockitoExtension.class)
 public class JiraIteratorTest {
 
-    @Mock
-    private RestTemplate restTemplate;
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @Mock
     private SearchResults mockSearchResults;
-
     @Mock
-    private JiraAuthConfig authConfig;
-
+    private JiraRestClient jiraRestClient;
     private JiraService jiraService;
-
-    private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
     @Mock
     private JiraSourceConfig jiraSourceConfig;
 
@@ -54,7 +47,7 @@ public class JiraIteratorTest {
 
     @BeforeEach
     void setUp() {
-        jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
+        jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
     }
 
     public JiraIterator createObjectUnderTest() {
@@ -102,7 +95,7 @@ public class JiraIteratorTest {
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(100);
 
-        doReturn(mockSearchResults).when(jiraService).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         assertTrue(jiraIterator.hasNext());
