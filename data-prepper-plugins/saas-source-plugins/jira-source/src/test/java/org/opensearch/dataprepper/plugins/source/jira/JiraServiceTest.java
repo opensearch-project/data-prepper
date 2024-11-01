@@ -132,10 +132,12 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
-        IssueBean issue1 = createIssueBean(false);
+        IssueBean issue1 = createIssueBean(false, false);
         mockIssues.add(issue1);
-        IssueBean issue2 = createIssueBean(true);
+        IssueBean issue2 = createIssueBean(true, false);
         mockIssues.add(issue2);
+        IssueBean issue3 = createIssueBean(false, true);
+        mockIssues.add(issue3);
 
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
@@ -146,7 +148,7 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
-        //one additional item is added for the project
+
         assertEquals(mockIssues.size() + 1, itemInfoQueue.size());
     }
 
@@ -160,7 +162,7 @@ public class JiraServiceTest {
         JiraService jiraService = spy(new JiraService(restTemplate, jiraSourceConfig, authConfig));
         List<IssueBean> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
-            IssueBean issue1 = createIssueBean(false);
+            IssueBean issue1 = createIssueBean(false, false);
             mockIssues.add(issue1);
         }
 
@@ -297,7 +299,7 @@ public class JiraServiceTest {
         assertThrows(expectedExceptionType, () -> jiraService.getIssue("key"));
     }
 
-    private IssueBean createIssueBean(boolean nullFields) {
+    private IssueBean createIssueBean(boolean nullFields, boolean createdNull) {
         IssueBean issue1 = new IssueBean();
         issue1.setId(UUID.randomUUID().toString());
         issue1.setKey("issue_1_key");
@@ -311,6 +313,9 @@ public class JiraServiceTest {
         } else {
             fieldMap.put(CREATED, 0);
             fieldMap.put(UPDATED, 0);
+        }
+        if (createdNull) {
+            fieldMap.put(CREATED, null);
         }
 
         Map<String, Object> issueTypeMap = new HashMap<>();

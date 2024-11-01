@@ -177,7 +177,7 @@ public class JiraService {
             }
 
             long created = 0;
-            if (Objects.nonNull(issue.getFields()) && issue.getFields().get(CREATED)
+            if (Objects.nonNull(issue.getFields().get(CREATED)) && issue.getFields().get(CREATED)
                     .toString().length() >= 23) {
                 String charSequence = issue.getFields().get(CREATED).toString().substring(0, 23) + "Z";
                 OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
