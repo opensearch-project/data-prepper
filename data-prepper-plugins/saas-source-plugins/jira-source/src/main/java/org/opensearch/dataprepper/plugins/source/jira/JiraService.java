@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -117,18 +115,15 @@ public class JiraService {
     /**
      * Get jira entities.
      *
-     * @param configuration       the configuration.
-     * @param timestamp           timestamp.
-     * @param itemInfoQueue       Item info queue.
-     * @param futureList          Future list.
-     * @param crawlerTaskExecutor Executor service.
+     * @param configuration the configuration.
+     * @param timestamp     timestamp.
+     * @param itemInfoQueue Item info queue.
      */
     public void getJiraEntities(JiraSourceConfig configuration, Instant timestamp,
-                                Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
-                                ExecutorService crawlerTaskExecutor) {
+                                Queue<ItemInfo> itemInfoQueue) {
         log.info("Started to fetch entities");
         jiraProjectCache.clear();
-        searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue, futureList, crawlerTaskExecutor);
+        searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
         jiraProjectCache.keySet().forEach(key -> {
             Map<String, Object> metadata = new HashMap<>();
@@ -146,8 +141,7 @@ public class JiraService {
      * @param timestamp     Input Parameter
      */
     private void searchForNewTicketsAndAddToQueue(JiraSourceConfig configuration, Instant timestamp,
-                                                  Queue<ItemInfo> itemInfoQueue, List<Future<Boolean>> futureList,
-                                                  ExecutorService crawlerTaskExecutor) {
+                                                  Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
         int total;
@@ -157,8 +151,7 @@ public class JiraService {
             List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
             total = searchIssues.getTotal();
             startAt += searchIssues.getIssues().size();
-            futureList.add(crawlerTaskExecutor.submit(
-                    () -> addItemsToQueue(issueList, itemInfoQueue), false));
+            addItemsToQueue(issueList, itemInfoQueue);
         } while (startAt < total);
         searchResultsFoundCounter.increment(total);
         log.info("Number of tickets found in search api call: {}", total);
