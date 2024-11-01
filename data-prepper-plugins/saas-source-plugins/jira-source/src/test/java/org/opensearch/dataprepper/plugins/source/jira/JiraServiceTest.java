@@ -308,8 +308,9 @@ public class JiraServiceTest {
 
         Map<String, Object> fieldMap = new HashMap<>();
         if (!nullFields) {
-            fieldMap.put(CREATED, Instant.now());
-            fieldMap.put(UPDATED, Instant.now());
+            fieldMap.put(CREATED, "2024-07-06T21:12:23.437-0700");
+            fieldMap.put(UPDATED, "2024-07-06T21:12:23.106-0700");
+//            fieldMap.put(UPDATED, Instant.now());
         } else {
             fieldMap.put(CREATED, 0);
             fieldMap.put(UPDATED, 0);

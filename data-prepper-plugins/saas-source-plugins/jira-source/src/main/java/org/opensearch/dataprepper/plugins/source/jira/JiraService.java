@@ -160,7 +160,7 @@ public class JiraService {
      */
     private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
-            itemInfoQueue.add(JiraItemInfo.builder().withIssueBean(issue).build());
+            itemInfoQueue.add(JiraItemInfo.builder().withEventTime(Instant.now()).withIssueBean(issue).build());
 
             if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(KEY))) {
                 String projectKey = ((Map) issue.getFields().get(PROJECT)).get(KEY).toString();

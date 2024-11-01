@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -136,20 +137,22 @@ public class JiraItemInfo implements ItemInfo {
             }
 
             long created = 0;
-            Pattern GreaterThanOrEqualTo23 = Pattern.compile("^.{23,}$");
-            if (Objects.nonNull(issue.getFields().get(CREATED)) && GreaterThanOrEqualTo23.matcher(issue.getFields().get(CREATED)
+            Pattern JiraDateTimePattern = Pattern.compile(
+                    "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[-+]\\d{4}$");
+            DateTimeFormatter offsetDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+            if (Objects.nonNull(issue.getFields().get(CREATED)) && JiraDateTimePattern.matcher(issue.getFields().get(CREATED)
                     .toString()).matches()) {
-                String charSequence = issue.getFields().get(CREATED).toString().substring(0, 23) + "Z";
-                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
+                String charSequence = issue.getFields().get(CREATED).toString();
+                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence, offsetDateTimeFormatter);
                 new Date(offsetDateTime.toInstant().toEpochMilli());
                 created = offsetDateTime.toEpochSecond() * 1000;
             }
             issueMetadata.put(CREATED, String.valueOf(created));
 
             long updated = 0;
-            if (GreaterThanOrEqualTo23.matcher(issue.getFields().get(UPDATED).toString()).matches()) {
-                String charSequence = issue.getFields().get(UPDATED).toString().substring(0, 23) + "Z";
-                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence);
+            if (JiraDateTimePattern.matcher(issue.getFields().get(UPDATED).toString()).matches()) {
+                String charSequence = issue.getFields().get(UPDATED).toString();
+                OffsetDateTime offsetDateTime = OffsetDateTime.parse(charSequence, offsetDateTimeFormatter);
                 new Date(offsetDateTime.toInstant().toEpochMilli());
                 updated = offsetDateTime.toEpochSecond() * 1000;
             }
