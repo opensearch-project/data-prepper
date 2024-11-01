@@ -52,6 +52,13 @@ public class IssueBeanTest {
     }
 
     @Test
+    void testNullCases() {
+        assertNull(issueBean.getProject());
+        assertNull(issueBean.getProjectName());
+        assertEquals(issueBean.getUpdatedTimeMillis(), 0);
+    }
+
+    @Test
     public void testStringSettersAndGetters() {
         String self = "selfTest";
         String key = "keyTest";
