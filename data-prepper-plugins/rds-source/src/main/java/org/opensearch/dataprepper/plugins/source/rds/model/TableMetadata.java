@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.model;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,10 @@ public class TableMetadata {
     private List<String> primaryKeys;
     private Map<String, String[]> setStrValues;
     private Map<String, String[]> enumStrValues;
+
+    public TableMetadata(String tableName, String databaseName, List<String> columnNames, List<String> primaryKeys) {
+        this(tableName, databaseName, columnNames, primaryKeys, Collections.emptyMap(), Collections.emptyMap());
+    }
 
     public TableMetadata(String tableName, String databaseName, List<String> columnNames, List<String> primaryKeys,
                          Map<String, String[]> setStrValues, Map<String, String[]> enumStrValues) {
