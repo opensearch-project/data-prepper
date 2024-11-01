@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -65,6 +66,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RET
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT_SLEEP_TIME;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.STATUS_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUCCESS_RESPONSE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.SUFFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.TOKEN_EXPIRED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
@@ -93,6 +95,7 @@ public class JiraService {
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
+    private int sleepTimeMultiplier = 1000;
 
 
     public JiraService(RestTemplate restTemplate,
@@ -157,6 +160,7 @@ public class JiraService {
         } while (startAt < total);
         searchResultsFoundCounter.increment(total);
         log.info("Number of tickets found in search api call: {}", total);
+
     }
 
     /**
@@ -274,6 +278,11 @@ public class JiraService {
         String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
         log.error(errorMessage);
         throw new UnAuthorizedException(errorMessage);
+    }
+
+    @VisibleForTesting
+    public void setSleepTimeMultiplier(int multiplier) {
+        sleepTimeMultiplier = multiplier;
     }
 
     /**
