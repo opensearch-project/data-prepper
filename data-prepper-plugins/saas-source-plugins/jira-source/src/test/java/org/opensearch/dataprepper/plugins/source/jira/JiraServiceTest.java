@@ -101,7 +101,8 @@ public class JiraServiceTest {
         return Stream.of(
                 Arguments.of(HttpStatus.valueOf(AUTHORIZATION_ERROR_CODE), UnAuthorizedException.class),
                 Arguments.of(HttpStatus.valueOf(TOKEN_EXPIRED), RuntimeException.class),
-                Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class)
+                Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
+                Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)
         );
     }
 
@@ -264,7 +265,7 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraService jiraService = new JiraService(restTemplate, jiraSourceConfig, authConfig);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
-        doReturn(new ResponseEntity<>("", HttpStatus.UNAUTHORIZED)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
         jiraService.setSleepTimeMultiplier(100000);
 
         Thread testThread = new Thread(() -> {
