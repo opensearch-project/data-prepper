@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -89,10 +90,12 @@ public class JiraOauthConfigTest {
         jiraOauthConfig.restTemplate = restTemplateMock;
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        Future<?> firstCall = executor.submit(jiraOauthConfig::getUrl);
-        Future<?> secondCall = executor.submit(jiraOauthConfig::getUrl);
+        Future<?> firstCall = executor.submit(jiraOauthConfig::initCredentials);
+        Future<?> secondCall = executor.submit(jiraOauthConfig::initCredentials);
         while (!firstCall.isDone() || !secondCall.isDone()) {
             // Do nothing. Wait for the calls to complete
+            System.out.println("First: " + firstCall.isDone());
+            System.out.println("Second: " + secondCall.isDone());
         }
         executor.shutdown();
 
@@ -101,6 +104,27 @@ public class JiraOauthConfigTest {
         jiraOauthConfig.getUrl();
         verify(restTemplateMock, times(1))
                 .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
+    }
+
+    @Test
+    void testGetJiraAccountCloudIdUnauthorizedCase() {
+
+        when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+        Map<String, Object> mockRenewTokenResponse = Map.of("access_token", "first_mock_access_token",
+                "refresh_token", "first_mock_refresh_token",
+                "expires_in", 3600);
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
+                .thenReturn(new ResponseEntity<>(mockRenewTokenResponse, HttpStatus.OK));
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        jiraOauthConfig.restTemplate = restTemplateMock;
+
+
+        assertThrows(UnAuthorizedException.class, () -> jiraOauthConfig.initCredentials());
+        verify(restTemplateMock, times(6))
+                .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
+        verify(restTemplateMock, times(1))
+                .postForEntity(any(String.class), any(HttpEntity.class), any(Class.class));
 
     }
 

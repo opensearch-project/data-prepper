@@ -10,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -131,9 +132,9 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     @Override
     public String getUrl() {
-        if (url == null || url.isEmpty()) {
+        if (!StringUtils.hasLength(url)) {
             synchronized (cloudIdFetchLock) {
-                if (url == null || url.isEmpty()) {
+                if (!StringUtils.hasLength(url)) {
                     initCredentials();
                 }
             }
