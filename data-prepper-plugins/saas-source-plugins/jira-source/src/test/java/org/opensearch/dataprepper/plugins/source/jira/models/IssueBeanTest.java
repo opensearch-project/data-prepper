@@ -66,10 +66,10 @@ public class IssueBeanTest {
     void testGivenDateField() {
         Map<String, Object> fieldsTestObject = new HashMap<>();
         fieldsTestObject.put("created", "2024-07-06T21:12:23.437-0700");
-        fieldsTestObject.put("updated", "2024-07-06T21:12:23.106-0700");
+        fieldsTestObject.put("updated", "2022-07-06T21:12:23.106-0700");
         issueBean.setFields(fieldsTestObject);
         assertEquals(issueBean.getCreatedTimeMillis(), 1720325543000L);
-        assertEquals(issueBean.getUpdatedTimeMillis(), 1720325543000L);
+        assertEquals(issueBean.getUpdatedTimeMillis(), 1657167143000L);
     }
 
     @Test
