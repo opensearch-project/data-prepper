@@ -91,7 +91,7 @@ public class IssueBean {
     @JsonIgnore
     public String getProjectName() {
         if (fields != null && Objects.nonNull(((Map) fields.get(PROJECT)).get(NAME))) {
-            ((Map) fields.get(PROJECT)).get(NAME).toString();
+            return ((Map) fields.get(PROJECT)).get(NAME).toString();
         }
         return null;
     }
