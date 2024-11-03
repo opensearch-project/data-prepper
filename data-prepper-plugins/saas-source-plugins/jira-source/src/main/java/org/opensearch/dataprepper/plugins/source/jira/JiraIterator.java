@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
 
+import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
@@ -8,23 +9,20 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 @Named
 public class JiraIterator implements Iterator<ItemInfo> {
 
-    private static final int HAS_NEXT_TIMEOUT = 60;
     private static final Logger log = LoggerFactory.getLogger(JiraIterator.class);
     private final JiraSourceConfig sourceConfig;
     private final JiraService service;
     private final ExecutorService crawlerTaskExecutor;
-    private final List<Future<Boolean>> futureList = new ArrayList<>();
+    @Setter
+    private long crawlerQWaitTimeMillis = 2000;
     private Queue<ItemInfo> itemInfoQueue;
     private Instant lastPollTime;
     private boolean firstTime = true;
@@ -41,43 +39,10 @@ public class JiraIterator implements Iterator<ItemInfo> {
     public boolean hasNext() {
         if (firstTime) {
             log.info("Crawling has been started");
-            startCrawlerThreads();
+            itemInfoQueue = service.getJiraEntities(sourceConfig, lastPollTime);
             firstTime = false;
         }
-        int timeout = HAS_NEXT_TIMEOUT;
-        while (isCrawlerRunning()
-                && itemInfoQueue.isEmpty()
-                && (timeout != 0)) {
-            try {
-                log.trace("Waiting for crawling queue to be filled for next 2 seconds.");
-                Thread.sleep(2000);
-                timeout--;
-            } catch (InterruptedException e) {
-                log.error("An exception has occurred while checking for next document in crawling queue.");
-                Thread.currentThread().interrupt();
-            }
-        }
-
         return !this.itemInfoQueue.isEmpty();
-    }
-
-    private boolean isCrawlerRunning() {
-        boolean isRunning = false;
-        if (!futureList.isEmpty()) {
-            for (Future<Boolean> future : futureList) {
-                if (!future.isDone()) {
-                    isRunning = true;
-                    break;
-                }
-            }
-        }
-        return isRunning;
-    }
-
-
-    private void startCrawlerThreads() {
-        futureList.add(crawlerTaskExecutor.submit(
-                () -> service.getJiraEntities(sourceConfig, lastPollTime, itemInfoQueue), false));
     }
 
     @Override

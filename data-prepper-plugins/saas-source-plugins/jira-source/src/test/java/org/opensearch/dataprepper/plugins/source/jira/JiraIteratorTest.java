@@ -59,7 +59,9 @@ public class JiraIteratorTest {
         jiraIterator = createObjectUnderTest();
         assertNotNull(jiraIterator);
         jiraIterator.initialize(Instant.ofEpochSecond(0));
-        assertFalse(jiraIterator.hasNext());
+        when(mockSearchResults.getIssues()).thenReturn(new ArrayList<>());
+        when(mockSearchResults.getTotal()).thenReturn(0);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
         assertFalse(jiraIterator.hasNext());
     }
 
@@ -85,21 +87,19 @@ public class JiraIteratorTest {
     @Test
     void testItemInfoQueueNotEmpty() {
         jiraIterator = createObjectUnderTest();
-
         List<IssueBean> mockIssues = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            IssueBean issue1 = createIssueBean(false);
-            mockIssues.add(issue1);
-        }
-
+        IssueBean issue1 = createIssueBean(false);
+        mockIssues.add(issue1);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
-        when(mockSearchResults.getTotal()).thenReturn(100);
-
+        when(mockSearchResults.getTotal()).thenReturn(0);
         doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.setCrawlerQWaitTimeMillis(1);
         assertTrue(jiraIterator.hasNext());
         assertNotNull(jiraIterator.next());
+        assertNotNull(jiraIterator.next());
+        assertFalse(jiraIterator.hasNext());
     }
 
 

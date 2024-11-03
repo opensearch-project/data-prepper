@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -72,11 +73,10 @@ public class JiraService {
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
-     * @param itemInfoQueue Item info queue.
      */
-    public void getJiraEntities(JiraSourceConfig configuration, Instant timestamp,
-                                Queue<ItemInfo> itemInfoQueue) {
+    public Queue<ItemInfo> getJiraEntities(JiraSourceConfig configuration, Instant timestamp) {
         log.info("Started to fetch entities");
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraProjectCache.clear();
         searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
@@ -86,6 +86,7 @@ public class JiraService {
             ItemInfo itemInfo = createItemInfo(_PROJECT + key, metadata);
             itemInfoQueue.add(itemInfo);
         });
+        return itemInfoQueue;
     }
 
     public String getIssue(String issueKey) {
