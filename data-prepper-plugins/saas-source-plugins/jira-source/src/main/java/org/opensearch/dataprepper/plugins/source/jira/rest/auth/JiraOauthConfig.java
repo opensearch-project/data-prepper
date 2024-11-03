@@ -46,7 +46,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     @Getter
     private int expiresInSeconds = 0;
     @Getter
-    private Instant expireTime;
+    private Instant expireTime = Instant.ofEpochMilli(0);
     @Getter
     private String accessToken;
     @Getter
@@ -61,7 +61,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
         this.clientSecret = jiraSourceConfig.getClientSecret();
     }
 
-    private String getJiraAccountCloudId() {
+    public String getJiraAccountCloudId() {
         log.info("Getting Jira Account Cloud ID");
         synchronized (cloudIdFetchLock) {
             if (this.cloudId != null) {
@@ -81,7 +81,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
                             restTemplate.exchange(ACCESSIBLE_RESOURCES, HttpMethod.GET, entity, Object.class);
                     List<Map<String, Object>> listResponse = (List<Map<String, Object>>) exchangeResponse.getBody();
                     Map<String, Object> response = listResponse.get(0);
-                    return (String) response.get("id");
+                    this.cloudId = (String) response.get("id");
+                    return this.cloudId;
                 } catch (HttpClientErrorException e) {
                     if (e.getRawStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
                         renewCredentials();
@@ -95,13 +96,13 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     public void renewCredentials() {
         Instant currentTime = Instant.now();
-        if (expireTime != null && expireTime.isAfter(currentTime)) {
+        if (expireTime.isAfter(currentTime)) {
             //There is still time to renew or someone else must have already renewed it
             return;
         }
 
         synchronized (tokenRenewLock) {
-            if (expireTime != null && expireTime.isAfter(currentTime)) {
+            if (expireTime.isAfter(currentTime)) {
                 //Someone else must have already renewed it
                 return;
             }
@@ -121,7 +122,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
             } catch (HttpClientErrorException ex) {
-                this.expireTime = null;
+                this.expireTime = Instant.ofEpochMilli(0);
                 this.expiresInSeconds = 0;
                 log.error("Failed to renew access token. Status code: {}, Error Message: {}",
                         ex.getRawStatusCode(), ex.getMessage());

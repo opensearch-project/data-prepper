@@ -41,7 +41,7 @@ public class JiraOauthConfigTest {
     JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
 
     @Test
-    void testRenewToken() {
+    void testRenewToken() throws InterruptedException {
         Instant testStartTime = Instant.now();
         Map<String, Object> firstMockResponseMap = Map.of("access_token", "first_mock_access_token",
                 "refresh_token", "first_mock_refresh_token",
@@ -55,6 +55,7 @@ public class JiraOauthConfigTest {
         Future<?> secondCall = executor.submit(jiraOauthConfig::renewCredentials);
         while (!firstCall.isDone() || !secondCall.isDone()) {
             // Do nothing. Wait for the calls to complete
+            Thread.sleep(10);
         }
         executor.shutdown();
         assertNotNull(jiraOauthConfig.getAccessToken());
@@ -90,14 +91,15 @@ public class JiraOauthConfigTest {
         jiraOauthConfig.restTemplate = restTemplateMock;
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        Future<?> firstCall = executor.submit(jiraOauthConfig::initCredentials);
-        Future<?> secondCall = executor.submit(jiraOauthConfig::initCredentials);
+        Future<?> firstCall = executor.submit(jiraOauthConfig::getUrl);
+        Future<?> secondCall = executor.submit(jiraOauthConfig::getUrl);
         while (!firstCall.isDone() || !secondCall.isDone()) {
             // Do nothing. Wait for the calls to complete
             Thread.sleep(10);
         }
         executor.shutdown();
 
+        assertEquals("test_cloud_id", jiraOauthConfig.getJiraAccountCloudId());
         assertEquals("https://api.atlassian.com/ex/jira/test_cloud_id/", jiraOauthConfig.getUrl());
         //calling second time shouldn't trigger rest call
         jiraOauthConfig.getUrl();
