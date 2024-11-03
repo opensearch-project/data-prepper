@@ -81,7 +81,7 @@ public class JiraOauthConfigTest {
 
 
     @Test
-    void testGetJiraAccountCloudId() {
+    void testGetJiraAccountCloudId() throws InterruptedException {
         Map<String, Object> mockGetCallResponse = new HashMap<>();
         mockGetCallResponse.put("id", "test_cloud_id");
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
@@ -94,8 +94,7 @@ public class JiraOauthConfigTest {
         Future<?> secondCall = executor.submit(jiraOauthConfig::initCredentials);
         while (!firstCall.isDone() || !secondCall.isDone()) {
             // Do nothing. Wait for the calls to complete
-            System.out.println("First: " + firstCall.isDone());
-            System.out.println("Second: " + secondCall.isDone());
+            Thread.sleep(10);
         }
         executor.shutdown();
 
