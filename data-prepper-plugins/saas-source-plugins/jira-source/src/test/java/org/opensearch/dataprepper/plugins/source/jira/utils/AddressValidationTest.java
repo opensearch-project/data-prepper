@@ -9,10 +9,17 @@ import java.net.URL;
 import java.net.UnknownHostException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AddressValidationTest {
 
+    @Test
+    void testInstanceCreation() {
+        assertNotNull(new AddressValidation());
+        assertNotNull(new Constants());
+        assertNotNull(new JqlConstants());
+    }
 
     @Test
     void testGetInetAddress() {
