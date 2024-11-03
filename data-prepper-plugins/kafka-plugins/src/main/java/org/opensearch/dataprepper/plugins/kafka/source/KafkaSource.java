@@ -114,6 +114,11 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     @Override
+    public boolean areAcknowledgementsEnabled() {
+        return sourceConfig.getAcknowledgementsEnabled();
+    }
+
+    @Override
     public void start(Buffer<Record<Event>> buffer) {
         try {
             setMdc();
