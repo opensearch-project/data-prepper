@@ -13,16 +13,16 @@ Configuration Fields:
 Field                | Type    | Required | Description                                                                 
 -------------------- | ------- | -------- | ---------------------------------------------------------------------------- 
 function_name        | String  | Yes      | The name of the AWS Lambda function to invoke.                               
-invocation_type      | String  | Yes      | Specifies the invocation type: either request-response or event.             
+invocation_type      | String  | Yes      | Specifies the invocation type: either request-response or event. Default is request-response           
 aws.region           | String  | Yes      | The AWS region where the Lambda function is located.                         
 aws.sts_role_arn     | String  | No       | ARN of the role to assume before invoking the Lambda function.               
 max_retries          | Integer | No       | Maximum number of retries if the invocation fails. Default is 3.             
-batch                | Object  | No       | Optional batch settings for the Lambda invocations.                          
+batch                | Object  | No       | Batch settings for the Lambda invocations. Default key_name = "events". Default Threshold for event_count=100, maximum_size="5mb", event_collect_timeout = 10s                            
 lambda_when          | String  | No       | Conditional expression to determine when to invoke the Lambda processor.     
-response_codec       | Object  | No       | Codec configuration for parsing Lambda responses.
+response_codec       | Object  | No       | Codec configuration for parsing Lambda responses. Default is json
 tags_on_match_failure| List    | No       | A List of Strings that specifies the tags to be set in the event when lambda fails to match or an unknown exception occurs while matching.
-sdk_timeout          | Duration| No       | Defines the time, sdk maintains the connection to the client before timing out
-response_events_match| boolean | No       | Defines the way Data Prepper treats the response from Lambda
+sdk_timeout          | Duration| No       | Defines the time, sdk maintains the connection to the client before timing out. Default is 60s 
+response_events_match| boolean | No       | Defines the way Data Prepper treats the response from Lambda. Default is false
 ```
 
 Example Configuration:
@@ -90,11 +90,11 @@ The following command runs the integration tests:
 Field             | Type    | Required | Description                                                                 
 ----------------- | ------- | -------- | ---------------------------------------------------------------------------- 
 function_name     | String  | Yes      | The name of the AWS Lambda function to invoke.                               
-invocation_type   | String  | No       | Specifies the invocation type:event by default. RequestResponse is NOT supported in sink             
+invocation_type   | String  | No       | Specifies the invocation type. Default is event.             
 aws.region        | String  | Yes      | The AWS region where the Lambda function is located.                         
 aws.sts_role_arn  | String  | No       | ARN of the role to assume before invoking the Lambda function.               
 max_retries       | Integer | No       | Maximum number of retries if the invocation fails. Default is 3.             
-batch             | Object  | No       | Optional batch settings for Lambda invocations.                              
+batch             | Object  | No       | Optional batch settings for Lambda invocations. Default key_name = "events". Default Threshold for event_count=100, maximum_size="5mb", event_collect_timeout = 10s                              
 lambda_when       | String  | No       | Conditional expression to determine when to invoke the Lambda sink.          
 dlq               | Object  | No       | Dead-letter queue (DLQ) configuration for failed invocations.                
 ```
