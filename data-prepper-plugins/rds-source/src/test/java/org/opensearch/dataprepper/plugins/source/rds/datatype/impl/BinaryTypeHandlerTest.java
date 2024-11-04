@@ -5,6 +5,7 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -24,8 +25,9 @@ public class BinaryTypeHandlerTest {
         final TableMetadata metadata = new TableMetadata(
                 UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName),
                 Collections.emptyMap(), Collections.emptyMap());
-        String result = handler.handle(columnType, columnName, testData, metadata);
+        Object result = handler.handle(columnType, columnName, testData, metadata);
 
+        assertThat(result, is(instanceOf(String.class)));
         assertThat(result, is(Base64.getEncoder().encodeToString(testData)));
     }
 }

@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -24,8 +25,9 @@ public class JsonTypeHandlerTest {
         final TableMetadata metadata = new TableMetadata(
                 UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName),
                 Collections.emptyMap(), Collections.emptyMap());
-        String result = handler.handle(columnType, columnName, testData, metadata);
+        Object result = handler.handle(columnType, columnName, testData, metadata);
 
+        assertThat(result, is(instanceOf(String.class)));
         assertThat(result, is(jsonValue));
     }
 }

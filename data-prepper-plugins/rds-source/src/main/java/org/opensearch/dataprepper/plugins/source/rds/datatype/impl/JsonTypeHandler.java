@@ -15,7 +15,7 @@ public class JsonTypeHandler implements DataTypeHandler {
         return convertToJson((byte[]) value);
     }
 
-    private static String convertToJson(final byte[] jsonBytes) {
+    private String convertToJson(final byte[] jsonBytes) {
         try {
             return JsonBinary.parseAsString(jsonBytes);
         } catch (IOException e) {

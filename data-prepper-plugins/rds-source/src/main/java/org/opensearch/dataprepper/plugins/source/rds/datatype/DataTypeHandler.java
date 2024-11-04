@@ -17,5 +17,5 @@ public interface DataTypeHandler {
      * @param metadata Additional metadata about the table structure and properties
      * @return A string representation of the converted value
      */
-    String handle(MySQLDataType columnType, String columnName, Object value, TableMetadata metadata);
+    Object handle(MySQLDataType columnType, String columnName, Object value, TableMetadata metadata);
 }

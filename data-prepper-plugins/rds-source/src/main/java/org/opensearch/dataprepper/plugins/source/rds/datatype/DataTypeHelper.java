@@ -20,7 +20,7 @@ public class DataTypeHelper {
             MySQLDataType.DataCategory.SPATIAL, new SpatialTypeHandler()
         );
 
-    public static String getDataByColumnType(final MySQLDataType columnType, final String columnName, final Object value,
+    public static Object getDataByColumnType(final MySQLDataType columnType, final String columnName, final Object value,
                                              final TableMetadata metadata) {
         if (value == null) {
             return null;

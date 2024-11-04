@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,8 +27,9 @@ public class StringTypeHandlerTest {
                 UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName),
                 Collections.emptyMap(), Collections.emptyMap());
 
-        String result = handler.handle(columnType, columnName, value, metadata);
+        Object result = handler.handle(columnType, columnName, value, metadata);
 
+        assertThat(result, is(instanceOf(String.class)));
         assertThat(result, is(value));
     }
 
@@ -42,8 +44,9 @@ public class StringTypeHandlerTest {
                 UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName),
                 Collections.emptyMap(), Collections.emptyMap());
 
-        String result = handler.handle(columnType, columnName, testBytes, metadata);
+        Object result = handler.handle(columnType, columnName, testBytes, metadata);
 
+        assertThat(result, is(instanceOf(String.class)));
         assertThat(result, is(value));
     }
 

@@ -23,7 +23,7 @@ public class StringTypeHandler implements DataTypeHandler {
         }
     }
 
-    private static List<String> getSetValues(final long numericValue, final String[] setStrValues) {
+    private List<String> getSetValues(final long numericValue, final String[] setStrValues) {
         final List<String> setValues = new ArrayList<>();
         for (int i = 0; i < setStrValues.length; i++) {
             if ((numericValue & (1L << i)) != 0) {
@@ -34,7 +34,7 @@ public class StringTypeHandler implements DataTypeHandler {
         return setValues;
     }
 
-    private static String getEnumValue(final int numericValue, final String[] enumStrValues) {
+    private String getEnumValue(final int numericValue, final String[] enumStrValues) {
         return enumStrValues[numericValue - 1];
     }
 }
