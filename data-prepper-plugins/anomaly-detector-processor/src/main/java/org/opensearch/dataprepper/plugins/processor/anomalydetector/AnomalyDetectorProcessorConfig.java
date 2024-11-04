@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -36,7 +37,7 @@ public class AnomalyDetectorProcessorConfig {
     @JsonPropertyDescription("If provided, anomalies will be detected within each unique instance of these keys. For example, if you provide the ip field, anomalies will be detected separately for each unique IP address.")
     @JsonProperty("identification_keys")
     @ExampleValues({
-            @ExampleValues.Example(value = "ip_address", description = "Anomalies will be detected separately for each unique IP address from the existing ip_address key of the Event.")
+            @Example(value = "ip_address", description = "Anomalies will be detected separately for each unique IP address from the existing ip_address key of the Event.")
     })
     private List<String> identificationKeys = Collections.emptyList();
 

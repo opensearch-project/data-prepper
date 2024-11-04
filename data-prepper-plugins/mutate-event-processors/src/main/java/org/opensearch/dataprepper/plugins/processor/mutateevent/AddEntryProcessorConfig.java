@@ -97,6 +97,7 @@ public class AddEntryProcessorConfig {
         @ExampleValues({
                 @Example(value = "my_string_value", description = "Adds a value of 'my_string_value' to the key or metadata_key"),
                 @Example(value = "false", description = "Adds a value of false to the key or metadata_key"),
+                @Example(value = "10", description = "Adds a value of 10 to the key or metadata_key"),
                 @Example(value = "[ \"element_one\", \"element_two\" ]", description = "Adds an array value with two elements to the key or metadata_key"),
         })
         private Object value;

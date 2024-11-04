@@ -13,6 +13,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
@@ -65,9 +66,9 @@ public class DelayProcessor implements Processor<Record<?>, Record<?>> {
         @JsonProperty("for")
         @JsonPropertyDescription("The duration of time to delay. Defaults to <code>1s</code>.")
         @ExampleValues({
-                @ExampleValues.Example(value = "1s", description = "Delays for 1 second."),
-                @ExampleValues.Example(value = "1000ms", description = "Delays for 1,000 milliseconds."),
-                @ExampleValues.Example(value = "PT10M", description = "Delays for 10 minutes."),
+                @Example(value = "1s", description = "Delays for 1 second."),
+                @Example(value = "1000ms", description = "Delays for 1,000 milliseconds."),
+                @Example(value = "PT10M", description = "Delays for 10 minutes."),
         })
         private Duration delayFor = Duration.ofSeconds(1);
 

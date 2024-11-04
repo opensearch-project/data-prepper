@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
 
@@ -36,9 +37,6 @@ public class CopyValueProcessorConfig {
         @NotNull
         @JsonProperty("to_key")
         @JsonPropertyDescription("The key of the new entry to be added.")
-        @ExampleValues({
-                @ExampleValues.Example(value = "my_new_key", description = "Copies the value configured in from_key to a key of my_new_key")
-        })
         private String toKey;
 
         @JsonProperty("overwrite_if_to_key_exists")
@@ -50,8 +48,8 @@ public class CopyValueProcessorConfig {
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
                 "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
         @ExampleValues({
-                @ExampleValues.Example(value = "/some_key != null", description = "Only runs the copy_values processor on the Event if the existing key some_key is not null."),
-                @ExampleValues.Example(value = "/some_key typeof integer", description = "Only runs the copy_values processor on the Event if the key some_key is an integer.")
+                @Example(value = "/some_key != null", description = "Only runs the copy_values processor on the Event if the existing key some_key is not null."),
+                @Example(value = "/some_key typeof integer", description = "Only runs the copy_values processor on the Event if the key some_key is an integer.")
         })
         private String copyWhen;
 
