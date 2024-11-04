@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
@@ -130,6 +131,7 @@ class KafkaSourceTest {
         when(sourceConfig.getTopics()).thenReturn((List) List.of(topic1, topic2));
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
+        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
     }
 
@@ -163,6 +165,15 @@ class KafkaSourceTest {
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
         assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+        assertFalse(kafkaSource.areAcknowledgementsEnabled());
+    }
+
+    @Test
+    void test_kafkaSource_withAcknowledgements() {
+        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
+        kafkaSource = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaSource));
+        assertTrue(kafkaSource.areAcknowledgementsEnabled());
     }
 
     @Test
