@@ -20,6 +20,8 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
+
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }

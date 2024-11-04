@@ -45,7 +45,7 @@ public class TestItemInfo implements ItemInfo {
     }
 
     @Override
-    public Map<String, String> getKeyAttributes() {
+    public Map<String, Object> getKeyAttributes() {
         return Map.of();
     }
 

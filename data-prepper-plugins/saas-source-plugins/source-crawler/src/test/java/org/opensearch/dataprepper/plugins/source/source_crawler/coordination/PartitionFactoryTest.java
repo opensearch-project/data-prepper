@@ -33,7 +33,7 @@ public class PartitionFactoryTest {
         String sourceId = sourceIdentifier + "|" + LeaderPartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
 
-        String state = "{\"last_poll_time\":1729391235717}";
+        String state = "{\"last_poll_time\":1730273866.332000000}";
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
 
 
@@ -46,7 +46,7 @@ public class PartitionFactoryTest {
 
         Optional<LeaderProgressState> progressState = leaderParition.getProgressState();
         assertThat(progressState.isPresent(), equalTo(true));
-        assertThat(progressState.get().getLastPollTime(), equalTo(Instant.ofEpochMilli(1729391235717L)));
+        assertThat(progressState.get().getLastPollTime().toEpochMilli(), equalTo(1730273866332L));
 
         //Update leader progress state and then verify
         LeaderProgressState updatedState = new LeaderProgressState(Instant.ofEpochMilli(12345L));

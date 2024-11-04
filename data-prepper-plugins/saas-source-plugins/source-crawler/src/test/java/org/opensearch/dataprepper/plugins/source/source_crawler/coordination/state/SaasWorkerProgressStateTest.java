@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,7 +35,7 @@ public class SaasWorkerProgressStateTest {
         assertEquals(10, workderProgressState.getTotalItems());
         assertEquals(20, workderProgressState.getLoadedItems());
         assertNotNull(workderProgressState.getKeyAttributes());
-        assertEquals(workderProgressState.getExportStartTime(), Instant.ofEpochMilli(1729391235717L));
+        assertEquals(1729391235717000L, workderProgressState.getExportStartTime().toEpochMilli());
         assertNotNull(workderProgressState.getItemIds());
         assertEquals(2, workderProgressState.getItemIds().size());
     }

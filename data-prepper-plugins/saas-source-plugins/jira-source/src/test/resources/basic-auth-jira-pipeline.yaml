@@ -1,0 +1,6 @@
+account_url: "https://jira.com/"
+connector_credentials:
+  auth_type: "Basic"
+  jira_id: "jiraId"
+  jira_credential: "jiraApiKey"
+
