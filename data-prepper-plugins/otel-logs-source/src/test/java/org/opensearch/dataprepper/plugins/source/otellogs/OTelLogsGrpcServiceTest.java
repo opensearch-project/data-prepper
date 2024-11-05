@@ -12,9 +12,10 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.logs.v1.InstrumentationLibraryLogs;
 import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
+import io.opentelemetry.proto.logs.v1.ScopeLogs;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,9 +62,8 @@ import static org.mockito.Mockito.when;
 public class OTelLogsGrpcServiceTest {
     private static final ExportLogsServiceRequest LOGS_REQUEST = ExportLogsServiceRequest.newBuilder()
             .addResourceLogs(ResourceLogs.newBuilder()
-                    .addInstrumentationLibraryLogs(InstrumentationLibraryLogs.newBuilder()
-                            .addLogRecords(LogRecord.newBuilder())
-                    .build())).build();
+                    .addScopeLogs(ScopeLogs.newBuilder().addLogRecords(LogRecord.newBuilder()) .build()))
+            .build();
 
     private static PluginSetting pluginSetting;
     private final int bufferWriteTimeoutInMillis = 100000;

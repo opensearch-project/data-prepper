@@ -185,64 +185,6 @@
             }
           ]
         }
-      ],
-      "instrumentationLibrarySpans": [
-        {
-          "instrumentationLibrary": {
-            "name": "io.opentelemetry.auto.spring-webmvc-3.1",
-            "version": ""
-          },
-          "spans": [
-            {
-              "traceId": "VFJBQ0VJRDI=",
-              "spanId": "VFJBQ0VJRDItU1BBTjE=",
-              "traceState": "",
-              "parentSpanId": "yxwHNNFJQP0=",
-              "name": "LoggingController.save",
-              "kind": "SPAN_KIND_INTERNAL",
-              "startTimeUnixNano": "1597902043168792500",
-              "endTimeUnixNano": "1597902043215953100",
-              "attributes": [],
-              "droppedAttributesCount": 0,
-              "events": [],
-              "droppedEventsCount": 0,
-              "links": [],
-              "droppedLinksCount": 0,
-              "status": {
-                "code": "STATUS_CODE_OK",
-                "message": ""
-              }
-            }
-          ]
-        },
-        {
-          "instrumentationLibrary": {
-            "name": "io.opentelemetry.auto.spring-webmvc-3.1",
-            "version": ""
-          },
-          "spans": [
-            {
-              "traceId": "VFJBQ0VJRDI=",
-              "spanId": "VFJBQ0VJRDItU1BBTjI=",
-              "traceState": "",
-              "parentSpanId": "yxwHNNFJQP0=",
-              "name": "LoggingController.save",
-              "kind": "SPAN_KIND_INTERNAL",
-              "startTimeUnixNano": "1597902043168792500",
-              "endTimeUnixNano": "1597902043215953100",
-              "attributes": [],
-              "droppedAttributesCount": 0,
-              "events": [],
-              "droppedEventsCount": 0,
-              "links": [],
-              "droppedLinksCount": 0,
-              "status": {
-                "code": "STATUS_CODE_OK",
-                "message": ""
-              }
-            }
-          ]
-        }
       ]
     }
   ]

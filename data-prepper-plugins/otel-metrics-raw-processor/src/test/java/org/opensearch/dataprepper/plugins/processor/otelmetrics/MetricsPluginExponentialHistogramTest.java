@@ -12,8 +12,8 @@ import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogram;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -139,7 +139,7 @@ class MetricsPluginExponentialHistogramTest {
                 .setName("name")
                 .setDescription("description")
                 .build();
-        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
                 .addMetrics(metric).build();
 
         Resource resource = Resource.newBuilder()
@@ -149,7 +149,7 @@ class MetricsPluginExponentialHistogramTest {
                 ).build();
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
         return ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
     }

@@ -12,8 +12,8 @@ import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.Histogram;
 import io.opentelemetry.proto.metrics.v1.HistogramDataPoint;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -119,7 +119,7 @@ class MetricsPluginHistogramTest {
                 .setName("name")
                 .setDescription("description")
                 .build();
-        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
                 .addMetrics(metric).build();
 
         Resource resource = Resource.newBuilder()
@@ -129,7 +129,7 @@ class MetricsPluginHistogramTest {
                 ).build();
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
         return ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
     }
