@@ -13,6 +13,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
@@ -46,9 +48,12 @@ public class RenameKeyProcessorConfig {
         private boolean overwriteIfToKeyExists = false;
 
         @JsonProperty("rename_when")
-        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
-                "run on the event. By default, all events will be processed unless otherwise stated.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> " +
+                "that will be evaluated to determine whether the processor will be run on the event. " +
+                "By default, all events will be processed if no condition is provided.")
+        @ExampleValues(
+                @Example(value = "startsWith(/path, \"https://\")", description = "Rename the string only if it starts with an HTTPS scheme.")
+        )
         private String renameWhen;
 
         private Pattern fromKeyCompiledPattern;
