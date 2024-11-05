@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 import org.opensearch.dataprepper.plugins.processor.parse.CommonParseConfig;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +34,9 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     @JsonProperty("pointer")
     @JsonPropertyDescription("A JSON pointer to the field to be parsed. There is no pointer by default, meaning the entire source is parsed. The pointer can access JSON array indexes as well. " +
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
+    @ExampleValues({
+        @Example(value = "/example/pointer", description = "The field at '/example/pointer' in the input data will be parsed if the pointer is valid.")
+    })
     private String pointer;
 
     @JsonProperty(value = "overwrite_if_destination_exists", defaultValue = "true")
@@ -45,6 +50,9 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     @JsonProperty("parse_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>parse_xml</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
+    })
     private String parseWhen;
 
     @JsonProperty("tags_on_failure")
