@@ -33,14 +33,28 @@ public class InstanceApiStrategy implements RdsApiStrategy {
 
     @Override
     public DbMetadata describeDb(String dbIdentifier) {
-        final DescribeDbInstancesRequest request = DescribeDbInstancesRequest.builder()
-                .dbInstanceIdentifier(dbIdentifier)
-                .build();
-
         try {
+            final DescribeDbInstancesRequest request = DescribeDbInstancesRequest.builder()
+                    .dbInstanceIdentifier(dbIdentifier)
+                    .build();
+
             final DescribeDbInstancesResponse response = rdsClient.describeDBInstances(request);
             final DBInstance dbInstance = response.dbInstances().get(0);
-            return new DbMetadata(dbIdentifier, dbInstance.endpoint().address(), dbInstance.endpoint().port());
+            DbMetadata.DbMetadataBuilder dbMetadataBuilder = DbMetadata.builder()
+                    .dbIdentifier(dbIdentifier)
+                    .hostName(dbInstance.endpoint().address())
+                    .port(dbInstance.endpoint().port());
+
+            if (dbInstance.hasReadReplicaDBInstanceIdentifiers()) {
+                final DescribeDbInstancesRequest readerInstanceRequest = DescribeDbInstancesRequest.builder()
+                        .dbInstanceIdentifier(dbInstance.readReplicaDBInstanceIdentifiers().get(0))
+                        .build();
+                final DescribeDbInstancesResponse readerInstanceResponse = rdsClient.describeDBInstances(readerInstanceRequest);
+                final DBInstance readerInstance = readerInstanceResponse.dbInstances().get(0);
+                dbMetadataBuilder.readerEndpoint(readerInstance.endpoint().address())
+                        .readerPort(readerInstance.endpoint().port());
+            }
+            return dbMetadataBuilder.build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to describe DB " + dbIdentifier, e);
         }

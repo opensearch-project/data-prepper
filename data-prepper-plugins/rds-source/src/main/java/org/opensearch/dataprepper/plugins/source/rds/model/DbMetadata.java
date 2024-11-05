@@ -5,8 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
 import java.util.Map;
 
+@Getter
+@AllArgsConstructor
+@Builder
 public class DbMetadata {
 
     private static final String DB_IDENTIFIER_KEY = "dbIdentifier";
@@ -15,23 +22,13 @@ public class DbMetadata {
     private final String dbIdentifier;
     private final String hostName;
     private final int port;
+    private String readerEndpoint;
+    private int readerPort;
 
     public DbMetadata(final String dbIdentifier, final String hostName, final int port) {
         this.dbIdentifier = dbIdentifier;
         this.hostName = hostName;
         this.port = port;
-    }
-    
-    public String getDbIdentifier() {
-        return dbIdentifier;
-    }
-    
-    public String getHostName() {
-        return hostName;
-    }
-    
-    public int getPort() {
-        return port;
     }
     
     public Map<String, Object> toMap() {
