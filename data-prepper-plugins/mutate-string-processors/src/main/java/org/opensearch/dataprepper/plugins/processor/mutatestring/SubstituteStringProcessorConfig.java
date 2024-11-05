@@ -31,7 +31,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
                 "for more information.")
         @ExampleValues({
                 @Example(value = "/+", description = "Matches at least one forward slash and can be used to normalize a path."),
-                @Example(value = "'[?&#=]'", description = "Matches some special characters common in URIs.")
+                @Example(value = "[?&#=]", description = "Matches some special characters common in URIs.")
         })
         private String from;
 
