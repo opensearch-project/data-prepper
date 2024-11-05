@@ -210,6 +210,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
+        // TODO tlongo is this test still relevant?
         public void testParseExportTraceServiceRequest_ScopeSpansTakesPrecedenceOverInstrumentationLibrarySpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
@@ -694,7 +695,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryComplete() {
+        public void testEncodeInstrumentationScopeComplete() {
             final String testName = "test name";
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
@@ -708,7 +709,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingName() {
+        public void testEncodeInstrumentationScopeMissingName() {
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -719,7 +720,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingVersion() {
+        public void testEncodeInstrumentationScopeMissingVersion() {
             final String testName = "test name";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -730,7 +731,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingAll() {
+        public void testEncodeInstrumentationScopeMissingAll() {
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(testKeyIrrelevant, 2);
             final InstrumentationScope instrumentationScope = encoderUnderTest.constructInstrumentationScope(testAllAttributes);

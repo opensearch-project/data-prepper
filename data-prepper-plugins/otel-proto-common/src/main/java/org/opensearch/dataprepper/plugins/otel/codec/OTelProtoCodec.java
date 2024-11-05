@@ -85,8 +85,6 @@ public class OTelProtoCodec {
     protected static final String SERVICE_NAME = "service.name";
     protected static final String SPAN_ATTRIBUTES = "span.attributes";
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
-    static final String INSTRUMENTATION_LIBRARY_NAME = "instrumentationLibrary.name";
-    static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
     static final String STATUS_CODE = "status.code";
     static final String STATUS_MESSAGE = "status.message";
 
