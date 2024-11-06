@@ -41,7 +41,7 @@ public class ClusterApiStrategy implements RdsApiStrategy {
             final DBCluster dbCluster = response.dbClusters().get(0);
             return DbMetadata.builder()
                     .dbIdentifier(dbIdentifier)
-                    .hostName(dbCluster.endpoint())
+                    .endpoint(dbCluster.endpoint())
                     .port(dbCluster.port())
                     .readerEndpoint(dbCluster.readerEndpoint())
                     .readerPort(dbCluster.port())

@@ -120,7 +120,7 @@ public class ResyncScheduler implements Runnable {
                     LOG.warn("Negative acknowledgment received for resync partition {}, retrying", resyncPartition.getPartitionKey());
                     sourceCoordinator.giveUpPartition(resyncPartition);
                 }
-            }, sourceConfig.getDataFileAcknowledgmentTimeout());
+            }, sourceConfig.getStreamAcknowledgmentTimeout());
         }
 
         final ResyncWorker resyncWorker = ResyncWorker.create(

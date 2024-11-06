@@ -165,11 +165,8 @@ public class RdsService {
 
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManager(
-//                dbMetadata.getHostName(),
-//                dbMetadata.getPort(),
-                // For test
-                "127.0.0.1",
-                3306,
+                dbMetadata.getEndpoint(),
+                dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled());
@@ -177,13 +174,11 @@ public class RdsService {
     }
 
     private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
-        final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getHostName();
+        final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getEndpoint();
+        final int readerPort = dbMetadata.getReaderPort() == 0 ? dbMetadata.getPort() : dbMetadata.getReaderPort();
         final ConnectionManager readerConnectionManager = new ConnectionManager(
-//                readerEndpoint,
-//                dbMetadata.getPort(),
-                // For test
-                "127.0.0.1",
-                3308,
+                readerEndpoint,
+                readerPort,
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled());

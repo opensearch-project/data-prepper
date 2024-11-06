@@ -42,7 +42,7 @@ public class InstanceApiStrategy implements RdsApiStrategy {
             final DBInstance dbInstance = response.dbInstances().get(0);
             DbMetadata.DbMetadataBuilder dbMetadataBuilder = DbMetadata.builder()
                     .dbIdentifier(dbIdentifier)
-                    .hostName(dbInstance.endpoint().address())
+                    .endpoint(dbInstance.endpoint().address())
                     .port(dbInstance.endpoint().port());
 
             if (dbInstance.hasReadReplicaDBInstanceIdentifiers()) {

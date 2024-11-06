@@ -30,11 +30,8 @@ public class BinlogClientFactory {
 
     public BinaryLogClient create() {
         BinaryLogClient binaryLogClient = new BinaryLogClient(
-//                dbMetadata.getHostName(),
-//                dbMetadata.getPort(),
-                // For test
-                "127.0.0.1",
-                3306,
+                dbMetadata.getEndpoint(),
+                dbMetadata.getPort(),
                 username,
                 password);
         binaryLogClient.setSSLMode(sslMode);

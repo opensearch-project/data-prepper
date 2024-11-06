@@ -9,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -16,34 +18,36 @@ import java.util.Map;
 @Builder
 public class DbMetadata {
 
-    private static final String DB_IDENTIFIER_KEY = "dbIdentifier";
-    private static final String HOST_NAME_KEY = "hostName";
-    private static final String PORT_KEY = "port";
-    private final String dbIdentifier;
-    private final String hostName;
-    private final int port;
-    private String readerEndpoint;
-    private int readerPort;
+    static final String DB_IDENTIFIER_KEY = "dbIdentifier";
+    static final String ENDPOINT_KEY = "endpoint";
+    static final String PORT_KEY = "port";
+    static final String READER_ENDPOINT_KEY = "readerEndpoint";
+    static final String READER_PORT_KEY = "readerPort";
 
-    public DbMetadata(final String dbIdentifier, final String hostName, final int port) {
-        this.dbIdentifier = dbIdentifier;
-        this.hostName = hostName;
-        this.port = port;
-    }
+    private final String dbIdentifier;
+    private final String endpoint;
+    private final int port;
+    private final String readerEndpoint;
+    private final int readerPort;
     
     public Map<String, Object> toMap() {
-        return Map.of(
-                DB_IDENTIFIER_KEY, dbIdentifier,
-                HOST_NAME_KEY, hostName,
-                PORT_KEY, port
-        );
+        Map<String, Object> map = new HashMap<>();
+        map.put(DB_IDENTIFIER_KEY, dbIdentifier);
+        map.put(ENDPOINT_KEY, endpoint);
+        map.put(PORT_KEY, port);
+        map.put(READER_ENDPOINT_KEY, readerEndpoint);
+        map.put(READER_PORT_KEY, readerPort);
+
+        return Collections.unmodifiableMap(map);
     }
 
     public static DbMetadata fromMap(Map<String, Object> map) {
         return new DbMetadata(
                 (String) map.get(DB_IDENTIFIER_KEY),
-                (String) map.get(HOST_NAME_KEY),
-                ((Integer) map.get(PORT_KEY))
+                (String) map.get(ENDPOINT_KEY),
+                (Integer) map.get(PORT_KEY),
+                (String) map.get(READER_ENDPOINT_KEY),
+                (Integer) map.get(READER_PORT_KEY)
         );
     }
 }
