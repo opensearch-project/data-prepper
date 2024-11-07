@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
+
 public class CascadingActionDetector {
 
     private static final Logger LOG = LoggerFactory.getLogger(CascadingActionDetector.class);
@@ -171,7 +173,7 @@ public class CascadingActionDetector {
     }
 
     private String getFullTableName(String database, String table) {
-        return database + "." + table;
+        return database + DOT_DELIMITER + table;
     }
 
     private void createResyncPartition(String database, String childTable, String foreignKeyName, Object updatedValue, List<String> primaryKeys, long eventTimestampMillis) {

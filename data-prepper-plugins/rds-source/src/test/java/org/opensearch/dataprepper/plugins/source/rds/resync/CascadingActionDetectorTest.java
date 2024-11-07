@@ -36,6 +36,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
 class CascadingActionDetectorTest {
@@ -179,6 +180,6 @@ class CascadingActionDetectorTest {
                 .referencedColumnMap(Map.of(referencedColumnName, List.of(foreignKeyRelationWithCascading)))
                 .build();
 
-        parentTableMap = Map.of(databaseName + "." + parentTableName1, parentTable1);
+        parentTableMap = Map.of(databaseName + DOT_DELIMITER + parentTableName1, parentTable1);
     }
 }

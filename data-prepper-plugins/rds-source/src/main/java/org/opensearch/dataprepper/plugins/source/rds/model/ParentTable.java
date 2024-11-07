@@ -44,7 +44,7 @@ public class ParentTable {
             return columnsWithCascadingUpdate;
         }
 
-        final Map<String, List<ForeignKeyRelation>> columnsWithCascadingUpdate = new HashMap<>();
+        columnsWithCascadingUpdate = new HashMap<>();
         for (String column : referencedColumnMap.keySet()) {
             for (ForeignKeyRelation foreignKeyRelation : referencedColumnMap.get(column)) {
                 if (ForeignKeyAction.isCascadingAction(foreignKeyRelation.getUpdateAction())) {
@@ -67,7 +67,7 @@ public class ParentTable {
             return columnsWithCascadingDelete;
         }
 
-        final Map<String, List<ForeignKeyRelation>> columnsWithCascadingDelete = new HashMap<>();
+        columnsWithCascadingDelete = new HashMap<>();
         for (String column : referencedColumnMap.keySet()) {
             for (ForeignKeyRelation foreignKeyRelation : referencedColumnMap.get(column)) {
                 if (ForeignKeyAction.isCascadingAction(foreignKeyRelation.getDeleteAction())) {

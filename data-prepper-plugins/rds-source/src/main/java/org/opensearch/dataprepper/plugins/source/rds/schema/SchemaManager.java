@@ -23,6 +23,8 @@ import java.util.Optional;
 
 public class SchemaManager {
     private static final Logger LOG = LoggerFactory.getLogger(SchemaManager.class);
+
+    static final String[] TABLE_TYPES = new String[]{"TABLE"};
     static final String COLUMN_NAME = "COLUMN_NAME";
     static final String BINLOG_STATUS_QUERY = "SHOW MASTER STATUS";
     static final String BINLOG_FILE = "File";
@@ -36,6 +38,7 @@ public class SchemaManager {
     static final String PKCOLUMN_NAME = "PKCOLUMN_NAME";
     static final String UPDATE_RULE = "UPDATE_RULE";
     static final String DELETE_RULE = "DELETE_RULE";
+    static final String COLUMN_DEF = "COLUMN_DEF";
     private final ConnectionManager connectionManager;
 
     public SchemaManager(ConnectionManager connectionManager) {
@@ -121,11 +124,10 @@ public class SchemaManager {
             try (final Connection connection = connectionManager.getConnection()) {
                 final List<ForeignKeyRelation> foreignKeyRelations = new ArrayList<>();
                 DatabaseMetaData metaData = connection.getMetaData();
-                String[] tableTypes = new String[]{"TABLE"};
                 for (final String tableName : tableNames) {
                     String database = tableName.split("\\.")[0];
                     String table = tableName.split("\\.")[1];
-                    ResultSet tableResult = metaData.getTables(database, null, table, tableTypes);
+                    ResultSet tableResult = metaData.getTables(database, null, table, TABLE_TYPES);
                     while (tableResult.next()) {
                         ResultSet foreignKeys = metaData.getImportedKeys(database, null, table);
 
@@ -143,7 +145,7 @@ public class SchemaManager {
                                 ResultSet columnResult = metaData.getColumns(database, null, table, fkColumnName);
 
                                 if (columnResult.next()) {
-                                    defaultValue = columnResult.getObject("COLUMN_DEF");
+                                    defaultValue = columnResult.getObject(COLUMN_DEF);
                                 }
                             }
 

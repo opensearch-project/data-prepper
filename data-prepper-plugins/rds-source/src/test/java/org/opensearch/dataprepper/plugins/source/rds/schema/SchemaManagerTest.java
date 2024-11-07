@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_FILE;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_POSITION;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_STATUS_QUERY;
@@ -181,7 +182,7 @@ class SchemaManagerTest {
     void test_getForeignKeyRelations_returns_foreign_key_relations() throws SQLException {
         final String databaseName = "test-db";
         final String tableName = "test-table";
-        final List<String> tableNames = List.of(databaseName + "." + tableName);
+        final List<String> tableNames = List.of(databaseName + DOT_DELIMITER + tableName);
         final ResultSet tableResult = mock(ResultSet.class);
         final ResultSet foreignKeys = mock(ResultSet.class);
         final String fkTableName = UUID.randomUUID().toString();

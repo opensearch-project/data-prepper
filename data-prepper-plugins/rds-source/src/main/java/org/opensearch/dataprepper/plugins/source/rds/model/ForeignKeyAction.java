@@ -16,6 +16,7 @@ public enum ForeignKeyAction {
     SET_NULL,
     UNKNOWN;
 
+    private static final Set<ForeignKeyAction> CASCADING_ACTIONS = Set.of(CASCADE, SET_DEFAULT, SET_NULL);
     /**
      * Returns the corresponding ForeignKeyAction for the given metadata action value.
      *
@@ -50,6 +51,6 @@ public enum ForeignKeyAction {
         if (foreignKeyAction == null) {
             return false;
         }
-        return Set.of(CASCADE, SET_DEFAULT, SET_NULL).contains(foreignKeyAction);
+        return CASCADING_ACTIONS.contains(foreignKeyAction);
     }
 }

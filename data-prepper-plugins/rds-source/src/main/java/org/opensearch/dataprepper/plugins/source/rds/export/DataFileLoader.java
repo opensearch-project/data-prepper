@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 public class DataFileLoader implements Runnable {
 
@@ -116,7 +117,7 @@ public class DataFileLoader implements Runnable {
 
                     DataFileProgressState progressState = dataFilePartition.getProgressState().get();
 
-                    final String fullTableName = progressState.getSourceDatabase() + "." + progressState.getSourceTable();
+                    final String fullTableName = progressState.getSourceDatabase() + DOT_DELIMITER + progressState.getSourceTable();
                     final List<String> primaryKeys = progressState.getPrimaryKeyMap().getOrDefault(fullTableName, List.of());
 
                     final long snapshotTime = progressState.getSnapshotTime();
