@@ -75,7 +75,7 @@ public class JiraService {
      * @param timestamp     timestamp.
      */
     public Queue<ItemInfo> getJiraEntities(JiraSourceConfig configuration, Instant timestamp) {
-        log.info("Started to fetch entities");
+        log.trace("Started to fetch entities");
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         jiraProjectCache.clear();
         searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
@@ -165,7 +165,7 @@ public class JiraService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
+        log.trace("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
 
@@ -175,7 +175,7 @@ public class JiraService {
      * @param configuration Input Parameter
      */
     private void validateProjectFilters(JiraSourceConfig configuration) {
-        log.info("Validating project filters");
+        log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
         JiraConfigHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {

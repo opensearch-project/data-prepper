@@ -38,7 +38,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
     @Override
     public boolean hasNext() {
         if (firstTime) {
-            log.info("Crawling has been started");
+            log.trace("Crawling has been started");
             itemInfoQueue = service.getJiraEntities(sourceConfig, lastPollTime);
             firstTime = false;
         }
