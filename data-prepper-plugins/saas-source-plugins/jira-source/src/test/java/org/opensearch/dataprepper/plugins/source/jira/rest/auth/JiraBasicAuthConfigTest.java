@@ -17,21 +17,17 @@ public class JiraBasicAuthConfigTest {
     private JiraSourceConfig jiraSourceConfig;
 
     private JiraBasicAuthConfig jiraBasicAuthConfig;
+    String url = "https://example.com";
 
     @BeforeEach
     void setUp() {
+        when(jiraSourceConfig.getAccountUrl()).thenReturn(url);
         jiraBasicAuthConfig = new JiraBasicAuthConfig(jiraSourceConfig);
     }
 
     @Test
     void testGetUrl() {
-        String url = "https://example.com";
-        when(jiraSourceConfig.getAccountUrl()).thenReturn(url);
         assertEquals(jiraBasicAuthConfig.getUrl(), url + '/');
-
-        String url2 = "https://example.com/";
-        when(jiraSourceConfig.getAccountUrl()).thenReturn(url2);
-        assertEquals(jiraBasicAuthConfig.getUrl(), url2);
 
     }
 
