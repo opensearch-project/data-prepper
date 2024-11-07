@@ -13,7 +13,15 @@ public class JiraBasicAuthConfig implements JiraAuthConfig {
 
     @Override
     public String getUrl() {
-        return jiraSourceConfig.getAccountUrl();
+        String accountUrl = jiraSourceConfig.getAccountUrl();
+
+        String url;
+        if (accountUrl.endsWith("/")) {
+            url = accountUrl;
+        } else {
+            url = accountUrl + "/";
+        }
+        return url;
     }
 
     @Override

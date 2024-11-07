@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraBasicAuthConfigTest {
@@ -24,7 +25,14 @@ public class JiraBasicAuthConfigTest {
 
     @Test
     void testGetUrl() {
-        assertEquals(jiraBasicAuthConfig.getUrl(), jiraSourceConfig.getAccountUrl());
+        String url = "https://example.com";
+        when(jiraSourceConfig.getAccountUrl()).thenReturn(url);
+        assertEquals(jiraBasicAuthConfig.getUrl(), url + '/');
+
+        String url2 = "https://example.com/";
+        when(jiraSourceConfig.getAccountUrl()).thenReturn(url2);
+        assertEquals(jiraBasicAuthConfig.getUrl(), url2);
+
     }
 
     @Test
