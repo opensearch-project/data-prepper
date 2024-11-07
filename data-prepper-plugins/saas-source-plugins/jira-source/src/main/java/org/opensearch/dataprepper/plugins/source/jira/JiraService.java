@@ -8,31 +8,23 @@ import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
-import org.opensearch.dataprepper.plugins.source.jira.utils.JiraContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.LIVE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants._PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
@@ -54,7 +46,6 @@ public class JiraService {
 
     public static final String CONTENT_TYPE = "ContentType";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
-    private static final Map<String, String> jiraProjectCache = new ConcurrentHashMap<>();
 
     private final JiraSourceConfig jiraSourceConfig;
     private final JiraRestClient jiraRestClient;
@@ -77,15 +68,8 @@ public class JiraService {
     public Queue<ItemInfo> getJiraEntities(JiraSourceConfig configuration, Instant timestamp) {
         log.trace("Started to fetch entities");
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
-        jiraProjectCache.clear();
         searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
-        jiraProjectCache.keySet().forEach(key -> {
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put(CONTENT_TYPE, JiraContentType.PROJECT.getType());
-            ItemInfo itemInfo = createItemInfo(_PROJECT + key, metadata);
-            itemInfoQueue.add(itemInfo);
-        });
         return itemInfoQueue;
     }
 
@@ -125,13 +109,6 @@ public class JiraService {
     private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
             itemInfoQueue.add(JiraItemInfo.builder().withEventTime(Instant.now()).withIssueBean(issue).build());
-
-            if (Objects.nonNull(((Map) issue.getFields().get(PROJECT)).get(KEY))) {
-                String projectKey = ((Map) issue.getFields().get(PROJECT)).get(KEY).toString();
-                if (!jiraProjectCache.containsKey(projectKey)) {
-                    jiraProjectCache.put(projectKey, LIVE);
-                }
-            }
         });
     }
 

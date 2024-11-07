@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -98,8 +99,8 @@ public class JiraIteratorTest {
         jiraIterator.setCrawlerQWaitTimeMillis(1);
         assertTrue(jiraIterator.hasNext());
         assertNotNull(jiraIterator.next());
-        assertNotNull(jiraIterator.next());
         assertFalse(jiraIterator.hasNext());
+        assertThrows(NoSuchElementException.class, () -> jiraIterator.next());
     }
 
 
