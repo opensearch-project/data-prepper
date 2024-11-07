@@ -71,7 +71,12 @@ public class JiraRestClient {
 
         String url = configuration.getAccountUrl() + REST_API_SEARCH;
         if (configuration.getAuthType().equals(OAUTH2)) {
-            url = authConfig.getUrl() + REST_API_SEARCH;
+            String accountUrl = authConfig.getUrl();
+            if (accountUrl.endsWith("/")) {
+                url = accountUrl + REST_API_SEARCH;
+            } else {
+                url = accountUrl + "/" + REST_API_SEARCH;
+            }
         }
 
         URI uri = UriComponentsBuilder.fromHttpUrl(url)
@@ -92,7 +97,13 @@ public class JiraRestClient {
     @Timed(TICKET_FETCH_LATENCY_TIMER)
     public String getIssue(String issueKey) {
         issuesRequestedCounter.increment();
-        String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+        String accountUrl = authConfig.getUrl();
+        String url;
+        if (accountUrl.endsWith("/")) {
+            url = accountUrl + REST_API_FETCH_ISSUE + "/" + issueKey;
+        } else {
+            url = accountUrl + "/" + REST_API_FETCH_ISSUE + "/" + issueKey;
+        }
         URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
         return invokeRestApi(uri, String.class).getBody();
     }

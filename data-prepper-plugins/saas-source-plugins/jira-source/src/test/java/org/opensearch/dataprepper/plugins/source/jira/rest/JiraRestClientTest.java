@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -28,12 +29,22 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient.FIFTY;
+import static org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient.MAX_RESULT;
+import static org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient.REST_API_FETCH_ISSUE;
+import static org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient.REST_API_SEARCH;
+import static org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient.START_AT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraRestClientTest {
@@ -97,6 +108,39 @@ public class JiraRestClientTest {
         testThread.start();
         Thread.sleep(100);
         testThread.interrupt();
+    }
+
+    @Test
+    void testNoSlashGetUrlGetIssue(){
+        JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
+        String issueKey = "key";
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        String url ="https://example.com/rest/api/2/issue/key" + "/" + REST_API_FETCH_ISSUE + "/" + issueKey;
+        URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
+        doReturn(new ResponseEntity<>("URI is correct", HttpStatus.OK)).when(restTemplate).getForEntity(eq(uri), any(Class.class));
+        assertTrue(jiraRestClient.getIssue(issueKey).contains("URI is correct"));
+    }
+
+    @Test
+    void testNoSlashGetUrlGetAllIssues() throws JsonProcessingException {
+        List<String> issueType = new ArrayList<>();
+        List<String> issueStatus = new ArrayList<>();
+        List<String> projectKey = new ArrayList<>();
+        issueType.add("Task");
+        JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(OAUTH2, issueType, issueStatus, projectKey);
+        JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
+        SearchResults mockSearchResults = mock(SearchResults.class);
+        when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
+        String url ="https://example.com/rest/api/2/issue/key" + "/" + REST_API_SEARCH;
+        int startAt = 0;
+        URI uri = UriComponentsBuilder.fromHttpUrl(url)
+                .queryParam(MAX_RESULT, FIFTY)
+                .queryParam(START_AT, startAt)
+                .queryParam(JQL_FIELD, jql)
+                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                .buildAndExpand().toUri();
+        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(eq(uri), any(Class.class));
+        assertEquals(mockSearchResults, jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig));
     }
 
     @Test
