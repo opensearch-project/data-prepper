@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Optional;
 
 public class StreamWorker {
@@ -57,12 +56,12 @@ public class StreamWorker {
         try {
             LOG.info("Connect to database to read change events.");
             binaryLogClient.connect();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             try {
                 binaryLogClient.disconnect();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 LOG.error("Binary log client failed to disconnect.", e);
             }
         }
