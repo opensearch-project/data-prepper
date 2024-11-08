@@ -99,6 +99,18 @@ public class JiraIteratorTest {
         jiraIterator.setCrawlerQWaitTimeMillis(1);
         assertTrue(jiraIterator.hasNext());
         assertNotNull(jiraIterator.next());
+    }
+
+    @Test
+    void testItemInfoQueueEmpty(){
+        jiraIterator = createObjectUnderTest();
+        List<IssueBean> mockIssues = new ArrayList<>();
+        when(mockSearchResults.getIssues()).thenReturn(mockIssues);
+        when(mockSearchResults.getTotal()).thenReturn(0);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+
+        jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.setCrawlerQWaitTimeMillis(1);
         assertFalse(jiraIterator.hasNext());
         assertThrows(NoSuchElementException.class, () -> jiraIterator.next());
     }
