@@ -172,6 +172,45 @@ class PeerForwardingProcessingDecoratorTest {
         }
 
         @Test
+        void PeerForwardingProcessingDecorator_with_localProcessingOnlyWithExcludeIdentificationKeys() {
+            List<Processor> processorList = new ArrayList<>();
+            processorList.add((Processor) requiresPeerForwarding);
+            processorList.add((Processor) requiresPeerForwardingCopy);
+
+            LocalPeerForwarder localPeerForwarder = mock(LocalPeerForwarder.class);
+            when(peerForwarderProvider.register(pipelineName, (Processor) requiresPeerForwarding, pluginId, identificationKeys, PIPELINE_WORKER_THREADS)).thenReturn(localPeerForwarder);
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            List<Record<Event>> testData = Collections.singletonList(record);
+            when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(true);
+            when(requiresPeerForwardingCopy.isApplicableEventForPeerForwarding(event)).thenReturn(true);
+
+            Processor processor1 = (Processor)requiresPeerForwarding;
+            Processor processor2 = (Processor)requiresPeerForwardingCopy;
+            when(processor1.execute(testData)).thenReturn(testData);
+            when(processor2.execute(testData)).thenReturn(testData);
+
+            when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
+            when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
+            when(requiresPeerForwardingCopy.getIdentificationKeys()).thenReturn(identificationKeys);
+
+            final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(processorList, Set.of(identificationKeys));
+            assertThat(processors.size(), equalTo(2));
+            for (final Processor processor: processors) {
+                assertTrue(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
+            }
+            verify(peerForwarderProvider, times(1)).register(pipelineName, processor, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
+            verifyNoMoreInteractions(peerForwarderProvider);
+            Collection<Record<Event>> result = processors.get(0).execute(testData);
+            assertThat(result.size(), equalTo(testData.size()));
+            assertThat(result, equalTo(testData));
+            result = processors.get(1).execute(testData);
+            assertThat(result.size(), equalTo(testData.size()));
+            assertThat(result, equalTo(testData));
+        }
+
+ 
+        @Test
         void PeerForwardingProcessingDecorator_with_localProcessingOnly() {
             List<Processor> processorList = new ArrayList<>();
             processorList.add((Processor) requiresPeerForwarding);
