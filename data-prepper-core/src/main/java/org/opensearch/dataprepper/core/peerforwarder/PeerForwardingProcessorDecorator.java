@@ -102,7 +102,6 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         for (Record<Event> record: records) {
             if (((RequiresPeerForwarding)innerProcessor).isApplicableEventForPeerForwarding(record.getData())) {
                 if (isPeerForwardingDisabled()) {
-                    System.out.println("=====PROCESSING LOCALLY====");
                     recordsToProcessLocally.add(record);
                 } else {
                     recordsToProcess.add(record);

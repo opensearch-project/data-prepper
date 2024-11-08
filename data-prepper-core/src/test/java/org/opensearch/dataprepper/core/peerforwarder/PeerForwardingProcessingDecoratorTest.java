@@ -173,9 +173,11 @@ class PeerForwardingProcessingDecoratorTest {
 
         @Test
         void PeerForwardingProcessingDecorator_with_localProcessingOnlyWithExcludeIdentificationKeys() {
-            List<Processor> processorList = new ArrayList<>();
-            processorList.add((Processor) requiresPeerForwarding);
-            processorList.add((Processor) requiresPeerForwardingCopy);
+            List<Processor> objectsUnderTest = new ArrayList<>();
+            Processor innerProcessor1 = (Processor)requiresPeerForwarding;
+            Processor innerProcessor2 = (Processor)requiresPeerForwardingCopy;
+            objectsUnderTest.add(innerProcessor1);
+            objectsUnderTest.add(innerProcessor2);
 
             LocalPeerForwarder localPeerForwarder = mock(LocalPeerForwarder.class);
             when(peerForwarderProvider.register(pipelineName, (Processor) requiresPeerForwarding, pluginId, identificationKeys, PIPELINE_WORKER_THREADS)).thenReturn(localPeerForwarder);
@@ -185,16 +187,14 @@ class PeerForwardingProcessingDecoratorTest {
             when(requiresPeerForwarding.isApplicableEventForPeerForwarding(event)).thenReturn(true);
             when(requiresPeerForwardingCopy.isApplicableEventForPeerForwarding(event)).thenReturn(true);
 
-            Processor processor1 = (Processor)requiresPeerForwarding;
-            Processor processor2 = (Processor)requiresPeerForwardingCopy;
-            when(processor1.execute(testData)).thenReturn(testData);
-            when(processor2.execute(testData)).thenReturn(testData);
+            when(innerProcessor1.execute(testData)).thenReturn(testData);
+            when(innerProcessor2.execute(testData)).thenReturn(testData);
 
             when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
             when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
             when(requiresPeerForwardingCopy.getIdentificationKeys()).thenReturn(identificationKeys);
 
-            final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(processorList, Set.of(identificationKeys));
+            final List<Processor> processors = createObjectUnderTestDecoratedProcessorsWithExcludeIdentificationKeys(objectsUnderTest, Set.of(identificationKeys));
             assertThat(processors.size(), equalTo(2));
             for (final Processor processor: processors) {
                 assertTrue(((PeerForwardingProcessorDecorator)processor).isPeerForwardingDisabled());
