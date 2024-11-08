@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.source.rds.leader.InstanceApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
@@ -35,8 +36,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class RdsService {
     private static final Logger LOG = LoggerFactory.getLogger(RdsService.class);
@@ -95,9 +98,12 @@ public class RdsService {
                 new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
         final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
         final String s3PathPrefix = getS3PathPrefix();
+        final SchemaManager schemaManager = getSchemaManager(sourceConfig, dbMetadata);
+        final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(schemaManager);
+        final DbTableMetadata dbTableMetadata = new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
 
         leaderScheduler = new LeaderScheduler(
-                sourceCoordinator, sourceConfig, s3PathPrefix, getSchemaManager(sourceConfig, dbMetadata), dbMetadata);
+                sourceCoordinator, sourceConfig, s3PathPrefix,  schemaManager, dbTableMetadata);
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
@@ -176,6 +182,14 @@ public class RdsService {
             s3PathPrefix = s3UserPathPrefix;
         }
         return s3PathPrefix;
+    }
+
+    private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
+        return sourceConfig.getTableNames().stream()
+                .collect(Collectors.toMap(
+                        fullTableName -> fullTableName,
+                        fullTableName -> schemaManager.getColumnDataTypes(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
+                ));
     }
 
 

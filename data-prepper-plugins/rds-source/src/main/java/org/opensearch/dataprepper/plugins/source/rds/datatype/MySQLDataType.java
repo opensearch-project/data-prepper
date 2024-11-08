@@ -121,8 +121,16 @@ public enum MySQLDataType {
         return category == DataCategory.NUMERIC;
     }
 
-    public boolean isUnsigned() {
+    public boolean isNumericUnsigned() {
         return category == DataCategory.NUMERIC && subCategory == DataSubCategory.UNSIGNED;
+    }
+
+    public boolean isBigIntUnsigned() {
+        return this == MySQLDataType.BIGINT_UNSIGNED;
+    }
+
+    public boolean isBit() {
+        return this == MySQLDataType.BIT;
     }
 
     public boolean isString() {

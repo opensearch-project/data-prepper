@@ -30,13 +30,17 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +62,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String SEPARATOR = ".";
 
     /**
      * TableId to TableMetadata mapping
@@ -73,6 +78,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final PluginMetrics pluginMetrics;
     private final List<Event> pipelineEvents;
     private final StreamCheckpointManager streamCheckpointManager;
+    private final DbTableMetadata dbTableMetadata;
     private final ExecutorService binlogEventExecutorService;
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
@@ -92,7 +98,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                                final PluginMetrics pluginMetrics,
                                final BinaryLogClient binaryLogClient,
                                final StreamCheckpointer streamCheckpointer,
-                               final AcknowledgementSetManager acknowledgementSetManager) {
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final DbTableMetadata dbTableMetadata) {
         this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
@@ -105,6 +112,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         binlogEventExecutorService = Executors.newFixedThreadPool(
                 sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
+        this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
                 acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout());
@@ -123,8 +131,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                                              final PluginMetrics pluginMetrics,
                                              final BinaryLogClient binaryLogClient,
                                              final StreamCheckpointer streamCheckpointer,
-                                             final AcknowledgementSetManager acknowledgementSetManager) {
-        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
+                                             final AcknowledgementSetManager acknowledgementSetManager,
+                                             final DbTableMetadata dbTableMetadata) {
+        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                streamCheckpointer, acknowledgementSetManager, dbTableMetadata);
     }
 
     @Override
@@ -178,16 +188,53 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
-        final TableMapEventData data = event.getData();
-        final TableMapEventMetadata tableMapEventMetadata = data.getEventMetadata();
+        final TableMapEventData eventData = event.getData();
+        final TableMapEventMetadata tableMapEventMetadata = eventData.getEventMetadata();
         final List<String> columnNames = tableMapEventMetadata.getColumnNames();
         final List<String> primaryKeys = tableMapEventMetadata.getSimplePrimaryKeys().stream()
                 .map(columnNames::get)
                 .collect(Collectors.toList());
         final TableMetadata tableMetadata = new TableMetadata(
-                data.getTable(), data.getDatabase(), columnNames, primaryKeys);
+                eventData.getTable(), eventData.getDatabase(), columnNames, primaryKeys,
+                getSetStrValues(eventData), getEnumStrValues(eventData));
         if (isTableOfInterest(tableMetadata.getFullTableName())) {
-            tableMetadataMap.put(data.getTableId(), tableMetadata);
+            tableMetadataMap.put(eventData.getTableId(), tableMetadata);
+        }
+    }
+
+    private Map<String, String[]> getSetStrValues(final TableMapEventData eventData) {
+        return getStrValuesMap(eventData, MySQLDataType.SET);
+    }
+
+    private Map<String, String[]> getEnumStrValues(final TableMapEventData eventData) {
+        return getStrValuesMap(eventData, MySQLDataType.ENUM);
+    }
+
+    private Map<String, String[]> getStrValuesMap(final TableMapEventData eventData, final MySQLDataType columnType) {
+        Map<String, String[]> strValuesMap = new HashMap<>();
+        List<String> columnNames = eventData.getEventMetadata().getColumnNames();
+        List<String[]> strValues = getStrValues(eventData, columnType);
+
+        final Map<String, String> tbMetadata = dbTableMetadata.getTableColumnDataTypeMap()
+                .get(eventData.getDatabase() + SEPARATOR + eventData.getTable());
+
+        for (int i = 0, j=0; i < columnNames.size(); i++) {
+            final String dataType = tbMetadata.get(columnNames.get(i));
+            if (MySQLDataType.byDataType(dataType) == columnType) {
+                strValuesMap.put(columnNames.get(i), strValues.get(j++));
+            }
+        }
+
+        return strValuesMap;
+    }
+
+    private List<String[]> getStrValues(final TableMapEventData eventData, final MySQLDataType columnType) {
+        if (columnType == MySQLDataType.ENUM) {
+            return eventData.getEventMetadata().getEnumStrValues();
+        } else if (columnType == MySQLDataType.SET) {
+            return eventData.getEventMetadata().getSetStrValues();
+        } else {
+            return Collections.emptyList();
         }
     }
 
@@ -251,11 +298,14 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-
         for (Object[] rowDataArray : rows) {
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
-                rowDataMap.put(columnNames.get(i), rowDataArray[i]);
+                final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
+                final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
+                final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                        rowDataArray[i], tableMetadata);
+                rowDataMap.put(columnNames.get(i), data);
             }
 
             final Event dataPrepperEvent = JacksonEvent.builder()

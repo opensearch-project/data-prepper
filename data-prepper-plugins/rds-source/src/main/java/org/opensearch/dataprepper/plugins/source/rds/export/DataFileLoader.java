@@ -19,12 +19,16 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -52,6 +56,7 @@ public class DataFileLoader implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final AcknowledgementSet acknowledgementSet;
     private final Duration acknowledgmentTimeout;
+    private final DbTableMetadata dbTableMetadata;
     private final Counter exportRecordsTotalCounter;
     private final Counter exportRecordSuccessCounter;
     private final Counter exportRecordErrorCounter;
@@ -66,7 +71,8 @@ public class DataFileLoader implements Runnable {
                            final PluginMetrics pluginMetrics,
                            final EnhancedSourceCoordinator sourceCoordinator,
                            final AcknowledgementSet acknowledgementSet,
-                           final Duration acknowledgmentTimeout) {
+                           final Duration acknowledgmentTimeout,
+                           final DbTableMetadata dbTableMetadata) {
         this.dataFilePartition = dataFilePartition;
         bucket = dataFilePartition.getBucket();
         objectKey = dataFilePartition.getKey();
@@ -77,6 +83,7 @@ public class DataFileLoader implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         this.acknowledgementSet = acknowledgementSet;
         this.acknowledgmentTimeout = acknowledgmentTimeout;
+        this.dbTableMetadata = dbTableMetadata;
 
         exportRecordsTotalCounter = pluginMetrics.counter(EXPORT_RECORDS_TOTAL_COUNT);
         exportRecordSuccessCounter = pluginMetrics.counter(EXPORT_RECORDS_PROCESSED_COUNT);
@@ -93,9 +100,10 @@ public class DataFileLoader implements Runnable {
                                         final PluginMetrics pluginMetrics,
                                         final EnhancedSourceCoordinator sourceCoordinator,
                                         final AcknowledgementSet acknowledgementSet,
-                                        final Duration acknowledgmentTimeout) {
+                                        final Duration acknowledgmentTimeout,
+                                        final DbTableMetadata dbTableMetadata) {
         return new DataFileLoader(dataFilePartition, codec, buffer, objectReader, recordConverter,
-                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata);
     }
 
     @Override
@@ -118,6 +126,7 @@ public class DataFileLoader implements Runnable {
 
                     final String fullTableName = progressState.getSourceDatabase() + "." + progressState.getSourceTable();
                     final List<String> primaryKeys = progressState.getPrimaryKeyMap().getOrDefault(fullTableName, List.of());
+                    transformEvent(event, fullTableName);
 
                     final long snapshotTime = progressState.getSnapshotTime();
                     final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
@@ -162,4 +171,14 @@ public class DataFileLoader implements Runnable {
             exportRecordErrorCounter.increment(eventCount.get());
         }
     }
+
+    private void transformEvent(final Event event, final String fullTableName) {
+        Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
+        for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
+            final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+                    entry.getValue(), null);
+            event.put(entry.getKey(), data);
+        }
+    }
+
 }

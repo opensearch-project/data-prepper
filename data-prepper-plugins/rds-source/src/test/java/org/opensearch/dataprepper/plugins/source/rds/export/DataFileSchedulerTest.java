@@ -24,10 +24,13 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -130,6 +133,7 @@ class DataFileSchedulerTest {
 
         DataFileScheduler objectUnderTest = createObjectUnderTest();
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        mockDbTableMetadata();
         executorService.submit(() -> {
                     // MockedStatic needs to be created on the same thread it's used
                     try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
@@ -137,7 +141,7 @@ class DataFileSchedulerTest {
                         dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                         any(Buffer.class), any(S3ObjectReader.class),
                                         any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
+                                        any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class)))
                                 .thenReturn(dataFileLoader);
                         doNothing().when(dataFileLoader).run();
                         objectUnderTest.run();
@@ -159,6 +163,7 @@ class DataFileSchedulerTest {
 
         DataFileScheduler objectUnderTest = createObjectUnderTest();
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        mockDbTableMetadata();
         executorService.submit(() -> {
             // MockedStatic needs to be created on the same thread it's used
             try (MockedStatic<DataFileLoader> dataFileLoaderMockedStatic = mockStatic(DataFileLoader.class)) {
@@ -166,7 +171,7 @@ class DataFileSchedulerTest {
                 dataFileLoaderMockedStatic.when(() -> DataFileLoader.create(eq(dataFilePartition), any(InputCodec.class),
                                 any(Buffer.class), any(S3ObjectReader.class),
                                 any(ExportRecordConverter.class), any(PluginMetrics.class),
-                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class)))
+                                any(EnhancedSourceCoordinator.class), any(), any(Duration.class), any(DbTableMetadata.class)))
                         .thenReturn(dataFileLoader);
                 doThrow(new RuntimeException()).when(dataFileLoader).run();
                 objectUnderTest.run();
@@ -195,5 +200,25 @@ class DataFileSchedulerTest {
 
     private DataFileScheduler createObjectUnderTest() {
         return new DataFileScheduler(sourceCoordinator, sourceConfig, s3Prefix, s3Client, eventFactory, buffer, pluginMetrics, acknowledgementSetManager);
+    }
+
+    private void mockDbTableMetadata() {
+        final Map<String, Map<String, String>> tableColumnDataTypeMap = new HashMap<>();
+        final Map<String, String> columnDataTypeMap = new HashMap<>();
+        columnDataTypeMap.put("int_column", "INTEGER");
+        final String tableName = UUID.randomUUID().toString();
+        tableColumnDataTypeMap.put(tableName, columnDataTypeMap);
+
+        final String dbIdentifier = UUID.randomUUID().toString();
+        final String hostName = UUID.randomUUID().toString();
+        final int port = new Random().nextInt();
+
+        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final Map<String, Object> map = new HashMap<>();
+        map.put("dbMetadata", dbMetadata.toMap());
+        map.put("tableColumnDataTypeMap", tableColumnDataTypeMap);
+        final GlobalState globalStatePartition = mock(GlobalState.class);
+        when(sourceCoordinator.getPartition(sourceConfig.getDbIdentifier())).thenReturn(Optional.of(globalStatePartition));
+        when(globalStatePartition.getProgressState()).thenReturn(Optional.of(map));
     }
 }
