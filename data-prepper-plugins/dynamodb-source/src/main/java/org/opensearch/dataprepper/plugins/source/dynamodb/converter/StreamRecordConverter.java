@@ -123,7 +123,20 @@ public class StreamRecordConverter extends RecordConverter {
      */
     private Map<String, Object> convertData(Map<String, AttributeValue> data) throws JsonProcessingException {
         String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
-        return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
+
+        StringBuilder sanitizedStringBuilder = new StringBuilder();
+        for (int i = 0; i < jsonData.length(); i++) {
+            char c = jsonData.charAt(i);
+            if (Character.isISOControl(c) && c != '\t' && c != '\n' && c != '\r') {
+                // Replace control characters with escaped versions (e.g. \u0000 for null, \u0001 for start of heading, etc.)
+                sanitizedStringBuilder.append(String.format("\\u%04X", (int) c));
+            } else {
+                // Keep normal characters as they are
+                sanitizedStringBuilder.append(c);
+            }
+        }
+        String sanitizedJsonData = sanitizedStringBuilder.toString();
+        return MAPPER.readValue(sanitizedJsonData, MAP_TYPE_REFERENCE);
     }
 
     /**
