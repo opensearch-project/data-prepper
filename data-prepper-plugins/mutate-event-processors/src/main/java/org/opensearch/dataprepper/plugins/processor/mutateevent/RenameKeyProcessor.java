@@ -47,10 +47,10 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
                                 entry.getRenameWhen()));
             }
             if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
-                throw new InvalidPluginConfigurationException("Either from_key or from_key_pattern must be specified. Both cannot be set together.");
+                throw new InvalidPluginConfigurationException("Either from_key or from_key_regex must be specified. ");
             }
             if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
-                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_pattern should be specified.");
+                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_regex should be specified.");
             }
         });
     }
