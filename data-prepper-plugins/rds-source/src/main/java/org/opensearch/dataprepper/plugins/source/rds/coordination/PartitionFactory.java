@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Expo
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
 
 import java.util.function.Function;
 
@@ -34,6 +35,8 @@ public class PartitionFactory implements Function<SourcePartitionStoreItem, Enha
                 return new DataFilePartition(partitionStoreItem);
             case StreamPartition.PARTITION_TYPE:
                 return new StreamPartition(partitionStoreItem);
+            case ResyncPartition.PARTITION_TYPE:
+                return new ResyncPartition(partitionStoreItem);
             default:
                 // Unable to acquire other partitions.
                 return new GlobalState(partitionStoreItem);
