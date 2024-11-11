@@ -118,13 +118,14 @@ public class PluginConfigsJsonSchemaConverter {
     private void addDocumentationLink(final ObjectNode jsonSchemaNode,
                                       final String pluginName,
                                       final Class<?> pluginType) {
+        String formattedPluginName = pluginName.replace("_", "-");
         jsonSchemaNode.put(DOCUMENTATION_LINK_KEY,
                 String.format(
                         PLUGIN_DOCUMENTATION_URL_FORMAT,
                         siteUrl,
                         siteBaseUrl,
                         PLUGIN_TYPE_TO_URI_PARAMETER_MAP.get(pluginType),
-                        pluginName));
+                        formattedPluginName));
     }
 
     private void addPluginName(final ObjectNode jsonSchemaNode,
