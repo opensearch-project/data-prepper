@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Glob
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -126,7 +127,7 @@ class StreamWorkerTaskRefresherTest {
                     .thenReturn(streamWorker);
             binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class),
                             any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
         }
@@ -164,7 +165,7 @@ class StreamWorkerTaskRefresherTest {
                     .thenReturn(streamWorker);
             binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class),
                             any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig2);
@@ -199,9 +200,9 @@ class StreamWorkerTaskRefresherTest {
             dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class),
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                             any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig);
