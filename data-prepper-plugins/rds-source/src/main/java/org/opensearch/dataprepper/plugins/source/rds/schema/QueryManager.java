@@ -32,8 +32,9 @@ public class QueryManager {
         List<Map<String, Object>> result = new ArrayList<>();
         try (final Connection connection = connectionManager.getConnection()) {
             final Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(query);
-            return convertResultSetToList(resultSet);
+            try (ResultSet resultSet = statement.executeQuery(query)) {
+                return convertResultSetToList(resultSet);
+            }
         } catch (Exception e) {
             LOG.error("Failed to execute query {}, retrying", query, e);
             return result;

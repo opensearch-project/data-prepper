@@ -31,10 +31,10 @@ public abstract class RecordConverter {
     private final String s3Prefix;
     private final List<String> folderNames;
 
-    public static final String S3_BUFFER_PREFIX = "buffer";
-    public static final String S3_PATH_DELIMITER = "/";
+    static final String S3_BUFFER_PREFIX = "buffer";
+    static final String S3_PATH_DELIMITER = "/";
     static final String EXPORT_INGESTION_TYPE = "EXPORT";
-    public static final String STREAM_INGESTION_TYPE = "STREAM";
+    static final String STREAM_INGESTION_TYPE = "STREAM";
 
 
     public RecordConverter(final String s3Prefix, final int partitionCount) {
