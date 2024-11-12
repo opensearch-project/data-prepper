@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Named;
 import java.time.Instant;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -38,7 +39,7 @@ public class JiraIterator implements Iterator<ItemInfo> {
     @Override
     public boolean hasNext() {
         if (firstTime) {
-            log.info("Crawling has been started");
+            log.trace("Crawling has been started");
             itemInfoQueue = service.getJiraEntities(sourceConfig, lastPollTime);
             firstTime = false;
         }
@@ -47,7 +48,11 @@ public class JiraIterator implements Iterator<ItemInfo> {
 
     @Override
     public ItemInfo next() {
-        return this.itemInfoQueue.remove();
+        if (hasNext()) {
+            return this.itemInfoQueue.remove();
+        } else {
+            throw new NoSuchElementException();
+        }
     }
 
     /**

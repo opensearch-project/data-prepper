@@ -33,6 +33,7 @@ public class JiraAuthFactoryTest {
 
     @Test
     void testGetObjectBasicAuth() {
+        when(sourceConfig.getAccountUrl()).thenReturn("https://example.com");
         assertInstanceOf(JiraBasicAuthConfig.class, jiraAuthFactory.getObject());
     }
 

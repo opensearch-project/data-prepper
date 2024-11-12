@@ -21,7 +21,6 @@ import java.net.URI;
 import java.util.List;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
@@ -69,10 +68,7 @@ public class JiraRestClient {
     public SearchResults getAllIssues(StringBuilder jql, int startAt,
                                       JiraSourceConfig configuration) {
 
-        String url = configuration.getAccountUrl() + REST_API_SEARCH;
-        if (configuration.getAuthType().equals(OAUTH2)) {
-            url = authConfig.getUrl() + REST_API_SEARCH;
-        }
+        String url = authConfig.getUrl() + REST_API_SEARCH;
 
         URI uri = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam(MAX_RESULT, FIFTY)
