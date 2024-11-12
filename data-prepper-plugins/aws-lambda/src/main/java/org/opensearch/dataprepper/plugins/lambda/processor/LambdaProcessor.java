@@ -13,7 +13,6 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -76,18 +75,16 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final LambdaAsyncClient lambdaAsyncClient;
     private final AtomicLong requestPayloadMetric;
     private final AtomicLong responsePayloadMetric;
-    OutputCodecContext codecContext = null;
     LambdaCommonHandler lambdaCommonHandler;
-    private int maxEvents = 0;
-    private ByteCount maxBytes = null;
-    private Duration maxCollectionDuration = null;
+    private final int maxEvents;
+    private final ByteCount maxBytes;
+    private final Duration maxCollectionDuration;
     private int maxRetries = 0;
     private int totalFlushedEvents;
-    PluginSetting codecPluginSetting;
-    PluginFactory pluginFactory;
+    final PluginSetting codecPluginSetting;
+    final PluginFactory pluginFactory;
     private final ResponseEventHandlingStrategy responseStrategy;
 
-    @SingleThread
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginMetrics pluginMetrics, final LambdaProcessorConfig lambdaProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
@@ -104,7 +101,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         maxRetries = lambdaProcessorConfig.getMaxConnectionRetries();
         batchOptions = lambdaProcessorConfig.getBatchOptions();
         tagsOnMatchFailure = lambdaProcessorConfig.getTagsOnMatchFailure();
-        codecContext = new OutputCodecContext();
+
         PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
 
         if (responseCodecConfig == null) {
