@@ -56,12 +56,9 @@ public class DataPrepperPluginSchemaExecute implements Runnable {
         final PluginProvider pluginProvider = new ClasspathPluginProvider();
         final PrimaryFieldsOverride primaryFieldsOverride;
         try {
-            final URL primaryFieldsOverrideURL = primaryFieldsOverrideFilePath == null ?
-                    getClass().getClassLoader().getResource("example-primary-fields-override.yaml").toURI().toURL() :
-                    new File(primaryFieldsOverrideFilePath).toURI().toURL();
-             primaryFieldsOverride = OBJECT_MAPPER.readValue(
-                     primaryFieldsOverrideURL, PrimaryFieldsOverride.class);
-        } catch (IOException | URISyntaxException e) {
+            primaryFieldsOverride = primaryFieldsOverrideFilePath == null ? new PrimaryFieldsOverride() :
+                     OBJECT_MAPPER.readValue(new File(primaryFieldsOverrideFilePath), PrimaryFieldsOverride.class);
+        } catch (IOException e) {
             throw new RuntimeException("primary fields override filepath does not exist. ", e);
         }
         final PluginConfigsJsonSchemaConverter pluginConfigsJsonSchemaConverter = new PluginConfigsJsonSchemaConverter(
