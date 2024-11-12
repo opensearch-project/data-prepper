@@ -245,9 +245,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             } catch (IOException e) {
                 LOG.error(NOISY, "Exception while flushing to lambda", e);
                 handleFailure(e, currentBufferPerBatch, resultRecords);
-            } finally {
-                return true;
             }
+            return true;
         }
         return false;
     }
