@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportPr
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
-import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ public class LeaderScheduler implements Runnable {
     private final RdsSourceConfig sourceConfig;
     private final String s3Prefix;
     private final SchemaManager schemaManager;
-    private final DbMetadata dbMetadata;
+    private final DbTableMetadata dbTableMetadataMetadata;
 
     private LeaderPartition leaderPartition;
     private volatile boolean shutdownRequested = false;
@@ -48,12 +48,12 @@ public class LeaderScheduler implements Runnable {
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
                            final SchemaManager schemaManager,
-                           final DbMetadata dbMetadata) {
+                           final DbTableMetadata dbTableMetadataMetadata) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
         this.schemaManager = schemaManager;
-        this.dbMetadata = dbMetadata;
+        this.dbTableMetadataMetadata = dbTableMetadataMetadata;
     }
 
     @Override
@@ -113,7 +113,7 @@ public class LeaderScheduler implements Runnable {
         // Create a Global state in the coordination table for rds cluster/instance information.
         // Global State here is designed to be able to read whenever needed
         // So that the jobs can refer to the configuration.
-        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), dbMetadata.toMap()));
+        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), dbTableMetadataMetadata.toMap()));
         LOG.debug("Created global state for DB: {}", sourceConfig.getDbIdentifier());
 
         if (sourceConfig.isExportEnabled()) {

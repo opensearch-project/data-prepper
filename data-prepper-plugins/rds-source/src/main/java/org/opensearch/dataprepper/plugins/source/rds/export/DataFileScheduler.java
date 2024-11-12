@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.LoadStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,7 +157,8 @@ public class DataFileScheduler implements Runnable {
 
         Runnable loader = DataFileLoader.create(
                 dataFilePartition, codec, buffer, objectReader, recordConverter, pluginMetrics,
-                sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout());
+                sourceCoordinator, acknowledgementSet, sourceConfig.getDataFileAcknowledgmentTimeout(),
+                getDBTableMetadata());
         CompletableFuture runLoader = CompletableFuture.runAsync(loader, executor);
 
         if (isAcknowledgmentsEnabled) {
@@ -219,5 +221,11 @@ public class DataFileScheduler implements Runnable {
             }
             numOfWorkers.decrementAndGet();
         };
+    }
+
+    private DbTableMetadata getDBTableMetadata() {
+        final Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition(sourceConfig.getDbIdentifier());
+        final GlobalState globalState = (GlobalState) globalStatePartition.get();
+        return DbTableMetadata.fromMap(globalState.getProgressState().get());
     }
 }

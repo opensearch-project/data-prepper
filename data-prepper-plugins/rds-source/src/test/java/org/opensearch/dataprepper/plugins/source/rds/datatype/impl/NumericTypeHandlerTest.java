@@ -10,8 +10,11 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -82,6 +85,7 @@ public class NumericTypeHandlerTest {
                 Arguments.of(MySQLDataType.BIGINT_UNSIGNED, "bigint_unsigned_col", BigInteger.ZERO, new BigInteger("0")),
                 Arguments.of(MySQLDataType.BIGINT_UNSIGNED, "bigint_unsigned_col", new BigInteger("9223372036854775808"), new BigInteger("9223372036854775808")),
                 Arguments.of(MySQLDataType.BIGINT_UNSIGNED, "bigint_unsigned_col", new BigInteger("-1"), new BigInteger("18446744073709551615")),
+                Arguments.of(MySQLDataType.BIGINT_UNSIGNED, "bigint_unsigned_col", new ArrayList<>(List.of(0, -1, -1, -1, -1, -1, -1, -1, -1)), new BigInteger("18446744073709551615")),
 
                 // DECIMAL/NUMERIC tests
                 Arguments.of(MySQLDataType.DECIMAL, "decimal_col", new BigDecimal("123.45"), new BigDecimal("123.45")),
@@ -99,7 +103,12 @@ public class NumericTypeHandlerTest {
                 Arguments.of(MySQLDataType.DOUBLE, "double_col", 123.45678901234, 123.45678901234),
                 Arguments.of(MySQLDataType.DOUBLE, "double_col", -123.45678901234, -123.45678901234),
                 Arguments.of(MySQLDataType.DOUBLE, "double_col", 0.0, 0.0),
-                Arguments.of(MySQLDataType.DOUBLE, "double_col", Double.MAX_VALUE, Double.MAX_VALUE)
+                Arguments.of(MySQLDataType.DOUBLE, "double_col", Double.MAX_VALUE, Double.MAX_VALUE),
+
+
+                // BIT tests
+                Arguments.of(MySQLDataType.BIT, "bit_col", BitSet.valueOf(new byte[]{ 4, 3, 2, 1 }), new BigInteger("16909060")), // BitSet interprets the bytes in little-endian order
+                Arguments.of(MySQLDataType.BIT, "bit_col", Map.of("bytes", new byte[]{ 1, 2, 3, 4 }), new BigInteger("16909060")) // Direct BigInteger interprets the bytes in big-endian order.
         );
     }
 
@@ -126,6 +135,33 @@ public class NumericTypeHandlerTest {
 
         assertThrows(IllegalArgumentException.class, () -> {
             numericTypeHandler.handle(MySQLDataType.INT, "int_col", "not_a_number", metadata);
+        });
+    }
+
+    @Test
+    public void test_handleInvalidUnsignedBigInt() {
+        final TableMetadata metadata = new TableMetadata(
+                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                List.of("int_col"), List.of("int_col"),
+                Collections.emptyMap(), Collections.emptyMap());
+        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            numericTypeHandler.handle(MySQLDataType.BIGINT, "bigint_col", "not_a_number", metadata);
+        });
+    }
+
+
+    @Test
+    public void test_handleInvalidBit() {
+        final TableMetadata metadata = new TableMetadata(
+                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                List.of("int_col"), List.of("int_col"),
+                Collections.emptyMap(), Collections.emptyMap());
+        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            numericTypeHandler.handle(MySQLDataType.BIT, "bit_col", "not_a_number", metadata);
         });
     }
 }

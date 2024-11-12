@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
  * to appropriate string representations based on their data types.
  */
 public interface DataTypeHandler {
+    String BYTES_KEY = "bytes";
     /**
      * Handles the conversion of a MySQL column value to its string representation.
      *

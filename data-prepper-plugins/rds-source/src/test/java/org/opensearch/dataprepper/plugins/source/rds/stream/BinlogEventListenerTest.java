@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
@@ -80,6 +81,9 @@ class BinlogEventListenerTest {
 
     @Mock
     private ThreadFactory threadFactory;
+
+    @Mock
+    private DbTableMetadata dbTableMetadata;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private com.github.shyiko.mysql.binlog.event.Event binlogEvent;
@@ -162,7 +166,7 @@ class BinlogEventListenerTest {
 
     private BinlogEventListener createObjectUnderTest() {
         return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
-                streamCheckpointer, acknowledgementSetManager, cascadingActionDetector);
+                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector);
     }
 
     private void verifyHandlerCallHelper() {
