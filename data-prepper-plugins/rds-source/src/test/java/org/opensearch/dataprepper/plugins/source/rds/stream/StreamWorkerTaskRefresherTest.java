@@ -125,7 +125,7 @@ class StreamWorkerTaskRefresherTest {
             dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class),
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                             any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
                             eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
@@ -163,7 +163,7 @@ class StreamWorkerTaskRefresherTest {
             dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class),
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
                             any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
                             eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);

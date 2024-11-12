@@ -165,7 +165,7 @@ class BinlogEventListenerTest {
     }
 
     private BinlogEventListener createObjectUnderTest() {
-        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+        return BinlogEventListener.create(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                 streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadingActionDetector);
     }
 
