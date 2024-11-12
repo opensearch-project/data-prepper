@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -108,7 +109,9 @@ class StreamWorkerTaskRefresherTest {
              MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
         }
@@ -142,7 +145,9 @@ class StreamWorkerTaskRefresherTest {
              MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig2);
@@ -175,7 +180,9 @@ class StreamWorkerTaskRefresherTest {
              MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig);

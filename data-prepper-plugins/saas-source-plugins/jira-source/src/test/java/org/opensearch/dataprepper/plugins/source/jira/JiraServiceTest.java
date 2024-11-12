@@ -142,7 +142,7 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = jiraService.getJiraEntities(jiraSourceConfig, timestamp);
-        assertEquals(mockIssues.size() + 1, itemInfoQueue.size());
+        assertEquals(mockIssues.size(), itemInfoQueue.size());
     }
 
     @Test

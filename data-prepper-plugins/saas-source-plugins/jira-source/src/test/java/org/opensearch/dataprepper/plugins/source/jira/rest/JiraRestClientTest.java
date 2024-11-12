@@ -123,6 +123,7 @@ public class JiraRestClientTest {
         JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
         SearchResults mockSearchResults = mock(SearchResults.class);
+        when(authConfig.getUrl()).thenReturn("https://example.com");
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
