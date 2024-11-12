@@ -52,7 +52,7 @@ public class LambdaCommonHandlerTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType, mockBufferFactory);
+        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType);
     }
 
     @Test
@@ -61,7 +61,7 @@ public class LambdaCommonHandlerTest {
         when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenReturn(mockBuffer);
 
         // Act
-        Buffer result = lambdaCommonHandler.createBuffer(mockBuffer);
+        Buffer result = lambdaCommonHandler.createBuffer(mockBufferFactory);
 
         // Assert
         verify(mockBufferFactory, times(1)).getBuffer(mockLambdaAsyncClient, functionName, invocationType);
@@ -76,7 +76,7 @@ public class LambdaCommonHandlerTest {
 
         // Act & Assert
         try {
-            lambdaCommonHandler.createBuffer(mockBuffer);
+            lambdaCommonHandler.createBuffer(mockBufferFactory);
         } catch (RuntimeException e) {
             assert e.getMessage().contains("Failed to reset buffer");
         }

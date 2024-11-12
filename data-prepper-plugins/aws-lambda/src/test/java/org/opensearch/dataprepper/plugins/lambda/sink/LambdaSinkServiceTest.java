@@ -148,7 +148,7 @@ public class LambdaSinkServiceTest {
 
         // Mock LambdaCommonHandler
         lambdaCommonHandler = mock(LambdaCommonHandler.class);
-        when(lambdaCommonHandler.createBuffer(any())).thenReturn(currentBufferPerBatch);
+        when(lambdaCommonHandler.createBuffer(bufferFactory)).thenReturn(currentBufferPerBatch);
         doNothing().when(currentBufferPerBatch).reset();
 
         lambdaSinkService = new LambdaSinkService(
@@ -246,7 +246,8 @@ public class LambdaSinkServiceTest {
         when(lambdaSinkConfig.getWhenCondition()).thenReturn(null);
 
         // Mock event handling to throw exception when writeEvent is called
-        when(currentBufferPerBatch.getEventCount()).thenReturn(0);
+        when(currentBufferPerBatch.getEventCount()).thenReturn(0).thenReturn(1);
+        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
         doNothing().when(requestCodec).start(any(), eq(event), any());
         doThrow(new IOException("Test IOException")).when(requestCodec).writeEvent(eq(event), any());
 
@@ -263,7 +264,7 @@ public class LambdaSinkServiceTest {
         // Assert
         verify(requestCodec, times(1)).start(any(), eq(event), any());
         verify(requestCodec, times(1)).writeEvent(eq(event), any());
-        verify(numberOfRecordsFailedCounter, times(1)).increment();
+        verify(numberOfRecordsFailedCounter, times(1)).increment(1);
     }
 
 

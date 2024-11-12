@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.slf4j.Logger;
@@ -17,26 +16,22 @@ public class LambdaCommonHandler {
     private final String functionName;
     private final String invocationType;
     BufferFactory bufferFactory;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LambdaCommonHandler(
             final Logger log,
             final LambdaAsyncClient lambdaAsyncClient,
             final String functionName,
-            final String invocationType,
-            BufferFactory bufferFactory){
+            final String invocationType){
         this.LOG = log;
         this.lambdaAsyncClient = lambdaAsyncClient;
         this.functionName = functionName;
         this.invocationType = invocationType;
-        this.bufferFactory = bufferFactory;
     }
 
-    public Buffer createBuffer(Buffer currentBuffer) {
+    public Buffer createBuffer(BufferFactory bufferFactory) {
         try {
             LOG.debug("Resetting buffer");
-            currentBuffer = bufferFactory.getBuffer(lambdaAsyncClient, functionName, invocationType);
-            return currentBuffer;
+            return bufferFactory.getBuffer(lambdaAsyncClient, functionName, invocationType);
         } catch (IOException e) {
             throw new RuntimeException("Failed to reset buffer", e);
         }
