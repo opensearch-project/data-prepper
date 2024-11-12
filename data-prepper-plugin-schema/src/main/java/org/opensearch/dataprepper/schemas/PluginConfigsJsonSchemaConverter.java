@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.schemas;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaVersion;
@@ -31,6 +32,7 @@ public class PluginConfigsJsonSchemaConverter {
     static final String SITE_BASE_URL_PLACEHOLDER = "{{site.baseurl}}";
     static final String DOCUMENTATION_LINK_KEY = "documentation";
     static final String PLUGIN_NAME_KEY = "name";
+    static final String PRIMARY_FIELDS_KEY = "primary_fields";
     static final String PLUGIN_DOCUMENTATION_URL_FORMAT =
             "%s%s/data-prepper/pipelines/configuration/%s/%s/";
     static final Map<Class<?>, String> PLUGIN_TYPE_TO_URI_PARAMETER_MAP = Map.of(
@@ -52,14 +54,17 @@ public class PluginConfigsJsonSchemaConverter {
     private final String siteBaseUrl;
     private final PluginProvider pluginProvider;
     private final JsonSchemaConverter jsonSchemaConverter;
+    private final PrimaryFieldsOverride primaryFieldsOverride;
 
     public PluginConfigsJsonSchemaConverter(
             final PluginProvider pluginProvider,
             final JsonSchemaConverter jsonSchemaConverter,
+            final PrimaryFieldsOverride primaryFieldsOverride,
             final String siteUrl,
             final String siteBaseUrl) {
         this.pluginProvider = pluginProvider;
         this.jsonSchemaConverter = jsonSchemaConverter;
+        this.primaryFieldsOverride = primaryFieldsOverride;
         this.siteUrl = siteUrl == null ? SITE_URL_PLACEHOLDER : siteUrl;
         this.siteBaseUrl = siteBaseUrl == null ? SITE_BASE_URL_PLACEHOLDER : siteBaseUrl;
     }
@@ -87,6 +92,7 @@ public class PluginConfigsJsonSchemaConverter {
                         final ObjectNode jsonSchemaNode = jsonSchemaConverter.convertIntoJsonSchema(
                                 schemaVersion, optionPreset, entry.getValue());
                         addPluginName(jsonSchemaNode, pluginName);
+                        addPrimaryFields(jsonSchemaNode, pluginName);
                         addDocumentationLink(jsonSchemaNode, pluginName, pluginType);
                         value = jsonSchemaNode.toPrettyString();
                     } catch (final Exception e) {
@@ -130,5 +136,11 @@ public class PluginConfigsJsonSchemaConverter {
     private void addPluginName(final ObjectNode jsonSchemaNode,
                                final String pluginName) {
         jsonSchemaNode.put(PLUGIN_NAME_KEY, pluginName);
+    }
+
+    private void addPrimaryFields(final ObjectNode jsonSchemaNode,
+                                  final String pluginName) {
+        final ArrayNode primaryFieldsNode = jsonSchemaNode.putArray(PRIMARY_FIELDS_KEY);
+        primaryFieldsOverride.getPrimaryFieldsForComponent(pluginName).forEach(primaryFieldsNode::add);
     }
 }
