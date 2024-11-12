@@ -36,7 +36,6 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
-import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,7 +266,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.INDEX);
+        handleRowChangeEvent(event, data.getTableId(), Map.of(OpenSearchBulkActions.INDEX, data.getRows()));
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -281,12 +280,25 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingUpdates(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        // updatedRow contains data before update as key and data after update as value
-        final List<Serializable[]> rows = data.getRows().stream()
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toList());
+        final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
+        List<Serializable[]> rowsToUpdate = new ArrayList<>();
+        // Delete is needed when primary key columns have value change
+        List<Serializable[]> rowsToDelete = new ArrayList<>();
 
-        handleRowChangeEvent(event, data.getTableId(), rows, OpenSearchBulkActions.INDEX);
+        // row map contains data before update as key and data after update as value
+        for (Map.Entry<Serializable[], Serializable[]> row : data.getRows()) {
+            for (int i = 0; i < row.getKey().length; i++) {
+                if (tableMetadata.getPrimaryKeys().contains(tableMetadata.getColumnNames().get(i)) &&
+                        !row.getKey()[i].equals(row.getValue()[i])) {
+                    LOG.debug("Primary keys were updated");
+                    rowsToDelete.add(row.getKey());
+                    break;
+                }
+            }
+            rowsToUpdate.add(row.getValue());
+        }
+
+        handleRowChangeEvent(event, data.getTableId(), Map.of(OpenSearchBulkActions.DELETE, rowsToDelete, OpenSearchBulkActions.INDEX, rowsToUpdate));
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -300,7 +312,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingDeletes(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.DELETE);
+        handleRowChangeEvent(event, data.getTableId(), Map.of(OpenSearchBulkActions.DELETE, data.getRows()));
     }
 
     private boolean isValidTableId(long tableId) {
@@ -318,9 +330,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     private void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
-                              long tableId,
-                              List<Serializable[]> rows,
-                              OpenSearchBulkActions bulkAction) {
+                                      long tableId,
+                                      Map<OpenSearchBulkActions, List<Serializable[]>> bulkActionToRowDataMap) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
@@ -343,31 +354,36 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        for (Object[] rowDataArray : rows) {
-            final Map<String, Object> rowDataMap = new HashMap<>();
-            for (int i = 0; i < rowDataArray.length; i++) {
-                final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
-                final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
-                final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
-                        rowDataArray[i], tableMetadata);
-                rowDataMap.put(columnNames.get(i), data);
+
+        for (Map.Entry<OpenSearchBulkActions, List<Serializable[]>> entry : bulkActionToRowDataMap.entrySet()) {
+            final OpenSearchBulkActions bulkAction = entry.getKey();
+            final List<Serializable[]> rows = entry.getValue();
+            for (Object[] rowDataArray : rows) {
+                final Map<String, Object> rowDataMap = new HashMap<>();
+                for (int i = 0; i < rowDataArray.length; i++) {
+                    final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
+                    final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
+                    final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                            rowDataArray[i], tableMetadata);
+                    rowDataMap.put(columnNames.get(i), data);
+                }
+
+                final Event dataPrepperEvent = JacksonEvent.builder()
+                        .withEventType(DATA_PREPPER_EVENT_TYPE)
+                        .withData(rowDataMap)
+                        .build();
+
+                final Event pipelineEvent = recordConverter.convert(
+                        dataPrepperEvent,
+                        tableMetadata.getDatabaseName(),
+                        tableMetadata.getTableName(),
+                        bulkAction,
+                        primaryKeys,
+                        eventTimestampMillis,
+                        eventTimestampMillis,
+                        event.getHeader().getEventType());
+                pipelineEvents.add(pipelineEvent);
             }
-
-            final Event dataPrepperEvent = JacksonEvent.builder()
-                    .withEventType(DATA_PREPPER_EVENT_TYPE)
-                    .withData(rowDataMap)
-                    .build();
-
-            final Event pipelineEvent = recordConverter.convert(
-                    dataPrepperEvent,
-                    tableMetadata.getDatabaseName(),
-                    tableMetadata.getTableName(),
-                    bulkAction,
-                    primaryKeys,
-                    eventTimestampMillis,
-                    eventTimestampMillis,
-                    event.getHeader().getEventType());
-            pipelineEvents.add(pipelineEvent);
         }
 
         writeToBuffer(bufferAccumulator, acknowledgementSet);
