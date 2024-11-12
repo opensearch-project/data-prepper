@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -118,10 +119,15 @@ public class GenericRecordJsonEncoder {
             writeEscapedString(datum.toString(), buffer);
             buffer.append("\"");
         } else if (isBytes(datum)) {
-            buffer.append("{\"bytes\": \"");
-            ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
-            writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
-            buffer.append("\"}");
+            final String bytesAsString = StandardCharsets.UTF_8.decode((ByteBuffer) datum).toString();
+            if (isBigDecimal(bytesAsString)) {
+                buffer.append(new BigDecimal(bytesAsString).doubleValue());
+            } else {
+                buffer.append("{\"bytes\": \"");
+                ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
+                writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
+                buffer.append("\"}");
+            }
         } else if (((datum instanceof Float) &&       // quote Nan & Infinity
                 (((Float)datum).isInfinite() || ((Float)datum).isNaN()))
                 || ((datum instanceof Double) &&
@@ -184,5 +190,14 @@ public class GenericRecordJsonEncoder {
 
     private void writeEscapedString(String string, StringBuilder builder) {
         builder.append(StringEscapeUtils.escapeJava(string));
+    }
+
+    private boolean isBigDecimal(String decimalString) {
+        try {
+            final BigDecimal bigDecimal = new BigDecimal(decimalString);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
     }
 }
