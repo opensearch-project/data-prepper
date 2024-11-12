@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.plugin.PluginProvider;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.DOCUMENTATION_LINK_KEY;
 import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.PLUGIN_NAME_KEY;
 import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.PLUGIN_TYPE_NAME_TO_CLASS_MAP;
+import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.PRIMARY_FIELDS_KEY;
 
 @ExtendWith(MockitoExtension.class)
 class PluginConfigsJsonSchemaConverterTest {
@@ -38,6 +40,9 @@ class PluginConfigsJsonSchemaConverterTest {
 
     @Mock
     private JsonSchemaConverter jsonSchemaConverter;
+
+    @Mock
+    private PrimaryFieldsOverride primaryFieldsOverride;
 
     @Mock
     private PluginProvider pluginProvider;
@@ -79,6 +84,28 @@ class PluginConfigsJsonSchemaConverterTest {
         assertThat(schemaMap.get(DOCUMENTATION_LINK_KEY), equalTo(
                 "{{site.url}}{{site.baseurl}}/data-prepper/pipelines/configuration/null/test-plugin/"
         ));
+        assertThat(schemaMap.get(PRIMARY_FIELDS_KEY), equalTo(Collections.emptyList()));
+        assertThat(schemaMap.containsKey(PLUGIN_NAME_KEY), is(true));
+    }
+
+    @Test
+    void testConvertPluginConfigsIntoJsonSchemasWithPrimaryFieldsOverride() throws JsonProcessingException {
+        final String testPrimaryField = "test_field";
+        when(primaryFieldsOverride.getPrimaryFieldsForComponent(eq("test_plugin"))).thenReturn(
+                Set.of(testPrimaryField));
+        when(pluginProvider.findPluginClasses(eq(TestPluginType.class))).thenReturn(Set.of(TestPlugin.class));
+        final ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
+        when(jsonSchemaConverter.convertIntoJsonSchema(
+                any(SchemaVersion.class), any(OptionPreset.class), eq(TestPluginConfig.class))).thenReturn(objectNode);
+        final Map<String, String> result = objectUnderTest.convertPluginConfigsIntoJsonSchemas(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON, TestPluginType.class);
+        assertThat(result.size(), equalTo(1));
+        final Map<String, Object> schemaMap = OBJECT_MAPPER.readValue(result.get("test_plugin"), MAP_TYPE_REFERENCE);
+        assertThat(schemaMap, notNullValue());
+        assertThat(schemaMap.get(DOCUMENTATION_LINK_KEY), equalTo(
+                "{{site.url}}{{site.baseurl}}/data-prepper/pipelines/configuration/null/test-plugin/"
+        ));
+        assertThat(schemaMap.get(PRIMARY_FIELDS_KEY), equalTo(Collections.singletonList(testPrimaryField)));
         assertThat(schemaMap.containsKey(PLUGIN_NAME_KEY), is(true));
     }
 

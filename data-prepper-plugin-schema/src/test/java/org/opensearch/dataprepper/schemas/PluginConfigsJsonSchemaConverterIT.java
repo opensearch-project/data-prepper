@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.DOCUMENTATION_LINK_KEY;
 import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.PLUGIN_NAME_KEY;
+import static org.opensearch.dataprepper.schemas.PluginConfigsJsonSchemaConverter.PRIMARY_FIELDS_KEY;
 
 class PluginConfigsJsonSchemaConverterIT {
     static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
@@ -45,8 +46,10 @@ class PluginConfigsJsonSchemaConverterIT {
                         JakartaValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
         );
         final PluginProvider pluginProvider = new ClasspathPluginProvider();
+        final PrimaryFieldsOverride primaryFieldsOverride = new PrimaryFieldsOverride();
         objectUnderTest = new PluginConfigsJsonSchemaConverter(
-                pluginProvider, new JsonSchemaConverter(modules, pluginProvider), TEST_URL, TEST_BASE_URL);
+                pluginProvider, new JsonSchemaConverter(modules, pluginProvider),
+                primaryFieldsOverride, TEST_URL, TEST_BASE_URL);
     }
 
     @ParameterizedTest
@@ -64,6 +67,7 @@ class PluginConfigsJsonSchemaConverterIT {
             }
             assertThat(schemaMap, notNullValue());
             assertThat(schemaMap.containsKey(PLUGIN_NAME_KEY), is(true));
+            assertThat(schemaMap.containsKey(PRIMARY_FIELDS_KEY), is(true));
             assertThat(((String) schemaMap.get(DOCUMENTATION_LINK_KEY)).startsWith(TEST_URL + TEST_BASE_URL),
                     is(true));
         });
