@@ -11,8 +11,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -30,7 +33,7 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_THREAD_COUNT;
 
 class OtelTraceSourceConfigTests {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String PLUGIN_NAME = "otel_trace_source";
     private static final String TEST_KEY_CERT = "test.crt";
     private static final String TEST_KEY = "test.key";
@@ -302,6 +305,28 @@ class OtelTraceSourceConfigTests {
         assertThat(otelTraceSourceConfig.isPathValid(), equalTo(false));
     }
 
+    @Test
+    void testRetryInfoConfig() {
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelTraceSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                null,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
+
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMaxDelay(), equalTo(Duration.ofMillis(100)));
+        assertThat(otelTraceSourceConfig.getRetryInfo().getMinDelay(), equalTo(Duration.ofMillis(50)));
+    }
+
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
                                                                   final int port,
                                                                   final String path,
@@ -325,6 +350,7 @@ class OtelTraceSourceConfigTests {
         settings.put(OTelTraceSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(OTelTraceSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelTraceSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(OTelTraceSourceConfig.RETRY_INFO, new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(100)));
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }
