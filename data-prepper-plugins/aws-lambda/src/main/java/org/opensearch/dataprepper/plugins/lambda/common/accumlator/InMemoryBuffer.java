@@ -39,7 +39,6 @@ public class InMemoryBuffer implements Buffer {
     private StopWatch lambdaLatencyWatch;
     private long payloadRequestSize;
     private long payloadResponseSize;
-    private boolean isCodecStarted;
     private final List<Record<Event>> records;
 
 
@@ -53,7 +52,6 @@ public class InMemoryBuffer implements Buffer {
         bufferWatch.start();
         lambdaLatencyWatch = new StopWatch();
         eventCount = 0;
-        isCodecStarted = false;
         payloadRequestSize = 0;
         payloadResponseSize = 0;
     }
@@ -86,7 +84,6 @@ public class InMemoryBuffer implements Buffer {
         eventCount = 0;
         bufferWatch.reset();
         lambdaLatencyWatch.reset();
-        isCodecStarted = false;
         payloadRequestSize = 0;
         payloadResponseSize = 0;
     }
@@ -160,13 +157,10 @@ public class InMemoryBuffer implements Buffer {
         return payloadRequestSize;
     }
 
-    public Long getPayloadResponseSize() {
-        return payloadResponseSize;
-    }
-
     public StopWatch getBufferWatch() {return bufferWatch;}
 
     public StopWatch getLambdaLatencyWatch(){return lambdaLatencyWatch;}
+
 
 }
 
