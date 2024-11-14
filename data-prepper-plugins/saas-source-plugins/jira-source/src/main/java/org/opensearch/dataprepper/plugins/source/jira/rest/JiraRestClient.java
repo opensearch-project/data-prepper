@@ -7,9 +7,11 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
+import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -93,8 +95,8 @@ public class JiraRestClient {
         return invokeRestApi(uri, String.class).getBody();
     }
 
-    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) {
-
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException{
+        AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
         while (retryCount < RETRY_ATTEMPT) {
             try {
