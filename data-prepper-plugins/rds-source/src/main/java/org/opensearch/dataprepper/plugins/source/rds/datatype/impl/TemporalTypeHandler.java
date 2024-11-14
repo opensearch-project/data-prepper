@@ -72,7 +72,7 @@ public class TemporalTypeHandler implements DataTypeHandler {
     private Long handleTime(final String timeStr) {
         try {
             // Try parsing as Unix timestamp first
-            final Long timeEpoch = parseDateTimeStrAsEpoch(timeStr);
+            final Long timeEpoch = parseDateTimeStrAsEpochMillis(timeStr);
             if (timeEpoch != null) return timeEpoch;
 
             final LocalTime time = LocalTime.parse(timeStr, TIME_FORMATTER);
@@ -88,7 +88,7 @@ public class TemporalTypeHandler implements DataTypeHandler {
     private Long handleDate(final String dateStr) {
         try {
             // Try parsing as Unix timestamp first
-            final Long dateEpoch = parseDateTimeStrAsEpoch(dateStr);
+            final Long dateEpoch = parseDateTimeStrAsEpochMillis(dateStr);
             if (dateEpoch != null) return dateEpoch;
 
             LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
@@ -102,7 +102,7 @@ public class TemporalTypeHandler implements DataTypeHandler {
 
     private Long handleDateTime(final String dateTimeStr) {
         try {
-            final Long dateTimeEpoch = parseDateTimeStrAsEpoch(dateTimeStr);
+            final Long dateTimeEpoch = parseDateTimeStrAsEpochMillis(dateTimeStr);
             if (dateTimeEpoch != null) return dateTimeEpoch;
 
             // Parse using standard MySQL datetime format
@@ -114,7 +114,9 @@ public class TemporalTypeHandler implements DataTypeHandler {
         }
     }
 
-    private Long parseDateTimeStrAsEpoch(final String dateTimeStr) {
+    // Binlog reader converts temporal fields to epoch millis
+    // The Binlog reader is set with EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
+    private Long parseDateTimeStrAsEpochMillis(final String dateTimeStr) {
         // Try parsing as Unix timestamp first
         try {
             return Long.parseLong(dateTimeStr);
