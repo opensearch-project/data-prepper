@@ -7,7 +7,6 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -15,11 +14,12 @@ import java.time.format.DateTimeParseException;
 /**
  * Handles MySQL temporal data types (DATE, TIME, DATETIME, TIMESTAMP, YEAR) conversion between binlog and S3 export formats.
  *
- * MySQL binlog represents temporal types as follows:
- * - DATE: long value representing days since epoch (1970-01-01)
+ * The BinlogClient is configured with EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG.
+ * MySQL binlog temporal types are deserialized to use Unix time (milliseconds elapsed since 1970-01-01 00:00:00 UTC):
+ * - DATE: long value representing milliseconds since epoch (1970-01-01)
  * - TIME: long value representing milliseconds since epoch (1970-01-01 00:00:00)
- * - DATETIME: long value representing microseconds since epoch (1970-01-01 00:00:00)
- * - TIMESTAMP: long value representing microseconds since epoch (1970-01-01 00:00:00)
+ * - DATETIME: long value representing milliseconds since epoch (1970-01-01 00:00:00)
+ * - TIMESTAMP: long value representing milliseconds since epoch (1970-01-01 00:00:00)
  * - YEAR: 4-digit year value (Example: 2024)
  *
  * RDS S3 export formats:
@@ -92,8 +92,7 @@ public class TemporalTypeHandler implements DataTypeHandler {
             if (dateEpoch != null) return dateEpoch;
 
             LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
-            return date.atStartOfDay(ZoneId.systemDefault())
-                    .withZoneSameInstant(ZoneOffset.UTC)
+            return date.atStartOfDay(ZoneOffset.UTC)
                     .toInstant()
                     .toEpochMilli();
         } catch (DateTimeParseException e) {

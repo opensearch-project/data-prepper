@@ -4,10 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,7 +16,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -31,16 +28,17 @@ class TemporalTypeHandlerTest {
         temporalTypeHandler = new TemporalTypeHandler();
     }
 
-    private static long getEpochMillisFromDateStr(final String dateStr) throws ParseException {
-        final SimpleDateFormat mysqlDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-
-        final Date date = mysqlDateFormat.parse(dateStr);
-        return date.getTime();
+    private static long getEpochMillisFromDate(final int year, final int month, final int day) {
+        return LocalDate.of(year, month, day)
+                .atStartOfDay(ZoneOffset.UTC)  // Ensure UTC
+                .toInstant()
+                .toEpochMilli();
     }
 
     private static long getEpochMillis(int year, int month, int day, int hour, int minute, int second, int nanoSeconds) {
         return LocalDateTime.of(year, month, day, hour, minute, second, nanoSeconds)
-                .toInstant(ZoneOffset.UTC)
+                .atZone(ZoneOffset.UTC)
+                .toInstant()
                 .toEpochMilli();
     }
 
@@ -56,11 +54,12 @@ class TemporalTypeHandlerTest {
         assertEquals(expected, result);
     }
 
-    private static Stream<Arguments> provideDateTestCases() throws ParseException {
+    private static Stream<Arguments> provideDateTestCases() {
         return Stream.of(
-                Arguments.of("2023-12-25", getEpochMillisFromDateStr("2023-12-25")),
-                Arguments.of("1970-01-01", getEpochMillisFromDateStr("1970-1-1")),
-                Arguments.of("2024-02-29", getEpochMillisFromDateStr("2024-2-29")) // Leap year
+                Arguments.of("2023-12-25", getEpochMillisFromDate(2023, 12, 25)),
+                Arguments.of("1970-01-01", getEpochMillisFromDate(1970, 1, 1)),
+                Arguments.of("2024-02-29", getEpochMillisFromDate(2024, 2, 29)), // Leap year
+                Arguments.of("1684108800000", getEpochMillisFromDate(2023, 5, 15))
         );
     }
 
@@ -74,20 +73,17 @@ class TemporalTypeHandlerTest {
     private static Stream<Arguments> provideTimeTestCases() {
         return Stream.of(
                 Arguments.of("14:30:00",
-                        LocalDateTime.of(1970, 1, 1, 14, 30, 0)
-                                .atZone(ZoneId.of("UTC"))
-                                .toInstant()
-                                .toEpochMilli()),
+                        getEpochMillis(1970, 1, 1, 14, 30, 0, 0)),
                 Arguments.of("00:00:00",
-                        LocalDateTime.of(1970, 1, 1, 0, 0, 0)
-                                .atZone(ZoneId.of("UTC"))
-                                .toInstant()
-                                .toEpochMilli()),
+                        getEpochMillis(1970, 1, 1, 0, 0, 0, 0)),
                 Arguments.of("23:59:59",
-                        LocalDateTime.of(1970, 1, 1, 23, 59, 59)
-                                .atZone(ZoneId.of("UTC"))
-                                .toInstant()
-                                .toEpochMilli())
+                        getEpochMillis(1970, 1, 1, 23, 59, 59, 0)),
+                Arguments.of("85647000",
+                        getEpochMillis(1970, 1, 1, 23, 47, 27, 0)),
+                Arguments.of("52200000",
+                        getEpochMillis(1970, 1, 1, 14, 30, 0, 0)),
+                Arguments.of("52200123",
+                        getEpochMillis(1970, 1, 1, 14, 30, 0, 123456000))
         );
     }
 
@@ -160,9 +156,9 @@ class TemporalTypeHandlerTest {
     }
 
     @Test
-    void handle_withLeapYearDate_returnsCorrectEpochMillis() throws ParseException {
+    void handle_withLeapYearDate_returnsCorrectEpochMillis() {
         Long result = temporalTypeHandler.handle(MySQLDataType.DATE, "date_column", "2024-02-29", null);
-        assertEquals(getEpochMillisFromDateStr("2024-2-29"), result);
+        assertEquals(getEpochMillisFromDate(2024, 2, 29), result);
     }
 
     @Test
