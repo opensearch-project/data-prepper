@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.avro.LogicalType;
@@ -120,8 +121,9 @@ public class GenericRecordJsonEncoder {
             buffer.append("\"");
         } else if (isBytes(datum)) {
             final String bytesAsString = StandardCharsets.UTF_8.decode((ByteBuffer) datum).toString();
-            if (isBigDecimal(bytesAsString)) {
-                buffer.append(new BigDecimal(bytesAsString).doubleValue());
+            final Optional<BigDecimal> bytesAsBigDecimal = getBigDecimal(bytesAsString);
+            if (bytesAsBigDecimal.isPresent()) {
+                buffer.append(bytesAsBigDecimal.get().doubleValue());
             } else {
                 buffer.append("{\"bytes\": \"");
                 ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
@@ -192,12 +194,11 @@ public class GenericRecordJsonEncoder {
         builder.append(StringEscapeUtils.escapeJava(string));
     }
 
-    private boolean isBigDecimal(String decimalString) {
+    private Optional<BigDecimal> getBigDecimal(String decimalString) {
         try {
-            final BigDecimal bigDecimal = new BigDecimal(decimalString);
-            return true;
+            return Optional.of(new BigDecimal(decimalString));
         } catch (final Exception e) {
-            return false;
+            return Optional.empty();
         }
     }
 }
