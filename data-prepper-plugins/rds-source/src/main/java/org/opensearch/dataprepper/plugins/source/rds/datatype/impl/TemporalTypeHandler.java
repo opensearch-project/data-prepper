@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 /**
- * Handles MySQL temporal data types (DATE, TIME, DATETIME, YEAR) conversion between binlog and S3 export formats.
+ * Handles MySQL temporal data types (DATE, TIME, DATETIME, TIMESTAMP, YEAR) conversion between binlog and S3 export formats.
  *
  * MySQL binlog represents temporal types as follows:
  * - DATE: long value representing days since epoch (1970-01-01)
