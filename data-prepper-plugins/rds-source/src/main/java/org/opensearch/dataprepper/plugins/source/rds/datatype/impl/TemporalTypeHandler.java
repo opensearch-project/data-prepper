@@ -19,13 +19,15 @@ import java.time.format.DateTimeParseException;
  * - DATE: long value representing days since epoch (1970-01-01)
  * - TIME: long value representing milliseconds since epoch (1970-01-01 00:00:00)
  * - DATETIME: long value representing microseconds since epoch (1970-01-01 00:00:00)
+ * - TIMESTAMP: long value representing microseconds since epoch (1970-01-01 00:00:00)
  * - YEAR: 4-digit year value (Example: 2024)
  *
- * S3 export formats:
+ * RDS S3 export formats:
  * - DATE: "yyyy-MM-dd" (Example: "2024-01-15")
  * - TIME: "HH:mm:ss" (Example: "14:30:00")
  * - DATETIME: "yyyy-MM-dd HH:mm:ss[.SSSSSS]" (Example: "2024-01-15 14:30:00.123456")
- *   Note: Fractional seconds are optional for DATETIME
+ * - TIMESTAMP: "yyyy-MM-dd HH:mm:ss[.SSSSSS]" (Example: "2024-01-15 14:30:00.123456")
+ *   Note: Fractional seconds are optional for DATETIME and TIMESTAMP
  * - YEAR: "yyyy" (Example: "2024")
  */
 public class TemporalTypeHandler implements DataTypeHandler {
