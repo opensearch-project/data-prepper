@@ -319,7 +319,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE));
     }
 
-    private boolean isValidTableId(long tableId) {
+    // Visible For Testing
+    boolean isValidTableId(long tableId) {
         if (!tableMetadataMap.containsKey(tableId)) {
             LOG.debug("Cannot find table metadata, the event is likely not from a table of interest or the table metadata was not read");
             return false;
@@ -333,10 +334,11 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         return true;
     }
 
-    private void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
-                                      long tableId,
-                                      List<Serializable[]> rows,
-                                      List<OpenSearchBulkActions> bulkActions) {
+    // Visible For Testing
+    void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
+                              long tableId,
+                              List<Serializable[]> rows,
+                              List<OpenSearchBulkActions> bulkActions) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
