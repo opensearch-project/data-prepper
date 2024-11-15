@@ -16,10 +16,11 @@ raw-pipeline:
     - otel_traces:
   sink:
     - opensearch:
+        insecure: true
         hosts: [ "https://node-0.example.com:9200" ]
-        cert: "/usr/share/data-prepper/root-ca.pem"
+#        cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"
-        password: "admin"
+        password: "M__!!ega123!"
         index_type: trace-analytics-raw
 service-map-pipeline:
   delay: "100"
@@ -30,8 +31,9 @@ service-map-pipeline:
     - service_map:
   sink:
     - opensearch:
+        insecure: true
         hosts: ["https://node-0.example.com:9200"]
-        cert: "/usr/share/data-prepper/root-ca.pem"
+#        cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"
-        password: "admin"
+        password: "M__!!ega123!"
         index_type: trace-analytics-service-map
