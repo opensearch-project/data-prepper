@@ -13,12 +13,14 @@ import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublis
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.time.Duration;
 
 public final class LambdaClientFactory {
-    private LambdaClientFactory() { }
+    private LambdaClientFactory() {
+    }
 
     public static LambdaAsyncClient createAsyncLambdaClient(final AwsAuthenticationOptions awsAuthenticationOptions,
                                                             final int maxConnectionRetries,
@@ -32,6 +34,9 @@ public final class LambdaClientFactory {
                 .region(awsAuthenticationOptions.getAwsRegion())
                 .credentialsProvider(awsCredentialsProvider)
                 .overrideConfiguration(createOverrideConfiguration(maxConnectionRetries, awsSdkMetrics, sdkTimeout))
+                .httpClient(NettyNioAsyncHttpClient.builder()
+                        .maxConcurrency(200)
+                        .connectionTimeout(Duration.ofMinutes(1)).build())
                 .build();
     }
 
@@ -46,12 +51,12 @@ public final class LambdaClientFactory {
                 .build();
     }
 
-     private static AwsCredentialsOptions convertToCredentialsOptions(final AwsAuthenticationOptions awsAuthenticationOptions) {
-         return AwsCredentialsOptions.builder()
-             .withRegion(awsAuthenticationOptions.getAwsRegion())
-             .withStsRoleArn(awsAuthenticationOptions.getAwsStsRoleArn())
-             .withStsExternalId(awsAuthenticationOptions.getAwsStsExternalId())
-             .withStsHeaderOverrides(awsAuthenticationOptions.getAwsStsHeaderOverrides())
-             .build();
-     }
+    private static AwsCredentialsOptions convertToCredentialsOptions(final AwsAuthenticationOptions awsAuthenticationOptions) {
+        return AwsCredentialsOptions.builder()
+                .withRegion(awsAuthenticationOptions.getAwsRegion())
+                .withStsRoleArn(awsAuthenticationOptions.getAwsStsRoleArn())
+                .withStsExternalId(awsAuthenticationOptions.getAwsStsExternalId())
+                .withStsHeaderOverrides(awsAuthenticationOptions.getAwsStsHeaderOverrides())
+                .build();
+    }
 }
