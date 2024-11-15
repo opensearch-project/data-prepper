@@ -132,8 +132,13 @@ class TemporalTypeHandlerTest {
     private static Stream<Arguments> provideYearTestCases() {
         return Stream.of(
                 Arguments.of("2023", 2023),
-                Arguments.of("1900", 1900),
-                Arguments.of("1997", 1997)
+                Arguments.of("1900", 0),
+                Arguments.of("1997", 1997),
+                Arguments.of("1889", 0),
+                Arguments.of("1901", 1901),
+                Arguments.of("2155", 2155),
+                Arguments.of("2156", 0),
+                Arguments.of("3015", 0)
         );
     }
 

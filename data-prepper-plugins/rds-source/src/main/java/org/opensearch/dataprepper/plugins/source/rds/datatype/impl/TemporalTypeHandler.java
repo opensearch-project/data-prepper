@@ -142,7 +142,15 @@ public class TemporalTypeHandler implements DataTypeHandler {
     private Long handleYear(final String yearStr) {
         try {
             // MySQL YEAR values are typically four-digit numbers (e.g., 2024).
-            return Long.parseLong(yearStr);
+            final long year = Long.parseLong(yearStr);
+
+            // MySQL converts values in 1- or 2-digit strings in the range '0' to '99' to YYYY format
+            // MySQL YEAR values in YYYY format are with a range of 1901 to 2155. Outside this range the value is 0.
+            if (year <= 1900 || year > 2155) {
+                return 0L;
+            }
+
+            return year;
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid year format: " + yearStr, e);
         }
