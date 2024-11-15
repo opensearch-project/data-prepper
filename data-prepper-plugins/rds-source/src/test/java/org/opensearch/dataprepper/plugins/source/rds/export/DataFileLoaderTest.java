@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -81,6 +82,9 @@ class DataFileLoaderTest {
 
     @Mock
     private AcknowledgementSet acknowledgementSet;
+
+    @Mock
+    private DbTableMetadata dbTableMetadata;
 
     @Mock
     private Duration acknowledgmentTimeout;
@@ -211,6 +215,6 @@ class DataFileLoaderTest {
     private DataFileLoader createObjectUnderTest() {
         final InputCodec codec = new ParquetInputCodec(eventFactory);
         return DataFileLoader.create(dataFilePartition, codec, buffer, s3ObjectReader, recordConverter,
-                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout);
+                pluginMetrics, sourceCoordinator, acknowledgementSet, acknowledgmentTimeout, dbTableMetadata);
     }
 }

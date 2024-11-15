@@ -5,6 +5,9 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Map;
 
 public class NumericTypeHandler implements DataTypeHandler {
 
@@ -15,40 +18,93 @@ public class NumericTypeHandler implements DataTypeHandler {
             return null;
         }
 
-        if (!columnType.isNumeric()) {
+        if (!(columnType.isNumeric() || columnType.isBit())) {
             throw new IllegalArgumentException("ColumnType is not numeric: " + columnType);
         }
 
-        if (!(value instanceof Number)) {
-            throw new IllegalArgumentException("Value is not a number: " + value);
-        }
-
-        return handleNumericType(columnType, (Number) value);
+        return handleNumericType(columnType, value);
     }
 
-    private Number handleNumericType(final MySQLDataType columnType, final Number value) {
-        if (columnType.isUnsigned()) {
-            if (columnType == MySQLDataType.BIGINT_UNSIGNED) {
-                return handleUnsignedDouble(value);
+    private Number handleNumericType(final MySQLDataType columnType, final Object value) {
+        if (columnType.isNumericUnsigned()) {
+            if (columnType.isBigIntUnsigned()) {
+                return handleUnsignedBigInt(value);
             } else {
                 return handleUnsignedNumber(value, columnType.getUnsignedMask());
             }
         }
-        return value;
+
+        if (columnType.isBit()) {
+            return handleBit(value);
+        }
+
+        if (value instanceof Number) {
+            return (Number)value;
+        }
+
+        throw new IllegalArgumentException("Unsupported value type. The value is of type: " + value.getClass());
     }
 
-    private Number handleUnsignedNumber(final Number value, final long mask) {
-        final long longVal = value.longValue();
+    private Number handleBit(final Object value) {
+        if (value instanceof BitSet) {
+            return bitSetToBigInteger((BitSet) value);
+        }
+
+        if (value instanceof Map) {
+            Object data = ((Map<?, ?>)value).get(BYTES_KEY);
+            if (data instanceof byte[]) {
+                return new BigInteger(1, (byte[]) data);
+            } else {
+                byte[] bytes = ((String)data).getBytes();
+                return new BigInteger(1, bytes);
+            }
+        }
+
+        throw new IllegalArgumentException("Unsupported value type. The value is of type: " + value.getClass());
+    }
+
+    private Number handleUnsignedNumber(final Object value, final long mask) {
+        if (!(value instanceof Number)) {
+            throw new IllegalArgumentException("Unsupported value type. The value is of type: " + value.getClass());
+        }
+
+        final long longVal = ((Number)value).longValue();
         return longVal < 0 ? longVal & mask : longVal;
     }
 
-    private Number handleUnsignedDouble(final Number value) {
-        long longVal = value.longValue();
-        if (longVal < 0) {
-            return BigInteger.valueOf(longVal & Long.MAX_VALUE)
-                    .add(BigInteger.valueOf(Long.MAX_VALUE))
-                    .add(BigInteger.ONE);
+    private Number handleUnsignedBigInt(final Object value) {
+        if (value instanceof Number) {
+            long longVal = ((Number)value).longValue();
+            if (longVal < 0) {
+                return BigInteger.valueOf(longVal & Long.MAX_VALUE)
+                        .add(BigInteger.valueOf(Long.MAX_VALUE))
+                        .add(BigInteger.ONE);
+            }
+            return (Number)value;
         }
-        return value;
+
+        if (value instanceof ArrayList<?>) {
+            ArrayList<?> list = (ArrayList<?>) value;
+
+            // Convert ArrayList to byte array
+            byte[] bytes = new byte[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                bytes[i] = ((Number) list.get(i)).byteValue();
+            }
+
+            return new BigInteger(1, bytes);
+        }
+
+        throw new IllegalArgumentException("Unsupported value type. The value is of type: " + value.getClass().getName());
+    }
+
+    private static BigInteger bitSetToBigInteger(BitSet bitSet) {
+        BigInteger result = BigInteger.ZERO;
+        for (int i = 0; i < bitSet.length(); i++) {
+            if (bitSet.get(i)) {
+                result = result.setBit(i);
+            }
+        }
+        return result;
     }
 }

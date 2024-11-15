@@ -14,12 +14,17 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
@@ -113,8 +118,11 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private void refreshTask(RdsSourceConfig sourceConfig) {
         final BinaryLogClient binaryLogClient = binlogClientFactory.create();
+        final DbTableMetadata dbTableMetadata = getDBTableMetadata(streamPartition);
+        final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
         binaryLogClient.registerEventListener(BinlogEventListener.create(
-                buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager));
+                streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
         final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));
     }
@@ -124,4 +132,12 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         return !Objects.equals(currentAuthConfig.getUsername(), newAuthConfig.getUsername()) ||
                 !Objects.equals(currentAuthConfig.getPassword(), newAuthConfig.getPassword());
     }
+
+    private DbTableMetadata getDBTableMetadata(final StreamPartition streamPartition) {
+        final String dbIdentifier = streamPartition.getPartitionKey();
+        final Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition(dbIdentifier);
+        final GlobalState globalState = (GlobalState) globalStatePartition.get();
+        return DbTableMetadata.fromMap(globalState.getProgressState().get());
+    }
 }
+

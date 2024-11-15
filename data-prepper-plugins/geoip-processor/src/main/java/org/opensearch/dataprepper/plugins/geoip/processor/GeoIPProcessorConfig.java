@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -45,6 +47,9 @@ public class GeoIPProcessorConfig {
     @JsonProperty("geoip_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/srcaddr != \"8.8.8.8\"</code>. " +
             "If specified, the <code>geoip</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/srcaddr != \"8.8.8.8\"", description = "The processor will only match when the source IP is equivalent to 8.8.8.8.")
+    })
     private String whenCondition;
 
     /**

@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.UsesDataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -28,16 +30,25 @@ public class ObfuscationProcessorConfig {
     @JsonPropertyDescription("The source field to obfuscate.")
     @NotEmpty
     @NotNull
+    @ExampleValues({
+        @Example(value = "log", description = "The 'log' field in the input data will be obfuscated.")
+    })
     private String source;
 
     @JsonProperty("target")
     @JsonPropertyDescription("The new field in which to store the obfuscated value. " +
             "This leaves the original source field unchanged. " +
             "When no <code>target</code> is provided, the source field updates with the obfuscated value.")
+    @ExampleValues({
+        @Example(value = "newLog", description = "The 'newLog' field in the output data will have the input data obfuscated according to the other configurations that were set.")
+    })
     private String target;
 
     @JsonProperty("patterns")
     @JsonPropertyDescription("A list of regex patterns that allow you to obfuscate specific parts of a field. Only parts that match the regex pattern will obfuscate. When not provided, the processor obfuscates the whole field.")
+    @ExampleValues({
+        @Example(value = "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}", description = "This pattern represents an email address that will be obfuscated in the given field.")
+    })
     private List<String> patterns;
 
     @JsonProperty("action")
@@ -53,6 +64,9 @@ public class ObfuscationProcessorConfig {
 
     @JsonProperty("tags_on_match_failure")
     @JsonPropertyDescription("The tag to add to an event if the <code>obfuscate</code> processor fails to match the pattern.")
+    @ExampleValues({
+        @Example(value = "[\"_failure\"]", description = "{\"tags\": [\"_failure\"]} will be added to the event if the processor fails to match the pattern.")
+    })
     private List<String> tagsOnMatchFailure;
 
     @JsonProperty("obfuscate_when")

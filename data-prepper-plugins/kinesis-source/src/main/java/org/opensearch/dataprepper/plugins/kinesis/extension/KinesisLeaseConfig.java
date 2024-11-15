@@ -17,4 +17,7 @@ import lombok.Getter;
 public class KinesisLeaseConfig {
     @JsonProperty("lease_coordination")
     private KinesisLeaseCoordinationTableConfig leaseCoordinationTable;
+
+    @JsonProperty("pipeline_identifier")
+    private String pipelineIdentifier;
 }

@@ -101,7 +101,11 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         final Collection<Record<Event>> recordsSkipped = new ArrayList<>();
         for (Record<Event> record: records) {
             if (((RequiresPeerForwarding)innerProcessor).isApplicableEventForPeerForwarding(record.getData())) {
-                recordsToProcess.add(record);
+                if (isPeerForwardingDisabled()) {
+                    recordsToProcessLocally.add(record);
+                } else {
+                    recordsToProcess.add(record);
+                }
             } else if (((RequiresPeerForwarding)innerProcessor).isForLocalProcessingOnly(record.getData())){
                 recordsToProcessLocally.add(record);
             } else {

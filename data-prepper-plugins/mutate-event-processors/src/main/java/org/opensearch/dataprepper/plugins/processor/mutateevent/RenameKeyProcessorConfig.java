@@ -13,6 +13,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
@@ -25,13 +28,24 @@ import java.util.regex.Pattern;
 public class RenameKeyProcessorConfig {
     @JsonPropertyOrder
     public static class Entry {
-        @JsonProperty("from_key")
-        @JsonPropertyDescription("The key of the entry to be renamed.")
+        static  final String FROM_KEY = "from_key";
+        static final String FROM_KEY_REGEX = "from_key_regex";
+        @JsonProperty(defaultValue = FROM_KEY)
+        @JsonPropertyDescription("The key of the entry to be renamed. " +
+                "This field cannot be defined along with <code>from_key_regex</code>.")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name = FROM_KEY_REGEX, allowedValues = {"null"})
+        })
         @EventKeyConfiguration({EventKeyFactory.EventAction.GET, EventKeyFactory.EventAction.DELETE})
         private EventKey fromKey;
 
-        @JsonProperty("from_key_regex")
-        @JsonPropertyDescription("The regex pattern of the key of the entry to be renamed.")
+
+        @JsonProperty(defaultValue = FROM_KEY_REGEX)
+        @JsonPropertyDescription("The regex pattern of the key of the entry to be renamed. " +
+                "This field cannot be defined along with <code>from_key</code>.")
+        @AlsoRequired(values = {
+                @AlsoRequired.Required(name = FROM_KEY, allowedValues = {"null"})
+        })
         private String fromKeyRegex;
 
         @NotEmpty
@@ -46,9 +60,12 @@ public class RenameKeyProcessorConfig {
         private boolean overwriteIfToKeyExists = false;
 
         @JsonProperty("rename_when")
-        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
-                "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
-                "run on the event. By default, all events will be processed unless otherwise stated.")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> " +
+                "that will be evaluated to determine whether the processor will be run on the event. " +
+                "By default, all events will be processed if no condition is provided.")
+        @ExampleValues(
+                @Example(value = "startsWith(/path, \"https://\")", description = "Rename the string only if it starts with an HTTPS scheme.")
+        )
         private String renameWhen;
 
         private Pattern fromKeyCompiledPattern;

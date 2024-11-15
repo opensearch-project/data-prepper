@@ -42,10 +42,7 @@ public interface Buffer {
 
     public Long getPayloadRequestSize();
 
-    public Long getPayloadResponseSize();
-
     public Duration stopLatencyWatch();
-
 
     void reset();
 

@@ -29,14 +29,21 @@ import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,12 +65,20 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String SEPARATOR = ".";
 
     /**
      * TableId to TableMetadata mapping
      */
     private final Map<Long, TableMetadata> tableMetadataMap;
 
+    /**
+     * TableName to ParentTable mapping. Only parent tables that have cascading update/delete actions defined
+     * (CASCADE, SET_NULL, SET_DEFAULT) are included in this map.
+     */
+    private final Map<String, ParentTable> parentTableMap;
+
+    private final StreamPartition streamPartition;
     private final StreamRecordConverter recordConverter;
     private final BinaryLogClient binaryLogClient;
     private final Buffer<Record<Event>> buffer;
@@ -73,7 +88,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final PluginMetrics pluginMetrics;
     private final List<Event> pipelineEvents;
     private final StreamCheckpointManager streamCheckpointManager;
+    private final DbTableMetadata dbTableMetadata;
     private final ExecutorService binlogEventExecutorService;
+    private final CascadingActionDetector cascadeActionDetector;
+
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
     private final DistributionSummary bytesReceivedSummary;
@@ -86,13 +104,17 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
      */
     private BinlogCoordinate currentBinlogCoordinate;
 
-    public BinlogEventListener(final Buffer<Record<Event>> buffer,
+    public BinlogEventListener(final StreamPartition streamPartition,
+                               final Buffer<Record<Event>> buffer,
                                final RdsSourceConfig sourceConfig,
                                final String s3Prefix,
                                final PluginMetrics pluginMetrics,
                                final BinaryLogClient binaryLogClient,
                                final StreamCheckpointer streamCheckpointer,
-                               final AcknowledgementSetManager acknowledgementSetManager) {
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final DbTableMetadata dbTableMetadata,
+                               final CascadingActionDetector cascadeActionDetector) {
+        this.streamPartition = streamPartition;
         this.buffer = buffer;
         this.binaryLogClient = binaryLogClient;
         tableMetadataMap = new HashMap<>();
@@ -105,10 +127,14 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         binlogEventExecutorService = Executors.newFixedThreadPool(
                 sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
+        this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
                 acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout());
         streamCheckpointManager.start();
+
+        this.cascadeActionDetector = cascadeActionDetector;
+        parentTableMap = cascadeActionDetector.getParentTableMap(streamPartition);
 
         changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
         changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
@@ -117,14 +143,18 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
     }
 
-    public static BinlogEventListener create(final Buffer<Record<Event>> buffer,
+    public static BinlogEventListener create(final StreamPartition streamPartition,
+                                             final Buffer<Record<Event>> buffer,
                                              final RdsSourceConfig sourceConfig,
                                              final String s3Prefix,
                                              final PluginMetrics pluginMetrics,
                                              final BinaryLogClient binaryLogClient,
                                              final StreamCheckpointer streamCheckpointer,
-                                             final AcknowledgementSetManager acknowledgementSetManager) {
-        return new BinlogEventListener(buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, streamCheckpointer, acknowledgementSetManager);
+                                             final AcknowledgementSetManager acknowledgementSetManager,
+                                             final DbTableMetadata dbTableMetadata,
+                                             final CascadingActionDetector cascadeActionDetector) {
+        return new BinlogEventListener(streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient, 
+                                       streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector);
     }
 
     @Override
@@ -178,48 +208,137 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
-        final TableMapEventData data = event.getData();
-        final TableMapEventMetadata tableMapEventMetadata = data.getEventMetadata();
+        final TableMapEventData eventData = event.getData();
+        final TableMapEventMetadata tableMapEventMetadata = eventData.getEventMetadata();
         final List<String> columnNames = tableMapEventMetadata.getColumnNames();
         final List<String> primaryKeys = tableMapEventMetadata.getSimplePrimaryKeys().stream()
                 .map(columnNames::get)
                 .collect(Collectors.toList());
         final TableMetadata tableMetadata = new TableMetadata(
-                data.getTable(), data.getDatabase(), columnNames, primaryKeys);
+                eventData.getTable(), eventData.getDatabase(), columnNames, primaryKeys,
+                getSetStrValues(eventData), getEnumStrValues(eventData));
         if (isTableOfInterest(tableMetadata.getFullTableName())) {
-            tableMetadataMap.put(data.getTableId(), tableMetadata);
+            tableMetadataMap.put(eventData.getTableId(), tableMetadata);
+        }
+    }
+
+    private Map<String, String[]> getSetStrValues(final TableMapEventData eventData) {
+        return getStrValuesMap(eventData, MySQLDataType.SET);
+    }
+
+    private Map<String, String[]> getEnumStrValues(final TableMapEventData eventData) {
+        return getStrValuesMap(eventData, MySQLDataType.ENUM);
+    }
+
+    private Map<String, String[]> getStrValuesMap(final TableMapEventData eventData, final MySQLDataType columnType) {
+        Map<String, String[]> strValuesMap = new HashMap<>();
+        List<String> columnNames = eventData.getEventMetadata().getColumnNames();
+        List<String[]> strValues = getStrValues(eventData, columnType);
+
+        final Map<String, String> tbMetadata = dbTableMetadata.getTableColumnDataTypeMap()
+                .get(eventData.getDatabase() + SEPARATOR + eventData.getTable());
+
+        for (int i = 0, j=0; i < columnNames.size(); i++) {
+            final String dataType = tbMetadata.get(columnNames.get(i));
+            if (MySQLDataType.byDataType(dataType) == columnType) {
+                strValuesMap.put(columnNames.get(i), strValues.get(j++));
+            }
+        }
+
+        return strValuesMap;
+    }
+
+    private List<String[]> getStrValues(final TableMapEventData eventData, final MySQLDataType columnType) {
+        if (columnType == MySQLDataType.ENUM) {
+            return eventData.getEventMetadata().getEnumStrValues();
+        } else if (columnType == MySQLDataType.SET) {
+            return eventData.getEventMetadata().getSetStrValues();
+        } else {
+            return Collections.emptyList();
         }
     }
 
     void handleInsertEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         LOG.debug("Handling insert event");
         final WriteRowsEventData data = event.getData();
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.INDEX);
+
+        if (!isValidTableId(data.getTableId())) {
+            return;
+        }
+
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX));
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         LOG.debug("Handling update event");
         final UpdateRowsEventData data = event.getData();
 
-        // updatedRow contains data before update as key and data after update as value
-        final List<Serializable[]> rows = data.getRows().stream()
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toList());
+        if (!isValidTableId(data.getTableId())) {
+            return;
+        }
 
-        handleRowChangeEvent(event, data.getTableId(), rows, OpenSearchBulkActions.INDEX);
+        // Check if a cascade action is involved
+        cascadeActionDetector.detectCascadingUpdates(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
+
+        final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
+        final List<OpenSearchBulkActions> bulkActions = new ArrayList<>();
+        final List<Serializable[]> rows = new ArrayList<>();
+        for (int rowNum = 0; rowNum < data.getRows().size(); rowNum++) {
+            // `row` contains data before update as key and data after update as value
+            Map.Entry<Serializable[], Serializable[]> row = data.getRows().get(rowNum);
+
+            for (int i = 0; i < row.getKey().length; i++) {
+                if (tableMetadata.getPrimaryKeys().contains(tableMetadata.getColumnNames().get(i)) &&
+                        !row.getKey()[i].equals(row.getValue()[i])) {
+                    LOG.debug("Primary keys were updated");
+                    // add delete event for the old row data
+                    rows.add(row.getKey());
+                    bulkActions.add(OpenSearchBulkActions.DELETE);
+                    break;
+                }
+            }
+            // add index event for the new row data
+            rows.add(row.getValue());
+            bulkActions.add(OpenSearchBulkActions.INDEX);
+        }
+
+        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions);
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         LOG.debug("Handling delete event");
         final DeleteRowsEventData data = event.getData();
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.DELETE);
+        if (!isValidTableId(data.getTableId())) {
+            return;
+        }
+
+        // Check if a cascade action is involved
+        cascadeActionDetector.detectCascadingDeletes(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
+
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE));
     }
 
-    private void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
+    // Visible For Testing
+    boolean isValidTableId(long tableId) {
+        if (!tableMetadataMap.containsKey(tableId)) {
+            LOG.debug("Cannot find table metadata, the event is likely not from a table of interest or the table metadata was not read");
+            return false;
+        }
+
+        if (!isTableOfInterest(tableMetadataMap.get(tableId).getFullTableName())) {
+            LOG.debug("The event is not from a table of interest");
+            return false;
+        }
+
+        return true;
+    }
+
+    // Visible For Testing
+    void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
                               long tableId,
                               List<Serializable[]> rows,
-                              OpenSearchBulkActions bulkAction) {
+                              List<OpenSearchBulkActions> bulkActions) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
@@ -236,26 +355,24 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final long bytes = event.toString().getBytes().length;
         bytesReceivedSummary.record(bytes);
 
-        if (!tableMetadataMap.containsKey(tableId)) {
-            LOG.debug("Cannot find table metadata, the event is likely not from a table of interest or the table metadata was not read");
-            return;
-        }
         final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
-        final String fullTableName = tableMetadata.getFullTableName();
-        if (!isTableOfInterest(fullTableName)) {
-            LOG.debug("The event is not from a table of interest");
-            return;
-        }
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
 
-        for (Object[] rowDataArray : rows) {
+        for (int rowNum = 0; rowNum < rows.size(); rowNum++) {
+            final Object[] rowDataArray = rows.get(rowNum);
+            final OpenSearchBulkActions bulkAction = bulkActions.get(rowNum);
+
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
-                rowDataMap.put(columnNames.get(i), rowDataArray[i]);
+                final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
+                final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
+                final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                        rowDataArray[i], tableMetadata);
+                rowDataMap.put(columnNames.get(i), data);
             }
 
             final Event dataPrepperEvent = JacksonEvent.builder()

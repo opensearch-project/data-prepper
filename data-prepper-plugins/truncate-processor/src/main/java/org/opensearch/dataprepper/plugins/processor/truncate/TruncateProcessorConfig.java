@@ -13,6 +13,8 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue; 
 import jakarta.validation.Valid;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
 
@@ -41,8 +43,11 @@ public class TruncateProcessorConfig {
         private Boolean recurse = false;
 
         @JsonProperty("truncate_when")
-        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/test != false</code>. " +
-                "If specified, the <code>truncate</code> processor will only run on events when the expression evaluates to true. ")
+        @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>. " +
+                "If specified, the <code>truncate</code> processor will only run on events when the expression evaluates to true.")
+        @ExampleValues(
+                @Example(value = "length(/node_name) > 10", description = "Truncate if the value of node_name is greater than 10 characters.")
+        )
         private String truncateWhen;
 
         public Entry(final List<String> sourceKeys, final Integer startAt, final Integer length, final String truncateWhen, final Boolean recurse) {

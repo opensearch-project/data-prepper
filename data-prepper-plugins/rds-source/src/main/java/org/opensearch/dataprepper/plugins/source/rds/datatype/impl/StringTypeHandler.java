@@ -12,7 +12,7 @@ public class StringTypeHandler implements DataTypeHandler {
     @Override
     public String handle(final MySQLDataType columnType, final String columnName, final Object value,
                          final TableMetadata metadata) {
-        if (columnType.isStringBytes()) {
+        if (columnType.isStringBytes() && (value instanceof byte[])) {
             return new String((byte[]) value);
         } else if (columnType.isStringEnum() && value instanceof Integer) {
             return getEnumValue((int) value, metadata.getEnumStrValues().get(columnName));

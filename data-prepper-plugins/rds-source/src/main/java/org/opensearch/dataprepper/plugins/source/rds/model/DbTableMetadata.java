@@ -12,6 +12,10 @@ public class DbTableMetadata {
     private static final String DB_METADATA_KEY = "dbMetadata";
     private static final String TABLE_COLUMN_METADATA_KEY = "tableColumnDataTypeMap";
     private final DbMetadata dbMetadata;
+    /**
+     * Map of table name to table column data type map
+     * e.g. { "table1" : { "column1" : "int", "column2" : "varchar" }, "table2" : { "column1" : "int" } }
+     */
     private final Map<String, Map<String, String>> tableColumnDataTypeMap;
 
     public DbTableMetadata(final DbMetadata dbMetadata, final Map<String, Map<String, String>> tableColumnDataTypeMap) {

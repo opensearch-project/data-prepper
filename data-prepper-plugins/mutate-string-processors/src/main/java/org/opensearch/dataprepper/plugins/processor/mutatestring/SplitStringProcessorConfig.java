@@ -18,6 +18,8 @@ import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
@@ -51,6 +53,9 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=DELIMITER_REGEX_KEY, allowedValues = {"null", "\"\""})
         })
+        @ExampleValues(
+                @Example(value = "/", description = "Split a file path.")
+        )
         private String delimiter;
 
         @JsonProperty("delimiter_regex")
@@ -59,11 +64,17 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="delimiter", allowedValues = {"null", "\"\""})
         })
+        @ExampleValues(
+                @Example(value = "(file:///|/+)", description = "Split a file URI, treating multiple slashes as a single slash.")
+        )
         private String delimiterRegex;
 
         @JsonProperty("split_when")
         @JsonPropertyDescription("Specifies under what condition the <code>split_string</code> processor should perform splitting. " +
                 "Default is no condition.")
+        @ExampleValues(
+                @Example(value = "startsWith(/path, \"file://\")", description = "Split a string only if it starts with the file URI scheme.")
+        )
         private String splitWhen;
 
         public EventKey getSource() {

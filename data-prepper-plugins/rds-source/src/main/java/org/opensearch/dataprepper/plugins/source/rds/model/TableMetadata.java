@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 public class TableMetadata {
+    public static final String DOT_DELIMITER = ".";
+
     private String databaseName;
     private String tableName;
     private List<String> columnNames;
@@ -40,7 +42,7 @@ public class TableMetadata {
     }
 
     public String getFullTableName() {
-        return databaseName + "." + tableName;
+        return databaseName + DOT_DELIMITER + tableName;
     }
 
     public List<String> getColumnNames() {

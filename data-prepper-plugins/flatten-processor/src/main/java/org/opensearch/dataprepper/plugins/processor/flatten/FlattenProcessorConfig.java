@@ -12,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 
 import java.util.ArrayList;
@@ -28,12 +30,18 @@ public class FlattenProcessorConfig {
     @JsonProperty("source")
     @JsonPropertyDescription("The source key on which to perform the operation. If set to an empty string (<code>\"\"</code>), " +
             "then the processor uses the root of the event as the source.")
+    @ExampleValues({
+        @Example(value = "key2", description = "The flatten operation is performed on the source key equivalent to 'key2'")
+    })
     private String source;
 
     @NotNull
     @JsonProperty("target")
     @JsonPropertyDescription("The target key to put into the flattened fields. If set to an empty string (<code>\"\"</code>) " +
             "then the processor uses the root of the event as the target.")
+    @ExampleValues({
+        @Example(value = "flattened-key2", description = "The flattened fields from the source key specified are put into a field named 'flattened-key2'.")
+    })
     private String target;
 
     @JsonProperty("remove_processed_fields")
@@ -66,6 +74,9 @@ public class FlattenProcessorConfig {
     @JsonProperty("flatten_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>flatten</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/some-key == \"test\"", description = "The flatten operation will run when the value of the key is 'test'.")
+    })
     private String flattenWhen;
 
     public String getSource() {

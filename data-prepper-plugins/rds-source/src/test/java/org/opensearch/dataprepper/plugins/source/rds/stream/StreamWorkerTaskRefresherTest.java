@@ -22,8 +22,16 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
@@ -91,6 +99,12 @@ class StreamWorkerTaskRefresherTest {
     @Mock
     private BinlogEventListener binlogEventListener;
 
+    @Mock
+    private DbTableMetadata dbTableMetadata;
+
+    @Mock
+    private GlobalState globalState;
+
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
     @BeforeEach
@@ -104,11 +118,16 @@ class StreamWorkerTaskRefresherTest {
     @Test
     void test_initialize_then_process_stream() {
         when(binlogClientFactory.create()).thenReturn(binlogClient);
+        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
         try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
+             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
         }
@@ -137,12 +156,16 @@ class StreamWorkerTaskRefresherTest {
         when(sourceConfig2.getAuthenticationConfig().getPassword()).thenReturn(password2);
 
         when(binlogClientFactory.create()).thenReturn(binlogClient).thenReturn(binlogClient);
-
+        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
         try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
+             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig2);
@@ -170,12 +193,16 @@ class StreamWorkerTaskRefresherTest {
         when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
 
         when(binlogClientFactory.create()).thenReturn(binlogClient);
-
+        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
         try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class)) {
+             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
             streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
                     .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(buffer), any(RdsSourceConfig.class), any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
+                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
                     .thenReturn(binlogEventListener);
             streamWorkerTaskRefresher.initialize(sourceConfig);
             streamWorkerTaskRefresher.update(sourceConfig);
@@ -196,5 +223,34 @@ class StreamWorkerTaskRefresherTest {
 
         return new StreamWorkerTaskRefresher(
                 sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+    }
+
+    private Map<String, Object> mockGlobalStateAndProgressState() {
+        final String dbIdentifier = UUID.randomUUID().toString();
+        when(streamPartition.getPartitionKey()).thenReturn(dbIdentifier);
+        when(sourceCoordinator.getPartition(dbIdentifier)).thenReturn(Optional.of(globalState));
+        final Map<String, Object> progressState = getDbTableMetaDataMap();
+        when(globalState.getProgressState()).thenReturn(Optional.of(progressState));
+        return progressState;
+    }
+
+    private Map<String, Object> getDbTableMetaDataMap() {
+        final String dbIdentifier = UUID.randomUUID().toString();
+        final String hostName = UUID.randomUUID().toString();
+        final int port = new Random().nextInt();
+        final String tableName = UUID.randomUUID().toString();
+
+        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final Map<String, Map<String, String>> tableColumnDataTypeMap = new HashMap<>();
+        final Map<String, String> columnDataTypeMap = new HashMap<>();
+        columnDataTypeMap.put("int_column", "INTEGER");
+        tableColumnDataTypeMap.put(tableName, columnDataTypeMap);
+
+
+        final Map<String, Object> map = new HashMap<>();
+        map.put("dbMetadata", dbMetadata.toMap());
+        map.put("tableColumnDataTypeMap", tableColumnDataTypeMap);
+
+        return map;
     }
 }

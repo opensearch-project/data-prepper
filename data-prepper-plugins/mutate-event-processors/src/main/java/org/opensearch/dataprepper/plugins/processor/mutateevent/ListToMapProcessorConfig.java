@@ -16,6 +16,8 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +28,10 @@ import java.util.stream.Collectors;
         @IfThenElse(
                 ifFulfilled = {@SchemaProperty(field = "use_source_key", value = "false")},
                 thenExpect = {@SchemaProperty(field = "key")}
+        ),
+        @IfThenElse(
+                ifFulfilled = {@SchemaProperty(field = "flatten", value = "true")},
+                thenExpect = {@SchemaProperty(field = "flattened_element")}
         )
 })
 @JsonPropertyOrder
@@ -84,6 +90,9 @@ public class ListToMapProcessorConfig {
     @JsonPropertyDescription("When specified, values given a <code>value_key</code> in objects contained in the source list " +
             "will be extracted and converted into the value specified by this option based on the generated map. " +
             "When not specified, objects contained in the source list retain their original value when mapped.")
+    @ExampleValues({
+        @Example(value = "value", description = "In each list object, 'value' will be extracted and used as the value in the generated map.")
+    })
     private String valueKey = null;
 
     @JsonProperty("extract_value")

@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.Collections;
 import java.util.List;
@@ -55,6 +57,9 @@ public class GrokProcessorConfig {
             "Each key is a source field. The value is a list of possible grok patterns to match on. " +
             "The <code>grok</code> processor will extract values from the first match for each field. " +
             "Default is an empty response body.")
+    @ExampleValues({
+        @Example(value = "%{IPV4:clientip} %{WORD:request} %{POSINT:bytes}", description = "Matches on the specific patterns given.")
+    })
     private Map<String, List<String>> match = Collections.emptyMap();
 
     @JsonProperty(TARGET_KEY)
@@ -88,7 +93,7 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("Specifies which directory paths contain the custom pattern files. Default is an empty list.")
     private List<String> patternsDirectories = Collections.emptyList();
 
-    @JsonProperty(PATTERNS_FILES_GLOB)
+    @JsonProperty(value = PATTERNS_FILES_GLOB, defaultValue = "*")
     @JsonPropertyDescription("Specifies which pattern files to use from the directories specified for " +
             "<code>pattern_directories</code>. Default is <code>*</code>.")
     private String patternsFilesGlob = DEFAULT_PATTERNS_FILES_GLOB;
@@ -102,13 +107,22 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when grok fails to " +
             "match or an unknown exception occurs while matching. This tag may be used in conditional expressions in " +
             "other parts of the configuration")
+    @ExampleValues({
+        @Example(value = "_match_failure", description = "Events are tagged with this string when matching fails or an unknown exception occurs.")
+    })
     private List<String> tagsOnMatchFailure = Collections.emptyList();
 
     @JsonProperty(TAGS_ON_TIMEOUT)
     @JsonPropertyDescription("The tags to add to the event metadata if the grok match times out.")
+    @ExampleValues({
+        @Example(value = "_timeout", description = "Events are tagged with this string if grok match times out.")
+    })
     private List<String> tagsOnTimeout = Collections.emptyList();
 
     @JsonProperty(GROK_WHEN)
+    @ExampleValues({
+        @Example(value = "/type == \"ipv4\"", description = "When the IP type is IPV4, the processor will perform matching.")
+    })
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/test != false</code>. " +
             "If specified, the <code>grok</code> processor will only run on events when the expression evaluates to true. ")
     private String grokWhen;

@@ -21,13 +21,13 @@ public class MaskActionConfig {
 
     @JsonProperty(value = "mask_character", defaultValue = DEFAULT_MASK_CHARACTER)
     @Pattern(regexp = "[*#!%&@]", message = "Valid characters are *, #, $, %, &, ! and @")
-    @JsonPropertyDescription("The character to use to mask text. By default, this is <code>*</code>")
+    @JsonPropertyDescription("The character to use to mask text. By default, this is <code>*</code>. Valid characters are *, #, $, %, &, ! and @")
     private String maskCharacter = DEFAULT_MASK_CHARACTER;
 
     @JsonProperty(value = "mask_character_length", defaultValue = "" + DEFAULT_MASK_LENGTH)
     @Min(1)
     @Max(10)
-    @JsonPropertyDescription("The length of the character mask to apply. By default, this is three characters.")
+    @JsonPropertyDescription("The length of the character mask to apply. By default, this is three characters. The value must be between 1 and 10.")
     private int maskCharacterLength = DEFAULT_MASK_LENGTH;
 
     public MaskActionConfig() {

@@ -1,5 +1,6 @@
 extensions:
   kinesis:
+    pipeline_identifier: "sample-kinesis-pipeline-0123"
     lease_coordination:
       table_name: "kinesis-pipeline-kcl"
       region: "us-east-1"
