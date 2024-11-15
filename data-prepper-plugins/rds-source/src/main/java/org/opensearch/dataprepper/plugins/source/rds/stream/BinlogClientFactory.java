@@ -31,7 +31,7 @@ public class BinlogClientFactory {
 
     public BinaryLogClient create() {
         BinaryLogClient binaryLogClient = new BinaryLogClient(
-                dbMetadata.getHostName(),
+                dbMetadata.getEndpoint(),
                 dbMetadata.getPort(),
                 username,
                 password);

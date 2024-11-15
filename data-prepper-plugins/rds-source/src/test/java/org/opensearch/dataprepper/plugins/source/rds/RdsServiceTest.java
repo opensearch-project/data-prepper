@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -25,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -68,6 +70,9 @@ class RdsServiceTest {
 
     @Mock
     private ExecutorService executor;
+
+    @Mock
+    private ExecutorService resyncExecutor;
 
     @Mock
     private EventFactory eventFactory;
@@ -149,16 +154,21 @@ class RdsServiceTest {
 
         final RdsService rdsService = createObjectUnderTest();
         final String[] s3PrefixArray = new String[1];
+
+        final BackgroundThreadFactory threadFactory = mock(BackgroundThreadFactory.class);
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class);
              final MockedConstruction<LeaderScheduler> leaderSchedulerMockedConstruction = mockConstruction(LeaderScheduler.class,
-                     (mock, context) -> s3PrefixArray[0] = (String) context.arguments().get(2))) {
+                     (mock, context) -> s3PrefixArray[0] = (String) context.arguments().get(2));
+             final MockedStatic<BackgroundThreadFactory> backgroundThreadFactoryMockedStatic = mockStatic(BackgroundThreadFactory.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt())).thenReturn(executor);
+            backgroundThreadFactoryMockedStatic.when(() -> BackgroundThreadFactory.defaultExecutorThreadFactory(any())).thenReturn(threadFactory);
             rdsService.start(buffer);
         }
 
         assertThat(s3PrefixArray[0], equalTo(s3Prefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(partitionPrefix, MAX_SOURCE_IDENTIFIER_LENGTH)));
         verify(executor).submit(any(LeaderScheduler.class));
         verify(executor).submit(any(StreamScheduler.class));
+        verify(executor).submit(any(ResyncScheduler.class));
         verify(executor, never()).submit(any(ExportScheduler.class));
         verify(executor, never()).submit(any(DataFileScheduler.class));
     }

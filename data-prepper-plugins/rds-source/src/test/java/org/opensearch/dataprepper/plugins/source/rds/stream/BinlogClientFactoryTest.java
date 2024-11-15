@@ -43,7 +43,7 @@ class BinlogClientFactoryTest {
         binlogClientFactory = createObjectUnderTest();
         binlogClientFactory.create();
 
-        verify(dbMetadata).getHostName();
+        verify(dbMetadata).getEndpoint();
         verify(dbMetadata).getPort();
     }
 

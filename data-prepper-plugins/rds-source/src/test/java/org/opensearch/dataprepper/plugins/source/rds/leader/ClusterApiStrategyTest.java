@@ -54,15 +54,17 @@ class ClusterApiStrategyTest {
     @Test
     void test_describeDb_returns_correct_results() {
         final String dbClusterId = UUID.randomUUID().toString();
-        final String host = UUID.randomUUID().toString();
+        final String endpoint = UUID.randomUUID().toString();
         final int port = random.nextInt();
+        final String readerEndpoint = UUID.randomUUID().toString();
         final DescribeDbClustersRequest describeDbClustersRequest = DescribeDbClustersRequest.builder()
                 .dbClusterIdentifier(dbClusterId)
                 .build();
         final DescribeDbClustersResponse describeDbClustersResponse = DescribeDbClustersResponse.builder()
                 .dbClusters(DBCluster.builder()
-                        .endpoint(host)
+                        .endpoint(endpoint)
                         .port(port)
+                        .readerEndpoint(readerEndpoint)
                         .build())
                 .build();
         when(rdsClient.describeDBClusters(describeDbClustersRequest)).thenReturn(describeDbClustersResponse);
@@ -70,8 +72,10 @@ class ClusterApiStrategyTest {
         DbMetadata dbMetadata = objectUnderTest.describeDb(dbClusterId);
 
         assertThat(dbMetadata.getDbIdentifier(), equalTo(dbClusterId));
-        assertThat(dbMetadata.getHostName(), equalTo(host));
+        assertThat(dbMetadata.getEndpoint(), equalTo(endpoint));
         assertThat(dbMetadata.getPort(), equalTo(port));
+        assertThat(dbMetadata.getReaderEndpoint(), equalTo(readerEndpoint));
+        assertThat(dbMetadata.getReaderPort(), equalTo(port));
     }
 
     @Test

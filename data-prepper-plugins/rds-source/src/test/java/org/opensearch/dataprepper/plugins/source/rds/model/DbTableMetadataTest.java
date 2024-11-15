@@ -16,11 +16,15 @@ public class DbTableMetadataTest {
     @Test
     public void test_fromMap_success() {
         final String dbIdentifier = UUID.randomUUID().toString();
-        final String hostName = UUID.randomUUID().toString();
+        final String endpoint = UUID.randomUUID().toString();
         final int port = new Random().nextInt();
         final String tableName = UUID.randomUUID().toString();
 
-        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final DbMetadata dbMetadata = DbMetadata.builder()
+                .dbIdentifier(dbIdentifier)
+                .endpoint(endpoint)
+                .port(port)
+                .build();
         final Map<String, Map<String, String>> tableColumnDataTypeMap = new HashMap<>();
         final Map<String, String> columnDataTypeMap = new HashMap<>();
         columnDataTypeMap.put("int_column", "INTEGER");
@@ -34,7 +38,7 @@ public class DbTableMetadataTest {
         final DbTableMetadata result = DbTableMetadata.fromMap(map);
 
         assertThat(result.getDbMetadata().getDbIdentifier(), is(dbIdentifier));
-        assertThat(result.getDbMetadata().getHostName(), is(hostName));
+        assertThat(result.getDbMetadata().getEndpoint(), is(endpoint));
         assertThat(result.getDbMetadata().getPort(), is(port));
         assertThat(result.getTableColumnDataTypeMap(), is(tableColumnDataTypeMap));
     }
@@ -42,11 +46,15 @@ public class DbTableMetadataTest {
     @Test
     public void test_toMap_success() {
         final String dbIdentifier = UUID.randomUUID().toString();
-        final String hostName = UUID.randomUUID().toString();
+        final String endpoint = UUID.randomUUID().toString();
         final int port = new Random().nextInt();
         final String tableName = UUID.randomUUID().toString();
 
-        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final DbMetadata dbMetadata = DbMetadata.builder()
+                .dbIdentifier(dbIdentifier)
+                .endpoint(endpoint)
+                .port(port)
+                .build();
         final Map<String, Map<String, String>> tableColumnDataTypeMap = new HashMap<>();
         final Map<String, String> columnDataTypeMap = new HashMap<>();
         columnDataTypeMap.put("int_column", "INTEGER");

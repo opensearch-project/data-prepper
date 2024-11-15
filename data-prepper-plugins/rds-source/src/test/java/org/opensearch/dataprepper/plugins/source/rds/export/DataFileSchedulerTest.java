@@ -213,7 +213,11 @@ class DataFileSchedulerTest {
         final String hostName = UUID.randomUUID().toString();
         final int port = new Random().nextInt();
 
-        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final DbMetadata dbMetadata = DbMetadata.builder()
+                .dbIdentifier(dbIdentifier)
+                .endpoint(hostName)
+                .port(port)
+                .build();
         final Map<String, Object> map = new HashMap<>();
         map.put("dbMetadata", dbMetadata.toMap());
         map.put("tableColumnDataTypeMap", tableColumnDataTypeMap);

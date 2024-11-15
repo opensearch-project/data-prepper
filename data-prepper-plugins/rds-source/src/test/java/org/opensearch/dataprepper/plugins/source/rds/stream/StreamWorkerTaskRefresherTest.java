@@ -240,7 +240,11 @@ class StreamWorkerTaskRefresherTest {
         final int port = new Random().nextInt();
         final String tableName = UUID.randomUUID().toString();
 
-        final DbMetadata dbMetadata = new DbMetadata(dbIdentifier, hostName, port);
+        final DbMetadata dbMetadata = DbMetadata.builder()
+                .dbIdentifier(dbIdentifier)
+                .endpoint(hostName)
+                .port(port)
+                .build();
         final Map<String, Map<String, String>> tableColumnDataTypeMap = new HashMap<>();
         final Map<String, String> columnDataTypeMap = new HashMap<>();
         columnDataTypeMap.put("int_column", "INTEGER");
