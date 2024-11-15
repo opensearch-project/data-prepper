@@ -59,7 +59,7 @@ class TemporalTypeHandlerTest {
                 Arguments.of("2023-12-25", getEpochMillisFromDate(2023, 12, 25)),
                 Arguments.of("1970-01-01", getEpochMillisFromDate(1970, 1, 1)),
                 Arguments.of("2024-02-29", getEpochMillisFromDate(2024, 2, 29)), // Leap year
-                Arguments.of("0000-00-00", null), // Leap year
+                Arguments.of("0000-00-00", null),
                 Arguments.of("1684108800000", getEpochMillisFromDate(2023, 5, 15))
         );
     }
