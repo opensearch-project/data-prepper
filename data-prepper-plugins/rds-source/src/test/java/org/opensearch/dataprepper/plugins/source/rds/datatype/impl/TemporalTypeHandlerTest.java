@@ -86,7 +86,9 @@ class TemporalTypeHandlerTest {
                 Arguments.of("52200123",
                         getEpochMillis(1970, 1, 1, 14, 30, 0, 123456000)),
                 Arguments.of("16:30:00.000000",
-                        getEpochMillis(1970, 1, 1, 16, 30, 0, 0))
+                        getEpochMillis(1970, 1, 1, 16, 30, 0, 0)),
+                Arguments.of("07:17:00.456789",
+                        getEpochMillis(1970, 1, 1, 7, 17, 0, 456789000))
         );
     }
 

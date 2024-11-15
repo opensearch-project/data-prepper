@@ -89,7 +89,7 @@ public class TemporalTypeHandler implements DataTypeHandler {
         try {
             // Handle MySQL zero date special case
             if ("0000-00-00".equals(dateStr)) {
-                return null; // or return a specific default value
+                return null;
             }
 
             // Try parsing as Unix timestamp first
