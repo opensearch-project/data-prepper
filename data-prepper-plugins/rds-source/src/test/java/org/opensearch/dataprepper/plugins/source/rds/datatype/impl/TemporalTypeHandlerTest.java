@@ -49,7 +49,7 @@ class TemporalTypeHandlerTest {
 
     @ParameterizedTest
     @MethodSource("provideDateTestCases")
-    void handle_withDateType_returnsCorrectEpochMillis(String input, long expected) {
+    void handle_withDateType_returnsCorrectEpochMillis(String input, Long expected) {
         Long result = temporalTypeHandler.handle(MySQLDataType.DATE, "date_column", input, null);
         assertEquals(expected, result);
     }
@@ -59,6 +59,7 @@ class TemporalTypeHandlerTest {
                 Arguments.of("2023-12-25", getEpochMillisFromDate(2023, 12, 25)),
                 Arguments.of("1970-01-01", getEpochMillisFromDate(1970, 1, 1)),
                 Arguments.of("2024-02-29", getEpochMillisFromDate(2024, 2, 29)), // Leap year
+                Arguments.of("0000-00-00", null), // Leap year
                 Arguments.of("1684108800000", getEpochMillisFromDate(2023, 5, 15))
         );
     }
@@ -83,7 +84,9 @@ class TemporalTypeHandlerTest {
                 Arguments.of("52200000",
                         getEpochMillis(1970, 1, 1, 14, 30, 0, 0)),
                 Arguments.of("52200123",
-                        getEpochMillis(1970, 1, 1, 14, 30, 0, 123456000))
+                        getEpochMillis(1970, 1, 1, 14, 30, 0, 123456000)),
+                Arguments.of("16:30:00.000000",
+                        getEpochMillis(1970, 1, 1, 16, 30, 0, 0))
         );
     }
 

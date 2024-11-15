@@ -24,7 +24,7 @@ import java.time.format.DateTimeParseException;
  *
  * RDS S3 export formats:
  * - DATE: "yyyy-MM-dd" (Example: "2024-01-15")
- * - TIME: "HH:mm:ss" (Example: "14:30:00")
+ * - TIME: "HH:mm:ss[.SSSSSS]" (Example: "14:30:00.123456")
  * - DATETIME: "yyyy-MM-dd HH:mm:ss[.SSSSSS]" (Example: "2024-01-15 14:30:00.123456")
  * - TIMESTAMP: "yyyy-MM-dd HH:mm:ss[.SSSSSS]" (Example: "2024-01-15 14:30:00.123456")
  *   Note: Fractional seconds are optional for DATETIME and TIMESTAMP
@@ -32,7 +32,7 @@ import java.time.format.DateTimeParseException;
  */
 public class TemporalTypeHandler implements DataTypeHandler {
     private static final String MYSQL_DATE_FORMAT = "yyyy-MM-dd";
-    private static final String MYSQL_TIME_FORMAT = "HH:mm:ss";
+    private static final String MYSQL_TIME_FORMAT = "HH:mm:ss[.SSSSSS]";
     private static final String MYSQL_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss[.SSSSSS]";
 
     // Thread-safe formatters
@@ -87,6 +87,11 @@ public class TemporalTypeHandler implements DataTypeHandler {
 
     private Long handleDate(final String dateStr) {
         try {
+            // Handle MySQL zero date special case
+            if ("0000-00-00".equals(dateStr)) {
+                return null; // or return a specific default value
+            }
+
             // Try parsing as Unix timestamp first
             final Long dateEpoch = parseDateTimeStrAsEpochMillis(dateStr);
             if (dateEpoch != null) return dateEpoch;
@@ -117,8 +122,16 @@ public class TemporalTypeHandler implements DataTypeHandler {
     // Binlog reader converts temporal fields to epoch millis
     // The Binlog reader is set with EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
     private Long parseDateTimeStrAsEpochMillis(final String dateTimeStr) {
-        // Try parsing as Unix timestamp first
+        // Try parsing as Unix timestamp
         try {
+            // Date Time field in OpenSearch when represented as long value should be in milliseconds since the epoch
+            // If the value is already in microseconds (length > 13) convert to milliseconds
+            if (dateTimeStr.length() > 13) {
+                // Convert microseconds to milliseconds by dividing by 1000
+                return Long.parseLong(dateTimeStr) / 1000;
+            }
+
+
             return Long.parseLong(dateTimeStr);
         } catch (NumberFormatException ignored) {
             // Continue with datetime parsing
