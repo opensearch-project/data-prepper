@@ -17,7 +17,9 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +70,7 @@ public class ResyncScheduler implements Runnable {
 
     @Override
     public void run() {
-        LOG.debug("Start running Stream Scheduler");
+        LOG.info("Start running Resync Scheduler");
         ResyncPartition resyncPartition = null;
         while (!shutdownRequested && !Thread.currentThread().isInterrupted()) {
             try {
@@ -124,7 +126,7 @@ public class ResyncScheduler implements Runnable {
         }
 
         final ResyncWorker resyncWorker = ResyncWorker.create(
-                resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet);
+                resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, getDBTableMetadata());
 
         CompletableFuture.runAsync(resyncWorker, resyncExecutor)
                 .whenComplete((v, ex) -> {
@@ -139,5 +141,11 @@ public class ResyncScheduler implements Runnable {
                         // else ack set will decide whether to complete or give up the partition
                     }
                 });
+    }
+
+    private DbTableMetadata getDBTableMetadata() {
+        final Optional<EnhancedSourcePartition> globalStatePartition = sourceCoordinator.getPartition(sourceConfig.getDbIdentifier());
+        final GlobalState globalState = (GlobalState) globalStatePartition.get();
+        return DbTableMetadata.fromMap(globalState.getProgressState().get());
     }
 }

@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -71,13 +72,11 @@ class QueryManagerTest {
     }
 
     @Test
-    void test_selectRows_returns_empty_list_when_exception_occurs() throws SQLException {
+    void test_selectRows_throws_when_fails_get_query_results() throws SQLException {
         final String query = UUID.randomUUID().toString();
         when(connectionManager.getConnection()).thenThrow(new RuntimeException());
 
-        final List<Map<String, Object>> result = queryManager.selectRows(query);
-
-        assertThat(result.size(), is(0));
+        assertThrows(RuntimeException.class, () -> queryManager.selectRows(query));
     }
 
     private QueryManager createObjectUnderTest() {

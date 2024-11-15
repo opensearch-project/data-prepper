@@ -19,10 +19,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -61,6 +64,9 @@ class ResyncSchedulerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private DbTableMetadata dbTableMetadata;
+
     private String s3Prefix;
     private ExecutorService resyncExecutor;
     private ResyncScheduler resyncScheduler;
@@ -74,16 +80,24 @@ class ResyncSchedulerTest {
 
     @Test
     void test_run_then_complete_partition() {
+        final String dbIdentifier = UUID.randomUUID().toString();
+        final GlobalState globalState = mock(GlobalState.class);
+        final Map<String, Object> progressState = mock(Map.class);
         when(sourceCoordinator.acquireAvailablePartition(ResyncPartition.PARTITION_TYPE)).thenReturn(Optional.of(resyncPartition));
+        when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
+        when(sourceCoordinator.getPartition(dbIdentifier)).thenReturn(Optional.of(globalState));
+        when(globalState.getProgressState()).thenReturn(Optional.of(progressState));
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         final ResyncWorker resyncWorker = mock(ResyncWorker.class);
         doNothing().when(resyncWorker).run();
 
         executorService.submit(() -> {
-            try (MockedStatic<ResyncWorker> resyncWorkerMockedStatic = mockStatic(ResyncWorker.class)) {
+            try (MockedStatic<ResyncWorker> resyncWorkerMockedStatic = mockStatic(ResyncWorker.class);
+                 MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+                dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
                 resyncWorkerMockedStatic.when(() -> ResyncWorker.create(eq(resyncPartition), eq(sourceConfig),
-                        eq(queryManager), eq(buffer), any(RecordConverter.class), any())).thenReturn(resyncWorker);
+                        eq(queryManager), eq(buffer), any(RecordConverter.class), any(), eq(dbTableMetadata))).thenReturn(resyncWorker);
                 resyncScheduler.run();
             }
         });

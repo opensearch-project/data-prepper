@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ResyncProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 
 import java.util.List;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
 class ResyncWorkerTest {
@@ -58,6 +60,9 @@ class ResyncWorkerTest {
     @Mock
     private AcknowledgementSet acknowledgementSet;
 
+    @Mock
+    private DbTableMetadata dbTableMetadata;
+
     private ResyncWorker resyncWorker;
 
     @BeforeEach
@@ -70,6 +75,7 @@ class ResyncWorkerTest {
         final String database = "test-database";
         final String table = "test-table";
         final long eventTimestampMillis = 1234567890L;
+        final ResyncPartition.PartitionKeyInfo partitionKeyInfo = mock(ResyncPartition.PartitionKeyInfo.class);
         final ResyncProgressState progressState = mock(ResyncProgressState.class);
         final String foreignKeyName = "test-foreign-key";
         final Object updatedValue = "test-updated-value";
@@ -81,14 +87,24 @@ class ResyncWorkerTest {
                 foreignKeyName, updatedValue
         );
         final List<Map<String, Object>> rows = List.of(rowData);
+        final Map<String, Map<String, String>> tableColumnTypeMap = Map.of(
+                database + DOT_DELIMITER + table, Map.of(
+                        primaryKeyName, "varchar",
+                        foreignKeyName, "varchar"
+                )
+        );
         final Event dataPrepperEvent = mock(Event.class);
 
-        when(resyncPartition.getPartitionKey()).thenReturn(database + "|" + table + "|" + eventTimestampMillis);
+        when(resyncPartition.getPartitionKeyInfo()).thenReturn(partitionKeyInfo);
+        when(partitionKeyInfo.getDatabase()).thenReturn(database);
+        when(partitionKeyInfo.getTable()).thenReturn(table);
+        when(partitionKeyInfo.getTimestamp()).thenReturn(eventTimestampMillis);
         when(resyncPartition.getProgressState()).thenReturn(Optional.of(progressState));
         when(progressState.getForeignKeyName()).thenReturn(foreignKeyName);
         when(progressState.getUpdatedValue()).thenReturn(updatedValue);
         when(progressState.getPrimaryKeys()).thenReturn(List.of(primaryKeyName));
         when(queryManager.selectRows(queryStatement)).thenReturn(rows);
+        when(dbTableMetadata.getTableColumnDataTypeMap()).thenReturn(tableColumnTypeMap);
         when(recordConverter.convert(any(Event.class), eq(database), eq(table), eq(OpenSearchBulkActions.INDEX),
                 eq(List.of(primaryKeyName)), eq(eventTimestampMillis), eq(eventTimestampMillis), eq(null)))
                 .thenReturn(dataPrepperEvent);
@@ -112,6 +128,6 @@ class ResyncWorkerTest {
     }
 
     private ResyncWorker createObjectUnderTest() {
-        return ResyncWorker.create(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet);
+        return ResyncWorker.create(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, dbTableMetadata);
     }
 }
