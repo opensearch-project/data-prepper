@@ -103,7 +103,8 @@ class TemporalTypeHandlerTest {
         return Stream.of(
             Arguments.of("2023-12-25 14:30:00.123456", getEpochMillis(2023, 12, 25, 14, 30, 0, 123456000)),
             Arguments.of("1970-01-01 00:00:00", getEpochMillis(1970, 1, 1, 0, 0, 0, 0)),
-            Arguments.of("1703509900000", 1703509900000L)
+            Arguments.of("1703509900000", 1703509900000L),
+            Arguments.of("1784161123456789", 1784161123456L)
         );
     }
 
