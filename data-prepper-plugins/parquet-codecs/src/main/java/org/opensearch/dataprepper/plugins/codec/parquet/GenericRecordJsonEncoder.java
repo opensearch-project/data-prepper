@@ -4,12 +4,14 @@
  */
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.avro.LogicalType;
@@ -118,10 +120,16 @@ public class GenericRecordJsonEncoder {
             writeEscapedString(datum.toString(), buffer);
             buffer.append("\"");
         } else if (isBytes(datum)) {
-            buffer.append("{\"bytes\": \"");
-            ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
-            writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
-            buffer.append("\"}");
+            final String bytesAsString = StandardCharsets.UTF_8.decode((ByteBuffer) datum).toString();
+            final Optional<BigDecimal> bytesAsBigDecimal = getBigDecimal(bytesAsString);
+            if (bytesAsBigDecimal.isPresent()) {
+                buffer.append(bytesAsBigDecimal.get().doubleValue());
+            } else {
+                buffer.append("{\"bytes\": \"");
+                ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
+                writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
+                buffer.append("\"}");
+            }
         } else if (((datum instanceof Float) &&       // quote Nan & Infinity
                 (((Float)datum).isInfinite() || ((Float)datum).isNaN()))
                 || ((datum instanceof Double) &&
@@ -184,5 +192,13 @@ public class GenericRecordJsonEncoder {
 
     private void writeEscapedString(String string, StringBuilder builder) {
         builder.append(StringEscapeUtils.escapeJava(string));
+    }
+
+    private Optional<BigDecimal> getBigDecimal(String decimalString) {
+        try {
+            return Optional.of(new BigDecimal(decimalString));
+        } catch (final Exception e) {
+            return Optional.empty();
+        }
     }
 }

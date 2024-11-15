@@ -36,7 +36,6 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
-import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,7 +266,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.INDEX);
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX));
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -281,12 +280,29 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingUpdates(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        // updatedRow contains data before update as key and data after update as value
-        final List<Serializable[]> rows = data.getRows().stream()
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toList());
+        final TableMetadata tableMetadata = tableMetadataMap.get(data.getTableId());
+        final List<OpenSearchBulkActions> bulkActions = new ArrayList<>();
+        final List<Serializable[]> rows = new ArrayList<>();
+        for (int rowNum = 0; rowNum < data.getRows().size(); rowNum++) {
+            // `row` contains data before update as key and data after update as value
+            Map.Entry<Serializable[], Serializable[]> row = data.getRows().get(rowNum);
 
-        handleRowChangeEvent(event, data.getTableId(), rows, OpenSearchBulkActions.INDEX);
+            for (int i = 0; i < row.getKey().length; i++) {
+                if (tableMetadata.getPrimaryKeys().contains(tableMetadata.getColumnNames().get(i)) &&
+                        !row.getKey()[i].equals(row.getValue()[i])) {
+                    LOG.debug("Primary keys were updated");
+                    // add delete event for the old row data
+                    rows.add(row.getKey());
+                    bulkActions.add(OpenSearchBulkActions.DELETE);
+                    break;
+                }
+            }
+            // add index event for the new row data
+            rows.add(row.getValue());
+            bulkActions.add(OpenSearchBulkActions.INDEX);
+        }
+
+        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions);
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -300,10 +316,11 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingDeletes(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), OpenSearchBulkActions.DELETE);
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE));
     }
 
-    private boolean isValidTableId(long tableId) {
+    // Visible For Testing
+    boolean isValidTableId(long tableId) {
         if (!tableMetadataMap.containsKey(tableId)) {
             LOG.debug("Cannot find table metadata, the event is likely not from a table of interest or the table metadata was not read");
             return false;
@@ -317,10 +334,11 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         return true;
     }
 
-    private void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
+    // Visible For Testing
+    void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
                               long tableId,
                               List<Serializable[]> rows,
-                              OpenSearchBulkActions bulkAction) {
+                              List<OpenSearchBulkActions> bulkActions) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
@@ -343,7 +361,11 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final long eventTimestampMillis = event.getHeader().getTimestamp();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
-        for (Object[] rowDataArray : rows) {
+
+        for (int rowNum = 0; rowNum < rows.size(); rowNum++) {
+            final Object[] rowDataArray = rows.get(rowNum);
+            final OpenSearchBulkActions bulkAction = bulkActions.get(rowNum);
+
             final Map<String, Object> rowDataMap = new HashMap<>();
             for (int i = 0; i < rowDataArray.length; i++) {
                 final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());

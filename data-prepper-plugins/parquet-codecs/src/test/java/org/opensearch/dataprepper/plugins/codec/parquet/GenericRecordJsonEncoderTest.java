@@ -5,8 +5,11 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -198,6 +201,26 @@ class GenericRecordJsonEncoderTest {
         record.put("rawData", ByteBuffer.wrap(new byte[]{34, 92, 13, 10, 9}));
 
         String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": {\"bytes\": \"\\\"\\\\\\r\\n\\t\"}, \"suit\": null}";
+
+        String json = encoder.serialize(record);
+
+        assertEquals(expectedJson, json);
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = { 3.2, 5.0, 7.8})
+    void serialize_WithBytes_that_can_be_converted_to_big_decimal_Returns_expected_Json(
+            final Double decimalValue
+    ) {
+        // Test for serializing bytes with special characters
+        GenericRecord record = new GenericData.Record(SCHEMA);
+
+        final ByteBuffer buffer = StandardCharsets.UTF_8.encode(decimalValue.toString());
+        record.put("rawData", buffer);
+
+        String expectedJson = "{\"nested\": null, \"id\": null, \"value\": null, \"floatValue\": null, \"alternateIds\": null, \"metadata\": null, \"lastUpdated\": null, \"rawData\": " +
+                decimalValue + "," +
+                " \"suit\": null}";
 
         String json = encoder.serialize(record);
 
