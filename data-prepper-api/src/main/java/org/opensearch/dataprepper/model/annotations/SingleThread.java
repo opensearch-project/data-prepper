@@ -17,6 +17,6 @@ import java.lang.annotation.Target;
 
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
+@Target({ElementType.CONSTRUCTOR, ElementType.TYPE})
 public @interface SingleThread {
 }

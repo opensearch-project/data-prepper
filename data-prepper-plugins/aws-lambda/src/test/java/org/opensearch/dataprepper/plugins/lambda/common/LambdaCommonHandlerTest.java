@@ -1,122 +1,75 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.BeforeEach;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.MockitoAnnotations;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
-import org.slf4j.Logger;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import org.mockito.Mockito;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class LambdaCommonHandlerTest {
 
-    @Mock
-    private Logger mockLogger;
-
-    @Mock
-    private LambdaAsyncClient mockLambdaAsyncClient;
-
-    @Mock
-    private BufferFactory mockBufferFactory;
-
-    @Mock
-    private Buffer mockBuffer;
-
-    @Mock
-    private InvokeResponse mockInvokeResponse;
-
-    @InjectMocks
-    private LambdaCommonHandler lambdaCommonHandler;
-
-    private String functionName = "test-function";
-
-    private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
-
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType);
-    }
-
     @Test
-    public void testCreateBuffer_success() throws IOException {
+    public void testCheckStatusCode_Success() {
         // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenReturn(mockBuffer);
+        InvokeResponse response = Mockito.mock(InvokeResponse.class);
+        Mockito.when(response.statusCode()).thenReturn(200);
 
         // Act
-        Buffer result = lambdaCommonHandler.createBuffer(mockBufferFactory);
+        boolean result = LambdaCommonHandler.checkStatusCode(response);
 
         // Assert
-        verify(mockBufferFactory, times(1)).getBuffer(mockLambdaAsyncClient, functionName, invocationType);
-        verify(mockLogger, times(1)).debug("Resetting buffer");
-        assertEquals(result, mockBuffer);
+        assertTrue(result, "Expected checkStatusCode to return true for status code 200");
     }
 
     @Test
-    public void testCreateBuffer_throwsException() throws IOException {
+    public void testCheckStatusCode_ClientError() {
         // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenThrow(new IOException("Test Exception"));
+        InvokeResponse response = Mockito.mock(InvokeResponse.class);
+        Mockito.when(response.statusCode()).thenReturn(400);
 
-        // Act & Assert
-        try {
-            lambdaCommonHandler.createBuffer(mockBufferFactory);
-        } catch (RuntimeException e) {
-            assert e.getMessage().contains("Failed to reset buffer");
-        }
-        verify(mockBufferFactory, times(1)).getBuffer(mockLambdaAsyncClient, functionName, invocationType);
+        // Act
+        boolean result = LambdaCommonHandler.checkStatusCode(response);
+
+        // Assert
+        assertFalse(result, "Expected checkStatusCode to return false for status code 400");
     }
 
+
     @Test
-    public void testWaitForFutures_allComplete() {
+    public void testWaitForFutures_AllCompleteSuccessfully() {
         // Arrange
+        CompletableFuture<Void> future1 = CompletableFuture.completedFuture(null);
+        CompletableFuture<Void> future2 = CompletableFuture.completedFuture(null);
         List<CompletableFuture<Void>> futureList = new ArrayList<>();
-        futureList.add(CompletableFuture.completedFuture(null));
-        futureList.add(CompletableFuture.completedFuture(null));
+        futureList.add(future1);
+        futureList.add(future2);
 
         // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        LambdaCommonHandler.waitForFutures(futureList);
 
         // Assert
-        assert futureList.isEmpty();
+        assertTrue(futureList.isEmpty(), "Expected futureList to be cleared after completion");
     }
 
     @Test
-    public void testWaitForFutures_withException() {
+    public void testWaitForFutures_WithExceptions() {
         // Arrange
+        CompletableFuture<Void> future1 = CompletableFuture.completedFuture(null);
+        CompletableFuture<Void> future2 = new CompletableFuture<>();
+        future2.completeExceptionally(new RuntimeException("Test exception"));
         List<CompletableFuture<Void>> futureList = new ArrayList<>();
-        futureList.add(CompletableFuture.failedFuture(new RuntimeException("Test Exception")));
+        futureList.add(future1);
+        futureList.add(future2);
 
         // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        LambdaCommonHandler.waitForFutures(futureList);
 
         // Assert
-        assert futureList.isEmpty();
-    }
-
-    private List<EventHandle> mockEventHandleList(int size) {
-        List<EventHandle> eventHandleList = new ArrayList<>();
-        for (int i = 0; i < size; i++) {
-            EventHandle eventHandle = mock(EventHandle.class);
-            eventHandleList.add(eventHandle);
-        }
-        return eventHandleList;
+        assertTrue(futureList.isEmpty(), "Expected futureList to be cleared even after exceptions");
     }
 
 }

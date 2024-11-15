@@ -10,12 +10,10 @@ import io.micrometer.core.instrument.Timer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -41,15 +39,17 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_LAMBDA_RESPONSE_FAILED;
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED;
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_RECEIVED_FROM_LAMBDA;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_SENT_TO_LAMBDA;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_REQUESTS_TO_LAMBDA;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -94,9 +94,6 @@ public class LambdaProcessorTest {
     private ExpressionEvaluator expressionEvaluator;
 
     @Mock
-    private LambdaCommonHandler lambdaCommonHandler;
-
-    @Mock
     private InputCodec responseCodec;
 
     @Mock
@@ -109,13 +106,22 @@ public class LambdaProcessorTest {
     private Counter numberOfRecordsFailedCounter;
 
     @Mock
+    private Counter numberOfRequestsCounter;
+
+    @Mock
+    private Counter numberOfResponseFailedCounter;
+
+    @Mock
+    private Counter numberOfRecordsSentCounter;
+
+    @Mock
+    private Counter numberOfRecordsReceivedCounter;
+
+    @Mock
     private InvokeResponse invokeResponse;
 
     @Mock
     private Timer lambdaLatencyMetric;
-
-    @Captor
-    private ArgumentCaptor<Consumer<Record<Event>>> consumerCaptor;
 
     // The class under test
     private LambdaProcessor lambdaProcessor;
@@ -127,6 +133,10 @@ public class LambdaProcessorTest {
         // Mock PluginMetrics counters and timers
         when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS))).thenReturn(numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED))).thenReturn(numberOfRecordsFailedCounter);
+        when(pluginMetrics.counter(eq(NUMBER_OF_REQUESTS_TO_LAMBDA))).thenReturn(numberOfRequestsCounter);
+        when(pluginMetrics.counter(eq(NUMBER_OF_LAMBDA_RESPONSE_FAILED))).thenReturn(numberOfResponseFailedCounter);
+        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_SENT_TO_LAMBDA))).thenReturn(numberOfRecordsSentCounter);
+        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_RECEIVED_FROM_LAMBDA))).thenReturn(numberOfRecordsReceivedCounter);
         when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
         when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenAnswer(invocation -> invocation.getArgument(1));
 
@@ -173,9 +183,6 @@ public class LambdaProcessorTest {
         // Inject mocks into the LambdaProcessor using reflection
         populatePrivateFields();
 
-        // Mock LambdaCommonHandler behavior
-        when(lambdaCommonHandler.createBuffer(any(BufferFactory.class))).thenReturn(bufferMock);
-
         // Mock Buffer behavior for flushToLambda
         when(bufferMock.flushToLambda(anyString())).thenReturn(CompletableFuture.completedFuture(invokeResponse));
 
@@ -191,9 +198,6 @@ public class LambdaProcessorTest {
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
         when(lambdaAsyncClientMock.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
 
-        // Mock the checkStatusCode method
-        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
-
         // Mock Response Codec parse method
         doNothing().when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
 
@@ -205,7 +209,6 @@ public class LambdaProcessorTest {
         setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
         setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
         setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
-        setPrivateField(lambdaProcessor, "lambdaCommonHandler", lambdaCommonHandler);
     }
 
     // Helper method to set private fields via reflection
@@ -224,7 +227,6 @@ public class LambdaProcessorTest {
 
         // Mock Buffer
         Buffer bufferMock = mock(Buffer.class);
-        when(lambdaProcessor.lambdaCommonHandler.createBuffer(any(BufferFactory.class))).thenReturn(bufferMock);
         when(bufferMock.getEventCount()).thenReturn(0, 1);
         when(bufferMock.getRecords()).thenReturn(records);
         doNothing().when(bufferMock).reset();
@@ -242,6 +244,24 @@ public class LambdaProcessorTest {
 
     @Test
     public void testDoExecute_WithEmptyResponse() throws Exception {
+        // Arrange
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+        List<Record<Event>> records = Collections.singletonList(record);
+
+        // Mock Buffer to return empty payload
+        when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String(""));
+
+        // Act
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+
+        // Assert
+        assertEquals(0, result.size(), "Result should be empty due to empty Lambda response.");
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+    }
+
+    @Test
+    public void testDoExecute_StrictModeWithStringResponse_ShouldBeArray() throws Exception {
         // Arrange
         Event event = mock(Event.class);
         Record<Event> record = new Record<>(event);
@@ -313,7 +333,6 @@ public class LambdaProcessorTest {
 
         // Assert
         assertEquals(1, result.size(), "Result should contain one record as the condition is false.");
-        verify(lambdaCommonHandler, never()).createBuffer(any(BufferFactory.class));
         verify(bufferMock, never()).flushToLambda(anyString());
         verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
         verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
@@ -364,25 +383,6 @@ public class LambdaProcessorTest {
         assertEquals(1, result.size(), "Result should contain one record.");
         verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
     };
-
-
-    @Test
-    public void testHandleFailure() {
-        // Arrange
-        Event event = mock(Event.class);
-        Buffer bufferMock = mock(Buffer.class);
-        List<Record<Event>> records = List.of(new Record<>(event));
-        when(bufferMock.getEventCount()).thenReturn(1);
-        when(bufferMock.getRecords()).thenReturn(records);
-
-        // Act
-        lambdaProcessor.handleFailure(new RuntimeException("Test Exception"), bufferMock, records);
-
-        // Assert
-        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
-        // Ensure failure tags are added; assuming addFailureTags is implemented correctly
-        // You might need to verify interactions with event metadata if it's mocked
-    }
 
     @Test
     public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing() throws Exception {

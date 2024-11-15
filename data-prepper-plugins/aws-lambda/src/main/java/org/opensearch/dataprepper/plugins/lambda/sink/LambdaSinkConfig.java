@@ -51,10 +51,6 @@ public class LambdaSinkConfig {
     @JsonProperty("batch")
     private BatchOptions batchOptions;
 
-    @JsonPropertyDescription("defines a condition for event to use this processor")
-    @JsonProperty("lambda_when")
-    private String whenCondition;
-
     @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
     @JsonProperty("connection_timeout")
     private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
@@ -97,10 +93,6 @@ public class LambdaSinkConfig {
 
     public InvocationType getInvocationType() {
         return invocationType;
-    }
-
-    public String getWhenCondition() {
-        return whenCondition;
     }
 
 }

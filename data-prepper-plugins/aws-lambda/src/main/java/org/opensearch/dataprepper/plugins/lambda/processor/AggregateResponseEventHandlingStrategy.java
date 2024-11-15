@@ -4,7 +4,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +15,7 @@ public class AggregateResponseEventHandlingStrategy implements ResponseEventHand
 
     @Override
     public void handleEvents(List<Event> parsedEvents, List<Record<Event>> originalRecords,
-                             List<Record<Event>> resultRecords, Buffer flushedBuffer) {
+                             List<Record<Event>> resultRecords) {
 
         Event originalEvent = originalRecords.get(0).getData();
         DefaultEventHandle eventHandle = (DefaultEventHandle) originalEvent.getEventHandle();
@@ -32,5 +31,6 @@ public class AggregateResponseEventHandlingStrategy implements ResponseEventHand
                 originalAcknowledgementSet.add(responseEvent);
             }
         }
+        LOG.info("Successfully handled {} events in Aggregate response strategy", parsedEvents.size());
     }
 }

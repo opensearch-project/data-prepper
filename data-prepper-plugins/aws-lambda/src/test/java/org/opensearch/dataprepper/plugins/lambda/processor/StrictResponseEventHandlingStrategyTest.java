@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,7 +71,7 @@ public class StrictResponseEventHandlingStrategyTest {
         when(parsedEvent2.toMap()).thenReturn(responseData2);
 
         // Act
-        strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+        strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords);
 
         // Assert
         // Verify original event is cleared and then updated with response data
@@ -79,6 +80,7 @@ public class StrictResponseEventHandlingStrategyTest {
         verify(originalEvent).put("key2", "value2");
 
         // Ensure resultRecords contains the original records
+        assertEquals(parsedEvents.size(), originalRecords.size());
         assertEquals(2, resultRecords.size());
         assertEquals(originalRecords.get(0), resultRecords.get(0));
         assertEquals(originalRecords.get(1), resultRecords.get(1));
@@ -87,17 +89,15 @@ public class StrictResponseEventHandlingStrategyTest {
     @Test
     public void testHandleEvents_WithMismatchingEventCount_ShouldThrowException() {
         // Arrange
-        List<Event> parsedEvents = Arrays.asList(parsedEvent1, parsedEvent2);
-
-        // Mocking flushedBuffer to return an event count of 3 (mismatch)
-        when(flushedBuffer.getEventCount()).thenReturn(3);
+        Event parsedEvent3 = mock(Event.class);
+        List<Event> parsedEvents = Arrays.asList(parsedEvent1, parsedEvent2, parsedEvent3);
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer)
+                strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords)
         );
 
-        assertEquals("Response Processing Mode is configured as Strict mode but behavior is aggregate mode. Event count mismatch.", exception.getMessage());
+        assertEquals("Event count mismatch. Response Processing Mode is configured as Strict mode but behavior is aggregate mode.", exception.getMessage());
 
         // Verify original events were not cleared or modified
         verify(originalEvent, never()).clear();
@@ -108,12 +108,13 @@ public class StrictResponseEventHandlingStrategyTest {
     public void testHandleEvents_EmptyParsedEvents_ShouldNotThrowException() {
         // Arrange
         List<Event> parsedEvents = new ArrayList<>();
+        List<Record<Event>> originalRecords = new ArrayList<>();
 
         // Mocking flushedBuffer to return an event count of 0
         when(flushedBuffer.getEventCount()).thenReturn(0);
 
         // Act
-        strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+        strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords);
 
         // Assert
         // Verify no events were cleared or modified
