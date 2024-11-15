@@ -47,8 +47,8 @@ import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 
 @ExtendWith(MockitoExtension.class)
@@ -156,7 +156,7 @@ class OTelTraceSource_RetryInfoTest {
 
         return ExportTraceServiceRequest.newBuilder()
                 .addResourceSpans(ResourceSpans.newBuilder()
-                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
                 .build();
     }
 }
