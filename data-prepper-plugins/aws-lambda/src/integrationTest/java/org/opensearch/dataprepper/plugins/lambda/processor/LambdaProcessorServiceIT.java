@@ -5,13 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import io.micrometer.core.instrument.Counter;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -24,8 +22,6 @@ import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
@@ -39,9 +35,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 public class LambdaProcessorServiceIT {
 
+    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
     private LambdaAsyncClient lambdaAsyncClient;
     private String functionName;
     private String lambdaRegion;
@@ -70,8 +70,24 @@ public class LambdaProcessorServiceIT {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
-    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+    private static Record<Event> createRecord() {
+        final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\"test\"}]").build();
+        return new Record<>(event);
+    }
 
+    private static Collection<Record<Event>> generateRecords(int numberOfRecords) {
+        List<Record<Event>> recordList = new ArrayList<>();
+
+        for (int rows = 1; rows <= numberOfRecords; rows++) {
+            HashMap<String, String> eventData = new HashMap<>();
+            eventData.put("name", "Person" + rows);
+            eventData.put("age", Integer.toString(rows));
+
+            Record<Event> eventRecord = new Record<>(JacksonEvent.builder().withData(eventData).withEventType("event").build());
+            recordList.add(eventRecord);
+        }
+        return recordList;
+    }
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -94,39 +110,18 @@ public class LambdaProcessorServiceIT {
                 thenReturn(numberOfRecordsFailedCounter);
     }
 
-
-    private static Record<Event> createRecord() {
-        final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\"test\"}]").build();
-        return new Record<>(event);
-    }
-
     public LambdaProcessor createObjectUnderTest(final String config) throws JsonProcessingException {
 
         final LambdaProcessorConfig lambdaProcessorConfig = objectMapper.readValue(config, LambdaProcessorConfig.class);
-        return new LambdaProcessor(pluginFactory,pluginMetrics,lambdaProcessorConfig,awsCredentialsSupplier,expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
     }
 
     public LambdaProcessor createObjectUnderTest(LambdaProcessorConfig lambdaSinkConfig) throws JsonProcessingException {
-        return new LambdaProcessor(pluginFactory,pluginMetrics,lambdaSinkConfig,awsCredentialsSupplier,expressionEvaluator);
-    }
-
-
-    private static Collection<Record<Event>> generateRecords(int numberOfRecords) {
-        List<Record<Event>> recordList = new ArrayList<>();
-
-        for (int rows = 1; rows <= numberOfRecords; rows++) {
-            HashMap<String, String> eventData = new HashMap<>();
-            eventData.put("name", "Person" + rows);
-            eventData.put("age", Integer.toString(rows));
-
-            Record<Event> eventRecord = new Record<>(JacksonEvent.builder().withData(eventData).withEventType("event").build());
-            recordList.add(eventRecord);
-        }
-        return recordList;
+        return new LambdaProcessor(pluginFactory, pluginMetrics, lambdaSinkConfig, awsCredentialsSupplier, expressionEvaluator);
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1,3})
+    @ValueSource(ints = {1, 3})
     void verify_records_to_lambda_success(final int recordCount) throws Exception {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
@@ -139,11 +134,11 @@ public class LambdaProcessorServiceIT {
         List<Record<Event>> recordsResult = (List<Record<Event>>) objectUnderTest.doExecute(recordsData);
         Thread.sleep(Duration.ofSeconds(10).toMillis());
 
-        assertEquals(recordsResult.size(),recordCount);
+        assertEquals(recordsResult.size(), recordCount);
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1,3})
+    @ValueSource(ints = {1, 3})
     void verify_records_with_batching_to_lambda(final int recordCount) throws JsonProcessingException, InterruptedException {
 
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
@@ -160,6 +155,6 @@ public class LambdaProcessorServiceIT {
         Collection<Record<Event>> records = generateRecords(recordCount);
         Collection<Record<Event>> recordsResult = objectUnderTest.doExecute(records);
         Thread.sleep(Duration.ofSeconds(10).toMillis());
-        assertEquals(recordsResult.size(),recordCount);
+        assertEquals(recordsResult.size(), recordCount);
     }
 }

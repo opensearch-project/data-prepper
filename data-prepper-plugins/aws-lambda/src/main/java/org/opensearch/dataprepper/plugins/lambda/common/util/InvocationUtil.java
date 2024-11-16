@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.lambda.model.RequestTooLargeException;
 import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -27,6 +28,7 @@ public class InvocationUtil {
 
     public static void invokeLambdaWithRetry(final LambdaAsyncClient lambdaAsyncClient,
                                              InvokeRequest request,
+                                             List<CompletableFuture<InvokeResponse>> futureList,
                                              Consumer<InvokeResponse> successHandler,
                                              Consumer<Throwable> failureHandler) {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
@@ -34,6 +36,7 @@ public class InvocationUtil {
         AtomicInteger failedAttemptCount = new AtomicInteger();
         while (failedAttemptCount.get() < MAX_ATTEMPT_COUNT) {
             CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(request);
+            futureList.add(future);
             future.thenAccept(successHandler).exceptionally(throwable -> {
                 if (throwable instanceof TooManyRequestsException) {
                     failedAttemptCount.getAndIncrement();

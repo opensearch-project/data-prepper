@@ -1,20 +1,12 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.slf4j.Logger;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -25,34 +17,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 public class LambdaCommonHandlerTest {
 
+    private final String functionName = "test-function";
+    private final String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
     @Mock
     private Logger mockLogger;
-
     @Mock
     private LambdaAsyncClient mockLambdaAsyncClient;
-
-    @Mock
-    private BufferFactory mockBufferFactory;
-
+    
     @Mock
     private Buffer mockBuffer;
-
     @Mock
     private InvokeResponse mockInvokeResponse;
-
     @InjectMocks
     private LambdaCommonHandler lambdaCommonHandler;
-
-    private String functionName = "test-function";
-
-    private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType);
     }
 
     @Test
@@ -91,7 +82,7 @@ public class LambdaCommonHandlerTest {
         futureList.add(CompletableFuture.completedFuture(null));
 
         // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        LambdaCommonHandler.waitForFutures(futureList);
 
         // Assert
         assert futureList.isEmpty();
@@ -104,7 +95,7 @@ public class LambdaCommonHandlerTest {
         futureList.add(CompletableFuture.failedFuture(new RuntimeException("Test Exception")));
 
         // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        LambdaCommonHandler.waitForFutures(futureList);
 
         // Assert
         assert futureList.isEmpty();

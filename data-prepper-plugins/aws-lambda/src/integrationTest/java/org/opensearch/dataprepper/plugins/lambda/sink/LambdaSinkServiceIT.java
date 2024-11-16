@@ -15,12 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -34,14 +29,9 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.LAMBDA_LATENCY_METRIC;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.REQUEST_PAYLOAD_SIZE;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.RESPONSE_PAYLOAD_SIZE;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -54,9 +44,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.LAMBDA_LATENCY_METRIC;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.REQUEST_PAYLOAD_SIZE;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.RESPONSE_PAYLOAD_SIZE;
+
 @ExtendWith(MockitoExtension.class)
 class LambdaSinkServiceIT {
 
+    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
     private LambdaAsyncClient lambdaAsyncClient;
     private String functionName;
     private String lambdaRegion;
@@ -92,8 +92,25 @@ class LambdaSinkServiceIT {
     private AtomicLong requestPayload;
     @Mock
     private AtomicLong responsePayload;
-    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
+    private static Record<Event> createRecord() {
+        final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\"test\"}]").build();
+        return new Record<>(event);
+    }
+
+    private static Collection<Record<Event>> generateRecords(int numberOfRecords) {
+        List<Record<Event>> recordList = new ArrayList<>();
+
+        for (int rows = 0; rows < numberOfRecords; rows++) {
+            HashMap<String, String> eventData = new HashMap<>();
+            eventData.put("name", "Person" + rows);
+            eventData.put("age", Integer.toString(rows));
+
+            Record<Event> eventRecord = new Record<>(JacksonEvent.builder().withData(eventData).withEventType("event").build());
+            recordList.add(eventRecord);
+        }
+        return recordList;
+    }
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -117,12 +134,6 @@ class LambdaSinkServiceIT {
         when(pluginMetrics.timer(LAMBDA_LATENCY_METRIC)).thenReturn(lambdaLatencyMetric);
         when(pluginMetrics.gauge(eq(REQUEST_PAYLOAD_SIZE), any(AtomicLong.class))).thenReturn(requestPayload);
         when(pluginMetrics.gauge(eq(RESPONSE_PAYLOAD_SIZE), any(AtomicLong.class))).thenReturn(responsePayload);
-    }
-
-
-    private static Record<Event> createRecord() {
-        final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\"test\"}]").build();
-        return new Record<>(event);
     }
 
     public LambdaSinkService createObjectUnderTest(final String config) throws JsonProcessingException {
@@ -158,27 +169,12 @@ class LambdaSinkServiceIT {
                 expressionEvaluator);
     }
 
-
-    private static Collection<Record<Event>> generateRecords(int numberOfRecords) {
-        List<Record<Event>> recordList = new ArrayList<>();
-
-        for (int rows = 0; rows < numberOfRecords; rows++) {
-            HashMap<String, String> eventData = new HashMap<>();
-            eventData.put("name", "Person" + rows);
-            eventData.put("age", Integer.toString(rows));
-
-            Record<Event> eventRecord = new Record<>(JacksonEvent.builder().withData(eventData).withEventType("event").build());
-            recordList.add(eventRecord);
-        }
-        return recordList;
-    }
-
     @ParameterizedTest
-    @ValueSource(ints = {1,5})
+    @ValueSource(ints = {1, 5})
     void verify_flushed_records_to_lambda_success(final int recordCount) throws Exception {
 
         final String LAMBDA_SINK_CONFIG_YAML =
-                "        function_name: " + functionName +"\n" +
+                "        function_name: " + functionName + "\n" +
                         "        aws:\n" +
                         "          region: us-east-1\n" +
                         "          sts_role_arn: " + role + "\n" +
@@ -193,7 +189,7 @@ class LambdaSinkServiceIT {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1,5,10})
+    @ValueSource(ints = {1, 5, 10})
     void verify_flushed_records_to_lambda_failed_and_dlq_works(final int recordCount) throws Exception {
         final String LAMBDA_SINK_CONFIG_INVALID_FUNCTION_NAME =
                 "        function_name: $$$\n" +
@@ -201,9 +197,9 @@ class LambdaSinkServiceIT {
                         "          region: us-east-1\n" +
                         "          sts_role_arn: arn:aws:iam::176893235612:role/osis-s3-opensearch-role\n" +
                         "        max_retries: 3\n" +
-                        "        dlq: #any failed even\n"+
-                        "            s3:\n"+
-                        "                bucket: test-bucket\n"+
+                        "        dlq: #any failed even\n" +
+                        "            s3:\n" +
+                        "                bucket: test-bucket\n" +
                         "                key_path_prefix: dlq/\n";
         LambdaSinkService objectUnderTest = createObjectUnderTest(LAMBDA_SINK_CONFIG_INVALID_FUNCTION_NAME);
 
@@ -211,11 +207,11 @@ class LambdaSinkServiceIT {
         objectUnderTest.output(recordsData);
         Thread.sleep(Duration.ofSeconds(10).toMillis());
 
-        verify( numberOfRecordsFailedCounter, times(recordCount)).increment(1);
+        verify(numberOfRecordsFailedCounter, times(recordCount)).increment(1);
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {2,5})
+    @ValueSource(ints = {2, 5})
     void verify_flushed_records_with_batching_to_lambda(final int recordCount) throws JsonProcessingException, InterruptedException {
 
         int event_count = 2;

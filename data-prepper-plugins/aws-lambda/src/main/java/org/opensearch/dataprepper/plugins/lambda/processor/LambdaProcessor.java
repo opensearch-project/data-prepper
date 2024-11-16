@@ -9,12 +9,10 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -23,21 +21,16 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
-import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.io.ByteArrayInputStream;
@@ -52,6 +45,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.createBufferBatches;
+
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
@@ -62,7 +58,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
-
+    final PluginSetting codecPluginSetting;
+    final PluginFactory pluginFactory;
     private final String functionName;
     private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
@@ -75,15 +72,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final LambdaAsyncClient lambdaAsyncClient;
     private final AtomicLong requestPayloadMetric;
     private final AtomicLong responsePayloadMetric;
-    LambdaCommonHandler lambdaCommonHandler;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final Duration maxCollectionDuration;
+    private final ResponseEventHandlingStrategy responseStrategy;
     private int maxRetries = 0;
     private int totalFlushedEvents;
-    final PluginSetting codecPluginSetting;
-    final PluginFactory pluginFactory;
-    private final ResponseEventHandlingStrategy responseStrategy;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginMetrics pluginMetrics, final LambdaProcessorConfig lambdaProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
@@ -117,7 +111,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         invocationType = lambdaProcessorConfig.getInvocationType().getAwsLambdaValue();
 
         lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(lambdaProcessorConfig.getAwsAuthenticationOptions(),
-            lambdaProcessorConfig.getMaxConnectionRetries(), awsCredentialsSupplier, lambdaProcessorConfig.getConnectionTimeout());
+                lambdaProcessorConfig.getMaxConnectionRetries(), awsCredentialsSupplier, lambdaProcessorConfig.getConnectionTimeout());
 
         // Select the correct strategy based on the configuration
         if (lambdaProcessorConfig.getResponseEventsMatch()) {
@@ -138,123 +132,37 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         // Initialize here to void multi-threading issues
         // Note: By default, one instance of processor is created across threads.
-        BufferFactory bufferFactory = new InMemoryBufferFactory();
-        lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, functionName, invocationType);
-        Buffer currentBufferPerBatch = lambdaCommonHandler.createBuffer(bufferFactory);
-        List futureList = new ArrayList<>();
+        List<CompletableFuture<InvokeResponse>> futureList = new ArrayList<>();
         totalFlushedEvents = 0;
 
-        // Setup request codec
-        JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
-        jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
-        OutputCodec requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
-
-        //Setup response codec
-        InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
-
         List<Record<Event>> resultRecords = new ArrayList<>();
+        List<Buffer> batchedBuffers = createBufferBatches(records, batchOptions.getKeyName(),
+                whenCondition, expressionEvaluator, maxEvents, maxBytes, maxCollectionDuration, resultRecords);
 
-        LOG.info("Batch size received to lambda processor: {}", records.size());
-        for (Record<Event> record : records) {
-            final Event event = record.getData();
-
-            // If the condition is false, add the event to resultRecords as-is
-            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-                resultRecords.add(record);
-                continue;
-            }
-
-            try {
-                if (currentBufferPerBatch.getEventCount() == 0) {
-                    requestCodec.start(currentBufferPerBatch.getOutputStream(), event, new OutputCodecContext());
-                }
-                requestCodec.writeEvent(event, currentBufferPerBatch.getOutputStream());
-                currentBufferPerBatch.addRecord(record);
-
-                boolean wasFlushed =  flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
-                        requestCodec, responseCodec,futureList,false);
-
-                // After flushing, create a new buffer for the next batch
-                if (wasFlushed) {
-                    currentBufferPerBatch = lambdaCommonHandler.createBuffer(bufferFactory);
-                    requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
-                }
-            } catch (Exception e) {
-                LOG.error(NOISY, "Exception while processing event {}", event, e);
-                handleFailure(e, currentBufferPerBatch, resultRecords);
-                currentBufferPerBatch = lambdaCommonHandler.createBuffer(bufferFactory);
-                requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
-            }
+        LOG.info("Batch Chunks created after threshold check: {}", batchedBuffers.size());
+        for (Buffer buffer : batchedBuffers) {
+            InvokeRequest requestPayload = buffer.getRequestPayload(this.functionName, this.invocationType);
+            CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
+            futureList.add(future);
+            future.thenAccept(response -> {
+                handleLambdaResponse(resultRecords, buffer, response);
+            }).exceptionally(throwable -> {
+                handleFailure(throwable, buffer, resultRecords);
+                return null;
+            });
+            totalFlushedEvents += buffer.getEventCount();
         }
 
-        // Flush any remaining events in the buffer after processing all records
-        if (currentBufferPerBatch.getEventCount() > 0) {
-            LOG.info("Force Flushing the remaining {} events in the buffer", currentBufferPerBatch.getEventCount());
-            try {
-                flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
-                        requestCodec, responseCodec, futureList,true);
-                currentBufferPerBatch.reset();
-            } catch (Exception e) {
-                LOG.error("Exception while flushing remaining events", e);
-                handleFailure(e, currentBufferPerBatch, resultRecords);
-            }
-        }
-
-        lambdaCommonHandler.waitForFutures(futureList);
+        LambdaCommonHandler.waitForFutures(futureList);
         LOG.info("Total events flushed to lambda successfully: {}", totalFlushedEvents);
-
         return resultRecords;
     }
 
 
-    boolean flushToLambdaIfNeeded(List<Record<Event>> resultRecords, Buffer currentBufferPerBatch,
-                               OutputCodec requestCodec, InputCodec responseCodec, List futureList,
-                               boolean forceFlush) {
-
-        LOG.debug("currentBufferPerBatchEventCount:{}, maxEvents:{}, maxBytes:{}, " +
-                "maxCollectionDuration:{}, forceFlush:{} ", currentBufferPerBatch.getEventCount(),
-                maxEvents, maxBytes, maxCollectionDuration, forceFlush);
-        if (forceFlush || ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes, maxCollectionDuration)) {
-            try {
-                requestCodec.complete(currentBufferPerBatch.getOutputStream());
-
-                // Capture buffer before resetting
-                final int eventCount = currentBufferPerBatch.getEventCount();
-
-                CompletableFuture<InvokeResponse> future = currentBufferPerBatch.flushToLambda(invocationType);
-
-                // Handle future
-                CompletableFuture<Void> processingFuture = future.thenAccept(response -> {
-                    //Success handler
-                    handleLambdaResponse(resultRecords, currentBufferPerBatch, eventCount, response, responseCodec);
-                }).exceptionally(throwable -> {
-                    //Failure handler
-                    List<Record<Event>> bufferRecords = currentBufferPerBatch.getRecords();
-                    Record<Event> eventRecord = bufferRecords.isEmpty() ? null : bufferRecords.get(0);
-                    LOG.error(NOISY, "Exception occurred while invoking Lambda. Function: {} , Event: {}",
-                                functionName, eventRecord == null? "null":eventRecord.getData(), throwable);
-                    requestPayloadMetric.set(currentBufferPerBatch.getPayloadRequestSize());
-                    responsePayloadMetric.set(0);
-                    Duration latency = currentBufferPerBatch.stopLatencyWatch();
-                    lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-                    handleFailure(throwable, currentBufferPerBatch, resultRecords);
-                    return null;
-                });
-
-                futureList.add(processingFuture);
-            } catch (IOException e) {
-                LOG.error(NOISY, "Exception while flushing to lambda", e);
-                handleFailure(e, currentBufferPerBatch, resultRecords);
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private void handleLambdaResponse(List<Record<Event>> resultRecords, Buffer flushedBuffer,
-                                      int eventCount, InvokeResponse response, InputCodec responseCodec) {
-        boolean success = lambdaCommonHandler.checkStatusCode(response);
+    private void handleLambdaResponse(List<Record<Event>> resultRecords, Buffer flushedBuffer, InvokeResponse response) {
+        boolean success = LambdaCommonHandler.checkStatusCode(response);
         if (success) {
+            int eventCount = flushedBuffer.getEventCount();
             LOG.info("Successfully flushed {} events", eventCount);
 
             //metrics
@@ -263,7 +171,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
             totalFlushedEvents += eventCount;
 
-            convertLambdaResponseToEvent(resultRecords, response, flushedBuffer, responseCodec);
+            convertLambdaResponseToEvent(resultRecords, response, flushedBuffer);
         } else {
             // Non-2xx status code treated as failure
             handleFailure(new RuntimeException("Non-success Lambda status code: " + response.statusCode()), flushedBuffer, resultRecords);
@@ -276,10 +184,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * 2. If it is not an array, then create one event per response.
      */
     void convertLambdaResponseToEvent(final List<Record<Event>> resultRecords, final InvokeResponse lambdaResponse,
-                                      Buffer flushedBuffer, InputCodec responseCodec) {
+                                      Buffer flushedBuffer) {
         try {
             List<Event> parsedEvents = new ArrayList<>();
             List<Record<Event>> originalRecords = flushedBuffer.getRecords();
+            //Setup response codec
+            InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
 
             SdkBytes payload = lambdaResponse.payload();
             // Handle null or empty payload
@@ -306,7 +216,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 }
 
                 LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
-                        "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
+                                "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                         flushedBuffer.getSize());
                 responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
             }
@@ -333,7 +243,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             addFailureTags(flushedBuffer, resultRecords);
             LOG.error(NOISY, "Failed to process batch due to error: ", e);
-        } catch(Exception ex){
+        } catch (Exception ex) {
             LOG.error(NOISY, "Exception in handleFailure while processing failure for buffer: ", ex);
         }
     }
