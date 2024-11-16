@@ -5,45 +5,43 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-
 import java.io.OutputStream;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 
 /**
  * A buffer can hold data before flushing it.
  */
 public interface Buffer {
 
-    long getSize();
+  long getSize();
 
-    int getEventCount();
+  int getEventCount();
 
-    Duration getDuration();
+  void setEventCount(int eventCount);
 
-    CompletableFuture<InvokeResponse> flushToLambda(String invocationType);
+  Duration getDuration();
 
-    OutputStream getOutputStream();
+  InvokeRequest getRequestPayload(String functionName, String invocationType);
 
-    SdkBytes getPayload();
+  OutputStream getOutputStream();
 
-    void setEventCount(int eventCount);
+  SdkBytes getPayload();
 
-    public void addRecord(Record<Event> record);
+  void addRecord(Record<Event> record);
 
-    public List<Record<Event>> getRecords();
+  List<Record<Event>> getRecords();
 
-    public Duration getFlushLambdaLatencyMetric();
+  Duration getFlushLambdaLatencyMetric();
 
-    public Long getPayloadRequestSize();
+  Long getPayloadRequestSize();
 
-    public Duration stopLatencyWatch();
+  Duration stopLatencyWatch();
 
-    void reset();
+  void reset();
 
 }

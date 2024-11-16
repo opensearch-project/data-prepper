@@ -5,11 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -19,6 +14,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -34,7 +38,6 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
@@ -44,141 +47,116 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.lang.reflect.Field;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
-
 public class LambdaSinkServiceTest {
 
-    @Mock
-    private LambdaAsyncClient lambdaAsyncClient;
+  @Mock
+  private LambdaAsyncClient lambdaAsyncClient;
 
-    @Mock
-    private LambdaSinkConfig lambdaSinkConfig;
+  @Mock
+  private LambdaSinkConfig lambdaSinkConfig;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
+  @Mock
+  private PluginMetrics pluginMetrics;
 
-    @Mock
-    private PluginFactory pluginFactory;
+  @Mock
+  private PluginFactory pluginFactory;
 
-    @Mock
-    private PluginSetting pluginSetting;
+  @Mock
+  private PluginSetting pluginSetting;
 
-    @Mock
-    private OutputCodecContext codecContext;
+  @Mock
+  private OutputCodecContext codecContext;
 
-    @Mock
-    private AwsCredentialsSupplier awsCredentialsSupplier;
+  @Mock
+  private AwsCredentialsSupplier awsCredentialsSupplier;
 
-    @Mock
-    private DlqPushHandler dlqPushHandler;
+  @Mock
+  private DlqPushHandler dlqPushHandler;
 
-    @Mock
-    private BufferFactory bufferFactory;
+  @Mock
+  private ExpressionEvaluator expressionEvaluator;
 
-    @Mock
-    private ExpressionEvaluator expressionEvaluator;
+  @Mock
+  private Counter numberOfRecordsSuccessCounter;
 
-    @Mock
-    private Counter numberOfRecordsSuccessCounter;
+  @Mock
+  private Counter numberOfRecordsFailedCounter;
 
-    @Mock
-    private Counter numberOfRecordsFailedCounter;
+  @Mock
+  private Timer lambdaLatencyMetric;
 
-    @Mock
-    private Timer lambdaLatencyMetric;
+  @Mock
+  private OutputCodec requestCodec;
 
-    @Mock
-    private OutputCodec requestCodec;
+  @Mock
+  private Buffer currentBufferPerBatch;
 
-    @Mock
-    private Buffer currentBufferPerBatch;
+  @Mock
+  private LambdaCommonHandler lambdaCommonHandler;
 
-    @Mock
-    private LambdaCommonHandler lambdaCommonHandler;
+  @Mock
+  private Event event;
 
-    @Mock
-    private Event event;
+  @Mock
+  private EventHandle eventHandle;
 
-    @Mock
-    private EventHandle eventHandle;
+  @Mock
+  private EventMetadata eventMetadata;
 
-    @Mock
-    private EventMetadata eventMetadata;
+  @Mock
+  private InvokeResponse invokeResponse;
 
-    @Mock
-    private InvokeResponse invokeResponse;
+  @BeforeEach
+  public void setUp() {
+    MockitoAnnotations.openMocks(this);
 
-    private LambdaSinkService lambdaSinkService;
+    // Mock PluginMetrics counters and timers
+    when(pluginMetrics.counter("lambdaSinkObjectsEventsSucceeded")).thenReturn(
+        numberOfRecordsSuccessCounter);
+    when(pluginMetrics.counter("lambdaSinkObjectsEventsFailed")).thenReturn(
+        numberOfRecordsFailedCounter);
+    when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
+    when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenReturn(new AtomicLong());
 
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
+    // Mock lambdaSinkConfig
+    when(lambdaSinkConfig.getFunctionName()).thenReturn("test-function");
+    when(lambdaSinkConfig.getInvocationType()).thenReturn(InvocationType.EVENT);
 
-        // Mock PluginMetrics counters and timers
-        when(pluginMetrics.counter("lambdaSinkObjectsEventsSucceeded")).thenReturn(numberOfRecordsSuccessCounter);
-        when(pluginMetrics.counter("lambdaSinkObjectsEventsFailed")).thenReturn(numberOfRecordsFailedCounter);
-        when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
-        when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenReturn(new AtomicLong());
+    // Mock BatchOptions and ThresholdOptions
+    BatchOptions batchOptions = mock(BatchOptions.class);
+    ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
+    when(batchOptions.getKeyName()).thenReturn("test");
+    when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
+    when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
+    when(thresholdOptions.getEventCount()).thenReturn(10);
+    when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("1mb"));
+    when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(1));
 
-        // Mock lambdaSinkConfig
-        when(lambdaSinkConfig.getFunctionName()).thenReturn("test-function");
-        when(lambdaSinkConfig.getInvocationType()).thenReturn(InvocationType.EVENT);
+    // Mock JsonOutputCodec
+    requestCodec = mock(JsonOutputCodec.class);
+    when(pluginFactory.loadPlugin(eq(OutputCodec.class), any(PluginSetting.class))).thenReturn(
+        requestCodec);
 
-        // Mock BatchOptions and ThresholdOptions
-        BatchOptions batchOptions = mock(BatchOptions.class);
-        ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
-        when(batchOptions.getKeyName()).thenReturn("test");
-        when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
-        when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(thresholdOptions.getEventCount()).thenReturn(10);
-        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("1mb"));
-        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(1));
+    // Initialize bufferFactory and buffer
+    currentBufferPerBatch = mock(Buffer.class);
+    when(currentBufferPerBatch.getEventCount()).thenReturn(0);
 
-        // Mock JsonOutputCodec
-        requestCodec = mock(JsonOutputCodec.class);
-        when(pluginFactory.loadPlugin(eq(OutputCodec.class), any(PluginSetting.class))).thenReturn(requestCodec);
+    // Mock LambdaCommonHandler
+    lambdaCommonHandler = mock(LambdaCommonHandler.class);
+    doNothing().when(currentBufferPerBatch).reset();
 
-        // Initialize bufferFactory and buffer
-        bufferFactory = mock(BufferFactory.class);
-        currentBufferPerBatch = mock(Buffer.class);
-        when(currentBufferPerBatch.getEventCount()).thenReturn(0);
+  }
 
-        // Mock LambdaCommonHandler
-        lambdaCommonHandler = mock(LambdaCommonHandler.class);
-        when(lambdaCommonHandler.createBuffer(bufferFactory)).thenReturn(currentBufferPerBatch);
-        doNothing().when(currentBufferPerBatch).reset();
-
-        lambdaSinkService = new LambdaSinkService(
-                lambdaAsyncClient,
-                lambdaSinkConfig,
-                pluginMetrics,
-                pluginFactory,
-                pluginSetting,
-                codecContext,
-                awsCredentialsSupplier,
-                dlqPushHandler,
-                bufferFactory,
-                expressionEvaluator
-        );
-
-        // Set private fields
-        setPrivateField(lambdaSinkService, "lambdaCommonHandler", lambdaCommonHandler);
-        setPrivateField(lambdaSinkService, "requestCodec", requestCodec);
-        setPrivateField(lambdaSinkService, "currentBufferPerBatch", currentBufferPerBatch);
+  // Helper method to set private fields via reflection
+  private void setPrivateField(Object targetObject, String fieldName, Object value) {
+    try {
+      Field field = targetObject.getClass().getDeclaredField(fieldName);
+      field.setAccessible(true);
+      field.set(targetObject, value);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
-
-    // Helper method to set private fields via reflection
-    private void setPrivateField(Object targetObject, String fieldName, Object value) {
-        try {
-            Field field = targetObject.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(targetObject, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+  }
 
     /*
     @Test
@@ -211,30 +189,25 @@ public class LambdaSinkServiceTest {
 
      */
 
-    @Test
-    public void testHandleFailure_WithDlq() {
-        Throwable throwable = new RuntimeException("Test Exception");
-        SdkBytes payload = SdkBytes.fromUtf8String("test payload");
-        when(currentBufferPerBatch.getEventCount()).thenReturn(1);
-        when(currentBufferPerBatch.getPayload()).thenReturn(payload);
+  @Test
+  public void testHandleFailure_WithDlq() {
+    Throwable throwable = new RuntimeException("Test Exception");
+    SdkBytes payload = SdkBytes.fromUtf8String("test payload");
+    when(currentBufferPerBatch.getEventCount()).thenReturn(1);
+    when(currentBufferPerBatch.getPayload()).thenReturn(payload);
 
-        lambdaSinkService.handleFailure(throwable, currentBufferPerBatch);
+    verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
+    verify(dlqPushHandler, times(1)).perform(eq(pluginSetting), any(LambdaSinkFailedDlqData.class));
+  }
 
-        verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
-        verify(dlqPushHandler, times(1)).perform(eq(pluginSetting), any(LambdaSinkFailedDlqData.class));
-    }
+  @Test
+  public void testHandleFailure_WithoutDlq() {
+    Throwable throwable = new RuntimeException("Test Exception");
+    when(currentBufferPerBatch.getEventCount()).thenReturn(1);
 
-    @Test
-    public void testHandleFailure_WithoutDlq() {
-        setPrivateField(lambdaSinkService, "dlqPushHandler", null);
-        Throwable throwable = new RuntimeException("Test Exception");
-        when(currentBufferPerBatch.getEventCount()).thenReturn(1);
-
-        lambdaSinkService.handleFailure(throwable, currentBufferPerBatch);
-
-        verify(numberOfRecordsFailedCounter, times(1)).increment(1);
-        verify(dlqPushHandler, never()).perform(any(), any());
-    }
+    verify(numberOfRecordsFailedCounter, times(1)).increment(1);
+    verify(dlqPushHandler, never()).perform(any(), any());
+  }
 
     /*
     @Test

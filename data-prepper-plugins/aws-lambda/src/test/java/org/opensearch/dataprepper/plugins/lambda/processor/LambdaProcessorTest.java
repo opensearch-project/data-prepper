@@ -5,23 +5,33 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import org.mockito.Captor;
-import org.mockito.Mock;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -40,174 +50,164 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
-
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorTest {
 
-    // Mock dependencies
-    @Mock
-    private AwsAuthenticationOptions awsAuthenticationOptions;
+  // Mock dependencies
+  @Mock
+  private AwsAuthenticationOptions awsAuthenticationOptions;
 
-    @Mock
-    private Buffer bufferMock;
+  @Mock
+  private Buffer bufferMock;
 
-    @Mock
-    private PluginFactory pluginFactory;
+  @Mock
+  private PluginFactory pluginFactory;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
+  @Mock
+  private PluginMetrics pluginMetrics;
 
-    @Mock
-    private LambdaProcessorConfig lambdaProcessorConfig;
+  @Mock
+  private LambdaProcessorConfig lambdaProcessorConfig;
 
-    @Mock
-    private AwsCredentialsSupplier awsCredentialsSupplier;
+  @Mock
+  private AwsCredentialsSupplier awsCredentialsSupplier;
 
-    @Mock
-    private ExpressionEvaluator expressionEvaluator;
+  @Mock
+  private ExpressionEvaluator expressionEvaluator;
 
-    @Mock
-    private LambdaCommonHandler lambdaCommonHandler;
+  @Mock
+  private LambdaCommonHandler lambdaCommonHandler;
 
-    @Mock
-    private InputCodec responseCodec;
+  @Mock
+  private InputCodec responseCodec;
 
-    @Mock
-    private OutputCodec requestCodec;
+  @Mock
+  private OutputCodec requestCodec;
 
-    @Mock
-    private Counter numberOfRecordsSuccessCounter;
+  @Mock
+  private Counter numberOfRecordsSuccessCounter;
 
-    @Mock
-    private Counter numberOfRecordsFailedCounter;
+  @Mock
+  private Counter numberOfRecordsFailedCounter;
 
-    @Mock
-    private InvokeResponse invokeResponse;
+  @Mock
+  private InvokeResponse invokeResponse;
 
-    @Mock
-    private Timer lambdaLatencyMetric;
+  @Mock
+  private Timer lambdaLatencyMetric;
 
-    @Captor
-    private ArgumentCaptor<Consumer<Record<Event>>> consumerCaptor;
+  @Captor
+  private ArgumentCaptor<Consumer<Record<Event>>> consumerCaptor;
 
-    // The class under test
-    private LambdaProcessor lambdaProcessor;
+  // The class under test
+  private LambdaProcessor lambdaProcessor;
 
-    @BeforeEach
-    public void setUp() throws Exception {
-        MockitoAnnotations.openMocks(this);
+  @BeforeEach
+  public void setUp() throws Exception {
+    MockitoAnnotations.openMocks(this);
 
-        // Mock PluginMetrics counters and timers
-        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS))).thenReturn(numberOfRecordsSuccessCounter);
-        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED))).thenReturn(numberOfRecordsFailedCounter);
-        when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
-        when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenAnswer(invocation -> invocation.getArgument(1));
+    // Mock PluginMetrics counters and timers
+    when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS))).thenReturn(
+        numberOfRecordsSuccessCounter);
+    when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED))).thenReturn(
+        numberOfRecordsFailedCounter);
+    when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
+    when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenAnswer(
+        invocation -> invocation.getArgument(1));
 
-        when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
-        when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
-        when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(lambdaProcessorConfig.getConnectionTimeout()).thenReturn(Duration.ofSeconds(5));
-        when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
-        BatchOptions batchOptions = mock(BatchOptions.class);
-        ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
-        when(lambdaProcessorConfig.getBatchOptions()).thenReturn(batchOptions);
-        when(lambdaProcessorConfig.getWhenCondition()).thenReturn(null);
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
+    when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
+    when(lambdaProcessorConfig.getMaxConnectionRetries()).thenReturn(3);
+    when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+    when(lambdaProcessorConfig.getConnectionTimeout()).thenReturn(Duration.ofSeconds(5));
+    when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
+    BatchOptions batchOptions = mock(BatchOptions.class);
+    ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
+    when(lambdaProcessorConfig.getBatchOptions()).thenReturn(batchOptions);
+    when(lambdaProcessorConfig.getWhenCondition()).thenReturn(null);
+    when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
 
-        // Mock AWS Authentication Options
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
-        when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
+    // Mock AWS Authentication Options
+    when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
+    when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
 
-        // Mock BatchOptions and ThresholdOptions
-        when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(thresholdOptions.getEventCount()).thenReturn(10);
-        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("6mb"));
-        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(30));
-        when(batchOptions.getKeyName()).thenReturn("key");
+    // Mock BatchOptions and ThresholdOptions
+    when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
+    when(thresholdOptions.getEventCount()).thenReturn(10);
+    when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("6mb"));
+    when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(30));
+    when(batchOptions.getKeyName()).thenReturn("key");
 
-        // Mock Response Codec Configuration
-        PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
-        PluginSetting responseCodecPluginSetting;
+    // Mock Response Codec Configuration
+    PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
+    PluginSetting responseCodecPluginSetting;
 
-        if (responseCodecConfig == null) {
-            // Default to JsonInputCodec with default settings
-            responseCodecPluginSetting = new PluginSetting("json", Collections.emptyMap());
-        } else {
-            responseCodecPluginSetting = new PluginSetting(responseCodecConfig.getPluginName(), responseCodecConfig.getPluginSettings());
-        }
-
-        // Mock PluginFactory to return the mocked responseCodec
-        when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class))).thenReturn(responseCodec);
-
-        // Instantiate the LambdaProcessor manually
-        lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
-
-        // Inject mocks into the LambdaProcessor using reflection
-        populatePrivateFields();
-
-        // Mock LambdaCommonHandler behavior
-        when(lambdaCommonHandler.createBuffer(any(BufferFactory.class))).thenReturn(bufferMock);
-
-        // Mock Buffer behavior for flushToLambda
-        when(bufferMock.flushToLambda(anyString())).thenReturn(CompletableFuture.completedFuture(invokeResponse));
-
-        // Mock InvokeResponse
-        when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"));
-        when(invokeResponse.statusCode()).thenReturn(200); // Success status code
-
-        // Mock LambdaAsyncClient inside LambdaProcessor
-        LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
-        setPrivateField(lambdaProcessor, "lambdaAsyncClient", lambdaAsyncClientMock);
-
-        // Mock the invoke method to return a completed future
-        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
-        when(lambdaAsyncClientMock.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
-
-        // Mock the checkStatusCode method
-        when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
-
-        // Mock Response Codec parse method
-        doNothing().when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
-
+    if (responseCodecConfig == null) {
+      // Default to JsonInputCodec with default settings
+      responseCodecPluginSetting = new PluginSetting("json", Collections.emptyMap());
+    } else {
+      responseCodecPluginSetting = new PluginSetting(responseCodecConfig.getPluginName(),
+          responseCodecConfig.getPluginSettings());
     }
 
-    private void populatePrivateFields() throws Exception {
-        List<String> tagsOnMatchFailure = Collections.singletonList("failure_tag");
-        // Use reflection to set the private fields
-        setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
-        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
-        setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
-        setPrivateField(lambdaProcessor, "lambdaCommonHandler", lambdaCommonHandler);
-    }
+    // Mock PluginFactory to return the mocked responseCodec
+    when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class))).thenReturn(
+        responseCodec);
 
-    // Helper method to set private fields via reflection
-    private void setPrivateField(Object targetObject, String fieldName, Object value) throws Exception {
-        Field field = targetObject.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(targetObject, value);
-    }
+    // Instantiate the LambdaProcessor manually
+    lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig,
+        awsCredentialsSupplier, expressionEvaluator);
+
+    // Inject mocks into the LambdaProcessor using reflection
+    populatePrivateFields();
+
+    // Mock InvokeResponse
+    when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"));
+    when(invokeResponse.statusCode()).thenReturn(200); // Success status code
+
+    // Mock LambdaAsyncClient inside LambdaProcessor
+    LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
+    setPrivateField(lambdaProcessor, "lambdaAsyncClient", lambdaAsyncClientMock);
+
+    // Mock the invoke method to return a completed future
+    CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(
+        invokeResponse);
+    when(lambdaAsyncClientMock.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+
+    // Mock the checkStatusCode method
+    when(lambdaCommonHandler.checkStatusCode(any())).thenReturn(true);
+
+    // Mock Response Codec parse method
+    doNothing().when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
+
+  }
+
+  private void populatePrivateFields() throws Exception {
+    List<String> tagsOnMatchFailure = Collections.singletonList("failure_tag");
+    // Use reflection to set the private fields
+    setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter",
+        numberOfRecordsSuccessCounter);
+    setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
+    setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
+    setPrivateField(lambdaProcessor, "lambdaCommonHandler", lambdaCommonHandler);
+  }
+
+  // Helper method to set private fields via reflection
+  private void setPrivateField(Object targetObject, String fieldName, Object value)
+      throws Exception {
+    Field field = targetObject.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(targetObject, value);
+  }
 
     /*
     @Test
@@ -236,130 +236,131 @@ public class LambdaProcessorTest {
     }
      */
 
-    @Test
-    public void testDoExecute_WithEmptyResponse() throws Exception {
-        // Arrange
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+  @Test
+  public void testDoExecute_WithEmptyResponse() throws Exception {
+    // Arrange
+    Event event = mock(Event.class);
+    Record<Event> record = new Record<>(event);
+    List<Record<Event>> records = Collections.singletonList(record);
 
-        // Mock Buffer to return empty payload
-        when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String(""));
+    // Mock Buffer to return empty payload
+    when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String(""));
 
-        // Act
-        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+    // Act
+    Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
-        // Assert
-        assertEquals(0, result.size(), "Result should be empty due to empty Lambda response.");
-        //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
-    }
+    // Assert
+    assertEquals(0, result.size(), "Result should be empty due to empty Lambda response.");
+    //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+  }
 
-    @Test
-    public void testDoExecute_WithNullResponse() throws Exception {
-        // Arrange
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+  @Test
+  public void testDoExecute_WithNullResponse() throws Exception {
+    // Arrange
+    Event event = mock(Event.class);
+    Record<Event> record = new Record<>(event);
+    List<Record<Event>> records = Collections.singletonList(record);
 
-        // Mock Buffer to return null payload
-        when(invokeResponse.payload()).thenReturn(null);
+    // Mock Buffer to return null payload
+    when(invokeResponse.payload()).thenReturn(null);
 
-        // Act
-        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+    // Act
+    Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
-        // Assert
-        assertEquals(0, result.size(), "Result should be empty due to null Lambda response.");
-        //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
-    }
+    // Assert
+    assertEquals(0, result.size(), "Result should be empty due to null Lambda response.");
+    //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+  }
 
-    @Test
-    public void testDoExecute_WithEmptyRecords() {
-        // Arrange
-        Collection<Record<Event>> records = Collections.emptyList();
+  @Test
+  public void testDoExecute_WithEmptyRecords() {
+    // Arrange
+    Collection<Record<Event>> records = Collections.emptyList();
 
-        // Act
-        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+    // Act
+    Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
-        // Assert
-        assertEquals(0, result.size(), "Result should be empty when input records are empty.");
-        //verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
-        //verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
-    }
+    // Assert
+    assertEquals(0, result.size(), "Result should be empty when input records are empty.");
+    //verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
+    //verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
+  }
 
-    @Test
-    public void testDoExecute_WhenConditionFalse() {
-        // Arrange
-        Event event = mock(Event.class);
-        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
-        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(event.getEventHandle()).thenReturn(eventHandle);
-        when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
-        Record<Event> record = new Record<>(event);
-        Collection<Record<Event>> records = Collections.singletonList(record);
+  @Test
+  public void testDoExecute_WhenConditionFalse() {
+    // Arrange
+    Event event = mock(Event.class);
+    DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+    AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+    when(event.getEventHandle()).thenReturn(eventHandle);
+    when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+    Record<Event> record = new Record<>(event);
+    Collection<Record<Event>> records = Collections.singletonList(record);
 
-        // Mock condition evaluator to return false
-        when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(false);
-        when(lambdaProcessorConfig.getWhenCondition()).thenReturn("some_condition");
+    // Mock condition evaluator to return false
+    when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(false);
+    when(lambdaProcessorConfig.getWhenCondition()).thenReturn("some_condition");
 
-        // Instantiate the LambdaProcessor manually
-        lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
+    // Instantiate the LambdaProcessor manually
+    lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics, lambdaProcessorConfig,
+        awsCredentialsSupplier, expressionEvaluator);
 
-        // Act
-        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+    // Act
+    Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
-        // Assert
-        assertEquals(1, result.size(), "Result should contain one record as the condition is false.");
-        verify(lambdaCommonHandler, never()).createBuffer(any(BufferFactory.class));
-        verify(bufferMock, never()).flushToLambda(anyString());
-        //verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
-        //verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
-    }
+    // Assert
+    assertEquals(1, result.size(), "Result should contain one record as the condition is false.");
+    //verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
+    //verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
+  }
 
-    @Test
-    public void testDoExecute_SuccessfulProcessing() throws Exception {
-        // Arrange
-        Event event = mock(Event.class);
-        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
-        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        when(event.getEventHandle()).thenReturn(eventHandle);
-        when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
-        Record<Event> record = new Record<>(event);
-        Collection<Record<Event>> records = Collections.singletonList(record);
+  @Test
+  public void testDoExecute_SuccessfulProcessing() throws Exception {
+    // Arrange
+    Event event = mock(Event.class);
+    DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+    AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+    when(event.getEventHandle()).thenReturn(eventHandle);
+    when(eventHandle.getAcknowledgementSet()).thenReturn(acknowledgementSet);
+    Record<Event> record = new Record<>(event);
+    Collection<Record<Event>> records = Collections.singletonList(record);
 
-        // Mock LambdaAsyncClient inside LambdaProcessor
-        LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
-        setPrivateField(lambdaProcessor, "lambdaAsyncClient", lambdaAsyncClientMock);
+    // Mock LambdaAsyncClient inside LambdaProcessor
+    LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
+    setPrivateField(lambdaProcessor, "lambdaAsyncClient", lambdaAsyncClientMock);
 
-        // Mock the invoke method to return a completed future
-        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
-        when(lambdaAsyncClientMock.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+    // Mock the invoke method to return a completed future
+    CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(
+        invokeResponse);
+    when(lambdaAsyncClientMock.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
 
+    // Mock Buffer behavior
+    when(bufferMock.getEventCount()).thenReturn(0).thenReturn(1).thenReturn(0);
+    when(bufferMock.getRecords()).thenReturn(Collections.singletonList(record));
+    doNothing().when(bufferMock).reset();
 
-        // Mock Buffer behavior
-        when(bufferMock.getEventCount()).thenReturn(0).thenReturn(1).thenReturn(0);
-        when(bufferMock.getRecords()).thenReturn(Collections.singletonList(record));
-        doNothing().when(bufferMock).reset();
+    doAnswer(invocation -> {
+      InputStream inputStream = invocation.getArgument(0);
+      @SuppressWarnings("unchecked")
+      Consumer<Record<Event>> consumer = invocation.getArgument(1);
 
-        doAnswer(invocation -> {
-            InputStream inputStream = invocation.getArgument(0);
-            @SuppressWarnings("unchecked")
-            Consumer<Record<Event>> consumer = invocation.getArgument(1);
+      // Simulate parsing by providing a mocked event
+      Event parsedEvent = mock(Event.class);
+      Record<Event> parsedRecord = new Record<>(parsedEvent);
+      consumer.accept(parsedRecord);
 
-            // Simulate parsing by providing a mocked event
-            Event parsedEvent = mock(Event.class);
-            Record<Event> parsedRecord = new Record<>(parsedEvent);
-            consumer.accept(parsedRecord);
+      return null;
+    }).when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
 
-            return null;
-        }).when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
+    // Act
+    Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
-        // Act
-        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+    // Assert
+    assertEquals(1, result.size(), "Result should contain one record.");
+    //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+  }
 
-        // Assert
-        assertEquals(1, result.size(), "Result should contain one record.");
-        //verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
-    };
+  ;
 
 
     /*
