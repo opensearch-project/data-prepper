@@ -22,14 +22,14 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
     @JsonProperty("lambda_when")
     private String whenCondition;
 
-    @JsonProperty("tags_on_match_failure")
+    @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when lambda fails to " +
             "or exception occurs. This tag may be used in conditional expressions in " +
             "other parts of the configuration")
-    private List<String> tagsOnMatchFailure = Collections.emptyList();
+    private List<String> tagsOnFailure = Collections.emptyList();
 
-    public List<String> getTagsOnMatchFailure(){
-        return tagsOnMatchFailure;
+    public List<String> getTagsOnFailure(){
+        return tagsOnFailure;
     }
 
     public String getWhenCondition() {

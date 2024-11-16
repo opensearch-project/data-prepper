@@ -26,7 +26,7 @@ public class LambdaProcessorConfigTest {
     @Test
     void test_defaults() {
         final LambdaProcessorConfig lambdaProcessorConfig = new LambdaProcessorConfig();
-        assertThat(lambdaProcessorConfig.getTagsOnMatchFailure(), equalTo(List.of()));
+        assertThat(lambdaProcessorConfig.getTagsOnFailure(), equalTo(List.of()));
         assertThat(lambdaProcessorConfig.getWhenCondition(), equalTo(null));
         assertThat(lambdaProcessorConfig.getResponseEventsMatch(), equalTo(false));
     }
