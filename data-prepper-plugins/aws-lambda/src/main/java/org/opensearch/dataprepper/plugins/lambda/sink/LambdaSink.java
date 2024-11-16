@@ -131,12 +131,11 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
     //Result from lambda is not currently processes.
     LambdaCommonHandler.sendRecords(records,
-        null,
-        expressionEvaluator,
         lambdaSinkConfig,
         lambdaAsyncClient,
         (inputBuffer, invokeResponse) -> {
           releaseEventHandlesPerBatch(true, inputBuffer);
+          return null;
         },
         (inputBuffer, invokeResponse) -> {
           handleFailure(new RuntimeException("failed"), inputBuffer);
