@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -61,7 +62,6 @@ public class LambdaSinkService {
     private final LambdaSinkConfig lambdaSinkConfig;
     private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
-    private final String whenCondition;
     private final ExpressionEvaluator expressionEvaluator;
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
@@ -76,9 +76,11 @@ public class LambdaSinkService {
     private int maxRetries = 0;
     private OutputCodec requestCodec = null;
     private OutputCodecContext codecContext = null;
-    private final LambdaCommonHandler lambdaCommonHandler;
+    private LambdaCommonHandler lambdaCommonHandler;
     private Buffer currentBufferPerBatch = null;
     List<CompletableFuture<Void>> futureList;
+    private final JsonOutputCodecConfig jsonOutputCodecConfig;
+
 
 
     public LambdaSinkService(final LambdaAsyncClient lambdaAsyncClient, final LambdaSinkConfig lambdaSinkConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final OutputCodecContext codecContext, final AwsCredentialsSupplier awsCredentialsSupplier, final DlqPushHandler dlqPushHandler, final BufferFactory bufferFactory, final ExpressionEvaluator expressionEvaluator) {
@@ -98,11 +100,9 @@ public class LambdaSinkService {
         functionName = lambdaSinkConfig.getFunctionName();
         maxRetries = lambdaSinkConfig.getMaxConnectionRetries();
         batchOptions = lambdaSinkConfig.getBatchOptions();
-        whenCondition = lambdaSinkConfig.getWhenCondition();
 
-        JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
+        jsonOutputCodecConfig = new JsonOutputCodecConfig();
         jsonOutputCodecConfig.setKeyName(batchOptions.getKeyName());
-        requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
 
         maxEvents = batchOptions.getThresholdOptions().getEventCount();
         maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
@@ -111,10 +111,6 @@ public class LambdaSinkService {
         futureList = Collections.synchronizedList(new ArrayList<>());
 
         this.bufferFactory = bufferFactory;
-
-        LOG.info("LambdaFunctionName:{} , invocationType:{}", functionName, invocationType);
-        // Initialize LambdaCommonHandler
-        lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, functionName, invocationType);
     }
 
 
@@ -124,97 +120,15 @@ public class LambdaSinkService {
         }
 
         //Result from lambda is not currently processes.
-        List<Record<Event>> resultRecords = null;
-
-        reentrantLock.lock();
-        try {
-            for (Record<Event> record : records) {
-                final Event event = record.getData();
-
-                if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-                    releaseEventHandle(event, true);
-                    continue;
-                }
-                try {
-                    if (currentBufferPerBatch.getEventCount() == 0) {
-                        requestCodec.start(currentBufferPerBatch.getOutputStream(), event, codecContext);
-                    }
-                    requestCodec.writeEvent(event, currentBufferPerBatch.getOutputStream());
-                    currentBufferPerBatch.addRecord(record);
-
-                    flushToLambdaIfNeeded(resultRecords, false);
-                } catch (IOException e) {
-                    LOG.error("Exception while writing to codec {}", event, e);
-                    handleFailure(e, currentBufferPerBatch);
-                } catch (Exception e) {
-                    LOG.error("Exception while processing event {}", event, e);
-                    handleFailure(e, currentBufferPerBatch);
-                    currentBufferPerBatch.reset();
-                }
-            }
-            // Flush any remaining events after processing all records
-            if (currentBufferPerBatch.getEventCount() > 0) {
-                LOG.info("Force Flushing the remaining {} events in the buffer", currentBufferPerBatch.getEventCount());
-                try {
-                    flushToLambdaIfNeeded(resultRecords, true); // Force flush remaining events
-                } catch (Exception e) {
-                    LOG.error("Exception while flushing remaining events", e);
-                    handleFailure(e, currentBufferPerBatch);
-                }
-            }
-        } finally {
-            reentrantLock.unlock();
-        }
-
-        // Wait for all futures to complete
-        lambdaCommonHandler.waitForFutures(futureList);
-
-        // Release event handles for records not sent to Lambda
-        for (Record<Event> record : records) {
-            Event event = record.getData();
-            releaseEventHandle(event, true);
-        }
-
-    }
-
-    void flushToLambdaIfNeeded(List<Record<Event>> resultRecords, boolean forceFlush) {
-        if (forceFlush || ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes, maxCollectionDuration)) {
-            try {
-                requestCodec.complete(currentBufferPerBatch.getOutputStream());
-
-                // Capture buffer before resetting
-                final Buffer flushedBuffer = currentBufferPerBatch;
-                final int eventCount = currentBufferPerBatch.getEventCount();
-
-                CompletableFuture<InvokeResponse> future = flushedBuffer.flushToLambda(invocationType);
-
-                // Handle future
-                CompletableFuture<Void> processingFuture = future.thenAccept(response -> {
-                    handleLambdaResponse(flushedBuffer, eventCount, response);
-                }).exceptionally(throwable -> {
-                    // Failure handler
-                    List<Record<Event>> bufferRecords = flushedBuffer.getRecords();
-                    Record<Event> eventRecord = bufferRecords.isEmpty() ? null : bufferRecords.get(0);
-                    LOG.error(NOISY, "Exception occurred while invoking Lambda. Function: {} , Event: {}",
-                            functionName, eventRecord == null? "null":eventRecord.getData(), throwable);
-                    requestPayloadMetric.set(flushedBuffer.getPayloadRequestSize());
-                    responsePayloadMetric.set(0);
-                    Duration latency = flushedBuffer.stopLatencyWatch();
-                    lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-                    handleFailure(throwable, flushedBuffer);
-                    return null;
+        BufferFactory bufferFactory = new InMemoryBufferFactory();
+        lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, jsonOutputCodecConfig, lambdaSinkConfig);
+        lambdaCommonHandler.sendRecords(records,
+                (inputBuffer, resultRecords)->{
+                    releaseEventHandlesPerBatch(true, inputBuffer);
+                },
+                (inputBuffer, resultRecords)->{
+                    handleFailure(new RuntimeException("failed"), inputBuffer);
                 });
-
-                futureList.add(processingFuture);
-
-                // Create a new buffer for the next batch
-                currentBufferPerBatch = lambdaCommonHandler.createBuffer(bufferFactory);
-            } catch (IOException e) {
-                LOG.error("Exception while flushing to lambda", e);
-                handleFailure(e, currentBufferPerBatch);
-                currentBufferPerBatch = lambdaCommonHandler.createBuffer(bufferFactory);
-            }
-        }
     }
 
     void handleFailure(Throwable throwable, Buffer flushedBuffer) {
@@ -242,44 +156,12 @@ public class LambdaSinkService {
         List<Record<Event>> records = flushedBuffer.getRecords();
         for (Record<Event> record : records) {
             Event event = record.getData();
-            releaseEventHandle(event, success);
-        }
-    }
-
-    /**
-     * Releases the event handle based on processing success.
-     *
-     * @param event   the event to release
-     * @param success indicates if processing was successful
-     */
-    private void releaseEventHandle(Event event, boolean success) {
-        if (event != null) {
-            EventHandle eventHandle = event.getEventHandle();
-            if (eventHandle != null) {
-                eventHandle.release(success);
+            if (event != null) {
+                EventHandle eventHandle = event.getEventHandle();
+                if (eventHandle != null) {
+                    eventHandle.release(success);
+                }
             }
-        }
-    }
-
-    private void handleLambdaResponse(Buffer flushedBuffer, int eventCount, InvokeResponse response) {
-        boolean success = lambdaCommonHandler.checkStatusCode(response);
-        if (success) {
-            LOG.info("Successfully flushed {} events", eventCount);
-            SdkBytes payload = response.payload();
-            if (payload == null || payload.asByteArray() == null || payload.asByteArray().length == 0) {
-                responsePayloadMetric.set(0);
-            } else {
-                responsePayloadMetric.set(payload.asByteArray().length);
-            }
-            //metrics
-            requestPayloadMetric.set(flushedBuffer.getPayloadRequestSize());
-            numberOfRecordsSuccessCounter.increment(eventCount);
-            Duration latency = flushedBuffer.stopLatencyWatch();
-            lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-            }
-        else {
-            // Non-2xx status code treated as failure
-            handleFailure(new RuntimeException("Non-success Lambda status code: " + response.statusCode()), flushedBuffer);
         }
     }
 

@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.lambda.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,9 +18,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.slf4j.Logger;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
@@ -42,17 +51,35 @@ public class LambdaCommonHandlerTest {
     @Mock
     private InvokeResponse mockInvokeResponse;
 
-    @InjectMocks
     private LambdaCommonHandler lambdaCommonHandler;
 
     private String functionName = "test-function";
 
     private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
 
+    @Mock
+    private LambdaCommonConfig lambdaCommonConfig;
+    @Mock
+    private JsonOutputCodecConfig jsonOutputCodecConfig;
+    @Mock
+    private InvocationType invType;
+
+    @Mock
+    private BatchOptions batchOptions;
+
+    private ThresholdOptions thresholdOptions;
+
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType);
+        when(jsonOutputCodecConfig.getKeyName()).thenReturn("test");
+        when(invType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaCommonConfig.getBatchOptions()).thenReturn(batchOptions);
+        thresholdOptions = new ThresholdOptions();
+        when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
+        when(lambdaCommonConfig.getInvocationType()).thenReturn(invType);
+        when(lambdaCommonConfig.getFunctionName()).thenReturn(functionName);
+        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient,jsonOutputCodecConfig, lambdaCommonConfig);
     }
 
     @Test

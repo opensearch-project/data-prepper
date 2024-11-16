@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
+import java.util.List;
 
 public class LambdaProcessorConfigTest {
 
@@ -18,13 +23,11 @@ public class LambdaProcessorConfigTest {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
-    void lambda_processor_default_max_connection_retries_test() {
-        assertThat(new LambdaProcessorConfig().getMaxConnectionRetries(), equalTo(DEFAULT_MAX_RETRIES));
-    }
-
-    @Test
-    void lambda_processor_default_sdk_timeout_test() {
-        assertThat(new LambdaProcessorConfig().getConnectionTimeout(), equalTo(DEFAULT_SDK_TIMEOUT));
+	void test_defaults() {
+        final LambdaProcessorConfig lambdaProcessorConfig = new LambdaProcessorConfig();
+        assertThat(lambdaProcessorConfig.getTagsOnMatchFailure(), equalTo(List.of()));
+        assertThat(lambdaProcessorConfig.getWhenCondition(), equalTo(null));
+        assertThat(lambdaProcessorConfig.getResponseEventsMatch(), equalTo(false));
     }
 
     @Test
@@ -37,4 +40,5 @@ public class LambdaProcessorConfigTest {
         assertThat(lambdaProcessorConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(), equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaProcessorConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"), equalTo("test"));
     }
+
 }

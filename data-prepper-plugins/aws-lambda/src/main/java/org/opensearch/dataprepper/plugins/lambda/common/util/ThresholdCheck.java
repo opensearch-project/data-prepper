@@ -17,6 +17,7 @@ public class ThresholdCheck {
 
     public static boolean checkThresholdExceed(final Buffer currentBuffer, final int maxEvents, final ByteCount maxBytes, final Duration maxCollectionDuration) {
 
+        System.out.println("________"+currentBuffer.getEventCount()+"_______SZ___"+currentBuffer.getSize()+"___MAXE__"+maxEvents);
         if (maxEvents > 0) {
             return currentBuffer.getEventCount() + 1 > maxEvents ||
                     currentBuffer.getDuration().compareTo(maxCollectionDuration) > 0 ||
