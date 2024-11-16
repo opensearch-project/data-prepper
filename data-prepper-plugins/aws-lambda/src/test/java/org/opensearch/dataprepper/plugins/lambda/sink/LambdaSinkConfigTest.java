@@ -2,6 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,12 +40,11 @@ class LambdaSinkConfigTest {
                 "            region: ap-south-1\n" +
                 "            sts_role_arn: test-role-arn\n";
         final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
-/*
+
         assertThat(lambdaSinkConfig.getMaxConnectionRetries(),equalTo(10));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));
-*/
         assertThat(lambdaSinkConfig.getDlqStsRegion(),equalTo("ap-south-1"));
         assertThat(lambdaSinkConfig.getDlqStsRoleARN(),equalTo("test-role-arn"));
     }

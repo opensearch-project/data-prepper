@@ -6,14 +6,8 @@ package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 

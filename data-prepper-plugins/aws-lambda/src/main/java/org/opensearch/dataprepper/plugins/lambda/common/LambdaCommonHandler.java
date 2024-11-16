@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 
 public class LambdaCommonHandler {
