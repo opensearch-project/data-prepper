@@ -61,7 +61,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     LambdaCommonHandler lambdaCommonHandler;
     final PluginSetting codecPluginSetting;
     final PluginFactory pluginFactory;
-	final LambdaProcessorConfig lambdaProcessorConfig;
+    final LambdaProcessorConfig lambdaProcessorConfig;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
 
@@ -70,7 +70,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
-		this.lambdaProcessorConfig = lambdaProcessorConfig;
+        this.lambdaProcessorConfig = lambdaProcessorConfig;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
@@ -114,8 +114,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
         lambdaCommonHandler = new LambdaCommonHandler(LOG, lambdaAsyncClient, jsonOutputCodecConfig, responseCodec, whenCondition, expressionEvaluator, responseStrategy, lambdaProcessorConfig);
-		return lambdaCommonHandler.sendRecords(records, (inputBuffer, resultRecords)->{}, (inputBuffer, resultRecords)->{ addFailureTags(inputBuffer, resultRecords);});
-	}
+        return lambdaCommonHandler.sendRecords(records, (inputBuffer, resultRecords)->{}, (inputBuffer, resultRecords)->{ addFailureTags(inputBuffer, resultRecords);});
+    }
 
     private void addFailureTags(Buffer flushedBuffer, List<Record<Event>> resultRecords) {
         // Add failure tags to each event in the batch

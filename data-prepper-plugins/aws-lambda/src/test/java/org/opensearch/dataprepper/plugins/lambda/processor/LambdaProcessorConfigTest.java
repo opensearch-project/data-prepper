@@ -24,7 +24,7 @@ public class LambdaProcessorConfigTest {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
-	void test_defaults() {
+    void test_defaults() {
         final LambdaProcessorConfig lambdaProcessorConfig = new LambdaProcessorConfig();
         assertThat(lambdaProcessorConfig.getTagsOnMatchFailure(), equalTo(List.of()));
         assertThat(lambdaProcessorConfig.getWhenCondition(), equalTo(null));

@@ -60,7 +60,6 @@ class LambdaSinkConfigTest {
                         "        max_retries: 10\n";
         final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
         assertThat(lambdaSinkConfig.getDlq(),equalTo(null));
-/*
         assertThat(lambdaSinkConfig.getMaxConnectionRetries(),equalTo(10));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
@@ -68,6 +67,5 @@ class LambdaSinkConfigTest {
         assertThat(lambdaSinkConfig.getDlqStsRegion(),equalTo("ap-south-1"));
         assertThat(lambdaSinkConfig.getDlqStsRoleARN(),equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaSinkConfig.getDlqPluginSetting().get("key"),equalTo(null));
-*/
     }
 }

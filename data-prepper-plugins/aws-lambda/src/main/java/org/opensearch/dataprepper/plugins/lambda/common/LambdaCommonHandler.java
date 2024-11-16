@@ -42,40 +42,40 @@ public class LambdaCommonHandler {
     private final LambdaAsyncClient lambdaAsyncClient;
     private final String functionName;
     private final String invocationType;
-	private final LambdaCommonConfig config;
-	private final String whenCondition;
+    private final LambdaCommonConfig config;
+    private final String whenCondition;
     BufferFactory bufferFactory;
-	final InputCodec responseCodec;
-	final ExpressionEvaluator expressionEvaluator;
-	JsonOutputCodecConfig jsonOutputCodecConfig;
+    final InputCodec responseCodec;
+    final ExpressionEvaluator expressionEvaluator;
+    JsonOutputCodecConfig jsonOutputCodecConfig;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final Duration maxCollectionDuration;
     private final ResponseEventHandlingStrategy responseStrategy;
 
-	public LambdaCommonHandler(final Logger log,
-			final LambdaAsyncClient lambdaAsyncClient,
-			final JsonOutputCodecConfig jsonOutputCodecConfig,
-			final InputCodec responseCodec,
-			final String whenCondition,
-			final ExpressionEvaluator expressionEvaluator,
-			final ResponseEventHandlingStrategy responseStrategy,
-			final LambdaCommonConfig lambdaCommonConfig) {
-		this.LOG = log;
+    public LambdaCommonHandler(final Logger log,
+            final LambdaAsyncClient lambdaAsyncClient,
+            final JsonOutputCodecConfig jsonOutputCodecConfig,
+            final InputCodec responseCodec,
+            final String whenCondition,
+            final ExpressionEvaluator expressionEvaluator,
+            final ResponseEventHandlingStrategy responseStrategy,
+            final LambdaCommonConfig lambdaCommonConfig) {
+        this.LOG = log;
         this.lambdaAsyncClient = lambdaAsyncClient;
-		this.responseStrategy = responseStrategy;
-		this.config = lambdaCommonConfig;
-		this.jsonOutputCodecConfig = jsonOutputCodecConfig;
-		this.whenCondition = whenCondition;
-		this.responseCodec = responseCodec;
-		this.expressionEvaluator = expressionEvaluator;
+        this.responseStrategy = responseStrategy;
+        this.config = lambdaCommonConfig;
+        this.jsonOutputCodecConfig = jsonOutputCodecConfig;
+        this.whenCondition = whenCondition;
+        this.responseCodec = responseCodec;
+        this.expressionEvaluator = expressionEvaluator;
         this.functionName = config.getFunctionName();
         this.invocationType = config.getInvocationType().getAwsLambdaValue();
         maxEvents = lambdaCommonConfig.getBatchOptions().getThresholdOptions().getEventCount();
         maxBytes = lambdaCommonConfig.getBatchOptions().getThresholdOptions().getMaximumSize();
         maxCollectionDuration = lambdaCommonConfig.getBatchOptions().getThresholdOptions().getEventCollectTimeOut();
         bufferFactory = new InMemoryBufferFactory();
-	}
+    }
 
     public LambdaCommonHandler(final Logger log,
                                final LambdaAsyncClient lambdaAsyncClient,
@@ -115,51 +115,50 @@ public class LambdaCommonHandler {
         }
     }
 
-	public List<Record<Event>> sendRecords(Collection<Record<Event>> records,
-			BiConsumer<Buffer, List<Record<Event>>> successHandler, BiConsumer<Buffer, List<Record<Event>>> failureHandler) {
-		List<Record<Event>> resultRecords = Collections.synchronizedList(new ArrayList());
-		boolean createNewBuffer = true;
-		Buffer currentBufferPerBatch = null;
-		OutputCodec requestCodec = null;
+    public List<Record<Event>> sendRecords(Collection<Record<Event>> records,
+            BiConsumer<Buffer, List<Record<Event>>> successHandler, BiConsumer<Buffer, List<Record<Event>>> failureHandler) {
+        List<Record<Event>> resultRecords = Collections.synchronizedList(new ArrayList());
+        boolean createNewBuffer = true;
+        Buffer currentBufferPerBatch = null;
+        OutputCodec requestCodec = null;
         List futureList = new ArrayList<>();
         for (Record<Event> record : records) {
             final Event event = record.getData();
 
             // If the condition is false, add the event to resultRecords as-is
             if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-				synchronized(resultRecords) {
-					resultRecords.add(record);
-				}
+                synchronized(resultRecords) {
+                    resultRecords.add(record);
+                }
                 continue;
             }
 
-			try {
-				if (createNewBuffer) {
-					currentBufferPerBatch = createBuffer(bufferFactory);
-					requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
-					requestCodec.start(currentBufferPerBatch.getOutputStream(), event, new OutputCodecContext());
-				}
-				requestCodec.writeEvent(event, currentBufferPerBatch.getOutputStream());
-			} catch (IOException ex) {
-				LOG.error("Failed to start or write to request codec");
-				break;
-			}
-			currentBufferPerBatch.addRecord(record);
-			createNewBuffer = flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
-					requestCodec, futureList, successHandler, failureHandler, false);
-		}
+            try {
+                if (createNewBuffer) {
+                    currentBufferPerBatch = createBuffer(bufferFactory);
+                    requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
+                    requestCodec.start(currentBufferPerBatch.getOutputStream(), event, new OutputCodecContext());
+                }
+                requestCodec.writeEvent(event, currentBufferPerBatch.getOutputStream());
+            } catch (IOException ex) {
+                LOG.error("Failed to start or write to request codec");
+                break;
+            }
+            currentBufferPerBatch.addRecord(record);
+            createNewBuffer = flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
+                    requestCodec, futureList, successHandler, failureHandler, false);
+        }
         if (!createNewBuffer && currentBufferPerBatch.getEventCount() > 0) {
-			flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
-					requestCodec, futureList, successHandler, failureHandler, true);
-		}
+            flushToLambdaIfNeeded(resultRecords, currentBufferPerBatch,
+                    requestCodec, futureList, successHandler, failureHandler, true);
+        }
         waitForFutures(futureList);
         return resultRecords;
-	}
+    }
 
     boolean flushToLambdaIfNeeded(List<Record<Event>> resultRecords, Buffer currentBufferPerBatch,
-                               OutputCodec requestCodec, List futureList,
-							   BiConsumer<Buffer, List<Record<Event>>> successHandler, BiConsumer<Buffer, List<Record<Event>>> failureHandler,
-                               boolean forceFlush) {
+                   OutputCodec requestCodec, List futureList, BiConsumer<Buffer, List<Record<Event>>> successHandler,
+                   BiConsumer<Buffer, List<Record<Event>>> failureHandler, boolean forceFlush) {
 
         LOG.debug("currentBufferPerBatchEventCount:{}, maxEvents:{}, maxBytes:{}, " +
                 "maxCollectionDuration:{}, forceFlush:{} ", currentBufferPerBatch.getEventCount(),
@@ -202,8 +201,8 @@ public class LambdaCommonHandler {
     }
 
     private void handleLambdaResponse(List<Record<Event>> resultRecords, Buffer flushedBuffer,
-                                      int eventCount, InvokeResponse response,
-							   BiConsumer<Buffer, List<Record<Event>>> successHandler, BiConsumer<Buffer, List<Record<Event>>> failureHandler) {
+                          int eventCount, InvokeResponse response, BiConsumer<Buffer, List<Record<Event>>> successHandler,
+                          BiConsumer<Buffer, List<Record<Event>>> failureHandler) {
         boolean success = checkStatusCode(response);
         if (success) {
             LOG.info("Successfully flushed {} events", eventCount);
@@ -259,10 +258,10 @@ public class LambdaCommonHandler {
                 LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
                         "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                         flushedBuffer.getSize());
-				synchronized(resultRecords) {
-					responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
-					successHandler.accept(flushedBuffer, originalRecords);
-				}
+                synchronized(resultRecords) {
+                    responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+                    successHandler.accept(flushedBuffer, originalRecords);
+                }
             }
         } catch (Exception e) {
             LOG.error(NOISY, "Error converting Lambda response to Event");
@@ -282,11 +281,10 @@ public class LambdaCommonHandler {
             if (flushedBuffer.getEventCount() > 0) {
                 //numberOfRecordsFailedCounter.increment(flushedBuffer.getEventCount());
             }
-			synchronized(resultRecords) {
-				failureHandler.accept(flushedBuffer, resultRecords);
-			}
+            synchronized(resultRecords) {
+                failureHandler.accept(flushedBuffer, resultRecords);
+            }
 
-            //addFailureTags(flushedBuffer, resultRecords);
             LOG.error(NOISY, "Failed to process batch due to error: ", e);
         } catch(Exception ex){
             LOG.error(NOISY, "Exception in handleFailure while processing failure for buffer: ", ex);

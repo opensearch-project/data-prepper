@@ -147,7 +147,7 @@ public class LambdaProcessorTest {
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(30));
         when(batchOptions.getKeyName()).thenReturn("key");
 
-		// Mock Response Codec Configuration
+        // Mock Response Codec Configuration
         PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
         PluginSetting responseCodecPluginSetting;
 
