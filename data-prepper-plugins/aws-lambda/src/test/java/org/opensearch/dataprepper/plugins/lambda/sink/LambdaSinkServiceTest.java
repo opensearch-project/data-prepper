@@ -76,9 +76,6 @@ public class LambdaSinkServiceTest {
     private DlqPushHandler dlqPushHandler;
 
     @Mock
-    private BufferFactory bufferFactory;
-
-    @Mock
     private ExpressionEvaluator expressionEvaluator;
 
     @Mock
@@ -142,13 +139,11 @@ public class LambdaSinkServiceTest {
         when(pluginFactory.loadPlugin(eq(OutputCodec.class), any(PluginSetting.class))).thenReturn(requestCodec);
 
         // Initialize bufferFactory and buffer
-        bufferFactory = mock(BufferFactory.class);
         currentBufferPerBatch = mock(Buffer.class);
         when(currentBufferPerBatch.getEventCount()).thenReturn(0);
 
         // Mock LambdaCommonHandler
         lambdaCommonHandler = mock(LambdaCommonHandler.class);
-        when(lambdaCommonHandler.createBuffer(bufferFactory)).thenReturn(currentBufferPerBatch);
         doNothing().when(currentBufferPerBatch).reset();
 
         lambdaSinkService = new LambdaSinkService(
@@ -160,7 +155,6 @@ public class LambdaSinkServiceTest {
                 codecContext,
                 awsCredentialsSupplier,
                 dlqPushHandler,
-                bufferFactory,
                 expressionEvaluator
         );
 

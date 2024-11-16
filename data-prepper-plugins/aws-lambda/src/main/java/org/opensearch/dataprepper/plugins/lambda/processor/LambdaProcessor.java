@@ -77,7 +77,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Duration maxCollectionDuration;
     private final ResponseEventHandlingStrategy responseStrategy;
     private int maxRetries = 0;
-    private int totalFlushedEvents;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginMetrics pluginMetrics, final LambdaProcessorConfig lambdaProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
@@ -133,9 +132,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         // Initialize here to void multi-threading issues
         // Note: By default, one instance of processor is created across threads.
         List<CompletableFuture<InvokeResponse>> futureList = new ArrayList<>();
-        totalFlushedEvents = 0;
+        List<Record<Event>> resultRecords = Collections.synchronizedList(new ArrayList<>());
+        int totalFlushedEvents = 0;
 
-        List<Record<Event>> resultRecords = new ArrayList<>();
         List<Buffer> batchedBuffers = createBufferBatches(records, batchOptions.getKeyName(),
                 whenCondition, expressionEvaluator, maxEvents, maxBytes, maxCollectionDuration, resultRecords);
 
@@ -145,7 +144,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
             futureList.add(future);
             future.thenAccept(response -> {
-                handleLambdaResponse(resultRecords, buffer, response);
+                synchronized (resultRecords) {
+                    handleLambdaResponse(resultRecords, buffer, response);
+                }
             }).exceptionally(throwable -> {
                 handleFailure(throwable, buffer, resultRecords);
                 return null;
@@ -169,7 +170,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             numberOfRecordsSuccessCounter.increment(eventCount);
             Duration latency = flushedBuffer.stopLatencyWatch();
             lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-            totalFlushedEvents += eventCount;
+//            totalFlushedEvents += eventCount;
 
             convertLambdaResponseToEvent(resultRecords, response, flushedBuffer);
         } else {
@@ -218,9 +219,10 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
                                 "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                         flushedBuffer.getSize());
-                responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+                synchronized (resultRecords) {
+                    responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+                }
             }
-
 
         } catch (Exception e) {
             LOG.error(NOISY, "Error converting Lambda response to Event");
@@ -240,8 +242,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             if (flushedBuffer.getEventCount() > 0) {
                 numberOfRecordsFailedCounter.increment(flushedBuffer.getEventCount());
             }
-
-            addFailureTags(flushedBuffer, resultRecords);
+            synchronized (resultRecords) {
+                addFailureTags(flushedBuffer, resultRecords);
+            }
             LOG.error(NOISY, "Failed to process batch due to error: ", e);
         } catch (Exception ex) {
             LOG.error(NOISY, "Exception in handleFailure while processing failure for buffer: ", ex);

@@ -62,10 +62,12 @@ public class LambdaCommonHandler {
         for (Record<Event> record : records) {
             final Event event = record.getData();
 
-            // If the condition is false, add the event to resultRecords as-is
-            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
-                resultRecords.add(record);
-                continue;
+            //only processor needs to execute this block
+            if(resultRecords !=null) {
+                if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
+                    resultRecords.add(record);
+                    continue;
+                }
             }
 
             currentBufferPerBatch.addRecord(record);
