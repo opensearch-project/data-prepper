@@ -92,7 +92,6 @@ public class InMemoryBuffer implements Buffer {
     public CompletableFuture<InvokeResponse> flushToLambda(String invocationType) {
         SdkBytes payload = getPayload();
         payloadRequestSize = payload.asByteArray().length;
-		System.out.println("=====Payload====="+payload.asUtf8String());
 
         // Setup an InvokeRequest.
         InvokeRequest request = InvokeRequest.builder()

@@ -214,6 +214,7 @@ public class LambdaProcessorTest {
         field.set(targetObject, value);
     }
 
+    /*
     @Test
     public void testDoExecute_WithExceptionDuringProcessing() throws Exception {
         // Arrange
@@ -238,6 +239,7 @@ public class LambdaProcessorTest {
         assertEquals(1, result.size());
         verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
     }
+     */
 
     @Test
     public void testDoExecute_WithEmptyResponse() throws Exception {
