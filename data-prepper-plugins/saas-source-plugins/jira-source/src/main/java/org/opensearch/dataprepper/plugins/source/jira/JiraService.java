@@ -65,12 +65,10 @@ public class JiraService {
      * @param configuration the configuration.
      * @param timestamp     timestamp.
      */
-    public Queue<ItemInfo> getJiraEntities(JiraSourceConfig configuration, Instant timestamp) {
+    public void getJiraEntities(JiraSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
-        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
-        return itemInfoQueue;
     }
 
     public String getIssue(String issueKey) {
