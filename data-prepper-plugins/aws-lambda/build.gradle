@@ -68,13 +68,13 @@ task integrationTest(type: Test) {
     systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
     systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
 
-    systemProperty 'tests.lambda.sink.region', System.getenv('TESTS_LAMBDA_SINK_REGION')
-    systemProperty 'tests.lambda.sink.functionName', System.getenv('TESTS_LAMBDA_SINK_FUNCTION_NAME')
-    systemProperty 'tests.lambda.sink.sts_role_arn', System.getenv('TESTS_LAMBDA_SINK_STS_ROLE_ARN')
+    systemProperty 'tests.lambda.sink.region', System.getProperty('tests.lambda.sink.region')
+    systemProperty 'tests.lambda.sink.functionName', System.getProperty('tests.lambda.sink.functionName')
+    systemProperty 'tests.lambda.sink.sts_role_arn', System.getProperty('tests.lambda.sink.sts_role_arn')
 
-    systemProperty 'tests.lambda.processor.region', System.getenv('TESTS_LAMBDA_PROCESSOR_REGION')
-    systemProperty 'tests.lambda.processor.functionName', System.getenv('TESTS_LAMBDA_PROCESSOR_FUNCTION_NAME')
-    systemProperty 'tests.lambda.processor.sts_role_arn', System.getenv('TESTS_LAMBDA_PROCESSOR_STS_ROLE_ARN')
+    systemProperty 'tests.lambda.processor.region', System.getProperty('tests.lambda.processor.region')
+    systemProperty 'tests.lambda.processor.functionName', System.getProperty('tests.lambda.processor.functionName')
+    systemProperty 'tests.lambda.processor.sts_role_arn', System.getProperty('tests.lambda.processor.sts_role_arn')
 
     filter {
         includeTestsMatching '*IT'

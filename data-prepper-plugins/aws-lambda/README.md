@@ -45,7 +45,11 @@ The integration tests for this plugin do not run as part of the Data Prepper bui
 The following command runs the integration tests:
 
 ```
-./gradlew :data-prepper-plugins:aws-lambda:integrationTest -Dtests.processor.lambda.region="us-east-1" -Dtests.processor.lambda.functionName="lambda_test_function"  -Dtests.processor.lambda.sts_role_arn="arn:aws:iam::123456789012:role/dataprepper-role
+./gradlew :data-prepper-plugins:aws-lambda:integrationTest \
+-Dtests.lambda.processor.region="us-east-1" \
+-Dtests.lambda.processor.functionName="test-lambda-processor" \
+-Dtests.lambda.processor.sts_role_arn="arn:aws:iam::<>:role/lambda-role"
+
 
 ```
 
@@ -83,6 +87,10 @@ The integration tests for this plugin do not run as part of the Data Prepper bui
 The following command runs the integration tests:
 
 ```
-./gradlew :data-prepper-plugins:aws-lambda:integrationTest -Dtests.sink.lambda.region="us-east-1" -Dtests.sink.lambda.functionName="lambda_test_function"  -Dtests.sink.lambda.sts_role_arn="arn:aws:iam::123456789012:role/dataprepper-role
+./gradlew :data-prepper-plugins:aws-lambda:integrationTest \
+-Dtests.lambda.processor.region="us-east-1" \
+-Dtests.lambda.processor.functionName="test-lambda-processor" \
+-Dtests.lambda.processor.sts_role_arn="arn:aws:iam::<>>:role/lambda-role"
+
 
 ```
