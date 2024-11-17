@@ -45,6 +45,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
@@ -140,10 +141,12 @@ public class LambdaSinkTest {
     when(currentBufferPerBatch.getEventCount()).thenReturn(0);
     when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
     when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-1"));
-    when(lambdaSinkConfig.getConnectionTimeout()).thenReturn(Duration.ofSeconds(2));
     this.pluginSetting = new PluginSetting("aws_lambda", Collections.emptyMap());
     this.pluginSetting.setPipelineName(UUID.randomUUID().toString());
     this.awsAuthenticationOptions = new AwsAuthenticationOptions();
+
+    ClientOptions clientOptions = new ClientOptions();
+    when(lambdaSinkConfig.getClientOptions()).thenReturn(clientOptions);
 
     this.lambdaSink = new LambdaSink(pluginSetting, lambdaSinkConfig, pluginFactory, sinkContext,
         awsCredentialsSupplier, expressionEvaluator);

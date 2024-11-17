@@ -11,6 +11,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.when;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import software.amazon.awssdk.regions.Region;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,7 +34,6 @@ class LambdaSinkConfigTest {
                 "          region: ap-south-1\n" +
                 "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
                 "          sts_header_overrides: {\"test\":\"test\"}\n" +
-                "        max_retries: 10\n" +
                 "        dlq:\n" +
                 "          s3:\n" +
                 "            bucket: test\n" +
@@ -40,8 +41,7 @@ class LambdaSinkConfigTest {
                 "            region: ap-south-1\n" +
                 "            sts_role_arn: test-role-arn\n";
         final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
-
-        assertThat(lambdaSinkConfig.getMaxConnectionRetries(),equalTo(10));
+        assertThat(lambdaSinkConfig.getClientOptions().getMaxConnectionRetries(),equalTo(3));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));
@@ -79,11 +79,9 @@ class LambdaSinkConfigTest {
                         "        aws:\n" +
                         "          region: ap-south-1\n" +
                         "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
-                        "          sts_header_overrides: {\"test\":\"test\"}\n" +
-                        "        max_retries: 10\n";
+                        "          sts_header_overrides: {\"test\":\"test\"}\n" ;
         final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
         assertThat(lambdaSinkConfig.getDlq(),equalTo(null));
-        assertThat(lambdaSinkConfig.getMaxConnectionRetries(),equalTo(10));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));

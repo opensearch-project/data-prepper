@@ -16,6 +16,7 @@ import lombok.Getter;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 @Getter
+
 public abstract class LambdaCommonConfig {
 
   public static final int DEFAULT_CONNECTION_RETRIES = 3;
@@ -34,23 +35,22 @@ public abstract class LambdaCommonConfig {
   @Size(min = 3, max = 500, message = "function name length should be at least 3 characters")
   private String functionName;
 
-  @JsonPropertyDescription("Total retries we want before failing")
-  @JsonProperty("max_retries")
-  private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
+  @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
+  @JsonProperty("invocation_type")
+  private InvocationType invocationType = InvocationType.REQUEST_RESPONSE;
 
+  @JsonPropertyDescription("Client options")
+  @JsonProperty("client")
+  private ClientOptions clientOptions = new ClientOptions();
 
-  @JsonPropertyDescription("sdk timeout defines the time sdk maintains the connection to the client before timing out")
-  @JsonProperty("connection_timeout")
-  private Duration connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
+  @JsonPropertyDescription("Batch options")
   @JsonProperty("batch")
-  private BatchOptions batchOptions;
+  private BatchOptions batchOptions = new BatchOptions();
 
   @JsonPropertyDescription("Codec configuration for parsing Lambda responses")
   @JsonProperty("response_codec")
   @Valid
   private PluginModel responseCodecConfig;
-
 
   public abstract InvocationType getInvocationType();
 

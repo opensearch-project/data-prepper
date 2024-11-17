@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
 import org.slf4j.Logger;
@@ -92,11 +93,14 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
     this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
     this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
+    ClientOptions clientOptions = lambdaSinkConfig.getClientOptions();
+    if(clientOptions == null){
+      clientOptions = new ClientOptions();
+    }
     this.lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
         lambdaSinkConfig.getAwsAuthenticationOptions(),
-        lambdaSinkConfig.getMaxConnectionRetries(),
         awsCredentialsSupplier,
-        lambdaSinkConfig.getConnectionTimeout()
+        clientOptions
     );
     if (lambdaSinkConfig.getDlqPluginSetting() != null) {
       this.dlqPushHandler = new DlqPushHandler(pluginFactory,

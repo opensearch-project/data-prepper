@@ -1,108 +1,148 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.dataprepper.plugins.lambda.common;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
-import org.slf4j.Logger;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-public class LambdaCommonHandlerTest {
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class LambdaCommonHandlerTest {
 
   @Mock
-  private Logger mockLogger;
+  private LambdaAsyncClient lambdaAsyncClient;
 
   @Mock
-  private LambdaAsyncClient mockLambdaAsyncClient;
-
-
-  @Mock
-  private Buffer mockBuffer;
-
-  @Mock
-  private InvokeResponse mockInvokeResponse;
-
-  private LambdaCommonHandler lambdaCommonHandler;
-
-  private String functionName = "test-function";
-
-  private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
-
-  @Mock
-  private LambdaCommonConfig lambdaCommonConfig;
-  @Mock
-  private JsonOutputCodecConfig jsonOutputCodecConfig;
-  @Mock
-  private InvocationType invType;
+  private LambdaCommonConfig config;
 
   @Mock
   private BatchOptions batchOptions;
 
-  private ThresholdOptions thresholdOptions;
+  @Test
+  void testCheckStatusCode() {
+    InvokeResponse successResponse = InvokeResponse.builder().statusCode(200).build();
+    InvokeResponse failureResponse = InvokeResponse.builder().statusCode(400).build();
 
-  @BeforeEach
-  public void setUp() {
-    MockitoAnnotations.openMocks(this);
-    when(jsonOutputCodecConfig.getKeyName()).thenReturn("test");
-    when(invType.getAwsLambdaValue()).thenReturn(
-        InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
-    when(lambdaCommonConfig.getBatchOptions()).thenReturn(batchOptions);
-    thresholdOptions = new ThresholdOptions();
-    when(batchOptions.getThresholdOptions()).thenReturn(thresholdOptions);
-    when(lambdaCommonConfig.getInvocationType()).thenReturn(invType);
-    when(lambdaCommonConfig.getFunctionName()).thenReturn(functionName);
+    assertTrue(LambdaCommonHandler.checkStatusCode(successResponse));
+    assertFalse(LambdaCommonHandler.checkStatusCode(failureResponse));
   }
 
   @Test
-  public void testCreateBuffer_success() throws IOException {
+  void testWaitForFutures() {
+    List<CompletableFuture<InvokeResponse>> futureList = new ArrayList<>();
+    CompletableFuture<InvokeResponse> future1 = new CompletableFuture<>();
+    CompletableFuture<InvokeResponse> future2 = new CompletableFuture<>();
+    futureList.add(future1);
+    futureList.add(future2);
 
-    //TODO: need a better test here
+    // Simulate completion of futures
+    future1.complete(InvokeResponse.builder().build());
+    future2.complete(InvokeResponse.builder().build());
+
+    LambdaCommonHandler.waitForFutures(futureList);
+
+    assertTrue(futureList.isEmpty());
   }
 
   @Test
-  public void testCreateBuffer_throwsException() throws IOException {
-    // Arrange
-    //TODO: need a better test here
+  void testSendRecords() {
+    when(config.getBatchOptions()).thenReturn(batchOptions);
+    when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
+    when(batchOptions.getKeyName()).thenReturn("testKey"); // Add this line
+    when(config.getFunctionName()).thenReturn("testFunction");
+    when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+            .thenReturn(CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
+
+    Event mockEvent = mock(Event.class);
+    when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
+    List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
+
+    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
+    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+
+    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
+
+    assertNotNull(result);
+    verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
   }
 
   @Test
-  public void testWaitForFutures_allComplete() {
-    // Arrange
-    //TODO: need a better test here
+  void testSendRecordsWithNullKeyName() {
+    when(config.getBatchOptions()).thenReturn(batchOptions);
+    when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
+    when(batchOptions.getKeyName()).thenReturn(null); // Explicitly set null key name
+    when(config.getFunctionName()).thenReturn("testFunction");
+
+    Event mockEvent = mock(Event.class);
+    when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
+    List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
+
+    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
+    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+
+    assertThrows(NullPointerException.class, () ->
+            LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler)
+    );
   }
 
   @Test
-  public void testWaitForFutures_withException() {
-    // Arrange
-    //TODO: need a better test here
+  void testSendRecordsWithFailure() {
+    when(config.getBatchOptions()).thenReturn(batchOptions);
+    when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
+    when(config.getFunctionName()).thenReturn("testFunction");
+    when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+            .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Test exception")));
+
+    List<Record<Event>> records = new ArrayList<>();
+    records.add(new Record<>(mock(Event.class)));
+
+    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
+    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+
+    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
+
+    assertNotNull(result);
+    verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
   }
 
-  private List<EventHandle> mockEventHandleList(int size) {
-    List<EventHandle> eventHandleList = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      EventHandle eventHandle = mock(EventHandle.class);
-      eventHandleList.add(eventHandle);
-    }
-    return eventHandleList;
-  }
+  @Test
+  void testSendRecordsWithEmptyKeyName() {
+    when(config.getBatchOptions()).thenReturn(batchOptions);
+    when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
+    when(batchOptions.getKeyName()).thenReturn(""); // Set empty key name
+    when(config.getFunctionName()).thenReturn("testFunction");
+    when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+            .thenReturn(CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
 
+    Event mockEvent = mock(Event.class);
+    when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
+    List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
+
+    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
+    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+
+    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
+
+    assertNotNull(result);
+    verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
+  }
 }

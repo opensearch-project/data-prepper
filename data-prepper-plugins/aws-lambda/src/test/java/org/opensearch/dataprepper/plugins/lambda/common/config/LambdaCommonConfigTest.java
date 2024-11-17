@@ -16,8 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessorConfig;
 import software.amazon.awssdk.regions.Region;
 
+<<<<<<< HEAD
+=======
+import java.time.Duration;
+
+>>>>>>> 10e3ed6fa (Add backoff retry and ClientOptions)
 public class LambdaCommonConfigTest {
 
+<<<<<<< HEAD
   private final ObjectMapper objectMapper = new ObjectMapper(
       new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
@@ -53,4 +59,48 @@ public class LambdaCommonConfigTest {
         lambdaCommonConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),
         equalTo("test"));
   }
+=======
+    @Test
+    void test_defaults() {
+        final LambdaCommonConfig lambdaCommonConfig = new LambdaCommonConfig();
+        assertThat(lambdaCommonConfig.getFunctionName(), equalTo(null));
+        assertThat(lambdaCommonConfig.getAwsAuthenticationOptions(), equalTo(null));
+        assertThat(lambdaCommonConfig.getResponseCodecConfig(), equalTo(null));
+        assertThat(lambdaCommonConfig.getInvocationType(), equalTo(InvocationType.REQUEST_RESPONSE));
+
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxConnectionRetries(), equalTo(ClientOptions.DEFAULT_CONNECTION_RETRIES));
+        assertThat(lambdaCommonConfig.getClientOptions().getApiCallTimeout(), equalTo(ClientOptions.DEFAULT_API_TIMEOUT));
+        assertThat(lambdaCommonConfig.getClientOptions().getConnectionTimeout(), equalTo(ClientOptions.DEFAULT_CONNECTION_TIMEOUT));
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxConcurrency(), equalTo(ClientOptions.DEFAULT_MAXIMUM_CONCURRENCY));
+        assertThat(lambdaCommonConfig.getClientOptions().getBaseDelay(), equalTo(ClientOptions.DEFAULT_BASE_DELAY));
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxBackoff(), equalTo(ClientOptions.DEFAULT_MAX_BACKOFF));
+    }
+
+    @Test
+    public void testAwsAuthenticationOptionsNotNull() throws JsonProcessingException {
+        final String config = "        function_name: test_function\n" + "        aws:\n" + "          region: ap-south-1\n" + "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" + "          sts_header_overrides: {\"test\":\"test\"}\n" ;
+        final LambdaCommonConfig lambdaCommonConfig = objectMapper.readValue(config, LambdaCommonConfig.class);
+
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxConnectionRetries(), equalTo(10));
+        assertThat(lambdaCommonConfig.getAwsAuthenticationOptions().getAwsRegion(), equalTo(Region.AP_SOUTH_1));
+        assertThat(lambdaCommonConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(), equalTo("arn:aws:iam::524239988912:role/app-test"));
+        assertThat(lambdaCommonConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"), equalTo("test"));
+    }
+
+    @Test
+    public void testPartialClientOptions() throws JsonProcessingException {
+        final String config = "function_name: test_function\n" +
+                "aws:\n" +
+                "  region: us-west-2\n" +
+                "client:\n" +
+                "  max_retries: 5\n" ;
+        final LambdaCommonConfig lambdaCommonConfig = objectMapper.readValue(config, LambdaCommonConfig.class);
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxConnectionRetries(), equalTo(5));
+        assertThat(lambdaCommonConfig.getClientOptions().getApiCallTimeout(), equalTo(ClientOptions.DEFAULT_API_TIMEOUT));
+        assertThat(lambdaCommonConfig.getClientOptions().getConnectionTimeout(), equalTo(ClientOptions.DEFAULT_CONNECTION_TIMEOUT));
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxConcurrency(), equalTo(ClientOptions.DEFAULT_MAXIMUM_CONCURRENCY));
+        assertThat(lambdaCommonConfig.getClientOptions().getBaseDelay(), equalTo(ClientOptions.DEFAULT_BASE_DELAY));
+        assertThat(lambdaCommonConfig.getClientOptions().getMaxBackoff(), equalTo(ClientOptions.DEFAULT_MAX_BACKOFF));
+    }
+>>>>>>> 10e3ed6fa (Add backoff retry and ClientOptions)
 }

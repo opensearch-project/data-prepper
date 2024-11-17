@@ -8,13 +8,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
-import java.time.Duration;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -45,81 +44,32 @@ class LambdaClientFactoryTest {
 
   @Test
   void testCreateAsyncLambdaClient() {
-    int maxConnectionRetries = 3;
-    Duration sdkTimeout = Duration.ofSeconds(120);
+    ClientOptions clientOptions = new ClientOptions();
 
     LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
             awsAuthenticationOptions,
-            maxConnectionRetries,
             awsCredentialsSupplier,
-            sdkTimeout
+            clientOptions
     );
 
     assertNotNull(client);
     assertEquals(Region.US_WEST_2, client.serviceClientConfiguration().region());
   }
-
-  @Test
-  void testCreateAsyncLambdaClientWithDifferentRegion() {
-    when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.EU_CENTRAL_1);
-
-    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
-            awsAuthenticationOptions,
-            3,
-            awsCredentialsSupplier,
-            Duration.ofSeconds(60)
-    );
-
-    assertNotNull(client);
-    assertEquals(Region.EU_CENTRAL_1, client.serviceClientConfiguration().region());
-  }
-
-  @Test
-  void testCreateAsyncLambdaClientWithCustomSdkTimeout() {
-    Duration customTimeout = Duration.ofMinutes(5);
-
-    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
-            awsAuthenticationOptions,
-            3,
-            awsCredentialsSupplier,
-            customTimeout
-    );
-
-    assertNotNull(client);
-    assertEquals(customTimeout, client.serviceClientConfiguration().overrideConfiguration().apiCallTimeout().get());
-  }
-
-  @Test
-  void testCreateAsyncLambdaClientWithMaxRetries() {
-    int maxRetries = 5;
-
-    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
-            awsAuthenticationOptions,
-            maxRetries,
-            awsCredentialsSupplier,
-            Duration.ofSeconds(60)
-    );
-
-    assertNotNull(client);
-  }
-
   @Test
   void testCreateAsyncLambdaClientOverrideConfiguration() {
-    Duration sdkTimeout = Duration.ofSeconds(90);
-    int maxRetries = 4;
+    ClientOptions clientOptions = new ClientOptions();
 
     LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
             awsAuthenticationOptions,
-            maxRetries,
             awsCredentialsSupplier,
-            sdkTimeout
+            clientOptions
     );
 
     assertNotNull(client);
     ClientOverrideConfiguration overrideConfig = client.serviceClientConfiguration().overrideConfiguration();
 
-    assertEquals(sdkTimeout, overrideConfig.apiCallTimeout().get());
-    assertEquals(maxRetries, overrideConfig.retryPolicy().get().numRetries());
+    assertEquals(clientOptions.getApiCallTimeout(), overrideConfig.apiCallTimeout().get());
+    assertNotNull(overrideConfig.retryPolicy());
     assertNotNull(overrideConfig.metricPublishers());
     assertFalse(overrideConfig.metricPublishers().isEmpty());
   }
