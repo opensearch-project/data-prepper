@@ -1,185 +1,126 @@
 package org.opensearch.dataprepper.plugins.lambda.common.client;
 
-import java.time.Duration;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+
+import java.time.Duration;
+import java.util.HashMap;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LambdaClientFactoryTest {
 
   @Mock
-  private AwsCredentialsSupplier awsCredentialsSupplier;
+  private AwsAuthenticationOptions awsAuthenticationOptions;
 
   @Mock
-  private AwsAuthenticationOptions awsAuthenticationOptions;
+  private AwsCredentialsSupplier awsCredentialsSupplier;
 
   @Mock
   private AwsCredentialsProvider awsCredentialsProvider;
 
-  private Duration sdkTimeout = Duration.ofSeconds(60);
+  @BeforeEach
+  void setUp() {
+    when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
+    when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/example-role");
+    when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn("externalId");
+    when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(new HashMap<>());
 
-  /*@Test
-  void createLambdaAsyncClient_with_real_LambdaAsyncClient() {
-    try (MockedStatic<LambdaAsyncClient> mockedStaticLambdaAsyncClient = mockStatic(
-        LambdaAsyncClient.class);
-        MockedStatic<PluginMetrics> mockedPluginMetrics = mockStatic(PluginMetrics.class)) {
-
-      PluginMetrics pluginMetricsMock = mock(PluginMetrics.class);
-      mockedPluginMetrics.when(() -> PluginMetrics.fromNames("sdk", "aws"))
-          .thenReturn(pluginMetricsMock);
-
-      LambdaAsyncClientBuilder lambdaAsyncClientBuilder = mock(LambdaAsyncClientBuilder.class);
-      LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
-
-      mockedStaticLambdaAsyncClient.when(LambdaAsyncClient::builder)
-          .thenReturn(lambdaAsyncClientBuilder);
-
-      when(lambdaAsyncClientBuilder.region(any(Region.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.credentialsProvider(
-          any(AwsCredentialsProvider.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.overrideConfiguration(
-          any(ClientOverrideConfiguration.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.build()).thenReturn(lambdaAsyncClientMock);
-
-      Region region = Region.US_WEST_2;
-      when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
-      String stsRoleArn = UUID.randomUUID().toString();
-      String stsExternalId = UUID.randomUUID().toString();
-      Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(),
-          UUID.randomUUID().toString());
-      when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
-      when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(stsExternalId);
-      when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
-      when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(
-          awsCredentialsProvider);
-
-      // Act
-      int maxConnectionRetries = 3;
-      LambdaAsyncClient lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
-          awsAuthenticationOptions,
-          maxConnectionRetries,
-          awsCredentialsSupplier,
-          sdkTimeout
-      );
-
-      // Verify
-      assertThat(lambdaAsyncClient, notNullValue());
-      verify(lambdaAsyncClientBuilder).region(region);
-      verify(lambdaAsyncClientBuilder).credentialsProvider(awsCredentialsProvider);
-      // Capture and verify ClientOverrideConfiguration
-      ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(
-          ClientOverrideConfiguration.class);
-      verify(lambdaAsyncClientBuilder).overrideConfiguration(configCaptor.capture());
-      ClientOverrideConfiguration config = configCaptor.getValue();
-
-      assertThat(config.apiCallTimeout(), equalTo(Optional.of(sdkTimeout)));
-
-      // Verify RetryPolicy
-      assertThat(config.retryPolicy().isPresent(), equalTo(true));
-      RetryPolicy retryPolicy = config.retryPolicy().get();
-      assertThat(retryPolicy.numRetries(), equalTo(maxConnectionRetries));
-
-      // Verify MetricPublisher
-      assertThat(config.metricPublishers(), notNullValue());
-      assertThat(config.metricPublishers().size(), equalTo(1));
-      MetricPublisher metricPublisher = config.metricPublishers().get(0);
-      assertThat(metricPublisher, instanceOf(MicrometerMetricPublisher.class));
-
-      // Verify that awsCredentialsSupplier.getProvider was called with correct AwsCredentialsOptions
-      ArgumentCaptor<AwsCredentialsOptions> optionsCaptor = ArgumentCaptor.forClass(
-          AwsCredentialsOptions.class);
-      verify(awsCredentialsSupplier).getProvider(optionsCaptor.capture());
-      AwsCredentialsOptions credentialsOptions = optionsCaptor.getValue();
-      assertThat(credentialsOptions.getRegion(), equalTo(region));
-      assertThat(credentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
-      assertThat(credentialsOptions.getStsExternalId(), equalTo(stsExternalId));
-      assertThat(credentialsOptions.getStsHeaderOverrides(), equalTo(stsHeaderOverrides));
-    }
+    when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
   }
 
   @Test
-  void createAsyncLambdaClient_with_correct_configuration() {
-    try (MockedStatic<LambdaAsyncClient> mockedStaticLambdaAsyncClient = mockStatic(
-        LambdaAsyncClient.class);
-        MockedStatic<PluginMetrics> mockedPluginMetrics = mockStatic(PluginMetrics.class)) {
+  void testCreateAsyncLambdaClient() {
+    int maxConnectionRetries = 3;
+    Duration sdkTimeout = Duration.ofSeconds(120);
 
-      PluginMetrics pluginMetricsMock = mock(PluginMetrics.class);
-      mockedPluginMetrics.when(() -> PluginMetrics.fromNames("sdk", "aws"))
-          .thenReturn(pluginMetricsMock);
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            maxConnectionRetries,
+            awsCredentialsSupplier,
+            sdkTimeout
+    );
 
-      LambdaAsyncClientBuilder lambdaAsyncClientBuilder = mock(LambdaAsyncClientBuilder.class);
-      LambdaAsyncClient lambdaAsyncClientMock = mock(LambdaAsyncClient.class);
+    assertNotNull(client);
+    assertEquals(Region.US_WEST_2, client.serviceClientConfiguration().region());
+  }
 
-      mockedStaticLambdaAsyncClient.when(LambdaAsyncClient::builder)
-          .thenReturn(lambdaAsyncClientBuilder);
+  @Test
+  void testCreateAsyncLambdaClientWithDifferentRegion() {
+    when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.EU_CENTRAL_1);
 
-      when(lambdaAsyncClientBuilder.region(any(Region.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.credentialsProvider(
-          any(AwsCredentialsProvider.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.overrideConfiguration(
-          any(ClientOverrideConfiguration.class))).thenReturn(lambdaAsyncClientBuilder);
-      when(lambdaAsyncClientBuilder.build()).thenReturn(lambdaAsyncClientMock);
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            3,
+            awsCredentialsSupplier,
+            Duration.ofSeconds(60)
+    );
 
-      Region region = Region.US_WEST_2;
-      when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
-      String stsRoleArn = UUID.randomUUID().toString();
-      String stsExternalId = UUID.randomUUID().toString();
-      Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(),
-          UUID.randomUUID().toString());
-      when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
-      when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(stsExternalId);
-      when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
-//            when(awsCredentialsSupplier.getProvider(any(AwsCredentialsOptions.class))).thenReturn(awsCredentialsProvider);
+    assertNotNull(client);
+    assertEquals(Region.EU_CENTRAL_1, client.serviceClientConfiguration().region());
+  }
 
-      // Act
-      int maxConnectionRetries = 3;
-      LambdaAsyncClient lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
-          awsAuthenticationOptions,
-          maxConnectionRetries,
-          awsCredentialsSupplier,
-          sdkTimeout
-      );
+  @Test
+  void testCreateAsyncLambdaClientWithCustomSdkTimeout() {
+    Duration customTimeout = Duration.ofMinutes(5);
 
-      // Verify
-      assertThat(lambdaAsyncClient, notNullValue());
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            3,
+            awsCredentialsSupplier,
+            customTimeout
+    );
 
-      // Verify builder methods
-      verify(lambdaAsyncClientBuilder).region(region);
-      verify(lambdaAsyncClientBuilder).credentialsProvider(awsCredentialsProvider);
+    assertNotNull(client);
+    assertEquals(customTimeout, client.serviceClientConfiguration().overrideConfiguration().apiCallTimeout().get());
+  }
 
-      // Capture and verify ClientOverrideConfiguration
-      ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(
-          ClientOverrideConfiguration.class);
-      verify(lambdaAsyncClientBuilder).overrideConfiguration(configCaptor.capture());
-      ClientOverrideConfiguration config = configCaptor.getValue();
+  @Test
+  void testCreateAsyncLambdaClientWithMaxRetries() {
+    int maxRetries = 5;
 
-      // Verify apiCallTimeout
-      assertThat(config.apiCallTimeout(), equalTo(Optional.of(sdkTimeout)));
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            maxRetries,
+            awsCredentialsSupplier,
+            Duration.ofSeconds(60)
+    );
 
-      // Verify RetryPolicy
-      assertThat(config.retryPolicy().isPresent(), equalTo(true));
-      RetryPolicy retryPolicy = config.retryPolicy().get();
-      assertThat(retryPolicy.numRetries(), equalTo(maxConnectionRetries));
+    assertNotNull(client);
+  }
 
-      // Verify MetricPublisher
-      assertThat(config.metricPublishers(), notNullValue());
-      assertThat(config.metricPublishers().size(), equalTo(1));
-      MetricPublisher metricPublisher = config.metricPublishers().get(0);
-      assertThat(metricPublisher, instanceOf(MicrometerMetricPublisher.class));
+  @Test
+  void testCreateAsyncLambdaClientOverrideConfiguration() {
+    Duration sdkTimeout = Duration.ofSeconds(90);
+    int maxRetries = 4;
 
-      // Verify that awsCredentialsSupplier.getProvider was called with correct AwsCredentialsOptions
-      ArgumentCaptor<AwsCredentialsOptions> optionsCaptor = ArgumentCaptor.forClass(
-          AwsCredentialsOptions.class);
-      verify(awsCredentialsSupplier).getProvider(optionsCaptor.capture());
-      AwsCredentialsOptions credentialsOptions = optionsCaptor.getValue();
-      assertThat(credentialsOptions.getRegion(), equalTo(region));
-      assertThat(credentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
-      assertThat(credentialsOptions.getStsExternalId(), equalTo(stsExternalId));
-      assertThat(credentialsOptions.getStsHeaderOverrides(), equalTo(stsHeaderOverrides));
-    }
-  }*/
+    LambdaAsyncClient client = LambdaClientFactory.createAsyncLambdaClient(
+            awsAuthenticationOptions,
+            maxRetries,
+            awsCredentialsSupplier,
+            sdkTimeout
+    );
+
+    assertNotNull(client);
+    ClientOverrideConfiguration overrideConfig = client.serviceClientConfiguration().overrideConfiguration();
+
+    assertEquals(sdkTimeout, overrideConfig.apiCallTimeout().get());
+    assertEquals(maxRetries, overrideConfig.retryPolicy().get().numRetries());
+    assertNotNull(overrideConfig.metricPublishers());
+    assertFalse(overrideConfig.metricPublishers().isEmpty());
+  }
 }
