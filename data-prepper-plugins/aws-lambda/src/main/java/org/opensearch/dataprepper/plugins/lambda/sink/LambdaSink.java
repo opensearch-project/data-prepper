@@ -6,10 +6,13 @@
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -37,23 +40,27 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Sink.class, pluginConfigurationType = LambdaSinkConfig.class)
 public class LambdaSink extends AbstractSink<Record<Event>> {
 
-  public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "lambdaProcessorObjectsEventsSucceeded";
-  public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "lambdaProcessorObjectsEventsFailed";
-  public static final String LAMBDA_LATENCY_METRIC = "lambdaProcessorLatency";
-  public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
-  public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
+  public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "lambdaSinkObjectsEventsSucceeded";
+  public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "lambdaSinkObjectsEventsFailed";
+  public static final String NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA = "lambdaSinkNumberOfRequestsSucceeded";
+  public static final String NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA = "lambdaSinkNumberOfRequestsFailed";
+  public static final String LAMBDA_LATENCY_METRIC = "lambdaSinkLatency";
+  public static final String REQUEST_PAYLOAD_SIZE = "lambdaSinkRequestPayloadSize";
+  public static final String RESPONSE_PAYLOAD_SIZE = "lambdaSinkResponsePayloadSize";
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaSink.class);
   private static final String BUCKET = "bucket";
   private static final String KEY_PATH = "key_path_prefix";
   private final Counter numberOfRecordsSuccessCounter;
   private final Counter numberOfRecordsFailedCounter;
+  private final Counter numberOfRequestsSuccessCounter;
+  private final Counter numberOfRequestsFailedCounter;
   private final LambdaSinkConfig lambdaSinkConfig;
   private final ExpressionEvaluator expressionEvaluator;
   private final LambdaAsyncClient lambdaAsyncClient;
-  private final AtomicLong responsePayloadMetric;
+  private final DistributionSummary responsePayloadMetric;
   private final Timer lambdaLatencyMetric;
-  private final AtomicLong requestPayloadMetric;
+  private final DistributionSummary requestPayloadMetric;
   private final PluginSetting pluginSetting;
   private volatile boolean sinkInitialized;
   private DlqPushHandler dlqPushHandler = null;
@@ -72,13 +79,18 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     this.lambdaSinkConfig = lambdaSinkConfig;
     this.expressionEvaluator = expressionEvaluator;
     OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
-    this.responsePayloadMetric = pluginMetrics.gauge(RESPONSE_PAYLOAD_SIZE, new AtomicLong());
+
     this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
         NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
     this.numberOfRecordsFailedCounter = pluginMetrics.counter(
         NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
+    this.numberOfRequestsSuccessCounter = pluginMetrics.counter(
+            NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
+    this.numberOfRequestsFailedCounter = pluginMetrics.counter(
+            NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
     this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
-    this.requestPayloadMetric = pluginMetrics.gauge(REQUEST_PAYLOAD_SIZE, new AtomicLong());
+    this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
+    this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
     this.lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
         lambdaSinkConfig.getAwsAuthenticationOptions(),
         lambdaSinkConfig.getMaxConnectionRetries(),
@@ -134,10 +146,18 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         lambdaSinkConfig,
         lambdaAsyncClient,
         (inputBuffer, invokeResponse) -> {
+          Duration latency = inputBuffer.stopLatencyWatch();
+          lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+          numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
+          numberOfRequestsSuccessCounter.increment();
           releaseEventHandlesPerBatch(true, inputBuffer);
           return null;
         },
         (inputBuffer, invokeResponse) -> {
+          Duration latency = inputBuffer.stopLatencyWatch();
+          lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+          numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+          numberOfRequestsFailedCounter.increment();
           handleFailure(new RuntimeException("failed"), inputBuffer);
         });
   }
