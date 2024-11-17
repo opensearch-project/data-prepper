@@ -32,12 +32,17 @@ public class InMemoryBuffer implements Buffer {
   private final StopWatch bufferWatch;
   private final StopWatch lambdaLatencyWatch;
   private final OutputCodec requestCodec;
+  private final OutputCodecContext outputCodecContext;
+  private final long payloadResponseSize;
   private int eventCount;
   private long payloadRequestSize;
-  private long payloadResponseSize;
 
 
   public InMemoryBuffer(String batchOptionKeyName) {
+    this(batchOptionKeyName, new OutputCodecContext());
+  }
+
+  public InMemoryBuffer(String batchOptionKeyName, OutputCodecContext outputCodecContext) {
     byteArrayOutputStream = new ByteArrayOutputStream();
     records = new ArrayList<>();
     bufferWatch = new StopWatch();
@@ -50,6 +55,7 @@ public class InMemoryBuffer implements Buffer {
     JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
     jsonOutputCodecConfig.setKeyName(batchOptionKeyName);
     requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
+    this.outputCodecContext = outputCodecContext;
   }
 
   public void addRecord(Record<Event> record) {
@@ -57,7 +63,7 @@ public class InMemoryBuffer implements Buffer {
     Event event = record.getData();
     try {
       if (eventCount == 0) {
-        requestCodec.start(this.byteArrayOutputStream, event, new OutputCodecContext());
+        requestCodec.start(this.byteArrayOutputStream, event, this.outputCodecContext);
       }
       requestCodec.writeEvent(event, this.byteArrayOutputStream);
     } catch (IOException e) {
@@ -83,7 +89,7 @@ public class InMemoryBuffer implements Buffer {
   public Duration getDuration() {
     return Duration.ofMillis(bufferWatch.getTime(TimeUnit.MILLISECONDS));
   }
-  
+
   @Override
   public InvokeRequest getRequestPayload(String functionName, String invocationType) {
 

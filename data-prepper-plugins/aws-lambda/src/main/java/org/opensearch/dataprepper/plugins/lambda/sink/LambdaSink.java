@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.lambda.sink;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -62,6 +61,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
   private final Timer lambdaLatencyMetric;
   private final DistributionSummary requestPayloadMetric;
   private final PluginSetting pluginSetting;
+  private final OutputCodecContext outputCodecContext;
   private volatile boolean sinkInitialized;
   private DlqPushHandler dlqPushHandler = null;
 
@@ -78,16 +78,16 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     sinkInitialized = Boolean.FALSE;
     this.lambdaSinkConfig = lambdaSinkConfig;
     this.expressionEvaluator = expressionEvaluator;
-    OutputCodecContext outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
+    this.outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
 
     this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
         NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
     this.numberOfRecordsFailedCounter = pluginMetrics.counter(
         NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
     this.numberOfRequestsSuccessCounter = pluginMetrics.counter(
-            NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
+        NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
     this.numberOfRequestsFailedCounter = pluginMetrics.counter(
-            NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
+        NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
     this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
     this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
     this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
@@ -145,6 +145,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     LambdaCommonHandler.sendRecords(records,
         lambdaSinkConfig,
         lambdaAsyncClient,
+        outputCodecContext,
         (inputBuffer, invokeResponse) -> {
           Duration latency = inputBuffer.stopLatencyWatch();
           lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
