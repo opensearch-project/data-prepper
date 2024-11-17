@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -152,7 +153,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
           numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
           numberOfRequestsSuccessCounter.increment();
           releaseEventHandlesPerBatch(true, inputBuffer);
-          return null;
+          return new ArrayList<>();
         },
         (inputBuffer, invokeResponse) -> {
           Duration latency = inputBuffer.stopLatencyWatch();
