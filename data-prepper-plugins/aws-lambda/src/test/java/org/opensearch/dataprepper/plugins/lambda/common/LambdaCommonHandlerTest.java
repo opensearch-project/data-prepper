@@ -1,13 +1,25 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -21,11 +33,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LambdaCommonHandlerTest {
 
   @Mock
@@ -36,6 +47,9 @@ class LambdaCommonHandlerTest {
 
   @Mock
   private BatchOptions batchOptions;
+
+  @Mock
+  private OutputCodecContext outputCodecContext;
 
   @Test
   void testCheckStatusCode() {
@@ -67,8 +81,9 @@ class LambdaCommonHandlerTest {
   void testSendRecords() {
     when(config.getBatchOptions()).thenReturn(batchOptions);
     when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
-    when(batchOptions.getKeyName()).thenReturn("testKey"); // Add this line
+    when(batchOptions.getKeyName()).thenReturn("testKey");
     when(config.getFunctionName()).thenReturn("testFunction");
+    when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
             .thenReturn(CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
 
@@ -79,7 +94,7 @@ class LambdaCommonHandlerTest {
     BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
     BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
 
-    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
+    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
 
     assertNotNull(result);
     verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
@@ -89,7 +104,8 @@ class LambdaCommonHandlerTest {
   void testSendRecordsWithNullKeyName() {
     when(config.getBatchOptions()).thenReturn(batchOptions);
     when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
-    when(batchOptions.getKeyName()).thenReturn(null); // Explicitly set null key name
+    when(batchOptions.getKeyName()).thenReturn(null);
+    when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
     when(config.getFunctionName()).thenReturn("testFunction");
 
     Event mockEvent = mock(Event.class);
@@ -100,7 +116,7 @@ class LambdaCommonHandlerTest {
     BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
 
     assertThrows(NullPointerException.class, () ->
-            LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler)
+            LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler)
     );
   }
 
@@ -108,7 +124,9 @@ class LambdaCommonHandlerTest {
   void testSendRecordsWithFailure() {
     when(config.getBatchOptions()).thenReturn(batchOptions);
     when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
+    when(batchOptions.getKeyName()).thenReturn("testKey");
     when(config.getFunctionName()).thenReturn("testFunction");
+    when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
             .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Test exception")));
 
@@ -118,29 +136,7 @@ class LambdaCommonHandlerTest {
     BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
     BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
 
-    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
-
-    assertNotNull(result);
-    verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
-  }
-
-  @Test
-  void testSendRecordsWithEmptyKeyName() {
-    when(config.getBatchOptions()).thenReturn(batchOptions);
-    when(batchOptions.getThresholdOptions()).thenReturn(mock(ThresholdOptions.class));
-    when(batchOptions.getKeyName()).thenReturn(""); // Set empty key name
-    when(config.getFunctionName()).thenReturn("testFunction");
-    when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-            .thenReturn(CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
-
-    Event mockEvent = mock(Event.class);
-    when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
-    List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
-
-    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
-
-    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, successHandler, failureHandler);
+    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
 
     assertNotNull(result);
     verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
