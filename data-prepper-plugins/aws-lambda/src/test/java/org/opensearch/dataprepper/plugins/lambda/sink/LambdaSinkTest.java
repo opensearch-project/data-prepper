@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -19,6 +18,8 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,79 +33,76 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.record.RecordMetadata;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
-import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
-import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-public class LambdaSinkServiceTest {
+public class LambdaSinkTest {
 
+  @Mock
+  SinkContext sinkContext;
   @Mock
   private LambdaAsyncClient lambdaAsyncClient;
-
   @Mock
   private LambdaSinkConfig lambdaSinkConfig;
-
   @Mock
   private PluginMetrics pluginMetrics;
-
   @Mock
   private PluginFactory pluginFactory;
 
-  @Mock
   private PluginSetting pluginSetting;
-
   @Mock
   private OutputCodecContext codecContext;
-
   @Mock
   private AwsCredentialsSupplier awsCredentialsSupplier;
-
   @Mock
   private DlqPushHandler dlqPushHandler;
-
   @Mock
   private ExpressionEvaluator expressionEvaluator;
-
   @Mock
   private Counter numberOfRecordsSuccessCounter;
-
   @Mock
   private Counter numberOfRecordsFailedCounter;
-
   @Mock
   private Timer lambdaLatencyMetric;
-
   @Mock
   private OutputCodec requestCodec;
-
   @Mock
   private Buffer currentBufferPerBatch;
-
-  @Mock
-  private LambdaCommonHandler lambdaCommonHandler;
-
   @Mock
   private Event event;
-
   @Mock
   private EventHandle eventHandle;
-
   @Mock
   private EventMetadata eventMetadata;
-
   @Mock
   private InvokeResponse invokeResponse;
+
+  private LambdaSink lambdaSink;
+
+  @Mock
+  private AwsAuthenticationOptions awsAuthenticationOptions;
+
+  public static Record<Event> getSampleRecord() {
+    Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+    return new Record<>(event, RecordMetadata.defaultMetadata());
+  }
 
   @BeforeEach
   public void setUp() {
@@ -140,22 +138,15 @@ public class LambdaSinkServiceTest {
     // Initialize bufferFactory and buffer
     currentBufferPerBatch = mock(Buffer.class);
     when(currentBufferPerBatch.getEventCount()).thenReturn(0);
+    when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+    when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-1"));
+    when(lambdaSinkConfig.getConnectionTimeout()).thenReturn(Duration.ofSeconds(2));
+    this.pluginSetting = new PluginSetting("aws_lambda", Collections.emptyMap());
+    this.pluginSetting.setPipelineName(UUID.randomUUID().toString());
+    this.awsAuthenticationOptions = new AwsAuthenticationOptions();
 
-    // Mock LambdaCommonHandler
-    lambdaCommonHandler = mock(LambdaCommonHandler.class);
-    doNothing().when(currentBufferPerBatch).reset();
-
-  }
-
-  // Helper method to set private fields via reflection
-  private void setPrivateField(Object targetObject, String fieldName, Object value) {
-    try {
-      Field field = targetObject.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      field.set(targetObject, value);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    this.lambdaSink = new LambdaSink(pluginSetting, lambdaSinkConfig, pluginFactory, sinkContext,
+        awsCredentialsSupplier, expressionEvaluator);
   }
 
     /*
@@ -189,13 +180,25 @@ public class LambdaSinkServiceTest {
 
      */
 
+  // Helper method to set private fields via reflection
+  private void setPrivateField(Object targetObject, String fieldName, Object value) {
+    try {
+      Field field = targetObject.getClass().getDeclaredField(fieldName);
+      field.setAccessible(true);
+      field.set(targetObject, value);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Test
   public void testHandleFailure_WithDlq() {
     Throwable throwable = new RuntimeException("Test Exception");
-    SdkBytes payload = SdkBytes.fromUtf8String("test payload");
-    when(currentBufferPerBatch.getEventCount()).thenReturn(1);
-    when(currentBufferPerBatch.getPayload()).thenReturn(payload);
-
+    Buffer buffer = new InMemoryBuffer(UUID.randomUUID().toString());
+    buffer.addRecord(getSampleRecord());
+    setPrivateField(lambdaSink, "dlqPushHandler", dlqPushHandler);
+    setPrivateField(lambdaSink, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
+    lambdaSink.handleFailure(throwable, buffer);
     verify(numberOfRecordsFailedCounter, times(1)).increment(1.0);
     verify(dlqPushHandler, times(1)).perform(eq(pluginSetting), any(LambdaSinkFailedDlqData.class));
   }
@@ -203,8 +206,11 @@ public class LambdaSinkServiceTest {
   @Test
   public void testHandleFailure_WithoutDlq() {
     Throwable throwable = new RuntimeException("Test Exception");
-    when(currentBufferPerBatch.getEventCount()).thenReturn(1);
-
+    Buffer buffer = new InMemoryBuffer(UUID.randomUUID().toString());
+    buffer.addRecord(getSampleRecord());
+    when(lambdaSinkConfig.getDlqPluginSetting()).thenReturn(null);
+    setPrivateField(lambdaSink, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
+    lambdaSink.handleFailure(throwable, buffer);
     verify(numberOfRecordsFailedCounter, times(1)).increment(1);
     verify(dlqPushHandler, never()).perform(any(), any());
   }

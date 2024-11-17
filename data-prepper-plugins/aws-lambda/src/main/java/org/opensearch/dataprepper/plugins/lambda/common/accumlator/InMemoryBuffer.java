@@ -83,16 +83,7 @@ public class InMemoryBuffer implements Buffer {
   public Duration getDuration() {
     return Duration.ofMillis(bufferWatch.getTime(TimeUnit.MILLISECONDS));
   }
-
-  public void reset() {
-    byteArrayOutputStream.reset();
-    eventCount = 0;
-    bufferWatch.reset();
-    lambdaLatencyWatch.reset();
-    payloadRequestSize = 0;
-    payloadResponseSize = 0;
-  }
-
+  
   @Override
   public InvokeRequest getRequestPayload(String functionName, String invocationType) {
 
