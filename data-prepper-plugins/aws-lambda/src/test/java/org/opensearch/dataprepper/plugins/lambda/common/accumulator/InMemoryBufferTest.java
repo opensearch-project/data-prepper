@@ -12,19 +12,22 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import software.amazon.awssdk.core.SdkBytes;
@@ -42,26 +45,25 @@ class InMemoryBufferTest {
   private final String batchOptionKeyName = "bathOption";
   @Mock
   private LambdaAsyncClient lambdaAsyncClient;
-  private InMemoryBuffer inMemoryBuffer;
+
 
   @Test
-  void test_with_write_event_into_buffer() throws IOException {
-    inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
-
+  void test_with_write_event_into_buffer() {
+    InMemoryBuffer inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
+    //UUID based random event created. Each UUID string is of 36 characters long
+    int eachEventSize = 36;
+    long sizeToAssert = eachEventSize * MAX_EVENTS;
     while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
-      OutputStream outputStream = inMemoryBuffer.getOutputStream();
-      outputStream.write(generateByteArray());
-      int eventCount = inMemoryBuffer.getEventCount() + 1;
-      inMemoryBuffer.setEventCount(eventCount);
+      inMemoryBuffer.addRecord(getSampleRecord());
     }
-    assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(54110L));
+    assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(sizeToAssert));
     assertThat(inMemoryBuffer.getEventCount(), equalTo(MAX_EVENTS));
     assertThat(inMemoryBuffer.getDuration(), notNullValue());
     assertThat(inMemoryBuffer.getDuration(), greaterThanOrEqualTo(Duration.ZERO));
   }
 
   @Test
-  void test_with_write_event_into_buffer_and_flush_toLambda() throws IOException {
+  void test_with_write_event_into_buffer_and_flush_toLambda() {
 
     // Mock the response of the invoke method
     InvokeResponse mockResponse = InvokeResponse.builder()
@@ -72,12 +74,9 @@ class InMemoryBufferTest {
     CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(mockResponse);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(future);
 
-    inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
+    InMemoryBuffer inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
     while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
-      OutputStream outputStream = inMemoryBuffer.getOutputStream();
-      outputStream.write(generateByteArray());
-      int eventCount = inMemoryBuffer.getEventCount() + 1;
-      inMemoryBuffer.setEventCount(eventCount);
+      inMemoryBuffer.addRecord(getSampleRecord());
     }
     assertDoesNotThrow(() -> {
       InvokeRequest requestPayload = inMemoryBuffer.getRequestPayload(
@@ -88,8 +87,13 @@ class InMemoryBufferTest {
     });
   }
 
+  private Record<Event> getSampleRecord() {
+    Event event = JacksonEvent.fromMessage(String.valueOf(UUID.randomUUID()));
+    return new Record<>(event);
+  }
+
   @Test
-  void test_uploadedToLambda_success() throws IOException {
+  void test_uploadedToLambda_success() {
     // Mock the response of the invoke method
     InvokeResponse mockResponse = InvokeResponse.builder()
         .statusCode(200) // HTTP 200 for successful invocation
@@ -100,11 +104,9 @@ class InMemoryBufferTest {
     CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(mockResponse);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(future);
 
-    inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
+    InMemoryBuffer inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
     assertNotNull(inMemoryBuffer);
-    OutputStream outputStream = inMemoryBuffer.getOutputStream();
-    outputStream.write(generateByteArray());
-    inMemoryBuffer.setEventCount(1);
+    inMemoryBuffer.addRecord(getSampleRecord());
 
     assertDoesNotThrow(() -> {
       InvokeRequest requestPayload = inMemoryBuffer.getRequestPayload(
@@ -125,9 +127,11 @@ class InMemoryBufferTest {
 
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(future);
 
-    inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
+    InMemoryBuffer inMemoryBuffer = new InMemoryBuffer(batchOptionKeyName);
     assertNotNull(inMemoryBuffer);
 
+    assertNull(inMemoryBuffer.getRequestPayload(functionName, invocationType));
+    inMemoryBuffer.addRecord(getSampleRecord());
     // Execute and assert exception
     CompletionException exception = assertThrows(CompletionException.class, () -> {
       InvokeRequest requestPayload = inMemoryBuffer.getRequestPayload(

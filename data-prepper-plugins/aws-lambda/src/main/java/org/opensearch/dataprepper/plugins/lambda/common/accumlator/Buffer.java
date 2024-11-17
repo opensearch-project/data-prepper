@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import java.io.OutputStream;
 import java.time.Duration;
 import java.util.List;
 import org.opensearch.dataprepper.model.event.Event;
@@ -22,13 +21,9 @@ public interface Buffer {
 
   int getEventCount();
 
-  void setEventCount(int eventCount);
-
   Duration getDuration();
 
   InvokeRequest getRequestPayload(String functionName, String invocationType);
-
-  OutputStream getOutputStream();
 
   SdkBytes getPayload();
 
