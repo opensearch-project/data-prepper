@@ -14,10 +14,11 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'software.amazon.awssdk:lambda:2.17.99'
     implementation 'software.amazon.awssdk:sdk-core:2.x.x'
+    implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'software.amazon.awssdk:sts'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation'org.json:json'
+    implementation 'org.json:json'
     implementation libs.commons.lang3
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.projectlombok:lombok:1.18.22'
