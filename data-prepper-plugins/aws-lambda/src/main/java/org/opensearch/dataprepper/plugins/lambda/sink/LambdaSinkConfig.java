@@ -34,7 +34,7 @@ public class LambdaSinkConfig extends LambdaCommonConfig {
     }
 
     public  Map<String, Object> getDlqPluginSetting(){
-        return dlq != null ? dlq.getPluginSettings() : Map.of();
+        return dlq != null ? dlq.getPluginSettings() : null;
     }
 
 }
