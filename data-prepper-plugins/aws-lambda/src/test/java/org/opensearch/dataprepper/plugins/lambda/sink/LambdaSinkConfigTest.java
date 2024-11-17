@@ -50,6 +50,29 @@ class LambdaSinkConfigTest {
     }
 
     @Test
+    void lambda_sink_pipeline_config_test_with_no_explicit_aws_config() throws JsonProcessingException {
+        final String config =
+                "        function_name: test_function\n" +
+                        "        aws:\n" +
+                        "          region: ap-south-1\n" +
+                        "          sts_role_arn: arn:aws:iam::524239988912:role/app-test\n" +
+                        "          sts_header_overrides: {\"test\":\"test\"}\n" +
+                        "        max_retries: 10\n" +
+                        "        dlq:\n" +
+                        "          s3:\n" +
+                        "            bucket: test\n" +
+                        "            key_path_prefix: test\n";
+        final LambdaSinkConfig lambdaSinkConfig = objectMapper.readValue(config, LambdaSinkConfig.class);
+
+        assertThat(lambdaSinkConfig.getMaxConnectionRetries(),equalTo(10));
+        assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
+        assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
+        assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));
+        assertThat(lambdaSinkConfig.getDlqStsRegion(),equalTo("ap-south-1"));
+        assertThat(lambdaSinkConfig.getDlqStsRoleARN(),equalTo("arn:aws:iam::524239988912:role/app-test"));
+    }
+
+    @Test
     void lambda_sink_pipeline_config_test_with_no_dlq() throws JsonProcessingException {
         final String config =
                 "        function_name: test_function\n" +
@@ -64,8 +87,8 @@ class LambdaSinkConfigTest {
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsRegion(),equalTo(Region.AP_SOUTH_1));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn(),equalTo("arn:aws:iam::524239988912:role/app-test"));
         assertThat(lambdaSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));
-        assertThat(lambdaSinkConfig.getDlqStsRegion(),equalTo("ap-south-1"));
-        assertThat(lambdaSinkConfig.getDlqStsRoleARN(),equalTo("arn:aws:iam::524239988912:role/app-test"));
-        assertThat(lambdaSinkConfig.getDlqPluginSetting().get("key"),equalTo(null));
+        assertThat(lambdaSinkConfig.getDlqStsRegion(),equalTo(null));
+        assertThat(lambdaSinkConfig.getDlqStsRoleARN(),equalTo(null));
+        assertThat(lambdaSinkConfig.getDlqPluginSetting(),equalTo(null));
     }
 }

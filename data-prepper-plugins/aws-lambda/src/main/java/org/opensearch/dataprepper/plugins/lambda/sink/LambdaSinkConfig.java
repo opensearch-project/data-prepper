@@ -27,15 +27,15 @@ public class LambdaSinkConfig extends LambdaCommonConfig {
   }
 
   public String getDlqStsRoleARN() {
-    return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
+    return dlq != null ? (Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
         String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
-        getAwsAuthenticationOptions().getAwsStsRoleArn();
+        getAwsAuthenticationOptions().getAwsStsRoleArn()) : null;
   }
 
   public String getDlqStsRegion() {
-    return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
+    return dlq != null ? (Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
         String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
-        getAwsAuthenticationOptions().getAwsRegion().toString();
+        getAwsAuthenticationOptions().getAwsRegion().toString()) : null;
   }
 
   public Map<String, Object> getDlqPluginSetting() {
