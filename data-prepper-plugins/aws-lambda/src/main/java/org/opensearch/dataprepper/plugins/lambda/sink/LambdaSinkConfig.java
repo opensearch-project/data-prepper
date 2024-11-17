@@ -6,35 +6,44 @@
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
-
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.util.Map;
 import java.util.Objects;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 
 public class LambdaSinkConfig extends LambdaCommonConfig {
 
-    @JsonProperty("dlq")
-    private PluginModel dlq;
+  @JsonPropertyDescription("invocation type defines the way we want to call lambda function")
+  @JsonProperty("invocation_type")
+  private InvocationType invocationType = InvocationType.EVENT;
 
-    public PluginModel getDlq() {
-        return dlq;
-    }
+  @JsonProperty("dlq")
+  private PluginModel dlq;
 
-    public String getDlqStsRoleARN(){
-        return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
-                String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
-                getAwsAuthenticationOptions().getAwsStsRoleArn();
-    }
+  public PluginModel getDlq() {
+    return dlq;
+  }
 
-    public String getDlqStsRegion(){
-        return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
-                String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
-                getAwsAuthenticationOptions().getAwsRegion().toString();
-    }
+  public String getDlqStsRoleARN() {
+    return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
+        String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
+        getAwsAuthenticationOptions().getAwsStsRoleArn();
+  }
 
-    public  Map<String, Object> getDlqPluginSetting(){
-        return dlq != null ? dlq.getPluginSettings() : null;
-    }
+  public String getDlqStsRegion() {
+    return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
+        String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
+        getAwsAuthenticationOptions().getAwsRegion().toString();
+  }
 
+  public Map<String, Object> getDlqPluginSetting() {
+    return dlq != null ? dlq.getPluginSettings() : null;
+  }
+
+  @Override
+  public InvocationType getInvocationType() {
+    return invocationType;
+  }
 }
