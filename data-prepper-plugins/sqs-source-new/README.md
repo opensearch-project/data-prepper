@@ -1,0 +1,22 @@
+# SQS Source New
+
+This source allows Data Prepper to use SQS as a source. It reads messages from specified SQS queues and processes them into events.
+
+## Example Configuration
+
+```yaml
+sqs-test-pipeline:
+  source:
+    sqs-source-new:
+      queues:
+        - url: <SQS_QUEUE_URL_1>
+          batch_size: 10
+          workers: 2
+        - url: <SQS_QUEUE_URL_2>
+          batch_size: 5
+          workers: 3
+      aws:
+        region: <AWS_REGION>
+        sts_role_arn: <IAM_ROLE_ARN>
+  sink:
+    - stdout: 
