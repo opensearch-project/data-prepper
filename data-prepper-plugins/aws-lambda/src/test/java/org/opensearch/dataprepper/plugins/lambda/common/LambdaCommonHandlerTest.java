@@ -4,13 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -25,15 +32,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-
-import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -85,18 +83,18 @@ class LambdaCommonHandlerTest {
     when(config.getFunctionName()).thenReturn("testFunction");
     when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-            .thenReturn(CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
+        .thenReturn(
+            CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
 
     Event mockEvent = mock(Event.class);
     when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
     List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
 
-    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
+    Map<Buffer, CompletableFuture<InvokeResponse>> bufferCompletableFutureMap = LambdaCommonHandler.sendRecords(
+        records, config, lambdaAsyncClient,
+        outputCodecContext);
 
-    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
-
-    assertNotNull(result);
+    assertNotNull(bufferCompletableFutureMap);
     verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
   }
 
@@ -112,11 +110,8 @@ class LambdaCommonHandlerTest {
     when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
     List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
 
-    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
-
     assertThrows(NullPointerException.class, () ->
-            LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler)
+        LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext)
     );
   }
 
@@ -128,17 +123,16 @@ class LambdaCommonHandlerTest {
     when(config.getFunctionName()).thenReturn("testFunction");
     when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
     when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-            .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Test exception")));
+        .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Test exception")));
 
     List<Record<Event>> records = new ArrayList<>();
     records.add(new Record<>(mock(Event.class)));
 
-    BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
+    Map<Buffer, CompletableFuture<InvokeResponse>> bufferCompletableFutureMap = LambdaCommonHandler.sendRecords(
+        records, config, lambdaAsyncClient,
+        outputCodecContext);
 
-    List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
-
-    assertNotNull(result);
+    assertNotNull(bufferCompletableFutureMap);
     verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
   }
 }

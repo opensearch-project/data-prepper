@@ -8,13 +8,10 @@ package org.opensearch.dataprepper.plugins.lambda.common;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
@@ -33,18 +30,16 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 public class LambdaCommonHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaCommonHandler.class);
+
   private LambdaCommonHandler() {
   }
 
   public static boolean isSuccess(InvokeResponse response) {
     int statusCode = response.statusCode();
-    if (statusCode < 200 || statusCode >= 300) {
-      return false;
-    }
-    return true;
+    return statusCode >= 200 && statusCode < 300;
   }
 
-  public static void waitForFutures(List<CompletableFuture<InvokeResponse>> futureList) {
+  public static void waitForFutures(Collection<CompletableFuture<InvokeResponse>> futureList) {
 
     if (!futureList.isEmpty()) {
       try {
@@ -83,50 +78,25 @@ public class LambdaCommonHandler {
     return batchedBuffers;
   }
 
-  public static List<Record<Event>> sendRecords(Collection<Record<Event>> records,
+  public static Map<Buffer, CompletableFuture<InvokeResponse>> sendRecords(
+      Collection<Record<Event>> records,
       LambdaCommonConfig config,
       LambdaAsyncClient lambdaAsyncClient,
-      final OutputCodecContext outputCodecContext,
-      BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler,
-      Function<Buffer, List<Record<Event>>> failureHandler) {
-    // Initialize here to void multi-threading issues
-    // Note: By default, one instance of processor is created across threads.
-    //List<Record<Event>> resultRecords = Collections.synchronizedList(new ArrayList<>());
-    List<Record<Event>> resultRecords = new ArrayList<>();
-    List<CompletableFuture<InvokeResponse>> futureList = new ArrayList<>();
-    int totalFlushedEvents = 0;
+      final OutputCodecContext outputCodecContext) {
 
     List<Buffer> batchedBuffers = createBufferBatches(records, config.getBatchOptions(),
         outputCodecContext);
 
-    Map<Buffer, CompletableFuture> bufferToFutureMap = new HashMap<>();
+    Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
     LOG.debug("Batch Chunks created after threshold check: {}", batchedBuffers.size());
     for (Buffer buffer : batchedBuffers) {
       InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
-              config.getInvocationType().getAwsLambdaValue());
+          config.getInvocationType().getAwsLambdaValue());
       CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
-      futureList.add(future);
       bufferToFutureMap.put(buffer, future);
     }
-    waitForFutures(futureList);
-    for (Map.Entry<Buffer, CompletableFuture> entry : bufferToFutureMap.entrySet()) {
-      CompletableFuture future = entry.getValue();
-      Buffer buffer = entry.getKey();
-      try {
-        InvokeResponse response = (InvokeResponse) future.join();
-        if (isSuccess(response)) {
-          resultRecords.addAll(successHandler.apply(buffer, response));
-        } else {
-          LOG.error("Lambda invoke failed with error {} ", response.statusCode());
-          resultRecords.addAll(failureHandler.apply(buffer));
-        }
-      } catch (Exception e) {
-        LOG.error("Exception from Lambda invocation ", e);
-        resultRecords.addAll(failureHandler.apply(buffer));
-      }
-    }
-    return resultRecords;
-
+    waitForFutures(bufferToFutureMap.values());
+    return bufferToFutureMap;
   }
 
 }
