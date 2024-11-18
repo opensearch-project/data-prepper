@@ -119,7 +119,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
                 lambdaProcessorConfig.getAwsAuthenticationOptions(),
                 awsCredentialsSupplier,
-                lambdaProcessorConfig.getClientOptions()
+                clientOptions
         );
 
         // Select the correct strategy based on the configuration
