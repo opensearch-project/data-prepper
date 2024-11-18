@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.lambda.common;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
