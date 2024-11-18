@@ -16,9 +16,9 @@ import java.time.Duration;
 
 
 public class ThresholdOptions {
-    private static final int DEFAULT_EVENT_COUNT = 100;
-    private static final String DEFAULT_BYTE_CAPACITY = "5mb";
-    private static final Duration DEFAULT_EVENT_TIMEOUT = Duration.ofSeconds(10);
+    public static final int DEFAULT_EVENT_COUNT = 100;
+    public static final String DEFAULT_BYTE_CAPACITY = "5mb";
+    public static final Duration DEFAULT_EVENT_TIMEOUT = Duration.ofSeconds(10);
 
     @JsonProperty("event_count")
     @Size(min = 0, max = 10000000, message = "event_count size should be between 0 and 10000000")

@@ -1,4 +1,9 @@
-package org.opensearch.dataprepper.plugins.lambda.processor;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.lambda.common;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
