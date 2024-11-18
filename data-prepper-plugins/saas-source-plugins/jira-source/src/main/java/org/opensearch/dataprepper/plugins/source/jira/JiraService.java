@@ -15,15 +15,11 @@ import javax.inject.Named;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT_KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
@@ -166,23 +162,6 @@ public class JiraService {
                     "Invalid project key found in filter configuration for "
                     + filters);
         }
-    }
-
-    /**
-     * Method for creating Item Info.
-     *
-     * @param key      Input Parameter
-     * @param metadata Input Parameter
-     * @return Item Info
-     */
-    private ItemInfo createItemInfo(String key, Map<String, Object> metadata) {
-        return JiraItemInfo.builder().withEventTime(Instant.now())
-                .withId((String) metadata.get(ISSUE_KEY))
-                .withItemId(key)
-                .withMetadata(metadata)
-                .withProject((String) metadata.get(PROJECT_KEY))
-                .withIssueType((String) metadata.get(CONTENT_TYPE))
-                .build();
     }
 
 }

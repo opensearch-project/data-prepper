@@ -46,7 +46,6 @@ public class JiraIterator implements Iterator<ItemInfo> {
         if (firstTime) {
             log.trace("Crawling has been started");
             startCrawlerThreads();
-//            itemInfoQueue = service.getJiraEntities(sourceConfig, lastPollTime);
             firstTime = false;
         }
         int timeout = HAS_NEXT_TIMEOUT;
