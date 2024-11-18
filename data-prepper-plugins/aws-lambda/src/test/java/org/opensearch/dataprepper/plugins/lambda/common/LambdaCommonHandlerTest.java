@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static org.mockito.ArgumentMatchers.any;
 
@@ -56,8 +56,8 @@ class LambdaCommonHandlerTest {
     InvokeResponse successResponse = InvokeResponse.builder().statusCode(200).build();
     InvokeResponse failureResponse = InvokeResponse.builder().statusCode(400).build();
 
-    assertTrue(LambdaCommonHandler.checkStatusCode(successResponse));
-    assertFalse(LambdaCommonHandler.checkStatusCode(failureResponse));
+    assertTrue(LambdaCommonHandler.isSuccess(successResponse));
+    assertFalse(LambdaCommonHandler.isSuccess(failureResponse));
   }
 
   @Test
@@ -92,7 +92,7 @@ class LambdaCommonHandlerTest {
     List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
 
     BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
 
     List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
 
@@ -113,7 +113,7 @@ class LambdaCommonHandlerTest {
     List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
 
     BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
 
     assertThrows(NullPointerException.class, () ->
             LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler)
@@ -134,7 +134,7 @@ class LambdaCommonHandlerTest {
     records.add(new Record<>(mock(Event.class)));
 
     BiFunction<Buffer, InvokeResponse, List<Record<Event>>> successHandler = (buffer, response) -> new ArrayList<>();
-    BiConsumer<Buffer, List<Record<Event>>> failureHandler = (buffer, resultRecords) -> {};
+    Function<Buffer, List<Record<Event>>> failureHandler = (buffer) -> new ArrayList<>();
 
     List<Record<Event>> result = LambdaCommonHandler.sendRecords(records, config, lambdaAsyncClient, outputCodecContext, successHandler, failureHandler);
 

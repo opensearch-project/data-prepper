@@ -159,12 +159,13 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
           releaseEventHandlesPerBatch(true, inputBuffer);
           return new ArrayList<>();
         },
-        (inputBuffer, invokeResponse) -> {
+        (inputBuffer) -> {
           Duration latency = inputBuffer.stopLatencyWatch();
           lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
           numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
           numberOfRequestsFailedCounter.increment();
           handleFailure(new RuntimeException("failed"), inputBuffer);
+          return new ArrayList<>();
         });
   }
 
