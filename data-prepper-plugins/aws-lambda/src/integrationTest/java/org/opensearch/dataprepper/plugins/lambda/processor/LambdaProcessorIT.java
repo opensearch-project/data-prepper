@@ -56,7 +56,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorIT {
@@ -83,17 +83,15 @@ public class LambdaProcessorIT {
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
         return new LambdaProcessor(pluginFactory, pluginMetrics, processorConfig, awsCredentialsSupplier, expressionEvaluator);
     }
+
     @BeforeEach
     public void setup() {
-//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-//        functionName = System.getProperty("tests.lambda.processor.functionName");
-//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
-        lambdaRegion="us-east-1";
-        functionName="test-lambda-processor";
-        role="arn:aws:iam::176893235612:role/osis-lambda-role";
+        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+        functionName = System.getProperty("tests.lambda.processor.functionName");
+        role = System.getProperty("tests.lambda.processor.sts_role_arn");
         pluginMetrics = mock(PluginMetrics.class);
-        when(pluginMetrics.gauge(any(), any(AtomicLong.class))).thenReturn(new AtomicLong());
-        testCounter = mock(Counter.class);
+        //when(pluginMetrics.gauge(any(), any(AtomicLong.class))).thenReturn(new AtomicLong());
+        //testCounter = mock(Counter.class);
         try {
             lenient().doAnswer(args -> {
                 return null;
@@ -139,6 +137,7 @@ public class LambdaProcessorIT {
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(null);
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
     }
+
     @ParameterizedTest
     //@ValueSource(ints = {2, 5, 10, 100, 1000})
     @ValueSource(ints = {1000})
@@ -151,6 +150,7 @@ public class LambdaProcessorIT {
         assertThat(results.size(), equalTo(numRecords));
         validateStrictModeResults(results);
     }
+
     @ParameterizedTest
     //@ValueSource(ints = {2, 5, 10, 100, 1000})
     @ValueSource(ints = {1000})
@@ -163,6 +163,7 @@ public class LambdaProcessorIT {
         assertThat(results.size(), equalTo(numRecords));
         validateResultsForAggregateMode(results );
     }
+
     @ParameterizedTest
     @ValueSource(ints = {1000})
     public void testRequestResponse_WithMatchingEvents_StrictMode_WithMultipleThreads(int numRecords) throws InterruptedException {
@@ -187,6 +188,7 @@ public class LambdaProcessorIT {
         latch.await(5, TimeUnit.MINUTES);
         executorService.shutdown();
     }
+
     @ParameterizedTest
     @ValueSource(strings = {"RequestResponse", "Event"})
     public void testDifferentInvocationTypes(String invocationType) {
@@ -203,6 +205,7 @@ public class LambdaProcessorIT {
             assertThat(results.size(), equalTo(0));
         }
     }
+
     @Test
     public void testWithFailureTags() {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
@@ -218,6 +221,7 @@ public class LambdaProcessorIT {
             assertThat(record.getData().getMetadata().getTags().contains("lambda_failure"), equalTo(true));
         }
     }
+
     private void validateResultsForAggregateMode(Collection<Record<Event>> results) {
         List<Record<Event>> resultRecords = new ArrayList<>(results);
         for (int i = 0; i < resultRecords.size(); i++) {
@@ -237,6 +241,7 @@ public class LambdaProcessorIT {
             }
         }
     }
+
     private void validateStrictModeResults(Collection<Record<Event>> results) {
         List<Record<Event>> resultRecords = new ArrayList<>(results);
         for (int i = 0; i < resultRecords.size(); i++) {
@@ -250,6 +255,7 @@ public class LambdaProcessorIT {
             assertThat(attr.get("attrs"+id), equalTo("attrvalue"+id));
         }
     }
+
     private List<Record<Event>> createRecords(int numRecords) {
         List<Record<Event>> records = new ArrayList<>();
         for (int i = 0; i < numRecords; i++) {
