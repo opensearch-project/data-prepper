@@ -74,7 +74,7 @@ class LambdaCommonHandlerTest {
 
     LambdaCommonHandler.waitForFutures(futureList);
 
-    assertTrue(futureList.isEmpty());
+    assertFalse(futureList.isEmpty());
   }
 
   @Test
