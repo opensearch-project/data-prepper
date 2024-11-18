@@ -46,6 +46,10 @@ class InMemoryBufferTest {
   @Mock
   private LambdaAsyncClient lambdaAsyncClient;
 
+  public static Record<Event> getSampleRecord() {
+    Event event = JacksonEvent.fromMessage(String.valueOf(UUID.randomUUID()));
+    return new Record<>(event);
+  }
 
   @Test
   void test_with_write_event_into_buffer() {
@@ -85,11 +89,6 @@ class InMemoryBufferTest {
       InvokeResponse response = responseFuture.join();
       assertThat(response.statusCode(), equalTo(200));
     });
-  }
-
-  private Record<Event> getSampleRecord() {
-    Event event = JacksonEvent.fromMessage(String.valueOf(UUID.randomUUID()));
-    return new Record<>(event);
   }
 
   @Test
@@ -146,11 +145,4 @@ class InMemoryBufferTest {
 
   }
 
-  private byte[] generateByteArray() {
-    byte[] bytes = new byte[1000];
-    for (int i = 0; i < 1000; i++) {
-      bytes[i] = (byte) i;
-    }
-    return bytes;
-  }
 }

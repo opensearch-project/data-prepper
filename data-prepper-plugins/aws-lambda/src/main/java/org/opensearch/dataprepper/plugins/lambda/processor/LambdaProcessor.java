@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -74,25 +77,24 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
-    LambdaCommonHandler lambdaCommonHandler;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginMetrics pluginMetrics,
-                           final LambdaProcessorConfig lambdaProcessorConfig,
-                           final AwsCredentialsSupplier awsCredentialsSupplier,
-                           final ExpressionEvaluator expressionEvaluator) {
+        final LambdaProcessorConfig lambdaProcessorConfig,
+        final AwsCredentialsSupplier awsCredentialsSupplier,
+        final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
-                NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
+            NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(
-                NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
+            NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED);
         this.numberOfRequestsSuccessCounter = pluginMetrics.counter(
-                NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
+            NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
         this.numberOfRequestsFailedCounter = pluginMetrics.counter(
-                NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
+            NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
@@ -106,20 +108,20 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             codecPluginSetting = new PluginSetting("json", Collections.emptyMap());
         } else {
             codecPluginSetting = new PluginSetting(responseCodecConfig.getPluginName(),
-                    responseCodecConfig.getPluginSettings());
+                responseCodecConfig.getPluginSettings());
         }
 
         jsonOutputCodecConfig = new JsonOutputCodecConfig();
         jsonOutputCodecConfig.setKeyName(lambdaProcessorConfig.getBatchOptions().getKeyName());
 
         ClientOptions clientOptions = lambdaProcessorConfig.getClientOptions();
-        if(clientOptions == null){
+        if (clientOptions == null) {
             clientOptions = new ClientOptions();
         }
         lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
-                lambdaProcessorConfig.getAwsAuthenticationOptions(),
-                awsCredentialsSupplier,
-                clientOptions
+            lambdaProcessorConfig.getAwsAuthenticationOptions(),
+            awsCredentialsSupplier,
+            clientOptions
         );
 
         // Select the correct strategy based on the configuration
@@ -137,41 +139,44 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return records;
         }
 
-        List<Record<Event>> resultRecords = Collections.synchronizedList(new ArrayList());
+        List<Record<Event>> resultRecords = new ArrayList<>();
         List<Record<Event>> recordsToLambda = new ArrayList<>();
         for (Record<Event> record : records) {
             final Event event = record.getData();
             // If the condition is false, add the event to resultRecords as-is
-            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
+            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition,
+                event)) {
                 resultRecords.add(record);
                 continue;
             }
             recordsToLambda.add(record);
         }
-        try {
-            resultRecords.addAll(
-                    lambdaCommonHandler.sendRecords(recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
-                            new OutputCodecContext(),
-                            (inputBuffer, response) -> {
-                                Duration latency = inputBuffer.stopLatencyWatch();
-                                lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-                                numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
-                                numberOfRequestsSuccessCounter.increment();
-                                return convertLambdaResponseToEvent(inputBuffer, response);
-                            },
-                            (inputBuffer) -> {
-                                Duration latency = inputBuffer.stopLatencyWatch();
-                                lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-                                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                                numberOfRequestsFailedCounter.increment();
-                                return addFailureTags(inputBuffer.getRecords());
-                            })
 
-            );
-        } catch (Exception e) {
-            LOG.info("Exception in doExecute");
-            numberOfRecordsFailedCounter.increment(recordsToLambda.size());
-            resultRecords.addAll(addFailureTags(recordsToLambda));
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = LambdaCommonHandler.sendRecords(
+            recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
+            new OutputCodecContext());
+
+        for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
+            CompletableFuture<InvokeResponse> future = entry.getValue();
+            Buffer inputBuffer = entry.getKey();
+            try {
+                InvokeResponse response = future.join();
+                Duration latency = inputBuffer.stopLatencyWatch();
+                lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                if (isSuccess(response)) {
+                    numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
+                    numberOfRequestsSuccessCounter.increment();
+                    resultRecords.addAll(convertLambdaResponseToEvent(inputBuffer, response));
+                } else {
+                    LOG.error("Lambda invoke failed with error {} ", response.statusCode());
+                    resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                }
+            } catch (Exception e) {
+                LOG.error("Exception from Lambda invocation ", e);
+                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                numberOfRequestsFailedCounter.increment();
+                resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+            }
         }
         return resultRecords;
     }
@@ -182,7 +187,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * 2. If it is not an array, then create one event per response.
      */
     List<Record<Event>> convertLambdaResponseToEvent(Buffer flushedBuffer,
-                                                     final InvokeResponse lambdaResponse) {
+        final InvokeResponse lambdaResponse) {
         InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
         List<Record<Event>> originalRecords = flushedBuffer.getRecords();
         try {
@@ -191,8 +196,10 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             List<Record<Event>> resultRecords = new ArrayList<>();
             SdkBytes payload = lambdaResponse.payload();
             // Handle null or empty payload
-            if (payload == null || payload.asByteArray() == null || payload.asByteArray().length == 0) {
-                LOG.warn(NOISY, "Lambda response payload is null or empty, dropping the original events");
+            if (payload == null || payload.asByteArray() == null
+                || payload.asByteArray().length == 0) {
+                LOG.warn(NOISY,
+                    "Lambda response payload is null or empty, dropping the original events");
             } else {
                 InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
                 //Convert to response codec
@@ -206,9 +213,10 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 }
 
                 LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
-                                "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
-                        flushedBuffer.getSize());
-                responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+                        "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
+                    flushedBuffer.getSize());
+                responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords,
+                    flushedBuffer);
             }
             return resultRecords;
         } catch (Exception e) {

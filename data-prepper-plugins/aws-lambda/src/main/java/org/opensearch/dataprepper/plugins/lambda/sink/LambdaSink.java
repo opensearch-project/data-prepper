@@ -5,13 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.lambda.sink;
 
+import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -37,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Sink.class, pluginConfigurationType = LambdaSinkConfig.class)
 public class LambdaSink extends AbstractSink<Record<Event>> {
@@ -94,7 +98,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
     this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
     ClientOptions clientOptions = lambdaSinkConfig.getClientOptions();
-    if(clientOptions == null){
+    if (clientOptions == null) {
       clientOptions = new ClientOptions();
     }
     this.lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
@@ -147,27 +151,36 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     }
 
     //Result from lambda is not currently processes.
-    LambdaCommonHandler.sendRecords(records,
+    Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = LambdaCommonHandler.sendRecords(
+        records,
         lambdaSinkConfig,
         lambdaAsyncClient,
-        outputCodecContext,
-        (inputBuffer, invokeResponse) -> {
-          Duration latency = inputBuffer.stopLatencyWatch();
-          lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+        outputCodecContext);
+
+    for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
+      CompletableFuture<InvokeResponse> future = entry.getValue();
+      Buffer inputBuffer = entry.getKey();
+      try {
+        InvokeResponse response = future.join();
+        Duration latency = inputBuffer.stopLatencyWatch();
+        lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+        if (isSuccess(response)) {
           numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
           numberOfRequestsSuccessCounter.increment();
           releaseEventHandlesPerBatch(true, inputBuffer);
-          return new ArrayList<>();
-        },
-        (inputBuffer) -> {
-          Duration latency = inputBuffer.stopLatencyWatch();
-          lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
-          numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-          numberOfRequestsFailedCounter.increment();
+        } else {
+          LOG.error("Lambda invoke failed with error {} ", response.statusCode());
           handleFailure(new RuntimeException("failed"), inputBuffer);
-          return new ArrayList<>();
-        });
+        }
+      } catch (Exception e) {
+        LOG.error("Exception from Lambda invocation ", e);
+        numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+        numberOfRequestsFailedCounter.increment();
+        handleFailure(new RuntimeException("failed"), inputBuffer);
+      }
+    }
   }
+
 
   void handleFailure(Throwable throwable, Buffer flushedBuffer) {
     try {

@@ -21,12 +21,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA;
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED;
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS;
 import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA;
-import static org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessor.NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA;
-
+import static org.opensearch.dataprepper.plugins.lambda.sink.LambdaSinkTest.getSampleRecord;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.createLambdaConfigurationFromYaml;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -53,8 +53,6 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.model.codec.OutputCodec;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
@@ -66,6 +64,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import software.amazon.awssdk.core.SdkBytes;
@@ -76,6 +75,7 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorTest {
+
     // Mock dependencies
     @Mock
     private AwsAuthenticationOptions awsAuthenticationOptions;
@@ -104,8 +104,6 @@ public class LambdaProcessorTest {
     @Mock
     private InputCodec responseCodec;
 
-    @Mock
-    private OutputCodec requestCodec;
 
     @Mock
     private Counter numberOfRecordsSuccessCounter;
@@ -124,9 +122,6 @@ public class LambdaProcessorTest {
     @Mock
     private Timer lambdaLatencyMetric;
 
-    @Captor
-    private ArgumentCaptor<Consumer<Record<Event>>> consumerCaptor;
-
     // The class under test
     private LambdaProcessor lambdaProcessor;
 
@@ -140,9 +135,9 @@ public class LambdaProcessorTest {
         when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED))).thenReturn(
             numberOfRecordsFailedCounter);
         when(pluginMetrics.counter(eq(NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA))).thenReturn(
-                numberOfRecordsSuccessCounter);
+            numberOfRecordsSuccessCounter);
         when(pluginMetrics.counter(eq(NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA))).thenReturn(
-                numberOfRecordsFailedCounter);
+            numberOfRecordsFailedCounter);
         when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
         when(pluginMetrics.gauge(anyString(), any(AtomicLong.class))).thenAnswer(
             invocation -> invocation.getArgument(1));
@@ -150,7 +145,8 @@ public class LambdaProcessorTest {
         ClientOptions clientOptions = new ClientOptions();
         when(lambdaProcessorConfig.getClientOptions()).thenReturn(clientOptions);
         when(lambdaProcessorConfig.getFunctionName()).thenReturn("test-function");
-        when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(
+            awsAuthenticationOptions);
         when(lambdaProcessorConfig.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
         BatchOptions batchOptions = mock(BatchOptions.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
@@ -168,18 +164,6 @@ public class LambdaProcessorTest {
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("6mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(30));
         when(batchOptions.getKeyName()).thenReturn("key");
-
-        // Mock Response Codec Configuration
-        PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
-        PluginSetting responseCodecPluginSetting;
-
-        if (responseCodecConfig == null) {
-          // Default to JsonInputCodec with default settings
-          responseCodecPluginSetting = new PluginSetting("json", Collections.emptyMap());
-        } else {
-          responseCodecPluginSetting = new PluginSetting(responseCodecConfig.getPluginName(),
-              responseCodecConfig.getPluginSettings());
-        }
 
         // Mock PluginFactory to return the mocked responseCodec
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class))).thenReturn(
@@ -213,16 +197,18 @@ public class LambdaProcessorTest {
         setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter",
             numberOfRecordsSuccessCounter);
         setPrivateField(lambdaProcessor, "numberOfRequestsSuccessCounter",
-                numberOfRequestsSuccessCounter);
-        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
-        setPrivateField(lambdaProcessor, "numberOfRequestsFailedCounter", numberOfRequestsFailedCounter);
+            numberOfRequestsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter",
+            numberOfRecordsFailedCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsFailedCounter",
+            numberOfRequestsFailedCounter);
         setPrivateField(lambdaProcessor, "tagsOnMatchFailure", tagsOnMatchFailure);
         setPrivateField(lambdaProcessor, "lambdaCommonHandler", lambdaCommonHandler);
     }
 
     // Helper method to set private fields via reflection
     private void setPrivateField(Object targetObject, String fieldName, Object value)
-      throws Exception {
+        throws Exception {
         Field field = targetObject.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(targetObject, value);
@@ -245,9 +231,11 @@ public class LambdaProcessorTest {
         // Test ClientOptions defaults
         ClientOptions clientOptions = defaultConfig.getClientOptions();
         assertNotNull(clientOptions);
-        assertEquals(ClientOptions.DEFAULT_CONNECTION_RETRIES, clientOptions.getMaxConnectionRetries());
+        assertEquals(ClientOptions.DEFAULT_CONNECTION_RETRIES,
+            clientOptions.getMaxConnectionRetries());
         assertEquals(ClientOptions.DEFAULT_API_TIMEOUT, clientOptions.getApiCallTimeout());
-        assertEquals(ClientOptions.DEFAULT_CONNECTION_TIMEOUT, clientOptions.getConnectionTimeout());
+        assertEquals(ClientOptions.DEFAULT_CONNECTION_TIMEOUT,
+            clientOptions.getConnectionTimeout());
         assertEquals(ClientOptions.DEFAULT_MAXIMUM_CONCURRENCY, clientOptions.getMaxConcurrency());
         assertEquals(ClientOptions.DEFAULT_BASE_DELAY, clientOptions.getBaseDelay());
         assertEquals(ClientOptions.DEFAULT_MAX_BACKOFF, clientOptions.getMaxBackoff());
@@ -257,12 +245,16 @@ public class LambdaProcessorTest {
         assertNotNull(batchOptions);
     }
 
-    @Test
-    public void testDoExecute_WithExceptionDuringProcessing() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    public void testDoExecute_WithExceptionDuringProcessing(String configFileName) {
         // Arrange
-        Event event = mock(Event.class);
-        Record<Event> record = new Record<>(event);
-        List<Record<Event>> records = Collections.singletonList(record);
+        List<Record<Event>> records = Collections.singletonList(getSampleRecord());
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+            configFileName);
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginMetrics,
+            lambdaProcessorConfig,
+            awsCredentialsSupplier, expressionEvaluator);
 
         // make batch options null to generate exception
         when(lambdaProcessorConfig.getBatchOptions()).thenReturn(null);
@@ -347,7 +339,8 @@ public class LambdaProcessorTest {
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
         // Assert
-        assertEquals(1, result.size(), "Result should contain one record as the condition is false.");
+        assertEquals(1, result.size(),
+            "Result should contain one record as the condition is false.");
         verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
         verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
     }
@@ -377,16 +370,16 @@ public class LambdaProcessorTest {
         when(bufferMock.getRecords()).thenReturn(Collections.singletonList(record));
 
         doAnswer(invocation -> {
-          InputStream inputStream = invocation.getArgument(0);
-          @SuppressWarnings("unchecked")
-          Consumer<Record<Event>> consumer = invocation.getArgument(1);
+            invocation.getArgument(0);
+            @SuppressWarnings("unchecked")
+            Consumer<Record<Event>> consumer = invocation.getArgument(1);
 
-          // Simulate parsing by providing a mocked event
-          Event parsedEvent = mock(Event.class);
-          Record<Event> parsedRecord = new Record<>(parsedEvent);
-          consumer.accept(parsedRecord);
+            // Simulate parsing by providing a mocked event
+            Event parsedEvent = mock(Event.class);
+            Record<Event> parsedRecord = new Record<>(parsedEvent);
+            consumer.accept(parsedRecord);
 
-          return null;
+            return null;
         }).when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
 
         // Act
@@ -398,7 +391,8 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing() throws Exception {
+    public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing()
+        throws Exception {
         // Arrange
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
 
@@ -410,7 +404,7 @@ public class LambdaProcessorTest {
 
         // Mock the responseCodec.parse to add two events
         doAnswer(invocation -> {
-            InputStream inputStream = invocation.getArgument(0);
+            invocation.getArgument(0);
             @SuppressWarnings("unchecked")
             Consumer<Record<Event>> consumer = invocation.getArgument(1);
             Event parsedEvent1 = mock(Event.class);
@@ -436,7 +430,8 @@ public class LambdaProcessorTest {
         when(bufferMock.getEventCount()).thenReturn(2);
 
         // Act
-        List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock, invokeResponse);
+        List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock,
+            invokeResponse);
 
         // Assert
         assertEquals(2, resultRecords.size(), "ResultRecords should contain two records.");
@@ -446,7 +441,8 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing() throws Exception {
+    public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing()
+        throws Exception {
         // Arrange
         // Set responseEventsMatch to false
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
@@ -459,7 +455,7 @@ public class LambdaProcessorTest {
 
         // Mock the responseCodec.parse to add three parsed events
         doAnswer(invocation -> {
-            InputStream inputStream = invocation.getArgument(0);
+            invocation.getArgument(0);
             @SuppressWarnings("unchecked")
             Consumer<Record<Event>> consumer = invocation.getArgument(1);
 
@@ -497,7 +493,8 @@ public class LambdaProcessorTest {
         when(bufferMock.getEventCount()).thenReturn(2);
 
         // Act
-        List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock, invokeResponse);
+        List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock,
+            invokeResponse);
         // Assert
         // Verify that three records are added to the result
         assertEquals(3, resultRecords.size(), "ResultRecords should contain three records.");
