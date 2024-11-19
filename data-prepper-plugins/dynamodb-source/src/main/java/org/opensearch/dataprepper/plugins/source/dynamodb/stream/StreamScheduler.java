@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * A scheduler to manage all the stream related work in one place
  */
@@ -100,6 +102,8 @@ public class StreamScheduler implements Runnable {
                 runConsumer.whenComplete((v, ex) -> {
                     numOfWorkers.decrementAndGet();
                     if (ex != null) {
+                        LOG.error(NOISY, "Received exception while processing shard {}, giving up this shard for reprocessing: {}",
+                                streamPartition.getShardId(), ex);
                         coordinator.giveUpPartition(streamPartition);
                     }
                     if (numOfWorkers.get() == 0) {
