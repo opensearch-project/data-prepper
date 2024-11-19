@@ -3,64 +3,69 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 package org.opensearch.dataprepper.plugins.lambda.processor;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
-import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
-import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
-import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorIT {
+    @Mock
+    InvocationType invocationType;
     private AwsCredentialsProvider awsCredentialsProvider;
     private LambdaProcessor lambdaProcessor;
     private LambdaProcessorConfig lambdaProcessorConfig;
@@ -81,8 +86,7 @@ public class LambdaProcessorIT {
     private Counter testCounter;
     @Mock
     private Timer testTimer;
-    @Mock
-    InvocationType invocationType;
+
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
         return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
     }
@@ -107,12 +111,14 @@ public class LambdaProcessorIT {
             lenient().doAnswer(args -> {
                 return null;
             }).when(testCounter).increment(any(Double.class));
-        } catch (Exception e){}
+        } catch (Exception e) {
+        }
         try {
             lenient().doAnswer(args -> {
                 return null;
             }).when(testTimer).record(any(Long.class), any(TimeUnit.class));
-        } catch (Exception e){}
+        } catch (Exception e) {
+        }
         when(pluginMetrics.counter(any())).thenReturn(testCounter);
         testTimer = mock(Timer.class);
         when(pluginMetrics.timer(any())).thenReturn(testTimer);
@@ -172,7 +178,7 @@ public class LambdaProcessorIT {
         List<Record<Event>> records = createRecords(numRecords);
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
         assertThat(results.size(), equalTo(numRecords));
-        validateResultsForAggregateMode(results );
+        validateResultsForAggregateMode(results);
     }
 
     @ParameterizedTest
@@ -215,7 +221,7 @@ public class LambdaProcessorIT {
             validateStrictModeResults(results);
         } else {
             // For "Event" invocation type
-            assertThat(results.size(), equalTo(0));
+            assertThat(results.size(), equalTo(10));
         }
     }
 
@@ -261,12 +267,12 @@ public class LambdaProcessorIT {
         for (int i = 0; i < resultRecords.size(); i++) {
             Map<String, Object> eventData = resultRecords.get(i).getData().toMap();
             Map<String, Object> attr = resultRecords.get(i).getData().getMetadata().getAttributes();
-            int id = (Integer)eventData.get("id");
-            assertThat(eventData.get("key"+id), equalTo(id));
-            String stringValue = "value"+id;
-            assertThat(eventData.get("keys"+id), equalTo(stringValue.toUpperCase()));
-            assertThat(attr.get("attr"+id), equalTo(id));
-            assertThat(attr.get("attrs"+id), equalTo("attrvalue"+id));
+            int id = (Integer) eventData.get("id");
+            assertThat(eventData.get("key" + id), equalTo(id));
+            String stringValue = "value" + id;
+            assertThat(eventData.get("keys" + id), equalTo(stringValue.toUpperCase()));
+            assertThat(attr.get("attr" + id), equalTo(id));
+            assertThat(attr.get("attrs" + id), equalTo("attrvalue" + id));
         }
     }
 
@@ -275,11 +281,11 @@ public class LambdaProcessorIT {
         for (int i = 0; i < numRecords; i++) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", i);
-            map.put("key"+i, i);
-            map.put("keys"+i, "value"+i);
+            map.put("key" + i, i);
+            map.put("keys" + i, "value" + i);
             Map<String, Object> attrs = new HashMap<>();
-            attrs.put("attr"+i, i);
-            attrs.put("attrs"+i, "attrvalue"+i);
+            attrs.put("attr" + i, i);
+            attrs.put("attrs" + i, "attrvalue" + i);
             EventMetadata metadata = DefaultEventMetadata.builder()
                     .withEventType("event")
                     .withAttributes(attrs)
