@@ -164,10 +164,15 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         InvokeResponse response = future.join();
         Duration latency = inputBuffer.stopLatencyWatch();
         lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+        requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
         if (isSuccess(response)) {
+          releaseEventHandlesPerBatch(true, inputBuffer);
           numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
           numberOfRequestsSuccessCounter.increment();
-          releaseEventHandlesPerBatch(true, inputBuffer);
+          if (response.payload() != null) {
+              responsePayloadMetric.record(response.payload().asByteArray().length);
+          }
+          continue;
         } else {
           LOG.error("Lambda invoke failed with error {} ", response.statusCode());
           handleFailure(new RuntimeException("failed"), inputBuffer);

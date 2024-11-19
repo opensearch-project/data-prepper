@@ -23,11 +23,15 @@ public class PluginMetrics {
 
     private final String metricsPrefix;
 
-    public static PluginMetrics fromPluginSetting(final PluginSetting pluginSetting) {
+    public static PluginMetrics fromPluginSetting(final PluginSetting pluginSetting, final String name) {
         if(pluginSetting.getPipelineName() == null) {
             throw new IllegalArgumentException("PluginSetting.pipelineName must not be null");
         }
-        return PluginMetrics.fromNames(pluginSetting.getName(), pluginSetting.getPipelineName());
+        return PluginMetrics.fromNames(name, pluginSetting.getPipelineName());
+    }
+
+    public static PluginMetrics fromPluginSetting(final PluginSetting pluginSetting) {
+        return fromPluginSetting(pluginSetting, pluginSetting.getName());
     }
 
     /**

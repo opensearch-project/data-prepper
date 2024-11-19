@@ -55,6 +55,19 @@ public class PluginMetricsTest {
     }
 
     @Test
+    public void testCounterWithMetricsPrefixWithCustomMetricsName() {
+        final String customName = PLUGIN_NAME + "_custom";
+        objectUnderTest = PluginMetrics.fromPluginSetting(pluginSetting, customName);
+
+        final Counter counter = objectUnderTest.counter("counter");
+        assertEquals(
+                pluginSetting.getPipelineName() + MetricNames.DELIMITER +
+                        customName + MetricNames.DELIMITER +
+                        "counter",
+                counter.getId().getName());
+    }
+
+    @Test
     public void testCounter() {
         final Counter counter = objectUnderTest.counter("counter");
         assertEquals(
