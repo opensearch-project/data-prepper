@@ -42,6 +42,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -53,11 +54,11 @@ import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandl
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "lambdaProcessorObjectsEventsSucceeded";
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "lambdaProcessorObjectsEventsFailed";
-    public static final String NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA = "lambdaProcessorNumberOfRequestsSucceeded";
-    public static final String NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA = "lambdaProcessorNumberOfRequestsFailed";
-    public static final String LAMBDA_LATENCY_METRIC = "lambdaProcessorLatency";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "recordsSuccessfullySentToLambda";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "recordsFailedToSentLambda";
+    public static final String NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA = "numberOfRequestsSucceeded";
+    public static final String NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA = "numberOfRequestsFailed";
+    public static final String LAMBDA_LATENCY_METRIC = "lambdaFunctionLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
 
@@ -78,7 +79,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
-    private final PluginMetrics pluginMetrics;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
@@ -87,7 +87,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                            final ExpressionEvaluator expressionEvaluator) {
         super(
                 PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName() + "_processor"));
-        pluginMetrics = getPluginMetrics();
+
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
@@ -156,9 +156,16 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             recordsToLambda.add(record);
         }
 
-        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = LambdaCommonHandler.sendRecords(
-                recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
-                new OutputCodecContext());
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
+        try {
+            bufferToFutureMap = LambdaCommonHandler.sendRecords(
+                    recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
+                    new OutputCodecContext());
+        } catch (Exception e) {
+            LOG.error(NOISY, "Error while sending records to Lambda", e);
+            resultRecords.addAll(addFailureTags(recordsToLambda));
+        }
+
         for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
             CompletableFuture<InvokeResponse> future = entry.getValue();
             Buffer inputBuffer = entry.getKey();

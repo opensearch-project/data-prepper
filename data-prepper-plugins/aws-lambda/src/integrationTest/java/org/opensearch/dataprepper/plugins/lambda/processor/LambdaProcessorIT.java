@@ -39,7 +39,6 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -89,12 +88,6 @@ public class LambdaProcessorIT {
 
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
         return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
-    }
-
-    private void setPrivateField(Object targetObject, String fieldName, Object value) throws Exception {
-        Field field = targetObject.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(targetObject, value);
     }
 
     @BeforeEach
@@ -187,7 +180,6 @@ public class LambdaProcessorIT {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
         CountDownLatch latch = new CountDownLatch(numThreads);
@@ -213,7 +205,6 @@ public class LambdaProcessorIT {
         when(this.invocationType.getAwsLambdaValue()).thenReturn(invocationType);
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         List<Record<Event>> records = createRecords(10);
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
         if (invocationType.equals("RequestResponse")) {
@@ -231,7 +222,6 @@ public class LambdaProcessorIT {
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
         when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
         LambdaProcessor spyLambdaProcessor = spy(createObjectUnderTest(lambdaProcessorConfig));
-        setPrivateField(spyLambdaProcessor, "pluginMetrics", pluginMetrics);
         doThrow(new RuntimeException("Simulated Lambda failure"))
                 .when(spyLambdaProcessor).convertLambdaResponseToEvent(any(Buffer.class), any(InvokeResponse.class));
         List<Record<Event>> records = createRecords(5);

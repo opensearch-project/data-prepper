@@ -41,10 +41,6 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
     }
 
-    public PluginMetrics getPluginMetrics() {
-        return pluginMetrics;
-    }
-
     /**
      * @since 1.2
      * This execute function calls the {@link AbstractProcessor#doExecute(Collection)} function of the implementation,
