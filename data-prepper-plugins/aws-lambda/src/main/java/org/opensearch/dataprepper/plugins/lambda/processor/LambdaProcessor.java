@@ -49,8 +49,6 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import javax.management.RuntimeMBeanException;
-
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
@@ -79,7 +77,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
-    private final PluginMetrics pluginMetrics;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
@@ -87,7 +84,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         final AwsCredentialsSupplier awsCredentialsSupplier,
         final ExpressionEvaluator expressionEvaluator) {
         super(PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName()+"_processor"));
-        pluginMetrics = getPluginMetrics();
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;

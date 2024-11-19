@@ -54,6 +54,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 
 import java.util.ArrayList;
@@ -88,11 +89,21 @@ public class LambdaProcessorSinkIT {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
-    private Counter testCounter;
+    private Counter numberOfRecordsSuccessCounter;
+    @Mock
+    private Counter numberOfRecordsFailedCounter;
+    @Mock
+    private Counter numberOfRequestsSuccessCounter;
+    @Mock
+    private Counter numberOfRequestsFailedCounter;
     @Mock
     private Counter sinkSuccessCounter;
     @Mock
-    private Timer testTimer;
+    private Timer lambdaLatencyMetric;
+    @Mock
+    private DistributionSummary requestPayloadMetric;
+    @Mock
+    private DistributionSummary responsePayloadMetric;
     @Mock
     InvocationType invocationType;
 
@@ -124,6 +135,13 @@ public class LambdaProcessorSinkIT {
         role = System.getProperty("tests.lambda.processor.sts_role_arn");
         successCount = new AtomicLong();
         numEventHandlesReleased = new AtomicLong();
+        numberOfRecordsSuccessCounter = mock(Counter.class);
+        numberOfRecordsFailedCounter = mock(Counter.class);
+        numberOfRequestsSuccessCounter = mock(Counter.class);
+        numberOfRequestsFailedCounter = mock(Counter.class);
+        lambdaLatencyMetric = mock(Timer.class);
+        requestPayloadMetric = mock(DistributionSummary.class);
+        responsePayloadMetric = mock(DistributionSummary.class);
 
         acknowledgementSet = mock(AcknowledgementSet.class);
         try {
@@ -138,7 +156,6 @@ public class LambdaProcessorSinkIT {
             }).when(acknowledgementSet).release(any(EventHandle.class), any(Boolean.class));
         } catch (Exception e){ }
         pluginMetrics = mock(PluginMetrics.class);
-        when(pluginMetrics.gauge(any(), any(AtomicLong.class))).thenReturn(new AtomicLong());
         sinkSuccessCounter = mock(Counter.class);
         try {
             lenient().doAnswer(args -> {
@@ -147,26 +164,22 @@ public class LambdaProcessorSinkIT {
                 return null;
             }).when(sinkSuccessCounter).increment(any(Double.class));
         } catch (Exception e){ }
-        testCounter = mock(Counter.class);
         try {
             lenient().doAnswer(args -> {
                 return null;
-            }).when(testCounter).increment(any(Double.class));
+            }).when(numberOfRecordsSuccessCounter).increment(any(Double.class));
         } catch (Exception e){}
         try {
             lenient().doAnswer(args -> {
                 return null;
-            }).when(testCounter).increment();
+            }).when(numberOfRecordsFailedCounter).increment();
         } catch (Exception e){}
         try {
             lenient().doAnswer(args -> {
                 return null;
-            }).when(testTimer).record(any(Long.class), any(TimeUnit.class));
+            }).when(lambdaLatencyMetric).record(any(Long.class), any(TimeUnit.class));
         } catch (Exception e){}
-        when(pluginMetrics.counter(any())).thenReturn(testCounter);
 
-        testTimer = mock(Timer.class);
-        when(pluginMetrics.timer(any())).thenReturn(testTimer);
         lambdaProcessorConfig = mock(LambdaProcessorConfig.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
@@ -218,13 +231,23 @@ public class LambdaProcessorSinkIT {
 
     }
 
+    private void setPrivateFields(final LambdaProcessor lambdaProcessor) throws Exception {
+        setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsSuccessCounter", numberOfRequestsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsFailedCounter", numberOfRequestsFailedCounter);
+        setPrivateField(lambdaProcessor, "lambdaLatencyMetric", lambdaLatencyMetric);
+        setPrivateField(lambdaProcessor, "requestPayloadMetric", requestPayloadMetric);
+        setPrivateField(lambdaProcessor, "responsePayloadMetric", responsePayloadMetric);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {11})
     public void testLambdaProcessorAndLambdaSink(int numRecords) throws Exception {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createLambdaProcessor(lambdaProcessorConfig);
-        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
+        setPrivateFields(lambdaProcessor);
         List<Record<Event>> records = createRecords(numRecords);
 
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
@@ -232,9 +255,7 @@ public class LambdaProcessorSinkIT {
         assertThat(results.size(), equalTo(numRecords));
         validateStrictModeResults(records, results);
         LambdaSink lambdaSink = createLambdaSink(lambdaSinkConfig);
-        try {
-            setPrivateField(lambdaSink, "numberOfRecordsSuccessCounter", sinkSuccessCounter);
-        } catch (Exception e){}
+        setPrivateField(lambdaSink, "numberOfRecordsSuccessCounter", sinkSuccessCounter);
         lambdaSink.output(results);
         assertThat(successCount.get(), equalTo((long)numRecords));
         assertThat(numEventHandlesReleased.get(), equalTo((long)numRecords));

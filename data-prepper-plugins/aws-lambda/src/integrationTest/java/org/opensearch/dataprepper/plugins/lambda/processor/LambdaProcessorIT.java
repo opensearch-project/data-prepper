@@ -7,7 +7,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -43,7 +42,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import java.lang.reflect.Field;
@@ -72,15 +73,25 @@ public class LambdaProcessorIT {
     @Mock
     private PluginFactory pluginFactory;
     @Mock
-    private PluginMetrics pluginMetrics;
-    @Mock
     private PluginSetting pluginSetting;
     @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
-    private Counter testCounter;
+    private Counter numberOfRecordsSuccessCounter;
     @Mock
-    private Timer testTimer;
+    private Counter numberOfRecordsFailedCounter;
+    @Mock
+    private Counter numberOfRequestsSuccessCounter;
+    @Mock
+    private Counter numberOfRequestsFailedCounter;
+    @Mock
+    private Counter sinkSuccessCounter;
+    @Mock
+    private Timer lambdaLatencyMetric;
+    @Mock
+    private DistributionSummary requestPayloadMetric;
+    @Mock
+    private DistributionSummary responsePayloadMetric;
     @Mock
     InvocationType invocationType;
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
@@ -93,29 +104,47 @@ public class LambdaProcessorIT {
         field.set(targetObject, value);
     }
 
+    private void setPrivateFields(final LambdaProcessor lambdaProcessor) throws Exception {
+        setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsSuccessCounter", numberOfRequestsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsFailedCounter", numberOfRequestsFailedCounter);
+        setPrivateField(lambdaProcessor, "lambdaLatencyMetric", lambdaLatencyMetric);
+        setPrivateField(lambdaProcessor, "requestPayloadMetric", requestPayloadMetric);
+        setPrivateField(lambdaProcessor, "responsePayloadMetric", responsePayloadMetric);
+    }
+
     @BeforeEach
     public void setup() {
         lambdaRegion = System.getProperty("tests.lambda.processor.region");
         functionName = System.getProperty("tests.lambda.processor.functionName");
         role = System.getProperty("tests.lambda.processor.sts_role_arn");
-        pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
         when(pluginSetting.getName()).thenReturn("name");
-        testCounter = mock(Counter.class);
+        numberOfRecordsSuccessCounter = mock(Counter.class);
+        numberOfRecordsFailedCounter = mock(Counter.class);
+        numberOfRequestsSuccessCounter = mock(Counter.class);
+        numberOfRequestsFailedCounter = mock(Counter.class);
+        lambdaLatencyMetric = mock(Timer.class);
+        requestPayloadMetric = mock(DistributionSummary.class);
+        responsePayloadMetric = mock(DistributionSummary.class);
         try {
             lenient().doAnswer(args -> {
                 return null;
-            }).when(testCounter).increment(any(Double.class));
+            }).when(numberOfRecordsSuccessCounter).increment(any(Double.class));
         } catch (Exception e){}
         try {
             lenient().doAnswer(args -> {
                 return null;
-            }).when(testTimer).record(any(Long.class), any(TimeUnit.class));
+            }).when(numberOfRecordsFailedCounter).increment();
         } catch (Exception e){}
-        when(pluginMetrics.counter(any())).thenReturn(testCounter);
-        testTimer = mock(Timer.class);
-        when(pluginMetrics.timer(any())).thenReturn(testTimer);
+        try {
+            lenient().doAnswer(args -> {
+                return null;
+            }).when(lambdaLatencyMetric).record(any(Long.class), any(TimeUnit.class));
+        } catch (Exception e){}
+
         lambdaProcessorConfig = mock(LambdaProcessorConfig.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
         awsCredentialsProvider = DefaultCredentialsProvider.create();
@@ -181,7 +210,6 @@ public class LambdaProcessorIT {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
         CountDownLatch latch = new CountDownLatch(numThreads);
@@ -207,7 +235,6 @@ public class LambdaProcessorIT {
         when(this.invocationType.getAwsLambdaValue()).thenReturn(invocationType);
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         List<Record<Event>> records = createRecords(10);
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
         if (invocationType.equals("RequestResponse")) {
@@ -225,7 +252,6 @@ public class LambdaProcessorIT {
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
         when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
         LambdaProcessor spyLambdaProcessor = spy(createObjectUnderTest(lambdaProcessorConfig));
-        setPrivateField(spyLambdaProcessor, "pluginMetrics", pluginMetrics);
         doThrow(new RuntimeException("Simulated Lambda failure"))
                 .when(spyLambdaProcessor).convertLambdaResponseToEvent(any(Buffer.class), any(InvokeResponse.class));
         List<Record<Event>> records = createRecords(5);
