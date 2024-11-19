@@ -103,12 +103,18 @@ public class LambdaProcessorSinkIT {
     private AcknowledgementSet acknowledgementSet;
 
     private LambdaProcessor createLambdaProcessor(LambdaProcessorConfig processorConfig) {
-        return new LambdaProcessor(pluginFactory, pluginMetrics, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
     }
 
     private LambdaSink createLambdaSink(LambdaSinkConfig lambdaSinkConfig) {
         return new LambdaSink(pluginSetting, lambdaSinkConfig, pluginFactory, null, awsCredentialsSupplier, expressionEvaluator);
 
+    }
+
+    private void setPrivateField(Object targetObject, String fieldName, Object value) throws Exception {
+        Field field = targetObject.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(targetObject, value);
     }
 
     @BeforeEach
@@ -212,19 +218,13 @@ public class LambdaProcessorSinkIT {
 
     }
 
-    private void setPrivateField(Object targetObject, String fieldName, Object value)
-            throws Exception {
-        Field field = targetObject.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(targetObject, value);
-    }
-
     @ParameterizedTest
     @ValueSource(ints = {11})
-    public void testLambdaProcessorAndLambdaSink(int numRecords) {
+    public void testLambdaProcessorAndLambdaSink(int numRecords) throws Exception {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createLambdaProcessor(lambdaProcessorConfig);
+        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         List<Record<Event>> records = createRecords(numRecords);
 
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);

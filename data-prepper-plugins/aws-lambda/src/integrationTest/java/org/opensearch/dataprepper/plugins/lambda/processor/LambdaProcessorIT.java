@@ -46,6 +46,7 @@ import static org.mockito.Mockito.lenient;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -73,6 +74,8 @@ public class LambdaProcessorIT {
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
+    private PluginSetting pluginSetting;
+    @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
     private Counter testCounter;
@@ -81,7 +84,13 @@ public class LambdaProcessorIT {
     @Mock
     InvocationType invocationType;
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
-        return new LambdaProcessor(pluginFactory, pluginMetrics, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+    }
+
+    private void setPrivateField(Object targetObject, String fieldName, Object value) throws Exception {
+        Field field = targetObject.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(targetObject, value);
     }
 
     @BeforeEach
@@ -90,8 +99,10 @@ public class LambdaProcessorIT {
         functionName = System.getProperty("tests.lambda.processor.functionName");
         role = System.getProperty("tests.lambda.processor.sts_role_arn");
         pluginMetrics = mock(PluginMetrics.class);
-        //when(pluginMetrics.gauge(any(), any(AtomicLong.class))).thenReturn(new AtomicLong());
-        //testCounter = mock(Counter.class);
+        pluginSetting = mock(PluginSetting.class);
+        when(pluginSetting.getPipelineName()).thenReturn("pipeline");
+        when(pluginSetting.getName()).thenReturn("name");
+        testCounter = mock(Counter.class);
         try {
             lenient().doAnswer(args -> {
                 return null;
@@ -166,10 +177,11 @@ public class LambdaProcessorIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1000})
-    public void testRequestResponse_WithMatchingEvents_StrictMode_WithMultipleThreads(int numRecords) throws InterruptedException {
+    public void testRequestResponse_WithMatchingEvents_StrictMode_WithMultipleThreads(int numRecords) throws Exception {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         int numThreads = 5;
         ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
         CountDownLatch latch = new CountDownLatch(numThreads);
@@ -191,10 +203,11 @@ public class LambdaProcessorIT {
 
     @ParameterizedTest
     @ValueSource(strings = {"RequestResponse", "Event"})
-    public void testDifferentInvocationTypes(String invocationType) {
+    public void testDifferentInvocationTypes(String invocationType) throws Exception {
         when(this.invocationType.getAwsLambdaValue()).thenReturn(invocationType);
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         List<Record<Event>> records = createRecords(10);
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
         if (invocationType.equals("RequestResponse")) {
@@ -207,11 +220,12 @@ public class LambdaProcessorIT {
     }
 
     @Test
-    public void testWithFailureTags() {
+    public void testWithFailureTags() throws Exception {
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
         when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
         when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
         LambdaProcessor spyLambdaProcessor = spy(createObjectUnderTest(lambdaProcessorConfig));
+        setPrivateField(spyLambdaProcessor, "pluginMetrics", pluginMetrics);
         doThrow(new RuntimeException("Simulated Lambda failure"))
                 .when(spyLambdaProcessor).convertLambdaResponseToEvent(any(Buffer.class), any(InvokeResponse.class));
         List<Record<Event>> records = createRecords(5);

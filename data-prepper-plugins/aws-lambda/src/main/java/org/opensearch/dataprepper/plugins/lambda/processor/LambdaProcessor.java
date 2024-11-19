@@ -49,6 +49,8 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
+import javax.management.RuntimeMBeanException;
+
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
@@ -71,19 +73,21 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRequestsSuccessCounter;
     private final Counter numberOfRequestsFailedCounter;
     private final Timer lambdaLatencyMetric;
-    private final List<String> tagsOnMatchFailure;
+    private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
     private final DistributionSummary requestPayloadMetric;
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
+    private final PluginMetrics pluginMetrics;
 
     @DataPrepperPluginConstructor
-    public LambdaProcessor(final PluginFactory pluginFactory, final PluginMetrics pluginMetrics,
+    public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
         final LambdaProcessorConfig lambdaProcessorConfig,
         final AwsCredentialsSupplier awsCredentialsSupplier,
         final ExpressionEvaluator expressionEvaluator) {
-        super(pluginMetrics);
+        super(PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName()+"_processor"));
+        pluginMetrics = getPluginMetrics();
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
@@ -99,7 +103,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
-        this.tagsOnMatchFailure = lambdaProcessorConfig.getTagsOnFailure();
+        this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
 
         PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
 
@@ -144,8 +148,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         for (Record<Event> record : records) {
             final Event event = record.getData();
             // If the condition is false, add the event to resultRecords as-is
-            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition,
-                event)) {
+            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
                 resultRecords.add(record);
                 continue;
             }
@@ -155,7 +158,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = LambdaCommonHandler.sendRecords(
             recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
             new OutputCodecContext());
-
         for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
             CompletableFuture<InvokeResponse> future = entry.getValue();
             Buffer inputBuffer = entry.getKey();
@@ -163,20 +165,26 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 InvokeResponse response = future.join();
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
+                requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
                 if (isSuccess(response)) {
+                    resultRecords.addAll(convertLambdaResponseToEvent(inputBuffer, response));
                     numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
                     numberOfRequestsSuccessCounter.increment();
-                    resultRecords.addAll(convertLambdaResponseToEvent(inputBuffer, response));
+                    if (response.payload() != null) {
+                        responsePayloadMetric.record(response.payload().asByteArray().length);
+                    }
+                    continue;
                 } else {
                     LOG.error("Lambda invoke failed with error {} ", response.statusCode());
-                    resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                    /* fall through */
                 }
             } catch (Exception e) {
                 LOG.error("Exception from Lambda invocation ", e);
-                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                /* fall through */
             }
+            numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+            numberOfRequestsFailedCounter.increment();
+            resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
         }
         return resultRecords;
     }
@@ -190,40 +198,36 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         final InvokeResponse lambdaResponse) {
         InputCodec responseCodec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSetting);
         List<Record<Event>> originalRecords = flushedBuffer.getRecords();
-        try {
-            List<Event> parsedEvents = new ArrayList<>();
 
-            List<Record<Event>> resultRecords = new ArrayList<>();
-            SdkBytes payload = lambdaResponse.payload();
-            // Handle null or empty payload
-            if (payload == null || payload.asByteArray() == null
-                || payload.asByteArray().length == 0) {
-                LOG.warn(NOISY,
-                    "Lambda response payload is null or empty, dropping the original events");
-            } else {
-                InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
-                //Convert to response codec
-                try {
-                    responseCodec.parse(inputStream, record -> {
+        List<Event> parsedEvents = new ArrayList<>();
+
+        List<Record<Event>> resultRecords = new ArrayList<>();
+        SdkBytes payload = lambdaResponse.payload();
+        // Handle null or empty payload
+        if (payload == null || payload.asByteArray() == null || payload.asByteArray().length == 0) {
+            LOG.warn(NOISY, "Lambda response payload is null or empty, dropping the original events");
+        } else {
+            InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
+            //Convert to response codec
+            try {
+                responseCodec.parse(inputStream, record -> {
                         Event event = record.getData();
                         parsedEvents.add(event);
-                    });
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                });
+            } catch (IOException ex) {
+                LOG.error("Error while trying to parse response from Lambda", ex);
+                throw new RuntimeException(ex);
+            }
+            if (parsedEvents.size() == 0) {
+                throw new RuntimeException("Lambda Response could not be parsed, returning original events");
+            }
 
-                LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
+            LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
                         "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                     flushedBuffer.getSize());
-                responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords,
-                    flushedBuffer);
-            }
-            return resultRecords;
-        } catch (Exception e) {
-            LOG.error(NOISY, "Error converting Lambda response to Event");
-            addFailureTags(flushedBuffer.getRecords());
-            return originalRecords;
+            responseStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
         }
+        return resultRecords;
     }
 
     /*
@@ -231,12 +235,15 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
      * Batch fails and tag each event in that Batch.
      */
     private List<Record<Event>> addFailureTags(List<Record<Event>> records) {
+        if (tagsOnFailure == null || tagsOnFailure.isEmpty()) {
+            return records;
+        }
         // Add failure tags to each event in the batch
         for (Record<Event> record : records) {
             Event event = record.getData();
             EventMetadata metadata = event.getMetadata();
             if (metadata != null) {
-                metadata.addTags(tagsOnMatchFailure);
+                metadata.addTags(tagsOnFailure);
             } else {
                 LOG.warn("Event metadata is null, cannot add failure tags.");
             }
