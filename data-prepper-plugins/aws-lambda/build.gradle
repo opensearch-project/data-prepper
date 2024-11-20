@@ -63,10 +63,7 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
-
-    //Enable Multi-thread in tests
-    systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
-    systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
+    
 
     systemProperty 'tests.lambda.sink.region', System.getProperty('tests.lambda.sink.region')
     systemProperty 'tests.lambda.sink.functionName', System.getProperty('tests.lambda.sink.functionName')
