@@ -290,6 +290,8 @@ public class LambdaProcessorTest {
         // Arrange
         int recordCount = (int) (Math.random() * 100);
         List<Record<Event>> records = getSampleEventRecords(recordCount);
+        InvokeResponse invokeResponse = mock(InvokeResponse.class);
+
 
         // Mock Buffer to return empty payload
         when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"key\": \"value\"}]"));
@@ -534,7 +536,7 @@ public class LambdaProcessorTest {
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
         LambdaProcessor localLambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting,
                 lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
-
+        InvokeResponse invokeResponse = mock(InvokeResponse.class);
         // Mock LambdaResponse with a valid payload containing three events
         when(invokeResponse.payload()).thenReturn(lambdaReponse);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
