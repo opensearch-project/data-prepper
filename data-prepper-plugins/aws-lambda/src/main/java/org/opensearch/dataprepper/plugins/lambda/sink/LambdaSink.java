@@ -28,15 +28,18 @@ import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFacto
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
+import java.net.HttpURLConnection;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -109,11 +112,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 clientOptions
         );
         if (lambdaSinkConfig.getDlqPluginSetting() != null) {
-            this.dlqPushHandler = new DlqPushHandler(pluginFactory,
-                    String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(BUCKET)),
-                    lambdaSinkConfig.getDlqStsRoleARN()
-                    , lambdaSinkConfig.getDlqStsRegion(),
-                    String.valueOf(lambdaSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
+            this.dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, lambdaSinkConfig.getDlq(), lambdaSinkConfig.getAwsAuthenticationOptions());
         }
 
     }
@@ -161,8 +160,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                     outputCodecContext);
         } catch (Exception e) {
             LOG.error("Exception while processing records ", e);
-            //TODO: introduce DLQ handler here before releasing the records
-            releaseEventHandlesPerBatch(false, records);
+            handleFailure(records, e, HttpURLConnection.HTTP_BAD_REQUEST);
         }
 
         for (Map.Entry<Buffer, CompletableFuture<InvokeResponse>> entry : bufferToFutureMap.entrySet()) {
@@ -179,7 +177,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                     throw new RuntimeException(errorMessage);
                 }
 
-                releaseEventHandlesPerBatch(true, inputBuffer.getRecords());
+                releaseEventHandles(inputBuffer.getRecords(), true);
                 numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
                 numberOfRequestsSuccessCounter.increment();
                 if (response.payload() != null) {
@@ -188,35 +186,59 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
             } catch (Exception e) {
                 LOG.error(NOISY, e.getMessage(), e);
-                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                numberOfRequestsFailedCounter.increment();
-                handleFailure(new RuntimeException("failed"), inputBuffer);
+                handleFailure(inputBuffer.getRecords(), new RuntimeException("failed"), HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
         }
     }
 
 
-    void handleFailure(Throwable throwable, Buffer flushedBuffer) {
-        try {
-            numberOfRecordsFailedCounter.increment(flushedBuffer.getEventCount());
-            SdkBytes payload = flushedBuffer.getPayload();
-            if (dlqPushHandler != null) {
-                dlqPushHandler.perform(pluginSetting,
-                        new LambdaSinkFailedDlqData(payload, throwable.getMessage(), 0));
-                releaseEventHandlesPerBatch(true, flushedBuffer.getRecords());
-            } else {
-                releaseEventHandlesPerBatch(false, flushedBuffer.getRecords());
-            }
-        } catch (Exception ex) {
-            LOG.error("Exception occurred during error handling");
-            releaseEventHandlesPerBatch(false, flushedBuffer.getRecords());
-        }
+  private DlqObject createDlqObjectFromEvent(final Event event,
+                                             final String functionName,
+                                             final int status,
+                                             final String message) {
+    return DlqObject.builder()
+            .withEventHandle(event.getEventHandle())
+            .withFailedData(LambdaSinkFailedDlqData.builder()
+                    .withData(event.toJsonString())
+                    .withStatus(status)
+                    .withFunctionName(functionName)
+                    .withMessage(message)
+                    .build())
+            .withPluginName(pluginSetting.getName())
+            .withPipelineName(pluginSetting.getPipelineName())
+            .withPluginId(pluginSetting.getName())
+            .build();
+  }
+
+  void handleFailure(Collection<Record<Event>> failedRecords, Throwable throwable, int statusCode) {
+    if (failedRecords.isEmpty()) {
+        return;
     }
+    numberOfRecordsFailedCounter.increment(failedRecords.size());
+    numberOfRequestsFailedCounter.increment();
+    if (dlqPushHandler == null) {
+      releaseEventHandles(failedRecords, false);
+    }
+    try {
+      final List<DlqObject> dlqObjects = new ArrayList<>();
+      for (Record<Event> record: failedRecords) {
+          if (record.getData() != null) {
+              dlqObjects.add(createDlqObjectFromEvent(record.getData(), lambdaSinkConfig.getFunctionName(), statusCode, throwable.getMessage()));
+          }
+      }
+      dlqPushHandler.perform(dlqObjects);
+      releaseEventHandles(failedRecords, true);
+    } catch (Exception ex) {
+      LOG.error("Exception occured during error handling");
+      releaseEventHandles(failedRecords, false);
+    }
+  }
+
 
     /*
      * Release events per batch
      */
-    private void releaseEventHandlesPerBatch(boolean success, Collection<Record<Event>> records) {
+    private void releaseEventHandles(Collection<Record<Event>> records, boolean success) {
         for (Record<Event> record : records) {
             Event event = record.getData();
             if (event != null) {

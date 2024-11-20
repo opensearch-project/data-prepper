@@ -4,30 +4,21 @@
  */
 package org.opensearch.dataprepper.plugins.lambda.sink.dlq;
 
-import com.fasterxml.jackson.databind.ObjectWriter;
-import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
+import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
-
-import static java.util.UUID.randomUUID;
 
 
 /**
@@ -38,94 +29,51 @@ public class DlqPushHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(DlqPushHandler.class);
 
-    private static final String BUCKET = "bucket";
+    public static final String STS_ROLE_ARN = "sts_role_arn";
 
-    private static final String ROLE_ARN = "sts_role_arn";
-
-    private static final String REGION = "region";
-
-    private static final String S3_PLUGIN_NAME = "s3";
-
-    private static final String KEY_PATH_PREFIX = "key_path_prefix";
-
-    private String dlqFile;
-
-    private String keyPathPrefix;
+    public static final String REGION = "region";
 
     private DlqProvider dlqProvider;
 
-    private ObjectWriter objectWriter;
+    private PluginSetting dlqPluginSetting;
 
-    public DlqPushHandler(
-                          final PluginFactory pluginFactory,
-                          final String bucket,
-                          final String stsRoleArn,
-                          final String awsRegion,
-                          final String dlqPathPrefix) {
+    private DlqWriter dlqWriter;
 
-            this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,dlqPathPrefix);
-    }
-
-    public void perform(final PluginSetting pluginSetting,
-                        final Object failedData) {
-        if(dlqFile != null)
-            writeToFile(failedData);
-        else
-            pushToS3(pluginSetting, failedData);
-    }
-
-    private void writeToFile(Object failedData) {
-        try(BufferedWriter dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile),
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            dlqFileWriter.write(objectWriter.writeValueAsString(failedData)+"\n");
-        } catch (IOException e) {
-            LOG.error("Exception while writing failed data to DLQ file Exception: ",e);
+    public DlqPushHandler(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
+                          final PluginModel dlqConfig, final AwsAuthenticationOptions awsAuthenticationOptions) {
+        dlqPluginSetting = new PluginSetting(dlqConfig.getPluginName(), dlqConfig.getPluginSettings());
+        dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
+        Map<String, Object> dlqSettings = dlqPluginSetting.getSettings();
+        boolean settingsChanged = false;
+        if (!dlqSettings.containsKey(REGION)) {
+            if (awsAuthenticationOptions != null) {
+                dlqSettings.put(REGION, String.valueOf(awsAuthenticationOptions.getAwsRegion()));
+                settingsChanged = true;
+            }
+        }
+        if (!dlqSettings.containsKey(STS_ROLE_ARN)) {
+            if (awsAuthenticationOptions != null) {
+                dlqSettings.put(STS_ROLE_ARN, String.valueOf(awsAuthenticationOptions.getAwsStsRoleArn()));
+                settingsChanged = true;
+            }
+        }
+        if (settingsChanged) {
+            LOG.info("Using AWS credentials from Lambda Sink Config");
+            dlqPluginSetting.setSettings(dlqSettings);
+        }
+        this.dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
+        if (this.dlqProvider != null) {
+            Optional<DlqWriter> potentialDlq = this.dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
+              .add(pluginSetting.getPipelineName())
+              .add(pluginSetting.getName()).toString());
+          this.dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
         }
     }
 
-    private void pushToS3(PluginSetting pluginSetting, Object failedData) {
-        DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
-        try {
-            String pluginId = randomUUID().toString();
-            DlqObject dlqObject = DlqObject.builder()
-                    .withPluginId(pluginId)
-                    .withPluginName(pluginSetting.getName())
-                    .withPipelineName(pluginSetting.getPipelineName())
-                    .withFailedData(failedData)
-                    .build();
-            final List<DlqObject> dlqObjects = Arrays.asList(dlqObject);
-            dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginId);
-            LOG.info("wrote {} events to DLQ",dlqObjects.size());
-        } catch (final IOException e) {
-            LOG.error("Exception while writing failed data to DLQ, Exception : ", e);
+    public void perform(final List<DlqObject> dlqObjects) throws Exception {
+        if (dlqWriter != null && dlqObjects != null && dlqObjects.size() > 0) {
+            dlqWriter.write(dlqObjects, dlqPluginSetting.getPipelineName(), dlqPluginSetting.getName());
         }
-    }
-
-    private  DlqWriter getDlqWriter(final String writerPipelineName) {
-        Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
-                .add(writerPipelineName).toString());
-        DlqWriter dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
-        return dlqWriter;
-    }
-
-    private  DlqProvider getDlqProvider(final PluginFactory pluginFactory,
-                                        final String bucket,
-                                        final String stsRoleArn,
-                                        final String awsRegion,
-                                        final String dlqPathPrefix) {
-        final Map<String, Object> props = new HashMap<>();
-        props.put(BUCKET, bucket);
-        props.put(ROLE_ARN, stsRoleArn);
-        props.put(REGION, awsRegion);
-        this.keyPathPrefix = StringUtils.isEmpty(dlqPathPrefix) ? dlqPathPrefix : enforceDefaultDelimiterOnKeyPathPrefix(dlqPathPrefix);
-        props.put(KEY_PATH_PREFIX, dlqPathPrefix);
-        final PluginSetting dlqPluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
-        DlqProvider dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
-        return dlqProvider;
-    }
-
-    private String enforceDefaultDelimiterOnKeyPathPrefix(final String keyPathPrefix) {
-        return (keyPathPrefix.charAt(keyPathPrefix.length() - 1) == '/') ? keyPathPrefix : keyPathPrefix.concat("/");
     }
 }
 
