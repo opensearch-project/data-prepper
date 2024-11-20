@@ -220,12 +220,11 @@ public class LambdaProcessorSinkIT {
         when(pluginSetting.getName()).thenReturn("name");
         lambdaSinkConfig = mock(LambdaSinkConfig.class);
         when(lambdaSinkConfig.getFunctionName()).thenReturn(functionName);
-        //when(lambdaSinkConfig.getMaxConnectionRetries()).thenReturn(3);
+        when(lambdaSinkConfig.getDlqPluginSetting()).thenReturn(null);
 
         InvocationType sinkInvocationType = mock(InvocationType.class);
         when(sinkInvocationType.getAwsLambdaValue()).thenReturn(InvocationType.EVENT.getAwsLambdaValue());
         when(lambdaSinkConfig.getInvocationType()).thenReturn(invocationType);
-        //when(lambdaSinkConfig.getConnectionTimeout()).thenReturn(DEFAULT_CONNECTION_TIMEOUT);
         when(lambdaSinkConfig.getBatchOptions()).thenReturn(batchOptions);
         when(lambdaSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
 
