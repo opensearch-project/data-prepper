@@ -119,11 +119,9 @@ class LambdaCommonHandlerTest {
         List<Record<Event>> records = new ArrayList<>();
         records.add(new Record<>(mock(Event.class)));
 
-        Map<Buffer, CompletableFuture<InvokeResponse>> bufferCompletableFutureMap = LambdaCommonHandler.sendRecords(
+        assertThrows(RuntimeException.class, () -> LambdaCommonHandler.sendRecords(
                 records, lambdaConfiguration, lambdaAsyncClient,
-                outputCodecContext);
-
-        assertNotNull(bufferCompletableFutureMap);
+                outputCodecContext));
         verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
     }
 }

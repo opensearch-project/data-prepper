@@ -252,7 +252,11 @@ public class LambdaProcessorTest {
 
 
         when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenThrow(new RuntimeException("test exception"));
-        assertThrows(RuntimeException.class, () -> lambdaProcessor.doExecute(records));
+        Collection<Record<Event>> outputRecords = lambdaProcessor.doExecute(records);
+        assertNotNull(outputRecords);
+        assertEquals(1, outputRecords.size());
+        Record<Event> record = outputRecords.iterator().next();
+        assertEquals("[lambda_failure]", record.getData().getMetadata().getTags().toString());
 
     }
 
