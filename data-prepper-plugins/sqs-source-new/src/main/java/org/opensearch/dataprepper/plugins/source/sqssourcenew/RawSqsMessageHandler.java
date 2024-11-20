@@ -38,33 +38,17 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
                               final BufferAccumulator<Record<Event>> bufferAccumulator,
                               final AcknowledgementSet acknowledgementSet) {
         try {
-            Event event;
-
-            String messageBody = message.body();
-
-            // Default is to try to parse the message body as JSON
-            try {
-                JsonNode jsonNode = objectMapper.readTree(messageBody);
-
-                event = JacksonEvent.builder()
-                        .withEventType("sqs-event")
-                        .withData(jsonNode)
-                        .build();
-
-            } catch (Exception e) {
-                // Treat the message as plain text if json parsing doesn't work
-                LOG.debug("Message body is not valid JSON. Treating as plain text.");
-                event = JacksonEvent.builder()
-                        .withEventType("sqs-event")
-                        .withData(Map.of("message", messageBody))
-                        .build();
-            }
+            final Record<Event> event = new Record<Event>(JacksonEvent.builder()
+                .withEventType("sqs-event")
+                .withData(objectMapper.createObjectNode().set("message", parseMessageBody(message.body())))
+                .build());
+        
 
             if (Objects.nonNull(acknowledgementSet)) {
-                acknowledgementSet.add(event);
+                acknowledgementSet.add(event.getData());
             }
 
-            bufferAccumulator.add(new Record<>(event));
+            bufferAccumulator.add(new Record<>(event.getData()));
 
         } catch (Exception e) {
             LOG.error("Error processing SQS message: {}", e.getMessage(), e);
@@ -75,6 +59,14 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
             bufferAccumulator.flush();
         } catch (final Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private JsonNode parseMessageBody(String messageBody) {
+        try {
+            return objectMapper.readTree(messageBody);
+        } catch (Exception e) {
+            return objectMapper.getNodeFactory().textNode(messageBody);
         }
     }
 }

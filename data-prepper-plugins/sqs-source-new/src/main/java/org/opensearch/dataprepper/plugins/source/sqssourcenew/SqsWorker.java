@@ -103,6 +103,7 @@ public class SqsWorker implements Runnable {
             int messagesProcessed = 0;
             try {
                 messagesProcessed = processSqsMessages();
+
             } catch (final Exception e) {
                 LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
                 // There shouldn't be any exceptions caught here, but added backoff just to control the amount of logging in case of an exception is thrown.
@@ -242,10 +243,10 @@ public class SqsWorker implements Runnable {
             final AcknowledgementSet acknowledgementSet) {
         try {
             sqsEventProcessor.addSqsObject(message, bufferAccumulator, acknowledgementSet);
-            // TODO
+            // TODO: see implementation in s3
             return Optional.of(buildDeleteMessageBatchRequestEntry(message));
         } catch (final Exception e) {
-            LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());
+            LOG.error("Error processing from SQS: {}. Retrying with exponential backoff.", e.getMessage());
             applyBackoff();
             return Optional.empty();
         }
