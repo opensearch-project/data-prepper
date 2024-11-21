@@ -42,6 +42,7 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -126,14 +127,6 @@ public class LambdaProcessorTest {
     @Mock
     private LambdaAsyncClient lambdaAsyncClient;
 
-
-    private static Stream<Arguments> getLambdaResponseConversionSamples() {
-        return Stream.of(
-                arguments("lambda-processor-success-config.yaml", null),
-                arguments("lambda-processor-success-config.yaml", SdkBytes.fromByteArray("{}".getBytes())),
-                arguments("lambda-processor-success-config.yaml", SdkBytes.fromByteArray("[]".getBytes()))
-        );
-    }
 
     @BeforeEach
     public void setUp() {
@@ -466,7 +459,7 @@ public class LambdaProcessorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"lambda-processor-unequal-success-config.yaml"})
+    @ValueSource(strings = {"lambda-processor-aggregate-mode-config.yaml"})
     public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing(String configFileName)
             throws Exception {
         // Arrange
@@ -528,9 +521,24 @@ public class LambdaProcessorTest {
         assertEquals(3, resultRecords.size(), "ResultRecords should contain three records.");
     }
 
+    private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictMode() {
+        return Stream.of(
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, true),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", true),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), true),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), true),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), false),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), true)
+
+        );
+    }
+
     @ParameterizedTest
-    @MethodSource("getLambdaResponseConversionSamples")
-    public void testConvertLambdaResponseToEvent_ExpectException_when_request_response_do_not_match(String configFile, SdkBytes lambdaReponse) {
+    @MethodSource("getLambdaResponseConversionSamplesForStrictMode")
+    public void testConvertLambdaResponseToEvent_for_strict_mode(String configFile,
+                                                                    List<Record<Event>> originalRecords,
+                                                                    SdkBytes lambdaReponse,
+                                                                    boolean expectRuntimeException) throws IOException {
         // Arrange
         // Set responseEventsMatch to false
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
@@ -541,16 +549,18 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(lambdaReponse);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
 
-        int randomCount = (int) (Math.random() * 10)+1;
-        List<Record<Event>> originalRecords = getSampleEventRecords(randomCount);
         Buffer buffer = new InMemoryBuffer(lambdaProcessorConfig.getBatchOptions().getKeyName());
         for (Record<Event> originalRecord : originalRecords) {
             buffer.addRecord(originalRecord);
         }
         // Act
-        assertThrows(RuntimeException.class, () -> localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse),
-                "For Strict mode request and response size from lambda should match");
-
+        if(expectRuntimeException) {
+            assertThrows(RuntimeException.class, () -> localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse),
+                    String.format("For Strict mode response should match with request size"));
+        }else {
+            List<Record<Event>> records = localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse);
+            assertEquals(originalRecords.size(), records.size(), "Response record count should match with request");
+        }
     }
 
 }
