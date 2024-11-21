@@ -136,7 +136,7 @@ public class LambdaProcessorTest {
     }
 
     @BeforeEach
-    public void setUp() throws Exception {
+    public void setUp() {
         MockitoAnnotations.openMocks(this);
 
         when(pluginSetting.getName()).thenReturn("testProcessor");
@@ -541,7 +541,7 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(lambdaReponse);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
 
-        int randomCount = (int) (Math.random() * 10);
+        int randomCount = (int) (Math.random() * 10)+1;
         List<Record<Event>> originalRecords = getSampleEventRecords(randomCount);
         Buffer buffer = new InMemoryBuffer(lambdaProcessorConfig.getBatchOptions().getKeyName());
         for (Record<Event> originalRecord : originalRecords) {

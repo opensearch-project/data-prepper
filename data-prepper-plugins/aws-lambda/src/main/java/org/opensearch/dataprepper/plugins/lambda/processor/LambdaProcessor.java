@@ -61,6 +61,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaFunctionLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
+    public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
     final PluginSetting codecPluginSetting;
@@ -72,6 +73,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRecordsFailedCounter;
     private final Counter numberOfRequestsSuccessCounter;
     private final Counter numberOfRequestsFailedCounter;
+    private final Counter lambdaResponseRecordsCounter;
     private final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
@@ -102,6 +104,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
+        this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
 
@@ -163,6 +166,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                     new OutputCodecContext());
         } catch (Exception e) {
             LOG.error(NOISY, "Error while sending records to Lambda", e);
+            numberOfRecordsFailedCounter.increment(recordsToLambda.size());
+            numberOfRequestsFailedCounter.increment();
             resultRecords.addAll(addFailureTags(recordsToLambda));
         }
 
@@ -212,27 +217,18 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         SdkBytes payload = lambdaResponse.payload();
         // Handle null or empty payload
-        if (payload == null || payload.asByteArray().length == 0) {
-            LOG.warn(NOISY,
-                    "Lambda response payload is null or empty, dropping the original events");
-            return responseStrategy.handleEvents(parsedEvents, originalRecords);
+        if (!("null".equals(payload.asUtf8String()))) {
+            //Convert using response codec
+            InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
+            responseCodec.parse(inputStream, record -> {
+                Event event = record.getData();
+                parsedEvents.add(event);
+            });
         }
-
-        //Convert using response codec
-        InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
-        responseCodec.parse(inputStream, record -> {
-            Event event = record.getData();
-            parsedEvents.add(event);
-        });
-
-        if (parsedEvents.isEmpty()) {
-            throw new RuntimeException(
-                    "Lambda Response could not be parsed, returning original events");
-        }
-
         LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
                         "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                 flushedBuffer.getSize());
+        lambdaResponseRecordsCounter.increment(parsedEvents.size());
         return responseStrategy.handleEvents(parsedEvents, originalRecords);
     }
 
