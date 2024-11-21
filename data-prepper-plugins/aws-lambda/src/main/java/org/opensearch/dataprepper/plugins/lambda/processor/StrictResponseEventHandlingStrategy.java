@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.lambda.processor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
+import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +20,7 @@ public class StrictResponseEventHandlingStrategy implements ResponseEventHandlin
     public List<Record<Event>> handleEvents(List<Event> parsedEvents,
                                             List<Record<Event>> originalRecords) {
         if (parsedEvents.size() != originalRecords.size()) {
-            throw new RuntimeException(
+            throw new StrictResponseModeNotRespectedException(
                     "Response Processing Mode is configured as Strict mode but behavior is aggregate mode. Event count mismatch.");
         }
 

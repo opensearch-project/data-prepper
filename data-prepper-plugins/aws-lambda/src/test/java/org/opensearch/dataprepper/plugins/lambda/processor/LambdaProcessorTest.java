@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
@@ -36,6 +37,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthentication
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -533,12 +535,35 @@ public class LambdaProcessorTest {
         );
     }
 
+
+    private static Stream<Arguments> getLambdaResponseConversionSamplesForAggregateMode() {
+        return Stream.of(
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), null, 2),
+                //Aggregate mode
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "null", null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1)
+
+        );
+    }
+
     @ParameterizedTest
-    @MethodSource("getLambdaResponseConversionSamplesForStrictMode")
-    public void testConvertLambdaResponseToEvent_for_strict_mode(String configFile,
-                                                                    List<Record<Event>> originalRecords,
-                                                                    SdkBytes lambdaReponse,
-                                                                    boolean expectRuntimeException) throws IOException {
+    @MethodSource("getLambdaResponseConversionSamplesForAggregateMode")
+    public void testConvertLambdaResponseToEvent_for_strict_and_aggregate_mode(String configFile,
+                                                                               List<Record<Event>> originalRecords,
+                                                                               SdkBytes lambdaReponse,
+                                                                               Class<Exception> expectedException,
+                                                                               int expectedFinalRecordCount) throws IOException {
         // Arrange
         // Set responseEventsMatch to false
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
@@ -554,13 +579,11 @@ public class LambdaProcessorTest {
             buffer.addRecord(originalRecord);
         }
         // Act
-        if(expectRuntimeException) {
-            assertThrows(RuntimeException.class, () -> localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse),
-                    String.format("For Strict mode response should match with request size"));
-        }else {
+        if (null != expectedException) {
+            assertThrows(expectedException, () -> localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse));
+        } else {
             List<Record<Event>> records = localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse);
-            assertEquals(originalRecords.size(), records.size(), "Response record count should match with request");
+            assertEquals(expectedFinalRecordCount, records.size(), String.format("Expected %s size of records", expectedFinalRecordCount));
         }
     }
-
 }
