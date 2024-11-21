@@ -549,7 +549,7 @@ public class LambdaProcessorTest {
     @MethodSource("getLambdaResponseConversionSamplesForStrictAndAggregateMode")
     public void testConvertLambdaResponseToEvent_for_strict_and_aggregate_mode(String configFile,
                                                                                List<Record<Event>> originalRecords,
-                                                                               SdkBytes lambdaReponse,
+                                                                               SdkBytes lambdaResponse,
                                                                                Class<Exception> expectedException,
                                                                                int expectedFinalRecordCount) throws IOException {
         // Arrange
@@ -559,7 +559,7 @@ public class LambdaProcessorTest {
                 lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
         // Mock LambdaResponse with a valid payload containing three events
-        when(invokeResponse.payload()).thenReturn(lambdaReponse);
+        when(invokeResponse.payload()).thenReturn(lambdaResponse);
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
 
         Buffer buffer = new InMemoryBuffer(lambdaProcessorConfig.getBatchOptions().getKeyName());
@@ -573,5 +573,37 @@ public class LambdaProcessorTest {
             List<Record<Event>> records = localLambdaProcessor.convertLambdaResponseToEvent(buffer, invokeResponse);
             assertEquals(expectedFinalRecordCount, records.size(), String.format("Expected %s size of records", expectedFinalRecordCount));
         }
+    }
+
+    private static Stream<Arguments> getDoExecuteSamplesForStrictAndAggregateMode() {
+        List<Record<Event>> firstSample = getSampleEventRecords(1);
+
+        return Stream.of(
+                arguments("lambda-processor-success-config.yaml",  firstSample, null, firstSample),
+                arguments("lambda-processor-success-config.yaml", firstSample, "null", firstSample),
+                arguments("lambda-processor-success-config.yaml", firstSample, "random string",firstSample),
+                arguments("lambda-processor-success-config.yaml", firstSample, SdkBytes.fromByteArray("{}".getBytes()), firstSample),
+                arguments("lambda-processor-success-config.yaml", firstSample, SdkBytes.fromByteArray("[]".getBytes()), firstSample)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("getDoExecuteSamplesForStrictAndAggregateMode")
+    public void testDoExecute_for_strict_and_aggregate_mode(String configFile,
+                                                            List<Record<Event>> originalRecords,
+                                                            SdkBytes lambdaResponse,
+                                                            Collection<Record<Event>> expectedRecords) {
+        // Arrange
+        // Set responseEventsMatch to false
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
+        LambdaProcessor localLambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting,
+                lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
+        InvokeResponse invokeResponse = mock(InvokeResponse.class);
+        // Mock LambdaResponse with a valid payload containing three events
+        when(invokeResponse.payload()).thenReturn(lambdaResponse);
+        when(invokeResponse.statusCode()).thenReturn(200); // Success status code
+
+        Collection<Record<Event>> records = localLambdaProcessor.doExecute(originalRecords);
+        assertEquals(expectedRecords, records);
     }
 }
