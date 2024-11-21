@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -47,8 +48,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
 public class OTelLogsSource implements Source<Record<Object>> {
@@ -144,6 +147,13 @@ public class OTelLogsSource implements Source<Record<Object>> {
             } else {
                 sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
             }
+
+            if (oTelLogsSourceConfig.getAuthentication() != null) {
+                final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                        authenticationProvider.getHttpAuthenticationService();
+                optionalHttpAuthenticationService.ifPresent(sb::decorator);
+            }
+
             sb.requestTimeoutMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis());
             if(oTelLogsSourceConfig.getMaxRequestLength() != null) {
                 sb.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
