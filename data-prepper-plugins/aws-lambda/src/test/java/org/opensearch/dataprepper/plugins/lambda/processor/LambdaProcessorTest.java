@@ -523,20 +523,8 @@ public class LambdaProcessorTest {
         assertEquals(3, resultRecords.size(), "ResultRecords should contain three records.");
     }
 
-    private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictMode() {
-        return Stream.of(
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, true),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", true),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), true),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), true),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), false),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), true)
 
-        );
-    }
-
-
-    private static Stream<Arguments> getLambdaResponseConversionSamplesForAggregateMode() {
+    private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictAndAggregateMode() {
         return Stream.of(
                 arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
                 arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", StrictResponseModeNotRespectedException.class, 0),
@@ -558,7 +546,7 @@ public class LambdaProcessorTest {
     }
 
     @ParameterizedTest
-    @MethodSource("getLambdaResponseConversionSamplesForAggregateMode")
+    @MethodSource("getLambdaResponseConversionSamplesForStrictAndAggregateMode")
     public void testConvertLambdaResponseToEvent_for_strict_and_aggregate_mode(String configFile,
                                                                                List<Record<Event>> originalRecords,
                                                                                SdkBytes lambdaReponse,

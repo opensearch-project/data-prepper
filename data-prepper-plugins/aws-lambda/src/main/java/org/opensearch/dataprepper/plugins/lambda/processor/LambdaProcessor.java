@@ -216,7 +216,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         List<Event> parsedEvents = new ArrayList<>();
 
         SdkBytes payload = lambdaResponse.payload();
-        // Handle null or empty payload
+        // Considering "null" payload as empty response from lambda and not parsing it.
         if (!("null".equals(payload.asUtf8String()))) {
             //Convert using response codec
             InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
