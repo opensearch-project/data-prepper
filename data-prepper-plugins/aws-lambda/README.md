@@ -68,6 +68,8 @@ def lambda_handler(event, context):
             return output
         if "returnNull" in input:
             return "null"
+        if "returnEmptyMapinArray" in input:
+            return [{}]
     for input in input_arr:
         input["_out_"] = "transformed";
         for k,v in input.items():
