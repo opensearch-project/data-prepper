@@ -8,6 +8,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -91,12 +94,10 @@ public class LambdaProcessorIT {
 
     @BeforeEach
     public void setup() {
-//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-//        functionName = System.getProperty("tests.lambda.processor.functionName");
-//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
-        lambdaRegion = "us-west-2";
-        functionName = "lambdaNoReturn";
-        role = "arn:aws:iam::176893235612:role/osis-lambda-role";
+        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+        functionName = System.getProperty("tests.lambda.processor.functionName");
+        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
@@ -235,18 +236,66 @@ public class LambdaProcessorIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"returnNull", "returnEmptyArray", "returnString"})
-    public void testAggregateMode_WithNullOrEmptyResponse(String input) {
+    @ValueSource(strings = {"returnNull", "returnEmptyArray", "returnString", "returnEmptyMapinArray", "returnNone"})
+    public void testAggregateMode_WithVariousResponses(String input) {
         when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
         when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
-        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false); // Aggregate mode
         when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
         lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
         List<Record<Event>> records = createRecord(input);
 
         Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
 
-        assertThat("Drop events on null or empty response", results.isEmpty());
+        switch (input) {
+            case "returnNull":
+            case "returnEmptyArray":
+            case "returnString":
+            case "returnNone":
+                assertTrue(results.isEmpty(), "Events should be dropped for null, empty array, or string response");
+                break;
+            case "returnEmptyMapinArray":
+                assertEquals(1, results.size(), "Should have one event in result for empty map in array");
+                assertTrue(results.stream().allMatch(record -> record.getData().toMap().isEmpty()),
+                        "Result should be an empty map");
+                break;
+            default:
+                fail("Unexpected input: " + input);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"returnNone", "returnString", "returnObject", "returnEmptyArray", "returnNull", "returnEmptyMapinArray"})
+    public void testStrictMode_WithVariousResponses(String input) {
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        List<Record<Event>> records = createRecord(input);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        switch (input) {
+            case "returnNone":
+            case "returnString":
+            case "returnEmptyArray":
+            case "returnNull":
+                assertEquals(1, results.size(), "Should return original record with failure tag");
+                assertTrue(results.iterator().next().getData().getMetadata().getTags().contains("lambda_failure"),
+                        "Result should contain lambda_failure tag");
+                break;
+            case "returnObject":
+                assertEquals(1, results.size(), "Should return one record");
+                assertEquals(records.get(0).getData().toMap(), results.iterator().next().getData().toMap(),
+                        "Returned record should match input record");
+                break;
+            case "returnEmptyMapinArray":
+                assertEquals(1, results.size(), "Should return one record");
+                assertTrue(results.iterator().next().getData().toMap().isEmpty(),
+                        "Returned record should be an empty map");
+                break;
+        }
     }
 
     private List<Record<Event>> createRecord(String input) {
