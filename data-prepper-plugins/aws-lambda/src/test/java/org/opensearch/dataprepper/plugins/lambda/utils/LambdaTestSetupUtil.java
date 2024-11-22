@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.record.RecordMetadata;
@@ -14,8 +15,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class LambdaTestSetupUtil {
@@ -53,6 +56,13 @@ public class LambdaTestSetupUtil {
 
     public static Event getSampleEvent() {
         return JacksonEvent.fromMessage(UUID.randomUUID().toString());
+    }
+
+    public static Event getSampleEventWithAttributes(String key, String value) {
+        return JacksonEvent.fromEvent(JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString())
+                .withTimeReceived(Instant.now())
+                .withEventMetadataAttributes(Map.of(key, value))
+                .build());
     }
 
     public static List<Record<Event>> getSampleEventRecords(int count) {

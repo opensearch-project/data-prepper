@@ -5,18 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
-import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleEventRecords;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleParsedEvents;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class StrictResponseEventHandlingStrategyTest {
 
@@ -53,11 +53,9 @@ public class StrictResponseEventHandlingStrategyTest {
         List<Record<Event>> originalRecords = getSampleEventRecords(firstRandomCount + 10);
 
         // Act & Assert
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+        RuntimeException exception = assertThrows(StrictResponseModeNotRespectedException.class, () ->
                 strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords)
         );
-
-        assertEquals("Response Processing Mode is configured as Strict mode but behavior is aggregate mode. Event count mismatch.", exception.getMessage());
     }
 
     @Test

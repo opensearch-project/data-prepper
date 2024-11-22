@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,6 +26,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
+import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
@@ -48,9 +50,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
-
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
@@ -61,6 +60,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_LATENCY_METRIC = "lambdaFunctionLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
+    public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
+    private static final String NO_RETURN_RESPONSE = "null";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
     final PluginSetting codecPluginSetting;
@@ -72,6 +73,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRecordsFailedCounter;
     private final Counter numberOfRequestsSuccessCounter;
     private final Counter numberOfRequestsFailedCounter;
+    private final Counter lambdaResponseRecordsCounter;
     private final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
@@ -102,6 +104,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
+        this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
 
@@ -163,6 +166,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                     new OutputCodecContext());
         } catch (Exception e) {
             LOG.error(NOISY, "Error while sending records to Lambda", e);
+            numberOfRecordsFailedCounter.increment(recordsToLambda.size());
+            numberOfRequestsFailedCounter.increment();
             resultRecords.addAll(addFailureTags(recordsToLambda));
         }
 
@@ -211,28 +216,19 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         List<Event> parsedEvents = new ArrayList<>();
 
         SdkBytes payload = lambdaResponse.payload();
-        // Handle null or empty payload
-        if (payload == null || payload.asByteArray().length == 0) {
-            LOG.warn(NOISY,
-                    "Lambda response payload is null or empty, dropping the original events");
-            return responseStrategy.handleEvents(parsedEvents, originalRecords);
+        // Considering "null" payload as empty response from lambda and not parsing it.
+        if (!(NO_RETURN_RESPONSE.equals(payload.asUtf8String()))) {
+            //Convert using response codec
+            InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
+            responseCodec.parse(inputStream, record -> {
+                Event event = record.getData();
+                parsedEvents.add(event);
+            });
         }
-
-        //Convert using response codec
-        InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
-        responseCodec.parse(inputStream, record -> {
-            Event event = record.getData();
-            parsedEvents.add(event);
-        });
-
-        if (parsedEvents.isEmpty()) {
-            throw new RuntimeException(
-                    "Lambda Response could not be parsed, returning original events");
-        }
-
         LOG.debug("Parsed Event Size:{}, FlushedBuffer eventCount:{}, " +
                         "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                 flushedBuffer.getSize());
+        lambdaResponseRecordsCounter.increment(parsedEvents.size());
         return responseStrategy.handleEvents(parsedEvents, originalRecords);
     }
 

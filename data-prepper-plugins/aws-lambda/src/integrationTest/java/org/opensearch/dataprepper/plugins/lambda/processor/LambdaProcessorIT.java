@@ -6,12 +6,24 @@ package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -50,16 +62,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorIT {
@@ -95,6 +97,7 @@ public class LambdaProcessorIT {
         lambdaRegion = System.getProperty("tests.lambda.processor.region");
         functionName = System.getProperty("tests.lambda.processor.functionName");
         role = System.getProperty("tests.lambda.processor.sts_role_arn");
+
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
@@ -231,6 +234,87 @@ public class LambdaProcessorIT {
             assertThat(record.getData().getMetadata().getTags().contains("lambda_failure"), equalTo(true));
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"returnNull", "returnEmptyArray", "returnString", "returnEmptyMapinArray", "returnNone"})
+    public void testAggregateMode_WithVariousResponses(String input) {
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false); // Aggregate mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        List<Record<Event>> records = createRecord(input);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        switch (input) {
+            case "returnNull":
+            case "returnEmptyArray":
+            case "returnString":
+            case "returnNone":
+                assertTrue(results.isEmpty(), "Events should be dropped for null, empty array, or string response");
+                break;
+            case "returnEmptyMapinArray":
+                assertEquals(1, results.size(), "Should have one event in result for empty map in array");
+                assertTrue(results.stream().allMatch(record -> record.getData().toMap().isEmpty()),
+                        "Result should be an empty map");
+                break;
+            default:
+                fail("Unexpected input: " + input);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"returnNone", "returnString", "returnObject", "returnEmptyArray", "returnNull", "returnEmptyMapinArray"})
+    public void testStrictMode_WithVariousResponses(String input) {
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        List<Record<Event>> records = createRecord(input);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        switch (input) {
+            case "returnNone":
+            case "returnString":
+            case "returnEmptyArray":
+            case "returnNull":
+                assertEquals(1, results.size(), "Should return original record with failure tag");
+                assertTrue(results.iterator().next().getData().getMetadata().getTags().contains("lambda_failure"),
+                        "Result should contain lambda_failure tag");
+                break;
+            case "returnObject":
+                assertEquals(1, results.size(), "Should return one record");
+                assertEquals(records.get(0).getData().toMap(), results.iterator().next().getData().toMap(),
+                        "Returned record should match input record");
+                break;
+            case "returnEmptyMapinArray":
+                assertEquals(1, results.size(), "Should return one record");
+                assertTrue(results.iterator().next().getData().toMap().isEmpty(),
+                        "Returned record should be an empty map");
+                break;
+        }
+    }
+
+    private List<Record<Event>> createRecord(String input) {
+        List<Record<Event>> records = new ArrayList<>();
+        Map<String, Object> map = new HashMap<>();
+        map.put(input, 42);
+        EventMetadata metadata = DefaultEventMetadata.builder()
+                .withEventType("event")
+                .build();
+        final Event event = JacksonEvent.builder()
+                .withData(map)
+                .withEventType("event")
+                .withEventMetadata(metadata)
+                .build();
+        records.add(new Record<>(event));
+
+        return records;
+    }
+
 
     private void validateResultsForAggregateMode(Collection<Record<Event>> results) {
         List<Record<Event>> resultRecords = new ArrayList<>(results);
