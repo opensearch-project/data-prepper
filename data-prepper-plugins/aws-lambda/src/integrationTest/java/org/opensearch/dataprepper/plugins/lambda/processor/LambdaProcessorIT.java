@@ -6,12 +6,21 @@ package org.opensearch.dataprepper.plugins.lambda.processor;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -50,16 +59,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class LambdaProcessorIT {
@@ -92,9 +91,12 @@ public class LambdaProcessorIT {
 
     @BeforeEach
     public void setup() {
-        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-        functionName = System.getProperty("tests.lambda.processor.functionName");
-        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+//        functionName = System.getProperty("tests.lambda.processor.functionName");
+//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+        lambdaRegion = "us-west-2";
+        functionName = "lambdaNoReturn";
+        role = "arn:aws:iam::176893235612:role/osis-lambda-role";
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
@@ -231,6 +233,39 @@ public class LambdaProcessorIT {
             assertThat(record.getData().getMetadata().getTags().contains("lambda_failure"), equalTo(true));
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"returnNull", "returnEmptyArray", "returnString"})
+    public void testAggregateMode_WithNullOrEmptyResponse(String input) {
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(false);
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        List<Record<Event>> records = createRecord(input);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        assertThat("Drop events on null or empty response", results.isEmpty());
+    }
+
+    private List<Record<Event>> createRecord(String input) {
+        List<Record<Event>> records = new ArrayList<>();
+        Map<String, Object> map = new HashMap<>();
+        map.put(input, 42);
+        EventMetadata metadata = DefaultEventMetadata.builder()
+                .withEventType("event")
+                .build();
+        final Event event = JacksonEvent.builder()
+                .withData(map)
+                .withEventType("event")
+                .withEventMetadata(metadata)
+                .build();
+        records.add(new Record<>(event));
+
+        return records;
+    }
+
 
     private void validateResultsForAggregateMode(Collection<Record<Event>> results) {
         List<Record<Event>> resultRecords = new ArrayList<>(results);
