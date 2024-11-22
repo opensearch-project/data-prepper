@@ -136,35 +136,15 @@ public class LambdaProcessorTest {
 
         when(pluginSetting.getName()).thenReturn("testProcessor");
         when(pluginSetting.getPipelineName()).thenReturn("testPipeline");
-/*
-        // Mock PluginMetrics counters and timers
-        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS))).thenReturn(
-            numberOfRecordsSuccessCounter);
-        when(pluginMetrics.counter(eq(NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED))).thenReturn(
-            numberOfRecordsFailedCounter);
-        when(pluginMetrics.counter(eq(NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA))).thenReturn(
-            numberOfRecordsSuccessCounter);
-        when(pluginMetrics.counter(eq(NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA))).thenReturn(
-            numberOfRecordsFailedCounter);
-        when(pluginMetrics.timer(anyString())).thenReturn(lambdaLatencyMetric);
-*/
-
 
         // Mock AWS Authentication Options
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("testRole");
 
-        // Mock BatchOptions and ThresholdOptions
-
         // Mock PluginFactory to return the mocked responseCodec
         when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class))).thenReturn(
                 new JsonInputCodec(new JsonInputCodecConfig()));
 
-        // Instantiate the LambdaProcessor manually
-
-
-//        populatePrivateFields();
-        //setPrivateField(lambdaProcessor, "pluginMetrics", pluginMetrics);
         // Mock InvokeResponse
         when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"));
         when(invokeResponse.statusCode()).thenReturn(200); // Success status code
@@ -173,9 +153,6 @@ public class LambdaProcessorTest {
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(
                 invokeResponse);
         when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
-
-        // Mock Response Codec parse method
-//        doNothing().when(responseCodec).parse(any(InputStream.class), any(Consumer.class));
 
     }
 
@@ -410,9 +387,6 @@ public class LambdaProcessorTest {
     @ValueSource(strings = {"lambda-processor-success-config.yaml"})
     public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing(String configFileName)
             throws Exception {
-        // Arrange
-
-
         // Mock LambdaResponse with a valid payload containing two events
         String payloadString = "[{\"key\":\"value1\"}, {\"key\":\"value2\"}]";
         SdkBytes sdkBytes = SdkBytes.fromByteArray(payloadString.getBytes());
@@ -464,10 +438,6 @@ public class LambdaProcessorTest {
     @ValueSource(strings = {"lambda-processor-aggregate-mode-config.yaml"})
     public void testConvertLambdaResponseToEvent_WithUnequalEventCounts_SuccessfulProcessing(String configFileName)
             throws Exception {
-        // Arrange
-        // Set responseEventsMatch to false
-
-
         // Mock LambdaResponse with a valid payload containing three events
         String payloadString = "[{\"key\":\"value1\"}, {\"key\":\"value2\"}, {\"key\":\"value3\"}]";
         SdkBytes sdkBytes = SdkBytes.fromByteArray(payloadString.getBytes());
