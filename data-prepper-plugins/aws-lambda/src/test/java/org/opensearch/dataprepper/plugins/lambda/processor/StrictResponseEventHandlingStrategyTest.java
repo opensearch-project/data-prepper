@@ -56,8 +56,9 @@ public class StrictResponseEventHandlingStrategyTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 strictResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords)
         );
+        String responseString = String.format("Response Processing Mode is configured as Strict mode but behavior is aggregate mode. Event count mismatch. parsedEvents size = %d original records size = %d", firstRandomCount, firstRandomCount+10);
 
-        assertEquals("Response Processing Mode is configured as Strict mode but behavior is aggregate mode. Event count mismatch.", exception.getMessage());
+        assertEquals(responseString, exception.getMessage());
     }
 
     @Test
