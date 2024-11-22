@@ -22,7 +22,7 @@ public class StrictResponseEventHandlingStrategy implements ResponseEventHandlin
         if (parsedEvents.size() != originalRecords.size()) {
             throw new StrictResponseModeNotRespectedException(
                     "Response Processing Mode is configured as Strict mode but behavior is aggregate mode. " +
-                            "Event count mismatch. parsedEvents sie = "+
+                            "Event count mismatch. parsedEvents size = "+
                             parsedEvents.size()+" original records size = "+originalRecords.size());
         }
 
