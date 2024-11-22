@@ -37,7 +37,7 @@ public class CsvProcessorConfig {
     @JsonPropertyDescription("The character separating each column. Default value is <code>,</code>.")
     private String delimiter = DEFAULT_DELIMITER;
 
-    @JsonProperty("delete_header")
+    @JsonProperty(value = "delete_header", defaultValue = DEFAULT_DELETE_HEADERS)
     @JsonPropertyDescription("If specified, the event header (<code>column_names_source_key</code>) is deleted after the event " +
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
@@ -68,6 +68,10 @@ public class CsvProcessorConfig {
     })
     private List<String> columnNames;
 
+    @JsonPropertyDescription("If true, the configured source field will be deleted after the CSV data is parsed into separate fields.")
+    @JsonProperty
+    private boolean deleteSource = false;
+
     @JsonProperty("csv_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>csv</code> processor will only run on events when the expression evaluates to true. ")
@@ -75,10 +79,6 @@ public class CsvProcessorConfig {
             @Example(value = "/some_key == null", description = "Only runs the csv processor if the key some_key is null or does not exist.")
     })
     private String csvWhen;
-
-    @JsonPropertyDescription("If true, the configured source field will be deleted after the CSV data is parsed into separate fields.")
-    @JsonProperty
-    private boolean deleteSource = false;
 
     /**
      * The field of the Event that contains the CSV data to be processed.

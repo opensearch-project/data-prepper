@@ -66,7 +66,7 @@ public class AddEntryProcessorConfig {
     public static class Entry {
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
-                "use the value of field <code>key1</code> as the key.")
+                "use the value of field <code>key1</code> as the key. Either one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=METADATA_KEY_KEY, allowedValues = {"null"})
         })

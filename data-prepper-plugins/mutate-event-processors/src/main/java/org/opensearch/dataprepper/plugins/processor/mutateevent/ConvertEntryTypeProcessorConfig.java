@@ -38,14 +38,14 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     static final String KEYS_KEY = "keys";
 
     @JsonProperty(KEY_KEY)
-    @JsonPropertyDescription("Key whose value needs to be converted to a different type.")
+    @JsonPropertyDescription("Key whose value needs to be converted to a different type. Cannot be declared at the same time as <code>keys</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = KEYS_KEY, allowedValues = {"null"})
     })
     private String key;
 
     @JsonProperty(KEYS_KEY)
-    @JsonPropertyDescription("List of keys whose values needs to be converted to a different type.")
+    @JsonPropertyDescription("List of keys whose values needs to be converted to a different type. Cannot be declared at the same time as <code>key</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = KEY_KEY, allowedValues = {"null"})
     })

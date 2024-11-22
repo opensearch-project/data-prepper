@@ -47,14 +47,6 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("If true, the configured <code>source</code> field will be deleted after the XML data is parsed into separate fields.")
     private boolean deleteSource = false;
 
-    @JsonProperty("parse_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
-            "If specified, the <code>parse_xml</code> processor will only run on events when the expression evaluates to true. ")
-    @ExampleValues({
-        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
-    })
-    private String parseWhen;
-
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of strings specifying the tags to be set in the event when the processor fails or an unknown exception occurs during parsing.")
     private List<String> tagsOnFailure;
@@ -66,6 +58,14 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
             "Default is 'skip'.")
     @NotNull
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
+
+    @JsonProperty("parse_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>parse_xml</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
+    })
+    private String parseWhen;
 
     @Override
     public String getSource() {

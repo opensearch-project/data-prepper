@@ -43,6 +43,9 @@ public class RenameKeyProcessorConfig {
         @JsonProperty(defaultValue = FROM_KEY_REGEX)
         @JsonPropertyDescription("The regex pattern of the key of the entry to be renamed. " +
                 "This field cannot be defined along with <code>from_key</code>.")
+        @ExampleValues(
+                @Example(value = "regex", description = "Generic regex string.")
+        )
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name = FROM_KEY, allowedValues = {"null"})
         })
