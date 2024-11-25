@@ -1,4 +1,4 @@
-# SQS Source New
+# SQS Source 
 
 This source allows Data Prepper to use SQS as a source. It reads messages from specified SQS queues and processes them into events.
 
