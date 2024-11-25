@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.sqssourcenew;
+package org.opensearch.dataprepper.plugins.source.sqs;
 
 /*
  * Copyright OpenSearch Contributors

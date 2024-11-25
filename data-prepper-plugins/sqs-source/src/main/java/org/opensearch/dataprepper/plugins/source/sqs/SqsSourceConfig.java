@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.sqssourcenew;
+package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;

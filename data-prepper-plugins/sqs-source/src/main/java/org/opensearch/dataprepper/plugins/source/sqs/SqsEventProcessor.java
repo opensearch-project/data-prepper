@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.sqssourcenew;
+package org.opensearch.dataprepper.plugins.source.sqs;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;

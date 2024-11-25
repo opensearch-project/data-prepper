@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.sqssourcenew;
+package org.opensearch.dataprepper.plugins.source.sqs;
 
 /**
  * This exception is thrown when SQS retries are exhausted

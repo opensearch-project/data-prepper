@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.source.sqssourcenew;
+package org.opensearch.dataprepper.plugins.source.sqs;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import java.util.Objects;
 
-@DataPrepperPlugin(name = "sqs-source-new", pluginType = Source.class,pluginConfigurationType = SqsSourceConfig.class)
+@DataPrepperPlugin(name = "sqs", pluginType = Source.class,pluginConfigurationType = SqsSourceConfig.class)
 public class SqsSource implements Source<Record<Event>> {
 
     private final PluginMetrics pluginMetrics;
