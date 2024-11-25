@@ -21,9 +21,10 @@ public class SqsEventProcessor {
     }
 
     void addSqsObject(final Message message,
+                      final String url,
                       final BufferAccumulator<Record<Event>> bufferAccumulator,
                       final AcknowledgementSet acknowledgementSet) throws IOException {
-        sqsMessageHandler.handleMessage(message, bufferAccumulator, acknowledgementSet);
+        sqsMessageHandler.handleMessage(message, url, bufferAccumulator, acknowledgementSet);
     }
 
 }

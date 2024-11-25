@@ -242,7 +242,7 @@ public class SqsWorker implements Runnable {
             final Message message,
             final AcknowledgementSet acknowledgementSet) {
         try {
-            sqsEventProcessor.addSqsObject(message, bufferAccumulator, acknowledgementSet);
+            sqsEventProcessor.addSqsObject(message, queueConfig.getUrl(), bufferAccumulator, acknowledgementSet);
             // TODO: see implementation in s3
             return Optional.of(buildDeleteMessageBatchRequestEntry(message));
         } catch (final Exception e) {

@@ -13,6 +13,7 @@ import java.io.IOException;
 
 public interface SqsMessageHandler {
     void handleMessage(final Message message,
-                        final BufferAccumulator<Record<Event>> bufferAccumulator,
-                        final AcknowledgementSet acknowledgementSet) throws IOException ;
+                       final String url,
+                       final BufferAccumulator<Record<Event>> bufferAccumulator,
+                       final AcknowledgementSet acknowledgementSet) throws IOException ;
 }

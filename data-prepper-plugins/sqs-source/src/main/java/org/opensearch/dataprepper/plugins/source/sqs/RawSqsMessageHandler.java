@@ -15,7 +15,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.Message;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -30,17 +32,27 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
      * Processes the SQS message, attempting to parse it as JSON, and adds it to the buffer.
      *
      * @param message            - the SQS message for processing
+     * @param url                - the SQS queue url
      * @param bufferAccumulator  - the buffer accumulator
      * @param acknowledgementSet - the acknowledgement set for end-to-end acknowledgements
      */
     @Override
     public void handleMessage(final Message message,
+                              final String url, 
                               final BufferAccumulator<Record<Event>> bufferAccumulator,
                               final AcknowledgementSet acknowledgementSet) {
         try {
+            ObjectNode dataNode = objectMapper.createObjectNode();
+            dataNode.set("message", parseMessageBody(message.body()));
+            dataNode.put("queueUrl", url);
+
+            Instant now = Instant.now();
+            int unixTimestamp = (int) now.getEpochSecond(); 
+            dataNode.put("sentTimestamp", unixTimestamp);
+
             final Record<Event> event = new Record<Event>(JacksonEvent.builder()
                 .withEventType("sqs-event")
-                .withData(objectMapper.createObjectNode().set("message", parseMessageBody(message.body())))
+                .withData(dataNode)
                 .build());
         
 
