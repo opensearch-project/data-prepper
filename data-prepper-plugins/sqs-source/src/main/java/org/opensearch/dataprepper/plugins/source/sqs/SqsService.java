@@ -42,7 +42,7 @@
      private final AcknowledgementSetManager acknowledgementSetManager;
      private final List<ExecutorService> allSqsUrlExecutorServices;
      private final List<SqsWorker> sqsWorkers;
-     private final BufferAccumulator<Record<Event>> bufferAccumulator;
+     private final Buffer<Record<Event>> buffer;
 
      public SqsService(final Buffer<Record<Event>> buffer,
                        final AcknowledgementSetManager acknowledgementSetManager,
@@ -58,8 +58,7 @@
         this.allSqsUrlExecutorServices = new ArrayList<>();
         this.sqsWorkers = new ArrayList<>();
         this.sqsClient = createSqsClient(credentialsProvider); 
-        this.bufferAccumulator = BufferAccumulator.create(buffer, sqsSourceConfig.getNumberOfRecordsToAccumulate(), sqsSourceConfig.getBufferTimeout());
-
+        this.buffer = buffer;
      }  
  
 
@@ -77,7 +76,7 @@
             allSqsUrlExecutorServices.add(executorService);
             List<SqsWorker> workers = IntStream.range(0, numWorkers)
                     .mapToObj(i -> new SqsWorker(
-                            bufferAccumulator,
+                            buffer,
                             acknowledgementSetManager,
                             sqsClient,
                             sqsEventProcessor,

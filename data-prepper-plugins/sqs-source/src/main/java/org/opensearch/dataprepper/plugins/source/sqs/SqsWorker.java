@@ -27,6 +27,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -67,7 +68,7 @@ public class SqsWorker implements Runnable {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private Map<Message, Integer> messageVisibilityTimesMap;
 
-    public SqsWorker(final BufferAccumulator<Record<Event>> bufferAccumulator,
+    public SqsWorker(final Buffer<Record<Event>> buffer,
                      final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
                      final SqsEventProcessor sqsEventProcessor,
@@ -76,13 +77,14 @@ public class SqsWorker implements Runnable {
                      final PluginMetrics pluginMetrics,
                      final Backoff backoff) {
 
-        this.bufferAccumulator = bufferAccumulator;
         this.sqsClient = sqsClient;
         this.sqsEventProcessor = sqsEventProcessor;
         this.queueConfig = queueConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
+        this.bufferAccumulator = BufferAccumulator.create(buffer, sqsSourceConfig.getNumberOfRecordsToAccumulate(), sqsSourceConfig.getBufferTimeout());
+
         messageVisibilityTimesMap = new HashMap<>();
 
         failedAttemptCount = 0;
