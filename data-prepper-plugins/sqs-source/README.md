@@ -7,7 +7,7 @@ This source allows Data Prepper to use SQS as a source. It reads messages from s
 ```yaml
 sqs-pipeline:
   source:
-    sqs-source-new:
+    sqs:
       queues:
         - url: <SQS_QUEUE_URL_1>
           batch_size: 10
