@@ -37,7 +37,7 @@ public class CsvProcessorConfig {
     @JsonPropertyDescription("The character separating each column. Default value is <code>,</code>.")
     private String delimiter = DEFAULT_DELIMITER;
 
-    @JsonProperty(value = "delete_header", defaultValue = DEFAULT_DELETE_HEADERS)
+    @JsonProperty(value = "delete_header", defaultValue = "true")
     @JsonPropertyDescription("If specified, the event header (<code>column_names_source_key</code>) is deleted after the event " +
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
