@@ -7,15 +7,14 @@ import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.neptune.model.StreamLoadStatus;
 import org.opensearch.dataprepper.plugins.source.neptune.s3partition.S3FolderPartitionCoordinator;
+import org.opensearch.dataprepper.plugins.source.neptune.stream.model.StreamCheckpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
-import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamWorker.STREAM_PREFIX;
 
 /**
  * A helper class to handle the data query partition status and the progress state
@@ -24,6 +23,7 @@ import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamWor
 public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator {
     private static final Logger LOG = LoggerFactory.getLogger(DataStreamPartitionCheckpoint.class);
 
+    public static final String STREAM_PREFIX = "STREAM-";
     static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
@@ -37,13 +37,10 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
         this.streamPartition = streamPartition;
     }
 
-    private void setProgressState(final Long commitNum, final Long opNum, final Long recordNumber) {
+    private void setProgressState(final StreamCheckpoint progress) {
         //Always has a state.
         Optional<StreamProgressState> progressState = streamPartition.getProgressState();
-        progressState.get().setCommitNum(commitNum);
-        progressState.get().setOpNum(opNum);
-        progressState.get().setLoadedRecords(recordNumber);
-        progressState.get().setLastUpdateTimestamp(Instant.now().toEpochMilli());
+        progressState.get().updateFromCheckpoint(progress);
     }
 
     /**
@@ -51,15 +48,13 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
      * Note that this should be called on a regular basis even there are no changes to resume token
      * As the checkpoint will also extend the timeout for the lease
      *
-     * @param commitNum   The commit number of the starting record to read from Neptune change-log stream
-     * @param opNum       The operation sequence number within the specified commit to start reading from in Neptune change-log stream data
-     * @param recordCount The last processed record count
      */
-    public void checkpoint(final long commitNum, final long opNum, final long recordCount) {
-        LOG.debug("Checkpoint stream partition with record number {}", recordCount);
-        setProgressState(commitNum, opNum, recordCount);
+    public void checkpoint(final StreamCheckpoint checkpointProgress) {
+        LOG.debug("Checkpoint stream partition with record number {}", checkpointProgress.getRecordCount());
+        setProgressState(checkpointProgress);
         enhancedSourceCoordinator.saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
     }
+
 
     public void extendLease() {
         LOG.debug("Extending lease of stream partition");
@@ -73,7 +68,7 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
      */
     public void resetCheckpoint() {
         LOG.debug("Resetting checkpoint stream partition");
-        setProgressState(0L, 0L, 0L);
+        setProgressState(StreamCheckpoint.emptyProgress());
         enhancedSourceCoordinator.giveUpPartition(streamPartition);
         System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
     }

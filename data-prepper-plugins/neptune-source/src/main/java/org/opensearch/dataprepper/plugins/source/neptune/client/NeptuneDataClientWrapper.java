@@ -1,6 +1,12 @@
 /*
+ *
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 package org.opensearch.dataprepper.plugins.source.neptune.client;
 
@@ -43,7 +49,7 @@ public class NeptuneDataClientWrapper {
         }
     }
 
-    private NeptuneDataClientWrapper(final NeptuneSourceConfig sourceConfig, final long batchSize) {
+    protected NeptuneDataClientWrapper(final NeptuneSourceConfig sourceConfig, final long batchSize) {
         this.client = NeptuneDataClientFactory.provideNeptuneDataClient(sourceConfig);
         this.streamType = StreamType.fromString(sourceConfig.getStreamType());
         this.batchSize = batchSize;

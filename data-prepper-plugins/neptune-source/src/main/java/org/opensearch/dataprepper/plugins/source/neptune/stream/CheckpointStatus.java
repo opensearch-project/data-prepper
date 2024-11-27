@@ -2,13 +2,12 @@ package org.opensearch.dataprepper.plugins.source.neptune.stream;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.opensearch.dataprepper.plugins.source.neptune.stream.model.StreamCheckpoint;
 
 @Getter
 @Setter
 public class CheckpointStatus {
-    private final Long commitNum;
-    private final Long opNum;
-    private final Long recordCount;
+    private final StreamCheckpoint checkpoint;
     private AcknowledgmentStatus acknowledgeStatus;
     private final long createTimestamp;
     private Long acknowledgedTimestamp;
@@ -19,10 +18,8 @@ public class CheckpointStatus {
         NO_ACK
     }
 
-    public CheckpointStatus(final Long commitNum, final Long opNum, final Long recordCount, final long createTimestamp) {
-        this.commitNum = commitNum;
-        this.opNum = opNum;
-        this.recordCount = recordCount;
+    public CheckpointStatus(final StreamCheckpoint checkpoint, final long createTimestamp) {
+        this.checkpoint = checkpoint;
         this.acknowledgeStatus = AcknowledgmentStatus.NO_ACK;
         this.createTimestamp = createTimestamp;
     }
