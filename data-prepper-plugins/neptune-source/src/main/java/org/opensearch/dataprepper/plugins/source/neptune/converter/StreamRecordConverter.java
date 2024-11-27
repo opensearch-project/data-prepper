@@ -35,29 +35,22 @@ public class StreamRecordConverter {
 
     /**
      * Convert the source data into a JacksonEvent.
-     * FIXME: this is mapping stream record to Event, what we need is to group couple of records and convert together
      *
      * @param neptuneRecord record that will be converted to Event
      * @return Jackson document event
      */
     @SneakyThrows
     public Event convert(final NeptuneStreamRecord neptuneRecord) {
-
         final Event event = JacksonDocument.builder()
-                .withData(neptuneRecord.toNeptuneOpensearchDocument())
+                .withData(NeptuneS3Record.fromNeptuneStreamRecord(neptuneRecord))
                 .build();
         final EventMetadata eventMetadata = event.getMetadata();
 
-        // TODD: Handle PG / SPARQL record id correctly, we can use statement subject URI here as id (or null?)
         eventMetadata.setAttribute(MetadataKeyAttributes.ID_METADATA_ATTRIBUTE, neptuneRecord.getId());
-
         eventMetadata.setAttribute(MetadataKeyAttributes.NEPTUNE_COMMIT_TIMESTAMP_METADATA_ATTRIBUTE, neptuneRecord.getCommitTimestampInMillis());
-        // TODO: to be discussed, use record commitTimestamp or full record query timestamp as document version
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP, neptuneRecord.getCommitTimestampInMillis());
-
         eventMetadata.setAttribute(MetadataKeyAttributes.NEPTUNE_STREAM_OP_NAME_METADATA_ATTRIBUTE, neptuneRecord.getOp());
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE, mapStreamEventNameToBulkAction(neptuneRecord.getOp()));
-
         eventMetadata.setAttribute(MetadataKeyAttributes.INGESTION_EVENT_TYPE_ATTRIBUTE, STREAM_INGESTION_TYPE);
         eventMetadata.setAttribute(MetadataKeyAttributes.EVENT_S3_PARTITION_KEY, this.s3PathPrefix + S3_PATH_DELIMITER + hashKeyToPartition(neptuneRecord.getId()));
 
@@ -66,10 +59,10 @@ public class StreamRecordConverter {
 
     private String mapStreamEventNameToBulkAction(final String op) {
         switch (op) {
+            // Neptune's data model always uses upsert with custom script to update the document
+            case STREAM_OP_REMOVE:
             case STREAM_OP_ADD:
                 return OpenSearchBulkActions.UPSERT.toString();
-            case STREAM_OP_REMOVE:
-                return OpenSearchBulkActions.DELETE.toString();
             default:
                 throw new RuntimeException("Unknown stream operation: " + op);
         }

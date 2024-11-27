@@ -37,13 +37,16 @@ public class NeptuneSourceConfig {
     @JsonProperty("s3_region")
     private String s3Region;
 
+    @JsonProperty("enable_non_string_indexing")
+    private boolean enableNonStringIndexing = false;
+
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
     @JsonProperty("partition_acknowledgment_timeout")
     @JsonDeserialize(using = DurationDeserializer.class)
     private Duration partitionAcknowledgmentTimeout = DEFAULT_ACKNOWLEDGEMENT_SET_TIMEOUT;
 
-    @JsonProperty("aws_config")
+    @JsonProperty("aws")
     @NotNull
     @Valid
     private AwsConfig awsConfig;

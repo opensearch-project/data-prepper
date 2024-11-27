@@ -9,7 +9,7 @@ import java.util.Objects;
 
 @Builder
 @Getter
-public class OpenSearchDocumentPredicate {
+public class NeptuneS3RecordPredicate {
 
     @JsonProperty("value")
     private String value;
@@ -24,7 +24,7 @@ public class OpenSearchDocumentPredicate {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OpenSearchDocumentPredicate that = (OpenSearchDocumentPredicate) o;
+        NeptuneS3RecordPredicate that = (NeptuneS3RecordPredicate) o;
         return Objects.equals(value, that.value) && Objects.equals(graph, that.graph) &&
                 Objects.equals(language, that.language);
     }
@@ -34,9 +34,9 @@ public class OpenSearchDocumentPredicate {
         return Objects.hash(value, graph, language);
     }
 
-    public static OpenSearchDocumentPredicate fromPropertGraphData(final PropertygraphData propertygraphData) {
+    public static NeptuneS3RecordPredicate fromPropertGraphData(final PropertygraphData propertygraphData) {
         final String value = propertygraphData.value().asMap().get("value").asString();
-        return OpenSearchDocumentPredicate
+        return NeptuneS3RecordPredicate
                 .builder()
                 .value(value)
                 .build();

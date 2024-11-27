@@ -4,8 +4,10 @@ import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.plugins.source.neptune.stream.model.StreamCheckpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -14,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 
@@ -29,7 +33,7 @@ public class StreamAcknowledgementManager {
     private final int acknowledgementMonitorWaitTimeInMs;
     private final int checkPointIntervalInMs;
     private final ExecutorService executorService;
-
+    private Future<?> monitoringTask;
     private boolean enableAcknowledgement = false;
 
     public StreamAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
@@ -47,7 +51,7 @@ public class StreamAcknowledgementManager {
 
     void init(final Consumer<Void> stopWorkerConsumer) {
         enableAcknowledgement = true;
-        executorService.submit(() -> monitorAcknowledgment(executorService, stopWorkerConsumer));
+        monitoringTask = executorService.submit(() -> monitorAcknowledgment(executorService, stopWorkerConsumer));
     }
 
     private void monitorAcknowledgment(final ExecutorService executorService, final Consumer<Void> stopWorkerConsumer) {
@@ -62,26 +66,26 @@ public class StreamAcknowledgementManager {
                             long ackCount = 0;
                             do {
                                 lastCheckpointStatus = checkpoints.poll();
-                                ackStatus.remove(String.format("%d-%d", checkpointStatus.getCommitNum(), checkpointStatus.getOpNum()));
+                                ackStatus.remove(checkpointStatus.getCheckpoint().getPosition().asAckString());
                                 checkpointStatus = checkpoints.peek();
                                 ackCount++;
                                 // at high TPS each ack contains 100 records. This should checkpoint every 100*50 = 5000 records.
                                 if (ackCount % CHECKPOINT_RECORD_INTERVAL == 0) {
-                                    checkpoint(lastCheckpointStatus.getCommitNum(), lastCheckpointStatus.getOpNum(), lastCheckpointStatus.getRecordCount());
+                                    checkpoint(lastCheckpointStatus.getCheckpoint());
                                 }
                             } while (checkpointStatus != null && checkpointStatus.isPositiveAcknowledgement());
-                            checkpoint(lastCheckpointStatus.getCommitNum(), lastCheckpointStatus.getOpNum(), lastCheckpointStatus.getRecordCount());
+                            checkpoint(lastCheckpointStatus.getCheckpoint());
                             lastCheckpointTime = System.currentTimeMillis();
                         }
                     } else {
-                        LOG.debug("Checkpoint not complete for commitNum {} and opNum {}", checkpointStatus.getCommitNum(), checkpointStatus.getOpNum());
+                        LOG.debug("Checkpoint not complete for: {}", checkpointStatus.getCheckpoint());
                         final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
                         if (checkpointStatus.isNegativeAcknowledgement()) {
                             // Give up partition and should interrupt parent thread to stop processing stream
                             if (lastCheckpointStatus != null && lastCheckpointStatus.isPositiveAcknowledgement()) {
-                                partitionCheckpoint.checkpoint(lastCheckpointStatus.getCommitNum(), lastCheckpointStatus.getOpNum(), lastCheckpointStatus.getRecordCount());
+                                partitionCheckpoint.checkpoint(lastCheckpointStatus.getCheckpoint());
                             }
-                            LOG.warn("Acknowledgement not received for the checkpoint - commitNum {} and opNum {} past wait time. Giving up partition.", checkpointStatus.getCommitNum(), checkpointStatus.getOpNum());
+                            LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getCheckpoint());
                             partitionCheckpoint.giveUpPartition();
                             break;
                         }
@@ -108,29 +112,29 @@ public class StreamAcknowledgementManager {
         executorService.shutdown();
     }
 
-    private void checkpoint(final long commitNum, final long opNum, final long recordCount) {
-        LOG.debug("Perform regular checkpointing for commitNum {} and opNum {} at record count {}", commitNum, opNum, recordCount);
-        partitionCheckpoint.checkpoint(commitNum, opNum, recordCount);
+    private void checkpoint(final StreamCheckpoint progress) {
+        LOG.debug("Perform regular checkpointing for: {}", progress);
+        partitionCheckpoint.checkpoint(progress);
     }
 
-    Optional<AcknowledgementSet> createAcknowledgementSet(final long commitNum, final long opNum, final long recordNumber) {
+    Optional<AcknowledgementSet> createAcknowledgementSet(final StreamCheckpoint checkpoint) {
         if (!enableAcknowledgement) {
             return Optional.empty();
         }
 
-        final CheckpointStatus checkpointStatus = new CheckpointStatus(commitNum, opNum, recordNumber, Instant.now().toEpochMilli());
+        final CheckpointStatus checkpointStatus = new CheckpointStatus(checkpoint, Instant.now().toEpochMilli());
         checkpoints.add(checkpointStatus);
-        ackStatus.put(String.format("%d-%d", commitNum, opNum), checkpointStatus);
-        LOG.debug("Creating acknowledgment for commitNum {} and opNum {}", commitNum, opNum);
+        ackStatus.put(checkpointStatus.getCheckpoint().getPosition().asAckString(), checkpointStatus);
+        LOG.debug("Creating acknowledgment for: {}", checkpoint);
         return Optional.of(acknowledgementSetManager.create((result) -> {
-            final CheckpointStatus ackCheckpointStatus = ackStatus.get(String.format("%d-%d", commitNum, opNum));
+            final CheckpointStatus ackCheckpointStatus = ackStatus.get(checkpoint.getPosition().asAckString());
             ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
             if (result) {
                 ackCheckpointStatus.setAcknowledgeStatus(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
-                LOG.debug("Received acknowledgment of completion from sink for checkpoint - commitNum {} and opNum {}", commitNum, opNum);
+                LOG.debug("Received acknowledgment of completion from sink for checkpoint: {}", ackCheckpointStatus.getCheckpoint());
             } else {
                 ackCheckpointStatus.setAcknowledgeStatus(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
-                LOG.warn("Negative acknowledgment received for checkpoint, resetting checkpoint- commitNum {} and opNum {}", commitNum, opNum);
+                LOG.warn("Negative acknowledgment received for checkpoint, resetting checkpoint {}", ackCheckpointStatus.getCheckpoint());
                 // default CheckpointStatus acknowledged value is false. The monitorCheckpoints method will time out
                 // and reprocess stream from last successful checkpoint in the order.
             }
@@ -138,7 +142,14 @@ public class StreamAcknowledgementManager {
     }
 
     void shutdown() {
-        executorService.shutdown();
+        monitoringTask.cancel(true);
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                this.executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            this.executorService.shutdownNow();
+        }
     }
 
     @VisibleForTesting
