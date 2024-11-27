@@ -33,6 +33,9 @@ public class DecompressProcessorConfig {
     @JsonPropertyDescription("The type of decompression to use for the keys in the event. Only <code>gzip</code> is supported.")
     @JsonProperty("type")
     @NotNull
+    @ExampleValues({
+            @Example(value = "gzip", description = "GZIP decompression.")
+    })
     private DecompressionType decompressionType;
 
     @JsonPropertyDescription("A list of strings with which to tag events when the processor fails to decompress the keys inside an event. Defaults to <code>_decompression_failure</code>.")

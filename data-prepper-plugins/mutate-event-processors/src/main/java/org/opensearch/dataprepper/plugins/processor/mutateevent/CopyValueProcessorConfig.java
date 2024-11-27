@@ -86,14 +86,14 @@ public class CopyValueProcessorConfig {
     private List<Entry> entries;
 
     @JsonProperty(FROM_LIST_KEY)
-    @JsonPropertyDescription("The key of the list of objects to be copied.")
+    @JsonPropertyDescription("The key of the list of objects to be copied. <code>to_list</code> must also be defined.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = TO_LIST_KEY)
     })
     private String fromList;
 
     @JsonProperty(TO_LIST_KEY)
-    @JsonPropertyDescription("The key of the new list to be added.")
+    @JsonPropertyDescription("The key of the new list to be added. <code>from_list</code> must also be defined.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FROM_LIST_KEY)
     })
