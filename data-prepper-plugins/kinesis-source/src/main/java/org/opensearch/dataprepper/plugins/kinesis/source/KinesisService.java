@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.kinesis.source;
 import com.amazonaws.SdkClientException;
 import lombok.Getter;
 import lombok.Setter;
+import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -42,6 +43,7 @@ import software.amazon.kinesis.exceptions.ThrottlingException;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -55,6 +57,9 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 public class KinesisService {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisService.class);
     private static final int GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS = 20;
+    private static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
+    private static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
+    private static final double JITTER_RATE = 0.20;
 
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
@@ -71,6 +76,7 @@ public class KinesisService {
     private final CloudWatchAsyncClient cloudWatchClient;
     private final WorkerIdentifierGenerator workerIdentifierGenerator;
     private final InputCodec codec;
+    private final Backoff backoff;
 
     @Setter
     private Scheduler scheduler;
@@ -110,6 +116,8 @@ public class KinesisService {
         final PluginModel codecConfiguration = kinesisSourceConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         this.codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+        this.backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                .withMaxAttempts(Integer.MAX_VALUE);
     }
 
     public void start(final Buffer<Record<Event>> buffer) {
@@ -171,7 +179,7 @@ public class KinesisService {
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisClient, kinesisSourceConfig, applicationName),
+                        new KinesisMultiStreamTracker(kinesisClient, kinesisSourceConfig, applicationName, backoff),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory
                 )
