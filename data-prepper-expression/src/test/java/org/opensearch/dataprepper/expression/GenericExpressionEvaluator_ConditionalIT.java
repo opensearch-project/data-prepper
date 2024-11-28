@@ -35,7 +35,6 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class GenericExpressionEvaluator_ConditionalIT {
@@ -119,7 +118,7 @@ class GenericExpressionEvaluator_ConditionalIT {
     void testGenericExpressionEvaluatorThrows(final String expression, final Event event) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        assertThrows(RuntimeException.class, () -> evaluator.evaluateConditional(expression, event));
+        assertThat(evaluator.evaluateConditional(expression, event), equalTo(false));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
@@ -151,6 +150,7 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/status_code == 200", event("{\"status_code\": 200}"), true),
                 arguments("/status_code == 200", longEvent, true),
                 arguments("/status_code != 300", event("{\"status_code\": 200}"), true),
+                arguments("/status_code >= 300", event("{\"status_code_not_present\": 200}"), false),
                 arguments("/status_code == 200", event("{}"), false),
                 arguments("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 arguments("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),

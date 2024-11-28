@@ -52,6 +52,13 @@ public class ExpressionEvaluatorTest {
     }
 
     @Test
+    public void testEvaluateReturningException() {
+        expressionEvaluator = new TestExpressionEvaluator();
+        assertThat(expressionEvaluator.evaluateConditional("/status > 300", event("{\"nostatus\":true}")), equalTo(false));
+        
+    }
+
+    @Test
     public void testDefaultEvaluateConditionalThrows() {
         expressionEvaluator = new TestExpressionEvaluator();
         assertThrows(ClassCastException.class, () -> expressionEvaluator.evaluateConditional("/status", event("{\"status\":200}")));

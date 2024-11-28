@@ -41,6 +41,7 @@ class AddBinaryOperator implements Operator<Object> {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];
+        checkArgument(leftValue != null && rightValue != null, displayName + " requires operands length needs to be non-null.");
         final Class<?> leftValueClass = leftValue.getClass();
         final Class<?> rightValueClass = rightValue.getClass();
         if (leftValue instanceof String && rightValue instanceof String) {
