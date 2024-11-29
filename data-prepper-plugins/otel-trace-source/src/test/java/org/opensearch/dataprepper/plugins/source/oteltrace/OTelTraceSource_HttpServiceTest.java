@@ -136,7 +136,6 @@ import io.opentelemetry.proto.trace.v1.Span;
 
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSource_HttpServiceTest {
-    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
