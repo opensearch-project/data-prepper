@@ -11,7 +11,6 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
-import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.ClosedSessionException;
@@ -31,13 +30,10 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
-import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -47,13 +43,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -88,7 +81,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -109,10 +101,8 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -120,18 +110,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -139,7 +125,6 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSourceTest {
-    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
@@ -193,7 +178,6 @@ class OTelTraceSourceTest {
 
     @Mock
     private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
-
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
@@ -249,8 +233,6 @@ class OTelTraceSourceTest {
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
-
-
 
     @Test
     void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
@@ -1079,112 +1061,6 @@ class OTelTraceSourceTest {
     }
 
     @Test
-    void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
-        assertThat(exportResponse, notNullValue());
-
-        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
-
-        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
-        assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites, hasSize(1));
-    }
-
-    @Test
-    void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
-        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
-        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
-        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
-
-        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
-                .thenReturn(grpcAuthenticationProvider);
-        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
-        when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
-                Map.of(
-                        "username", USERNAME,
-                        "password", PASSWORD
-                )));
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final String encodeToString = Base64.getEncoder()
-                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
-
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .addHeader("Authorization", "Basic " + encodeToString)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
-        assertThat(exportResponse, notNullValue());
-
-        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
-
-        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
-        assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites, hasSize(1));
-    }
-
-    @Test
-    void gRPC_request_with_custom_path_throws_when_written_to_default_path() {
-        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
-        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
-
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-
-        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportTraceRequest()));
-        assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
-    }
-
-    @ParameterizedTest
-    @ArgumentsSource(BufferExceptionToStatusArgumentsProvider.class)
-    void gRPC_request_returns_expected_status_for_exceptions_from_buffer(
-            final Class<Exception> bufferExceptionClass,
-            final Status.Code expectedStatusCode) throws Exception {
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-
-        doThrow(bufferExceptionClass)
-                .when(buffer)
-                .writeAll(anyCollection(), anyInt());
-        final ExportTraceServiceRequest exportTraceRequest = createExportTraceRequest();
-        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
-
-        assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
-    }
-
-    @Test
-    void gRPC_request_throws_InvalidArgument_for_malformed_trace_data() {
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
-
-        final ExportTraceServiceRequest exportTraceRequest = createInvalidExportTraceRequest();
-        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
-
-        assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
-
-        verifyNoInteractions(buffer);
-    }
-
-    @Test
     void request_that_exceeds_maxRequestLength_returns_413() throws InvalidProtocolBufferException {
         when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelTraceSourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
@@ -1278,13 +1154,6 @@ class OTelTraceSourceTest {
                         .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
                 .build();
     }
-
-    private void assertJsonResponse(final String expectedResponseBody, final AggregatedHttpResponse response) {
-        String body = response.content(StandardCharsets.UTF_8);
-
-        assertThat(body, is(expectedResponseBody));
-    }
-
 
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response,
                                                     final HttpStatus expectedStatus,
