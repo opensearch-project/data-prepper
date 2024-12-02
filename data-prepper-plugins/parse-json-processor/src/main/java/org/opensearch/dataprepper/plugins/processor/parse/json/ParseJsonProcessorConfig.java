@@ -64,14 +64,6 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("A list of strings specifying the tags to be set in the event when the processor fails or an unknown exception occurs during parsing.")
     private List<String> tagsOnFailure;
 
-    @JsonProperty("parse_when")
-    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
-            "If specified, the <code>parse_json</code> processor will only run on events when the expression evaluates to true. ")
-    @ExampleValues({
-        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
-    })
-    private String parseWhen;
-
     @JsonProperty("handle_failed_events")
     @JsonPropertyDescription("Determines how to handle events with JSON processing errors. Options include 'skip', " +
             "which will log the error and send the event downstream to the next processor, and 'skip_silently', " +
@@ -79,6 +71,14 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
             "Default is 'skip'.")
     @NotNull
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
+
+    @JsonProperty("parse_when")
+    @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
+            "If specified, the <code>parse_json</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
+    })
+    private String parseWhen;
 
     @Override
     public String getSource() {

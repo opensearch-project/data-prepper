@@ -38,6 +38,12 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("The destination field of the structured object from the parsed ION. Defaults to the root of the event. Cannot be an empty string, <code>/</code>, or any whitespace-only string because these are not valid event fields.")
     private String destination;
 
+    @JsonProperty(value = "depth", defaultValue = "0")
+    @Min(0)
+    @Max(10)
+    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
+    private int depth = 0;
+
     @JsonProperty("pointer")
     @JsonPropertyDescription("A JSON pointer to the field to be parsed. There is no pointer by default, meaning the entire source is parsed. The pointer can access JSON array indexes as well. " +
             "If the JSON pointer is invalid then the entire source data is parsed into the outgoing event. If the key that is pointed to already exists in the event and the destination is the root, then the pointer uses the entire path of the key.")
@@ -58,13 +64,6 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @JsonPropertyDescription("A list of strings specifying the tags to be set in the event that the processor fails or an unknown exception occurs during parsing.")
     private List<String> tagsOnFailure;
 
-    @JsonProperty("parse_when")
-    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
-    @ExampleValues({
-        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
-    })
-    private String parseWhen;
-
     @JsonProperty(value = "handle_failed_events", defaultValue = "skip")
     @JsonPropertyDescription("Determines how to handle events with ION processing errors. Options include 'skip', " +
             "which will log the error and send the event downstream to the next processor, and 'skip_silently', " +
@@ -72,11 +71,12 @@ public class ParseIonProcessorConfig implements CommonParseConfig {
     @NotNull
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
-    @JsonProperty(value = "depth", defaultValue = "0")
-    @Min(0)
-    @Max(10)
-    @JsonPropertyDescription("Indicates the depth at which the nested values of the event are not parsed any more. Default is 0, which means all levels of nested values are parsed. If the depth is 1, only the top level keys are parsed and all its nested values are represented as strings")
-    private int depth = 0;
+    @JsonProperty("parse_when")
+    @JsonPropertyDescription("A Data Prepper [conditional expression](https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/), such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
+    @ExampleValues({
+        @Example(value = "/some_key == null", description = "Only runs parsing on the Event if some_key is null or doesn't exist.")
+    })
+    private String parseWhen;
 
     @Override
     public String getSource() {

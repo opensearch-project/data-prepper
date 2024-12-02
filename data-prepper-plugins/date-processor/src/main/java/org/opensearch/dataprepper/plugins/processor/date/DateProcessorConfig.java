@@ -198,6 +198,9 @@ public class DateProcessorConfig {
     @JsonProperty("date_when")
     @JsonPropertyDescription("Specifies under what condition the <code>date</code> processor should perform matching. " +
             "Default is no condition.")
+    @ExampleValues({
+        @Example(value = "/some_key == null", description = "Only runs the date processor on the Event if some_key is null or doesn't exist.")
+    })
     private String dateWhen;
 
     @JsonIgnore
