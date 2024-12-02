@@ -114,6 +114,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -768,6 +769,40 @@ class OTelLogsSourceTest {
         final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
         assertThat(actualBufferWrites, notNullValue());
         assertThat(actualBufferWrites, hasSize(1));
+    }
+
+    @Test
+    void gRPC_with_auth_request_with_invalid_basic_auth_does_not_write_to_buffer() throws Exception{
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelLogsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", "wrong Username",
+                        "password", "wrong Password"
+                )));
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String wrongCredentials = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", "wrong Username", "wrong Password").getBytes(StandardCharsets.UTF_8));
+
+        final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .addHeader("Authorization", "Basic " + wrongCredentials)
+                .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
+
+        StatusRuntimeException exception = assertThrows(
+                StatusRuntimeException.class,
+                () -> client.export(createExportLogsRequest())
+        );
+
+        assertEquals(Status.Code.UNAUTHENTICATED, exception.getStatus().getCode());
+
+        verify(buffer, never()).writeAll(any(), anyInt());
     }
 
     @Test
