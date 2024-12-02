@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -64,9 +66,14 @@ public class AddEntryProcessorConfig {
     public static class Entry {
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
-                "use the value of field <code>key1</code> as the key.")
+                "use the value of field <code>key1</code> as the key. Either one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=METADATA_KEY_KEY, allowedValues = {"null"})
+        })
+        @ExampleValues({
+                @Example(value = "my_key", description = "Adds 'my_key' to the Event"),
+                @Example(value = "${/key_one}-${/key_two}", description = "Evaluates existing Event keys key_one and key_two and adds the result to the Event"),
+                @Example(value = "/nested/key", description = "Adds a nested key of { \"nested\": { \"key\": \"some_value\" }"),
         })
         private String key;
 
@@ -76,6 +83,9 @@ public class AddEntryProcessorConfig {
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="key", allowedValues = {"null"})
         })
+        @ExampleValues({
+                @Example(value = "some_metadata", description = "The Event will contain a metadata key called 'some_metadata' that can be used in expressions with sending the key to the sinks.")
+        })
         private String metadataKey;
 
         @JsonPropertyDescription("The value of the new entry to be added, which can be used with any of the " +
@@ -83,6 +93,12 @@ public class AddEntryProcessorConfig {
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="format", allowedValues = {"null"}),
                 @AlsoRequired.Required(name=VALUE_EXPRESSION_KEY, allowedValues = {"null"})
+        })
+        @ExampleValues({
+                @Example(value = "my_string_value", description = "Adds a value of 'my_string_value' to the key or metadata_key"),
+                @Example(value = "false", description = "Adds a value of false to the key or metadata_key"),
+                @Example(value = "10", description = "Adds a value of 10 to the key or metadata_key"),
+                @Example(value = "[ \"element_one\", \"element_two\" ]", description = "Adds an array value with two elements to the key or metadata_key"),
         })
         private Object value;
 
@@ -92,6 +108,9 @@ public class AddEntryProcessorConfig {
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="value", allowedValues = {"null"}),
                 @AlsoRequired.Required(name=VALUE_EXPRESSION_KEY, allowedValues = {"null"})
+        })
+        @ExampleValues({
+                @Example(value = "${/key_one}-${/key_two}", description = "Adds a value as a combination of the existing key_one and key_two values to the key or metadata_key"),
         })
         private String format;
 
@@ -104,6 +123,10 @@ public class AddEntryProcessorConfig {
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="value", allowedValues = {"null"}),
                 @AlsoRequired.Required(name="format", allowedValues = {"null"})
+        })
+        @ExampleValues({
+                @Example(value = "length(/my_key)", description = "Adds an integer value based on the length of the existing key 'my_key' to the new key or metadata_key"),
+                @Example(value = "/my_key", description = "Adds a value based on the existing value of my_key to the new key or metadata_key"),
         })
         private String valueExpression;
 
@@ -126,6 +149,9 @@ public class AddEntryProcessorConfig {
         @JsonProperty("add_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
                 "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
+        @ExampleValues({
+                @Example(value = "/some_key == null", description = "Only runs the add_entries processor if the key some_key is null or does not exist.")
+        })
         private String addWhen;
 
         public String getKey() {

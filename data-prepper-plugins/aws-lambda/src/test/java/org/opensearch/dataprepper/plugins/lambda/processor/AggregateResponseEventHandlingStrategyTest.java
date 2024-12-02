@@ -1,29 +1,32 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 public class AggregateResponseEventHandlingStrategyTest {
 
-    @Mock
-    private Buffer flushedBuffer;
 
     @Mock
     private AcknowledgementSet acknowledgementSet;
@@ -41,7 +44,6 @@ public class AggregateResponseEventHandlingStrategyTest {
     private Event parsedEvent2;
 
     private List<Record<Event>> originalRecords;
-    private List<Record<Event>> resultRecords;
 
     private AggregateResponseEventHandlingStrategy aggregateResponseEventHandlingStrategy;
 
@@ -52,7 +54,6 @@ public class AggregateResponseEventHandlingStrategyTest {
 
         // Set up original records list with a mock original event
         originalRecords = new ArrayList<>();
-        resultRecords = new ArrayList<>();
         originalRecords.add(new Record<>(originalEvent));
 
         // Mock event handle and acknowledgement set
@@ -66,7 +67,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         List<Event> parsedEvents = Arrays.asList(parsedEvent1, parsedEvent2);
 
         // Act
-        aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
 
         // Assert
         assertEquals(2, resultRecords.size());
@@ -87,7 +88,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         when(eventHandle.getAcknowledgementSet()).thenReturn(null);
 
         // Act
-        aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
 
         // Assert
         assertEquals(2, resultRecords.size());
@@ -104,7 +105,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         List<Event> parsedEvents = new ArrayList<>();
 
         // Act
-        aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, resultRecords, flushedBuffer);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
 
         // Assert
         assertEquals(0, resultRecords.size());

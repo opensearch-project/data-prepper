@@ -39,7 +39,13 @@ public class ClusterApiStrategy implements RdsApiStrategy {
         try {
             final DescribeDbClustersResponse response = rdsClient.describeDBClusters(request);
             final DBCluster dbCluster = response.dbClusters().get(0);
-            return new DbMetadata(dbIdentifier, dbCluster.endpoint(), dbCluster.port());
+            return DbMetadata.builder()
+                    .dbIdentifier(dbIdentifier)
+                    .endpoint(dbCluster.endpoint())
+                    .port(dbCluster.port())
+                    .readerEndpoint(dbCluster.readerEndpoint())
+                    .readerPort(dbCluster.port())
+                    .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to describe DB " + dbIdentifier, e);
         }

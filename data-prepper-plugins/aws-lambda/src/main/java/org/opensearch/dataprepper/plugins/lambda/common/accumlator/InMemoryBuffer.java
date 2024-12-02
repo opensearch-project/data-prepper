@@ -5,162 +5,145 @@
 
 package org.opensearch.dataprepper.plugins.lambda.common.accumlator;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.time.StopWatch;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
-import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 
 /**
  * A buffer can hold in memory data and flushing it.
  */
 public class InMemoryBuffer implements Buffer {
 
-    private final ByteArrayOutputStream byteArrayOutputStream;
+  private final ByteArrayOutputStream byteArrayOutputStream;
 
-    private final LambdaAsyncClient lambdaAsyncClient;
-    private final String functionName;
-    private final String invocationType;
-    private int eventCount;
-    private StopWatch bufferWatch;
-    private StopWatch lambdaLatencyWatch;
-    private long payloadRequestSize;
-    private long payloadResponseSize;
-    private final List<Record<Event>> records;
+  private final List<Record<Event>> records;
+  private final StopWatch bufferWatch;
+  private final StopWatch lambdaLatencyWatch;
+  private final OutputCodec requestCodec;
+  private final OutputCodecContext outputCodecContext;
+  private final long payloadResponseSize;
+  private int eventCount;
+  private long payloadRequestSize;
 
 
-    public InMemoryBuffer(LambdaAsyncClient lambdaAsyncClient, String functionName, String invocationType) {
-        this.lambdaAsyncClient = lambdaAsyncClient;
-        this.functionName = functionName;
-        this.invocationType = invocationType;
-        byteArrayOutputStream = new ByteArrayOutputStream();
-        records = new ArrayList<>();
-        bufferWatch = new StopWatch();
-        bufferWatch.start();
-        lambdaLatencyWatch = new StopWatch();
-        eventCount = 0;
-        payloadRequestSize = 0;
-        payloadResponseSize = 0;
+  public InMemoryBuffer(String batchOptionKeyName) {
+    this(batchOptionKeyName, new OutputCodecContext());
+  }
+
+  public InMemoryBuffer(String batchOptionKeyName, OutputCodecContext outputCodecContext) {
+    byteArrayOutputStream = new ByteArrayOutputStream();
+    records = new ArrayList<>();
+    bufferWatch = new StopWatch();
+    bufferWatch.start();
+    lambdaLatencyWatch = new StopWatch();
+    eventCount = 0;
+    payloadRequestSize = 0;
+    payloadResponseSize = 0;
+    // Setup request codec
+    JsonOutputCodecConfig jsonOutputCodecConfig = new JsonOutputCodecConfig();
+    jsonOutputCodecConfig.setKeyName(batchOptionKeyName);
+    requestCodec = new JsonOutputCodec(jsonOutputCodecConfig);
+    this.outputCodecContext = outputCodecContext;
+  }
+
+  public void addRecord(Record<Event> record) {
+    records.add(record);
+    Event event = record.getData();
+    try {
+      if (eventCount == 0) {
+        requestCodec.start(this.byteArrayOutputStream, event, this.outputCodecContext);
+      }
+      requestCodec.writeEvent(event, this.byteArrayOutputStream);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    eventCount++;
+  }
+
+  public List<Record<Event>> getRecords() {
+    return records;
+  }
+
+  @Override
+  public long getSize() {
+    return byteArrayOutputStream.size();
+  }
+
+  @Override
+  public int getEventCount() {
+    return eventCount;
+  }
+
+  public Duration getDuration() {
+    return Duration.ofMillis(bufferWatch.getTime(TimeUnit.MILLISECONDS));
+  }
+
+  @Override
+  public InvokeRequest getRequestPayload(String functionName, String invocationType) {
+
+    if (eventCount == 0) {
+      //We never added any events so there is no payload
+      return null;
     }
 
-    public void addRecord(Record<Event> record) {
-        records.add(record);
-        eventCount++;
+    try {
+      requestCodec.complete(this.byteArrayOutputStream);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
 
-    public List<Record<Event>> getRecords() {
-        return records;
-    }
+    SdkBytes payload = getPayload();
+    payloadRequestSize = payload.asByteArray().length;
 
-    @Override
-    public long getSize() {
-        return byteArrayOutputStream.size();
-    }
+    // Setup an InvokeRequest.
+    InvokeRequest request = InvokeRequest.builder()
+        .functionName(functionName)
+        .payload(payload)
+        .invocationType(invocationType)
+        .build();
 
-    @Override
-    public int getEventCount() {
-        return eventCount;
-    }
-
-    public Duration getDuration() {
-        return Duration.ofMillis(bufferWatch.getTime(TimeUnit.MILLISECONDS));
-    }
-
-    public void reset() {
-        byteArrayOutputStream.reset();
-        eventCount = 0;
-        bufferWatch.reset();
+    synchronized (this) {
+      if (lambdaLatencyWatch.isStarted()) {
         lambdaLatencyWatch.reset();
-        payloadRequestSize = 0;
-        payloadResponseSize = 0;
+      }
+      lambdaLatencyWatch.start();
     }
+    return request;
+  }
 
-    @Override
-    public CompletableFuture<InvokeResponse> flushToLambda(String invocationType) {
-        SdkBytes payload = getPayload();
-        payloadRequestSize = payload.asByteArray().length;
-
-        // Setup an InvokeRequest.
-        InvokeRequest request = InvokeRequest.builder()
-                .functionName(functionName)
-                .payload(payload)
-                .invocationType(invocationType)
-                .build();
-
-        synchronized (this) {
-            if (lambdaLatencyWatch.isStarted()) {
-                lambdaLatencyWatch.reset();
-            }
-            lambdaLatencyWatch.start();
-        }
-        // Use the async client to invoke the Lambda function
-        CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(request);
-        return future;
+  public synchronized Duration stopLatencyWatch() {
+    if (lambdaLatencyWatch.isStarted()) {
+      lambdaLatencyWatch.stop();
     }
+    long timeInMillis = lambdaLatencyWatch.getTime();
+    return Duration.ofMillis(timeInMillis);
+  }
 
-    public synchronized Duration stopLatencyWatch() {
-        if (lambdaLatencyWatch.isStarted()) {
-            lambdaLatencyWatch.stop();
-        }
-        long timeInMillis = lambdaLatencyWatch.getTime();
-        return Duration.ofMillis(timeInMillis);
-    }
+  @Override
+  public SdkBytes getPayload() {
+    byte[] bytes = byteArrayOutputStream.toByteArray();
+    return SdkBytes.fromByteArray(bytes);
+  }
 
-    private SdkBytes validatePayload(String payload_string) {
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            JsonNode jsonNode = mapper.readTree(byteArrayOutputStream.toByteArray());
+  public Duration getFlushLambdaLatencyMetric() {
+    return Duration.ofMillis(lambdaLatencyWatch.getTime(TimeUnit.MILLISECONDS));
+  }
 
-            // Convert the JsonNode back to a String to normalize it (removes extra spaces, trailing commas, etc.)
-            String normalizedJson = mapper.writeValueAsString(jsonNode);
-            return SdkBytes.fromUtf8String(normalizedJson);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void setEventCount(int eventCount) {
-        this.eventCount = eventCount;
-    }
-
-    @Override
-    public OutputStream getOutputStream() {
-        return byteArrayOutputStream;
-    }
-
-    @Override
-    public SdkBytes getPayload() {
-        byte[] bytes = byteArrayOutputStream.toByteArray();
-        SdkBytes sdkBytes = SdkBytes.fromByteArray(bytes);
-        return sdkBytes;
-    }
-
-    public Duration getFlushLambdaLatencyMetric (){
-        return Duration.ofMillis(lambdaLatencyWatch.getTime(TimeUnit.MILLISECONDS));
-    }
-
-    public Long getPayloadRequestSize() {
-        return payloadRequestSize;
-    }
-
-    public StopWatch getBufferWatch() {return bufferWatch;}
-
-    public StopWatch getLambdaLatencyWatch(){return lambdaLatencyWatch;}
-
+  public Long getPayloadRequestSize() {
+    return payloadRequestSize;
+  }
 
 }
 

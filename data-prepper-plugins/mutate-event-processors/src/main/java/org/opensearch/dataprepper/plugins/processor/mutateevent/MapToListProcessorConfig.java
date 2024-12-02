@@ -65,16 +65,10 @@ public class MapToListProcessorConfig {
     @JsonProperty("exclude_keys")
     @JsonPropertyDescription("The keys in the source map that will be excluded from processing. Default is an " +
             "empty list (<code>[]</code>).")
-    @ExampleValues({
-        @Example(value = "[\"key1\"]", description = "When the key is 'key1', the processor will not include this key-value pair in the list and will leave it in the map.")
-    })
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of tags to add to the event metadata when the event fails to process.")
-    @ExampleValues({
-        @Example(value = "[\"_failure\"]", description = "{\"tags\": [\"_failure\"]} will be added to the event’s metadata in the event of a processing failure.")
-    })
     private List<String> tagsOnFailure;
 
     @JsonProperty("map_to_list_when")

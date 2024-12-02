@@ -1,122 +1,127 @@
 package org.opensearch.dataprepper.plugins.lambda.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.MockitoAnnotations;
-import org.opensearch.dataprepper.model.event.EventHandle;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
-import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
-import org.slf4j.Logger;
+import org.opensearch.dataprepper.plugins.lambda.processor.LambdaProcessorConfig;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public class LambdaCommonHandlerTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.createLambdaConfigurationFromYaml;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleEventRecords;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class LambdaCommonHandlerTest {
 
     @Mock
-    private Logger mockLogger;
+    private LambdaAsyncClient lambdaAsyncClient;
 
     @Mock
-    private LambdaAsyncClient mockLambdaAsyncClient;
+    private OutputCodecContext outputCodecContext;
 
-    @Mock
-    private BufferFactory mockBufferFactory;
+    @Test
+    void testCheckStatusCode() {
+        InvokeResponse successResponse = InvokeResponse.builder().statusCode(200).build();
+        InvokeResponse failureResponse = InvokeResponse.builder().statusCode(400).build();
 
-    @Mock
-    private Buffer mockBuffer;
-
-    @Mock
-    private InvokeResponse mockInvokeResponse;
-
-    @InjectMocks
-    private LambdaCommonHandler lambdaCommonHandler;
-
-    private String functionName = "test-function";
-
-    private String invocationType = InvocationType.REQUEST_RESPONSE.getAwsLambdaValue();
-
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        lambdaCommonHandler = new LambdaCommonHandler(mockLogger, mockLambdaAsyncClient, functionName, invocationType);
+        assertTrue(LambdaCommonHandler.isSuccess(successResponse));
+        assertFalse(LambdaCommonHandler.isSuccess(failureResponse));
     }
 
     @Test
-    public void testCreateBuffer_success() throws IOException {
-        // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenReturn(mockBuffer);
+    void testWaitForFutures() {
+        List<CompletableFuture<InvokeResponse>> futureList = new ArrayList<>();
+        CompletableFuture<InvokeResponse> future1 = new CompletableFuture<>();
+        CompletableFuture<InvokeResponse> future2 = new CompletableFuture<>();
+        futureList.add(future1);
+        futureList.add(future2);
 
-        // Act
-        Buffer result = lambdaCommonHandler.createBuffer(mockBufferFactory);
+        // Simulate completion of futures
+        future1.complete(InvokeResponse.builder().build());
+        future2.complete(InvokeResponse.builder().build());
 
-        // Assert
-        verify(mockBufferFactory, times(1)).getBuffer(mockLambdaAsyncClient, functionName, invocationType);
-        verify(mockLogger, times(1)).debug("Resetting buffer");
-        assertEquals(result, mockBuffer);
+        LambdaCommonHandler.waitForFutures(futureList);
+
+        assertFalse(futureList.isEmpty());
     }
 
-    @Test
-    public void testCreateBuffer_throwsException() throws IOException {
-        // Arrange
-        when(mockBufferFactory.getBuffer(any(), anyString(), any())).thenThrow(new IOException("Test Exception"));
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    void testSendRecords(String configFilePath) {
+        LambdaProcessorConfig lambdaConfiguration = createLambdaConfigurationFromYaml(configFilePath);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(InvokeResponse.builder().statusCode(200).build()));
 
-        // Act & Assert
-        try {
-            lambdaCommonHandler.createBuffer(mockBufferFactory);
-        } catch (RuntimeException e) {
-            assert e.getMessage().contains("Failed to reset buffer");
-        }
-        verify(mockBufferFactory, times(1)).getBuffer(mockLambdaAsyncClient, functionName, invocationType);
+        int oneRandomCount = (int) (Math.random() * 1000);
+        List<Record<Event>> records = getSampleEventRecords(oneRandomCount);
+
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferCompletableFutureMap = LambdaCommonHandler.sendRecords(
+                records, lambdaConfiguration, lambdaAsyncClient,
+                outputCodecContext);
+
+        assertNotNull(bufferCompletableFutureMap);
+        int batchSize = lambdaConfiguration.getBatchOptions().getThresholdOptions().getEventCount();
+        int bufferBatchCount = (int) Math.ceil((1.0 * oneRandomCount) / batchSize);
+        assertEquals(bufferBatchCount,
+                bufferCompletableFutureMap.size());
+        verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
     }
 
-    @Test
-    public void testWaitForFutures_allComplete() {
-        // Arrange
-        List<CompletableFuture<Void>> futureList = new ArrayList<>();
-        futureList.add(CompletableFuture.completedFuture(null));
-        futureList.add(CompletableFuture.completedFuture(null));
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-null-key-name.yaml"})
+    void testSendRecordsWithNullKeyName(String configFilePath) {
+        LambdaProcessorConfig lambdaConfiguration = createLambdaConfigurationFromYaml(configFilePath);
 
-        // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        Event mockEvent = mock(Event.class);
+        when(mockEvent.toMap()).thenReturn(Collections.singletonMap("testKey", "testValue"));
+        List<Record<Event>> records = Collections.singletonList(new Record<>(mockEvent));
 
-        // Assert
-        assert futureList.isEmpty();
+        assertThrows(NullPointerException.class, () ->
+                LambdaCommonHandler.sendRecords(records, lambdaConfiguration, lambdaAsyncClient, outputCodecContext)
+        );
     }
 
-    @Test
-    public void testWaitForFutures_withException() {
-        // Arrange
-        List<CompletableFuture<Void>> futureList = new ArrayList<>();
-        futureList.add(CompletableFuture.failedFuture(new RuntimeException("Test Exception")));
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    void testSendRecordsWithFailure(String configFilePath) {
+        LambdaProcessorConfig lambdaConfiguration = createLambdaConfigurationFromYaml(configFilePath);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Test exception")));
 
-        // Act
-        lambdaCommonHandler.waitForFutures(futureList);
+        List<Record<Event>> records = new ArrayList<>();
+        records.add(new Record<>(mock(Event.class)));
 
-        // Assert
-        assert futureList.isEmpty();
+        assertThrows(RuntimeException.class, () -> LambdaCommonHandler.sendRecords(
+                records, lambdaConfiguration, lambdaAsyncClient,
+                outputCodecContext));
+        verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
     }
-
-    private List<EventHandle> mockEventHandleList(int size) {
-        List<EventHandle> eventHandleList = new ArrayList<>();
-        for (int i = 0; i < size; i++) {
-            EventHandle eventHandle = mock(EventHandle.class);
-            eventHandleList.add(eventHandle);
-        }
-        return eventHandleList;
-    }
-
 }

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
+import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
@@ -30,11 +31,16 @@ public class BinlogClientFactory {
 
     public BinaryLogClient create() {
         BinaryLogClient binaryLogClient = new BinaryLogClient(
-                dbMetadata.getHostName(),
+                dbMetadata.getEndpoint(),
                 dbMetadata.getPort(),
                 username,
                 password);
         binaryLogClient.setSSLMode(sslMode);
+        final EventDeserializer eventDeserializer = new EventDeserializer();
+        eventDeserializer.setCompatibilityMode(
+                EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
+        );
+        binaryLogClient.setEventDeserializer(eventDeserializer);
         return binaryLogClient;
     }
 

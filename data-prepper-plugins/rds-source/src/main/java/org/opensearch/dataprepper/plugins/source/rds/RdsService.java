@@ -24,7 +24,9 @@ import org.opensearch.dataprepper.plugins.source.rds.leader.LeaderScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
@@ -64,6 +66,7 @@ public class RdsService {
     private ExportScheduler exportScheduler;
     private DataFileScheduler dataFileScheduler;
     private StreamScheduler streamScheduler;
+    private ResyncScheduler resyncScheduler;
 
     public RdsService(final EnhancedSourceCoordinator sourceCoordinator,
                       final RdsSourceConfig sourceConfig,
@@ -129,6 +132,10 @@ public class RdsService {
             streamScheduler = new StreamScheduler(
                     sourceCoordinator, sourceConfig, s3PathPrefix, binaryLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
             runnableList.add(streamScheduler);
+
+            resyncScheduler = new ResyncScheduler(
+                    sourceCoordinator, sourceConfig, getQueryManager(sourceConfig, dbMetadata), s3PathPrefix, buffer, pluginMetrics, acknowledgementSetManager);
+            runnableList.add(resyncScheduler);
         }
 
         executor = Executors.newFixedThreadPool(runnableList.size());
@@ -158,12 +165,24 @@ public class RdsService {
 
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManager(
-                dbMetadata.getHostName(),
+                dbMetadata.getEndpoint(),
                 dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled());
         return new SchemaManager(connectionManager);
+    }
+
+    private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
+        final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getEndpoint();
+        final int readerPort = dbMetadata.getReaderPort() == 0 ? dbMetadata.getPort() : dbMetadata.getReaderPort();
+        final ConnectionManager readerConnectionManager = new ConnectionManager(
+                readerEndpoint,
+                readerPort,
+                sourceConfig.getAuthenticationConfig().getUsername(),
+                sourceConfig.getAuthenticationConfig().getPassword(),
+                sourceConfig.isTlsEnabled());
+        return new QueryManager(readerConnectionManager);
     }
 
     private String getS3PathPrefix() {

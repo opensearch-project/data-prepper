@@ -1,61 +1,99 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.lambda.common;
 
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
+import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.BufferFactory;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
+import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
-import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class LambdaCommonHandler {
-    private final Logger LOG;
-    private final LambdaAsyncClient lambdaAsyncClient;
-    private final String functionName;
-    private final String invocationType;
-    BufferFactory bufferFactory;
 
-    public LambdaCommonHandler(
-            final Logger log,
-            final LambdaAsyncClient lambdaAsyncClient,
-            final String functionName,
-            final String invocationType){
-        this.LOG = log;
-        this.lambdaAsyncClient = lambdaAsyncClient;
-        this.functionName = functionName;
-        this.invocationType = invocationType;
+    private static final Logger LOG = LoggerFactory.getLogger(LambdaCommonHandler.class);
+
+    private LambdaCommonHandler() {
     }
 
-    public Buffer createBuffer(BufferFactory bufferFactory) {
-        try {
-            LOG.debug("Resetting buffer");
-            return bufferFactory.getBuffer(lambdaAsyncClient, functionName, invocationType);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to reset buffer", e);
-        }
-    }
-
-    public boolean checkStatusCode(InvokeResponse response) {
+    public static boolean isSuccess(InvokeResponse response) {
         int statusCode = response.statusCode();
-        if (statusCode < 200 || statusCode >= 300) {
-            LOG.error("Lambda invocation returned with non-success status code: {}", statusCode);
-            return false;
-        }
-        return true;
+        return statusCode >= 200 && statusCode < 300;
     }
 
-    public void waitForFutures(List<CompletableFuture<Void>> futureList) {
+    public static void waitForFutures(Collection<CompletableFuture<InvokeResponse>> futureList) {
+
         if (!futureList.isEmpty()) {
-            try {
-                CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).join();
-                LOG.info("All {} Lambda invocations have completed", futureList.size());
-            } catch (Exception e) {
-                LOG.warn("Exception while waiting for Lambda invocations to complete", e);
-            } finally {
-                futureList.clear();
+            CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).join();
+        }
+    }
+
+    private static List<Buffer> createBufferBatches(Collection<Record<Event>> records,
+                                                    BatchOptions batchOptions, final OutputCodecContext outputCodecContext) {
+
+        int maxEvents = batchOptions.getThresholdOptions().getEventCount();
+        ByteCount maxBytes = batchOptions.getThresholdOptions().getMaximumSize();
+        String keyName = batchOptions.getKeyName();
+        Duration maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
+
+        Buffer currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+        List<Buffer> batchedBuffers = new ArrayList<>();
+
+        LOG.debug("Batch size received to lambda processor: {}", records.size());
+        for (Record<Event> record : records) {
+
+            currentBufferPerBatch.addRecord(record);
+            if (ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes,
+                    maxCollectionDuration)) {
+                batchedBuffers.add(currentBufferPerBatch);
+                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
         }
+
+        if (currentBufferPerBatch.getEventCount() > 0) {
+            batchedBuffers.add(currentBufferPerBatch);
+        }
+        return batchedBuffers;
     }
+
+    public static Map<Buffer, CompletableFuture<InvokeResponse>> sendRecords(
+            Collection<Record<Event>> records,
+            LambdaCommonConfig config,
+            LambdaAsyncClient lambdaAsyncClient,
+            final OutputCodecContext outputCodecContext) {
+
+        List<Buffer> batchedBuffers = createBufferBatches(records, config.getBatchOptions(),
+                outputCodecContext);
+
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
+        LOG.debug("Batch Chunks created after threshold check: {}", batchedBuffers.size());
+        for (Buffer buffer : batchedBuffers) {
+            InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
+                    config.getInvocationType().getAwsLambdaValue());
+            CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
+            bufferToFutureMap.put(buffer, future);
+        }
+        waitForFutures(bufferToFutureMap.values());
+        return bufferToFutureMap;
+    }
+
 }

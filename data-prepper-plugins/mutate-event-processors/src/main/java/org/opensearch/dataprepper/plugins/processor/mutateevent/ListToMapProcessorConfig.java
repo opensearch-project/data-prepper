@@ -102,7 +102,7 @@ public class ListToMapProcessorConfig {
     private boolean extractValue = false;
 
     @NotNull
-    @JsonProperty("flatten")
+    @JsonProperty(value = "flatten", defaultValue = "false")
     @JsonPropertyDescription("When <code>true</code>, values in the generated map output flatten into single items based on " +
             "the <code>flattened_element</code>. Otherwise, objects mapped to values from the generated map appear as lists. " +
             "Default is <code>false</code>.")
@@ -121,6 +121,9 @@ public class ListToMapProcessorConfig {
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
             "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be " +
             "run on the event. By default, all events will be processed unless otherwise stated.")
+    @ExampleValues({
+        @Example(value = "/some-key == \"test\"", description = "The operation will run when the value of the key is 'test'.")
+    })
     private String listToMapWhen;
 
     public String getSource() {

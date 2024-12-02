@@ -14,6 +14,8 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
+import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
 
@@ -45,6 +47,10 @@ public class CopyValueProcessorConfig {
         @JsonProperty("copy_when")
         @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
                 "such as <code>/some-key == \"test\"</code>, that will be evaluated to determine whether the processor will be run on the event.")
+        @ExampleValues({
+                @Example(value = "/some_key != null", description = "Only runs the copy_values processor on the Event if the existing key some_key is not null."),
+                @Example(value = "/some_key typeof integer", description = "Only runs the copy_values processor on the Event if the key some_key is an integer.")
+        })
         private String copyWhen;
 
         public String getFromKey() {
@@ -80,14 +86,14 @@ public class CopyValueProcessorConfig {
     private List<Entry> entries;
 
     @JsonProperty(FROM_LIST_KEY)
-    @JsonPropertyDescription("The key of the list of objects to be copied.")
+    @JsonPropertyDescription("The key of the list of objects to be copied. <code>to_list</code> must also be defined.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = TO_LIST_KEY)
     })
     private String fromList;
 
     @JsonProperty(TO_LIST_KEY)
-    @JsonPropertyDescription("The key of the new list to be added.")
+    @JsonPropertyDescription("The key of the new list to be added. <code>from_list</code> must also be defined.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FROM_LIST_KEY)
     })

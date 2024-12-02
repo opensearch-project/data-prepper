@@ -47,7 +47,7 @@ public class ObfuscationProcessorConfig {
     @JsonProperty("patterns")
     @JsonPropertyDescription("A list of regex patterns that allow you to obfuscate specific parts of a field. Only parts that match the regex pattern will obfuscate. When not provided, the processor obfuscates the whole field.")
     @ExampleValues({
-        @Example(value = "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}", description = "This pattern represents an email address that will be obfuscated in the given field.")
+        @Example(value = "regex", description = "Generic regex pattern.")
     })
     private List<String> patterns;
 
@@ -57,21 +57,21 @@ public class ObfuscationProcessorConfig {
     private PluginModel action;
 
     @JsonProperty("single_word_only")
-    @JsonPropertyDescription("When set to <code>true</code>, a word boundary <code>\b</code> is added to the pattern, " +
+    @JsonPropertyDescription("When set to <code>true</code>, a word boundary <code>\b</code>is added to the pattern, " +
             "which causes obfuscation to be applied only to words that are standalone in the input text. " +
             "By default, it is false, meaning obfuscation patterns are applied to all occurrences.")
     private boolean singleWordOnly = false;
 
     @JsonProperty("tags_on_match_failure")
     @JsonPropertyDescription("The tag to add to an event if the <code>obfuscate</code> processor fails to match the pattern.")
-    @ExampleValues({
-        @Example(value = "[\"_failure\"]", description = "{\"tags\": [\"_failure\"]} will be added to the event if the processor fails to match the pattern.")
-    })
     private List<String> tagsOnMatchFailure;
 
     @JsonProperty("obfuscate_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/is_testing_data == true</code>. " +
             "If specified, the <code>obfuscate</code> processor will only run on events when the expression evaluates to true. ")
+    @ExampleValues({
+            @Example(value = "/some_key != null", description = "Only runs the obfuscate processor on the Event if the existing key some_key is not null.")
+    })
     private String obfuscateWhen;
 
     public ObfuscationProcessorConfig() {
