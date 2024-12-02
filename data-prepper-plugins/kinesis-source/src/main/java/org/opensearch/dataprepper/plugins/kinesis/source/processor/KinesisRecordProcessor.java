@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.kinesis.source.processor;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -39,6 +40,7 @@ import software.amazon.kinesis.retrieval.KinesisClientRecord;
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Optional;
@@ -70,10 +72,14 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     private final Counter recordsProcessed;
     private final Counter recordProcessingErrors;
     private final Counter checkpointFailures;
+    private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
-    public static final String KINESIS_RECORD_PROCESSED = "recordProcessed";
-    public static final String KINESIS_RECORD_PROCESSING_ERRORS = "recordProcessingErrors";
+    public static final String KINESIS_RECORD_PROCESSED_METRIC_NAME = "recordProcessed";
+    public static final String KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME = "recordProcessingErrors";
+    public static final String KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME = "bytesReceived";
+    public static final String KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME = "bytesProcessed";
     public static final String KINESIS_CHECKPOINT_FAILURES = "checkpointFailures";
     public static final String KINESIS_STREAM_TAG_KEY = "stream";
     private AtomicBoolean isStopRequested;
@@ -93,9 +99,11 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.acknowledgementSetSuccesses = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.acknowledgementSetFailures = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
-        this.recordsProcessed = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
-        this.recordProcessingErrors = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
+        this.recordsProcessed = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
+        this.recordProcessingErrors = pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
         this.checkpointFailures = pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName());
+        this.bytesReceivedSummary = pluginMetrics.summary(KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME);
+        this.bytesProcessedSummary = pluginMetrics.summary(KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME);
         this.checkpointInterval = kinesisStreamConfig.getCheckPointInterval();
         this.bufferAccumulator = bufferAccumulator;
         this.kinesisCheckpointerTracker = kinesisCheckpointerTracker;
@@ -161,6 +169,12 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
 
             // Track the records for checkpoint purpose
             kinesisCheckpointerTracker.addRecordForCheckpoint(extendedSequenceNumber, processRecordsInput.checkpointer());
+
+            // Get the size of bytes received from Kinesis stream
+            final List<Integer> recordBytes = new ArrayList<>();
+            processRecordsInput.records().forEach(kinesisClientRecord-> recordBytes.add(kinesisClientRecord.data().remaining()));
+            bytesReceivedSummary.record(recordBytes.stream().mapToLong(Integer::longValue).sum());
+
             List<Record<Event>> records = kinesisRecordConverter.convert(
                     kinesisStreamConfig.getCompression().getDecompressionEngine(),
                     processRecordsInput.records(), streamIdentifier.streamName());
@@ -177,6 +191,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
             // Flush buffer at the end
             bufferAccumulator.flush();
             recordsProcessed.increment(eventCount);
+            bytesProcessedSummary.record(recordBytes.stream().mapToLong(Integer::longValue).sum());
 
             // If acks are not enabled, mark the sequence number for checkpoint
             if (!acknowledgementsEnabled) {

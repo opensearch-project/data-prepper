@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.kinesis.source.processor;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -75,8 +76,10 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_CHECKPOINT_FAILURES;
-import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSED;
-import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSING_ERRORS;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSED_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_STREAM_TAG_KEY;
 
 public class KinesisRecordProcessorTest {
@@ -125,6 +128,12 @@ public class KinesisRecordProcessorTest {
 
     @Mock
     private Counter recordProcessingErrors;
+
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
 
     @Mock
     private Counter checkpointFailures;
@@ -187,10 +196,16 @@ public class KinesisRecordProcessorTest {
         when(compressionOption.getDecompressionEngine()).thenReturn(decompressionEngine);
 
         recordProcessed = mock(Counter.class);
-        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessed);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessed);
 
         recordProcessingErrors = mock(Counter.class);
-        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessingErrors);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessingErrors);
+
+        bytesReceivedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME)).thenReturn(bytesReceivedSummary);
+
+        bytesProcessedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME)).thenReturn(bytesProcessedSummary);
     }
 
     @Test
@@ -198,6 +213,11 @@ public class KinesisRecordProcessorTest {
             throws Exception {
         List<KinesisClientRecord> kinesisClientRecords = createInputKinesisClientRecords();
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
+
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
+
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
         when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(Duration.ofMillis(0));
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
@@ -240,6 +260,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
@@ -250,6 +272,10 @@ public class KinesisRecordProcessorTest {
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
         when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(Duration.ofMillis(0));
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
+
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
@@ -281,6 +307,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
@@ -301,6 +329,10 @@ public class KinesisRecordProcessorTest {
             consumer.accept(true);
             return acknowledgementSet;
         }).when(acknowledgementSetManager).create(any(Consumer.class), any(Duration.class));
+
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
@@ -337,6 +369,8 @@ public class KinesisRecordProcessorTest {
         verify(acknowledgementSetSuccesses, atLeastOnce()).increment();
         verify(recordProcessed, times(1)).increment(anyDouble());
         verifyNoInteractions(recordProcessingErrors);
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
@@ -346,6 +380,10 @@ public class KinesisRecordProcessorTest {
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
         when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(Duration.ofMillis(0));
+
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
 
         PluginModel pluginModel = mock(PluginModel.class);
         when(pluginModel.getPluginName()).thenReturn("ndjson");
@@ -391,6 +429,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
@@ -409,6 +449,10 @@ public class KinesisRecordProcessorTest {
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).add(any(Record.class));
 
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
+
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
         kinesisRecordProcessor.initialize(initializationInput);
@@ -416,6 +460,8 @@ public class KinesisRecordProcessorTest {
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
         verify(recordProcessingErrors, times(1)).increment();
         verify(recordProcessed, times(0)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(0)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
@@ -424,6 +470,10 @@ public class KinesisRecordProcessorTest {
         List<KinesisClientRecord> kinesisClientRecords = createInputKinesisClientRecords();
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
+
+        final Long recordsSize = kinesisClientRecords.stream()
+                .map(kinesisClientRecord -> kinesisClientRecord.data().array().length)
+                .mapToLong(Integer::longValue).sum();
 
         List<Record<Event>> records = new ArrayList<>();
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
@@ -441,7 +491,8 @@ public class KinesisRecordProcessorTest {
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
         verify(recordProcessingErrors, times(1)).increment();
         verify(recordProcessed, times(0)).increment(anyDouble());
-
+        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesProcessedSummary, times(0)).record(eq(recordsSize.doubleValue()));
     }
 
     @Test
