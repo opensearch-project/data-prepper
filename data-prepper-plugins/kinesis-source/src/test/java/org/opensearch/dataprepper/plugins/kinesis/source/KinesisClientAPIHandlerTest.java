@@ -35,7 +35,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KinesisStreamBackoffStrategyTest {
+public class KinesisClientAPIHandlerTest {
     private static final List<String> STREAMS_LIST = ImmutableList.of("stream-1", "stream-2", "stream-3");
     private static final String awsAccountId = "1234";
     private static final String streamArnFormat = "arn:aws:kinesis:us-east-1:%s:stream/%s";
@@ -55,8 +55,8 @@ public class KinesisStreamBackoffStrategyTest {
         streamName = UUID.randomUUID().toString();
     }
 
-    private KinesisStreamBackoffStrategy createObjectUnderTest() {
-        return new KinesisStreamBackoffStrategy(kinesisClient, backoff, NUM_OF_RETRIES);
+    private KinesisClientAPIHandler createObjectUnderTest() {
+        return new KinesisClientAPIHandler(kinesisClient, backoff, NUM_OF_RETRIES);
     }
 
     @Test
@@ -67,9 +67,9 @@ public class KinesisStreamBackoffStrategyTest {
 
         when(kinesisClient.describeStreamSummary(describeStreamSummaryRequest)).thenThrow(new KinesisRetriesExhaustedException("exception"));
 
-        KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy = createObjectUnderTest();
+        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
 
-        assertThrows(KinesisRetriesExhaustedException.class, () -> kinesisStreamBackoffStrategy.getStreamIdentifier(streamName));
+        assertThrows(KinesisRetriesExhaustedException.class, () -> kinesisClientAPIHandler.getStreamIdentifier(streamName));
     }
 
     @Test
@@ -90,9 +90,9 @@ public class KinesisStreamBackoffStrategyTest {
 
         given(kinesisClient.describeStreamSummary(describeStreamSummaryRequest)).willReturn(successFuture);
 
-        KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy = createObjectUnderTest();
+        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
 
-        StreamIdentifier streamIdentifier = kinesisStreamBackoffStrategy.getStreamIdentifier(streamName);
+        StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
     }
 
@@ -122,9 +122,9 @@ public class KinesisStreamBackoffStrategyTest {
                 .willReturn(failedFuture2)
                 .willReturn(successFuture);
 
-        KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy = createObjectUnderTest();
+        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
 
-        StreamIdentifier streamIdentifier = kinesisStreamBackoffStrategy.getStreamIdentifier(streamName);
+        StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
     }
 
@@ -154,9 +154,9 @@ public class KinesisStreamBackoffStrategyTest {
                 .willReturn(failedFuture2)
                 .willReturn(successFuture);
 
-        KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy = createObjectUnderTest();
+        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
 
-        StreamIdentifier streamIdentifier = kinesisStreamBackoffStrategy.getStreamIdentifier(streamName);
+        StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
     }
 
@@ -190,9 +190,14 @@ public class KinesisStreamBackoffStrategyTest {
 
         when(backoff.nextDelayMillis(eq(2))).thenReturn(-10L);
 
-        KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy = createObjectUnderTest();
+        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
 
-        assertThrows(KinesisRetriesExhaustedException.class, ()->kinesisStreamBackoffStrategy.getStreamIdentifier(streamName));
+        assertThrows(KinesisRetriesExhaustedException.class, ()->kinesisClientAPIHandler.getStreamIdentifier(streamName));
+    }
+
+    @Test
+    public void testCreateFailureInvalidMaxRetry() {
+        assertThrows(IllegalArgumentException.class, () -> new KinesisClientAPIHandler(kinesisClient, backoff, -1));
     }
 
     private StreamIdentifier getStreamIdentifier(final String streamName) {

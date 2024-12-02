@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
-import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
@@ -23,16 +22,15 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
 public class KinesisMultiStreamTracker implements MultiStreamTracker {
     private final KinesisSourceConfig sourceConfig;
     private final String applicationName;
-    private final KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy;
+    private final KinesisClientAPIHandler kinesisClientAPIHandler;
 
-    public KinesisMultiStreamTracker(final KinesisSourceConfig sourceConfig, final String applicationName, final KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy) {
+    public KinesisMultiStreamTracker(final KinesisSourceConfig sourceConfig, final String applicationName, final KinesisClientAPIHandler kinesisClientAPIHandler) {
         this.sourceConfig = sourceConfig;
         this.applicationName = applicationName;
-        this.kinesisStreamBackoffStrategy = kinesisStreamBackoffStrategy;
+        this.kinesisClientAPIHandler = kinesisClientAPIHandler;
     }
 
     @Override
@@ -46,7 +44,7 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
     }
 
     private StreamConfig getStreamConfig(KinesisStreamConfig kinesisStreamConfig) {
-        StreamIdentifier sourceStreamIdentifier = kinesisStreamBackoffStrategy.getStreamIdentifier(kinesisStreamConfig.getName());
+        StreamIdentifier sourceStreamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(kinesisStreamConfig.getName());
         return new StreamConfig(sourceStreamIdentifier,
                 InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()));
     }

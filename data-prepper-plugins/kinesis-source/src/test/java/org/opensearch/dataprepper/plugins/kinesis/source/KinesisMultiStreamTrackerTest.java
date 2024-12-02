@@ -50,7 +50,7 @@ public class KinesisMultiStreamTrackerTest {
     KinesisSourceConfig kinesisSourceConfig;
 
     @Mock
-    private KinesisStreamBackoffStrategy kinesisStreamBackoffStrategy;
+    private KinesisClientAPIHandler kinesisClientAPIHandler;
 
     @BeforeEach
     public void setUp() {
@@ -61,7 +61,7 @@ public class KinesisMultiStreamTrackerTest {
             KinesisStreamConfig kinesisStreamConfig = mock(KinesisStreamConfig.class);
             when(kinesisStreamConfig.getName()).thenReturn(stream);
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
-            when(kinesisStreamBackoffStrategy.getStreamIdentifier(stream)).thenReturn(getStreamIdentifier(stream));
+            when(kinesisClientAPIHandler.getStreamIdentifier(stream)).thenReturn(getStreamIdentifier(stream));
             kinesisStreamConfigs.add(kinesisStreamConfig);
             streamConfigMap.put(stream, kinesisStreamConfig);
         });
@@ -70,7 +70,7 @@ public class KinesisMultiStreamTrackerTest {
     }
 
     private KinesisMultiStreamTracker createObjectUnderTest() {
-        return new KinesisMultiStreamTracker(kinesisSourceConfig, APPLICATION_NAME, kinesisStreamBackoffStrategy);
+        return new KinesisMultiStreamTracker(kinesisSourceConfig, APPLICATION_NAME, kinesisClientAPIHandler);
     }
 
     @Test
@@ -99,7 +99,7 @@ public class KinesisMultiStreamTrackerTest {
             when(kinesisStreamConfig.getName()).thenReturn(stream);
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
 
-            when(kinesisStreamBackoffStrategy.getStreamIdentifier(stream)).thenThrow(new RuntimeException());
+            when(kinesisClientAPIHandler.getStreamIdentifier(stream)).thenThrow(new RuntimeException());
             kinesisStreamConfigs.add(kinesisStreamConfig);
             streamConfigMap.put(stream, kinesisStreamConfig);
         });
@@ -121,7 +121,7 @@ public class KinesisMultiStreamTrackerTest {
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
 
             StreamIdentifier streamIdentifier = getStreamIdentifier(stream);
-            when(kinesisStreamBackoffStrategy.getStreamIdentifier(stream)).thenReturn(streamIdentifier);
+            when(kinesisClientAPIHandler.getStreamIdentifier(stream)).thenReturn(streamIdentifier);
         });
 
         when(kinesisSourceConfig.getStreams()).thenReturn(kinesisStreamConfigs);

@@ -23,7 +23,7 @@ import software.amazon.kinesis.common.StreamIdentifier;
 import java.time.Duration;
 
 @Slf4j
-public class KinesisStreamBackoffStrategy {
+public class KinesisClientAPIHandler {
     private static final String COLON = ":";
 
     private final Backoff backoff;
@@ -31,7 +31,7 @@ public class KinesisStreamBackoffStrategy {
     private int failedAttemptCount;
     private int maxRetryCount;
 
-    public KinesisStreamBackoffStrategy(final KinesisAsyncClient kinesisClient, final Backoff backoff, final int maxRetryCount) {
+    public KinesisClientAPIHandler(final KinesisAsyncClient kinesisClient, final Backoff backoff, final int maxRetryCount) {
         this.kinesisClient = kinesisClient;
         this.backoff = backoff;
         this.failedAttemptCount = 0;
