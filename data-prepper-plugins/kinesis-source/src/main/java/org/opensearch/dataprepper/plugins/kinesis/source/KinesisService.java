@@ -11,9 +11,9 @@
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
 import com.amazonaws.SdkClientException;
+import com.linecorp.armeria.client.retry.Backoff;
 import lombok.Getter;
 import lombok.Setter;
-import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -60,6 +60,7 @@ public class KinesisService {
     private static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
     private static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
     private static final double JITTER_RATE = 0.20;
+    private static final int NUM_OF_RETRIES = 3;
 
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
@@ -76,7 +77,6 @@ public class KinesisService {
     private final CloudWatchAsyncClient cloudWatchClient;
     private final WorkerIdentifierGenerator workerIdentifierGenerator;
     private final InputCodec codec;
-    private final Backoff backoff;
 
     @Setter
     private Scheduler scheduler;
@@ -116,8 +116,6 @@ public class KinesisService {
         final PluginModel codecConfiguration = kinesisSourceConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         this.codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-        this.backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
-                .withMaxAttempts(Integer.MAX_VALUE);
     }
 
     public void start(final Buffer<Record<Event>> buffer) {
@@ -179,7 +177,8 @@ public class KinesisService {
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisClient, kinesisSourceConfig, applicationName, backoff),
+                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisStreamBackoffStrategy(kinesisClient, Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                                .withMaxAttempts(NUM_OF_RETRIES), NUM_OF_RETRIES)),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory
                 )
