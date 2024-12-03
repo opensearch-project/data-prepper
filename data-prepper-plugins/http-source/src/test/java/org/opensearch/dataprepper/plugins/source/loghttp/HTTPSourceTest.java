@@ -58,6 +58,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -646,7 +647,13 @@ class HTTPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             when(sourceConfig.isSsl()).thenReturn(true);
 
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription,certificateProviderFactory);
+
+            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+            Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
+            field.setAccessible(true);
+            field.set(HTTPSourceUnderTest, certificateProviderFactory);
+
             HTTPSourceUnderTest.start(testBuffer);
             HTTPSourceUnderTest.stop();
 
@@ -657,6 +664,8 @@ class HTTPSourceTest {
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
             assertThat(actualCertificate, is(certAsString));
             assertThat(actualPrivateKey, is(keyAsString));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -670,8 +679,15 @@ class HTTPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             when(sourceConfig.isSsl()).thenReturn(true);
 
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription,certificateProviderFactory);
+            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+            Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
+            field.setAccessible(true);
+            field.set(HTTPSourceUnderTest, certificateProviderFactory);
+
             assertThrows(NullPointerException.class, () -> HTTPSourceUnderTest.start(testBuffer));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -17,6 +16,7 @@ import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticati
 import org.opensearch.dataprepper.http.HttpServerConfig;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
+import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -33,7 +33,6 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,29 +77,6 @@ public class HTTPSource implements Source<Record<Log>> {
             LOG.warn("Creating http source without authentication. This is not secure.");
             LOG.warn("In order to set up Http Basic authentication for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#authentication-configurations");
         }
-
-        if(authenticationConfiguration != null) {
-            authenticationPluginSetting =
-                    new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
-        } else {
-            authenticationPluginSetting =
-                    new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
-        }
-        authenticationPluginSetting.setPipelineName(pipelineName);
-        authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
-        httpRequestExceptionHandler = new HttpRequestExceptionHandler(pluginMetrics);
-    }
-
-    @VisibleForTesting
-    HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
-               final PipelineDescription pipelineDescription, final CertificateProviderFactory certificateProviderFactory) {
-        this.sourceConfig = sourceConfig;
-        this.pluginMetrics = pluginMetrics;
-        this.pipelineName = pipelineDescription.getPipelineName();
-        this.byteDecoder = new JsonDecoder();
-        this.certificateProviderFactory = certificateProviderFactory;
-        final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
-        final PluginSetting authenticationPluginSetting;
 
         if(authenticationConfiguration != null) {
             authenticationPluginSetting =
