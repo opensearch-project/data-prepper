@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
@@ -98,6 +99,16 @@ public class JiraIterator implements Iterator<ItemInfo> {
         this.itemInfoQueue = new ConcurrentLinkedQueue<>();
         this.lastPollTime = jiraChangeLogToken;
         this.firstTime = true;
+    }
+
+    @VisibleForTesting
+    public List<Future<Boolean>> showFutureList() {
+        return futureList;
+    }
+
+    @VisibleForTesting
+    public Queue<ItemInfo> showItemInfoQueue() {
+        return itemInfoQueue;
     }
 
 }
