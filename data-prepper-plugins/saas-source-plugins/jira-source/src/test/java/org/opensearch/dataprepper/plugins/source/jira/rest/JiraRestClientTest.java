@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraServiceTest;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
@@ -108,7 +109,7 @@ public class JiraRestClientTest {
         JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(OAUTH2, issueType, issueStatus, projectKey);
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
         SearchResults mockSearchResults = mock(SearchResults.class);
-        doReturn("http://mock-service.jira.com").when(authConfig).getUrl();
+        doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
@@ -123,10 +124,17 @@ public class JiraRestClientTest {
         JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
         SearchResults mockSearchResults = mock(SearchResults.class);
-        when(authConfig.getUrl()).thenReturn("https://example.com");
+        when(authConfig.getUrl()).thenReturn("https://example.com/");
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
+    }
+
+    @Test
+    public void testRestApiAddressValidation() throws JsonProcessingException {
+        when(authConfig.getUrl()).thenReturn("https://224.0.0.1/");
+        JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
+        assertThrows(BadRequestException.class, () -> jiraRestClient.getIssue("TEST-1"));
     }
 
 }

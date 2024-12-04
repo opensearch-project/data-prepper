@@ -112,11 +112,6 @@ public class JiraItemInfo implements ItemInfo {
             return this;
         }
 
-        public JiraItemInfoBuilder withIssueType(String issueType) {
-            this.issueType = issueType;
-            return this;
-        }
-
         public JiraItemInfoBuilder withIssueBean(IssueBean issue) {
             Map<String, Object> issueMetadata = new HashMap<>();
             issueMetadata.put(PROJECT_KEY, issue.getProject());

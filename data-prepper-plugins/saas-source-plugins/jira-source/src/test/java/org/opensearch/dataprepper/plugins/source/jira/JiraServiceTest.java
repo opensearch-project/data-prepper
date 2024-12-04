@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -141,7 +142,8 @@ public class JiraServiceTest {
         doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
-        Queue<ItemInfo> itemInfoQueue = jiraService.getJiraEntities(jiraSourceConfig, timestamp);
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
         assertEquals(mockIssues.size(), itemInfoQueue.size());
     }
 
@@ -166,7 +168,8 @@ public class JiraServiceTest {
         doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
-        Queue<ItemInfo> itemInfoQueue = jiraService.getJiraEntities(jiraSourceConfig, timestamp);
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
         assertTrue(itemInfoQueue.size() >= 100);
     }
 
@@ -186,7 +189,9 @@ public class JiraServiceTest {
         JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient);
 
         Instant timestamp = Instant.ofEpochSecond(0);
-        assertThrows(BadRequestException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp));
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+
+        assertThrows(BadRequestException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
     }
 
     @Test
@@ -201,7 +206,9 @@ public class JiraServiceTest {
         doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
 
         Instant timestamp = Instant.ofEpochSecond(0);
-        assertThrows(RuntimeException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp));
+        Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+
+        assertThrows(RuntimeException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
     }
 
 

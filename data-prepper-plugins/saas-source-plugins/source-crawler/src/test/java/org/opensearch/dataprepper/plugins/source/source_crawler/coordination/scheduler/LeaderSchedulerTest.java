@@ -67,7 +67,7 @@ public class LeaderSchedulerTest {
 
         // Check if crawler was invoked and updated leader lease renewal time
         verify(crawler, times(1)).crawl(Instant.ofEpochMilli(0L), coordinator);
-        verify(coordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+        verify(coordinator, times(2)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
 
     }
 

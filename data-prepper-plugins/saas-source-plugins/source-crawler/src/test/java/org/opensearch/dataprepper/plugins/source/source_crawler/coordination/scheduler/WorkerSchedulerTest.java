@@ -120,7 +120,6 @@ public class WorkerSchedulerTest {
     @Test
     void testWhenNoPartitionToWorkOn() throws InterruptedException {
         WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
-        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(workerScheduler);
