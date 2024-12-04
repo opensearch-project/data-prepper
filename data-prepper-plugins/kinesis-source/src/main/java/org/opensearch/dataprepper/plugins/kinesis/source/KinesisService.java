@@ -177,7 +177,7 @@ public class KinesisService {
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisClientAPIHandler(kinesisClient, Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisClientApiHandler(kinesisClient, Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                                 .withMaxAttempts(NUM_OF_RETRIES), NUM_OF_RETRIES)),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory

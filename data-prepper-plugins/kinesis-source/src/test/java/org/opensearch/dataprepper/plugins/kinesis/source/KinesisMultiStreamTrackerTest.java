@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,9 +40,10 @@ public class KinesisMultiStreamTrackerTest {
     private static final String APPLICATION_NAME = "multi-stream-application";
     private static final String awsAccountId = "1234";
     private static final Instant streamCreationTime = Instant.now();
-    private static final List<String> STREAMS_LIST = ImmutableList.of("stream-1", "stream-2", "stream-3");
 
     private List<StreamConfig> streamConfigList;
+
+    private List<String> streamsList;
 
     private Map<String, KinesisStreamConfig> streamConfigMap;
 
@@ -50,14 +51,15 @@ public class KinesisMultiStreamTrackerTest {
     KinesisSourceConfig kinesisSourceConfig;
 
     @Mock
-    private KinesisClientAPIHandler kinesisClientAPIHandler;
+    private KinesisClientApiHandler kinesisClientAPIHandler;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         List<KinesisStreamConfig> kinesisStreamConfigs = new ArrayList<>();
         streamConfigMap = new HashMap<>();
-        STREAMS_LIST.forEach(stream -> {
+        streamsList = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        streamsList.forEach(stream -> {
             KinesisStreamConfig kinesisStreamConfig = mock(KinesisStreamConfig.class);
             when(kinesisStreamConfig.getName()).thenReturn(stream);
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
@@ -94,7 +96,7 @@ public class KinesisMultiStreamTrackerTest {
         MockitoAnnotations.openMocks(this);
         List<KinesisStreamConfig> kinesisStreamConfigs = new ArrayList<>();
         streamConfigMap = new HashMap<>();
-        STREAMS_LIST.forEach(stream -> {
+        streamsList.forEach(stream -> {
             KinesisStreamConfig kinesisStreamConfig = mock(KinesisStreamConfig.class);
             when(kinesisStreamConfig.getName()).thenReturn(stream);
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
@@ -115,7 +117,7 @@ public class KinesisMultiStreamTrackerTest {
         MockitoAnnotations.openMocks(this);
         List<KinesisStreamConfig> kinesisStreamConfigs = new ArrayList<>();
         streamConfigMap = new HashMap<>();
-        STREAMS_LIST.forEach(stream -> {
+        streamsList.forEach(stream -> {
             KinesisStreamConfig kinesisStreamConfig = mock(KinesisStreamConfig.class);
             when(kinesisStreamConfig.getName()).thenReturn(stream);
             when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);

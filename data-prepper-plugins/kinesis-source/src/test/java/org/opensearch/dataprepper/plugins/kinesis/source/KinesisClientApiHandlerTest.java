@@ -10,21 +10,21 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
-import com.google.common.collect.ImmutableList;
 import com.linecorp.armeria.client.retry.Backoff;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisRetriesExhaustedException;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRequest;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
+import software.amazon.awssdk.services.kinesis.model.KinesisException;
 import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 import software.amazon.kinesis.common.StreamIdentifier;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -35,8 +35,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KinesisClientAPIHandlerTest {
-    private static final List<String> STREAMS_LIST = ImmutableList.of("stream-1", "stream-2", "stream-3");
+public class KinesisClientApiHandlerTest {
     private static final String awsAccountId = "1234";
     private static final String streamArnFormat = "arn:aws:kinesis:us-east-1:%s:stream/%s";
     private static final Instant streamCreationTime = Instant.now();
@@ -55,8 +54,8 @@ public class KinesisClientAPIHandlerTest {
         streamName = UUID.randomUUID().toString();
     }
 
-    private KinesisClientAPIHandler createObjectUnderTest() {
-        return new KinesisClientAPIHandler(kinesisClient, backoff, NUM_OF_RETRIES);
+    private KinesisClientApiHandler createObjectUnderTest() {
+        return new KinesisClientApiHandler(kinesisClient, backoff, NUM_OF_RETRIES);
     }
 
     @Test
@@ -67,7 +66,7 @@ public class KinesisClientAPIHandlerTest {
 
         when(kinesisClient.describeStreamSummary(describeStreamSummaryRequest)).thenThrow(new KinesisRetriesExhaustedException("exception"));
 
-        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
 
         assertThrows(KinesisRetriesExhaustedException.class, () -> kinesisClientAPIHandler.getStreamIdentifier(streamName));
     }
@@ -90,7 +89,7 @@ public class KinesisClientAPIHandlerTest {
 
         given(kinesisClient.describeStreamSummary(describeStreamSummaryRequest)).willReturn(successFuture);
 
-        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
 
         StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
@@ -122,7 +121,7 @@ public class KinesisClientAPIHandlerTest {
                 .willReturn(failedFuture2)
                 .willReturn(successFuture);
 
-        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
 
         StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
@@ -154,7 +153,39 @@ public class KinesisClientAPIHandlerTest {
                 .willReturn(failedFuture2)
                 .willReturn(successFuture);
 
-        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
+
+        StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
+        assertEquals(streamIdentifier, getStreamIdentifier(streamName));
+    }
+
+    @Test
+    public void testGetStreamIdentifierSuccessWithMultipleRetriesForRetryableExceptions() {
+        DescribeStreamSummaryRequest describeStreamSummaryRequest = DescribeStreamSummaryRequest.builder()
+                .streamName(streamName)
+                .build();
+        StreamDescriptionSummary streamDescriptionSummary = StreamDescriptionSummary.builder()
+                .streamARN(String.format(streamArnFormat, awsAccountId, streamName))
+                .streamCreationTimestamp(streamCreationTime)
+                .streamName(streamName)
+                .build();
+
+        DescribeStreamSummaryResponse describeStreamSummaryResponse = DescribeStreamSummaryResponse.builder()
+                .streamDescriptionSummary(streamDescriptionSummary)
+                .build();
+        final CompletableFuture<DescribeStreamSummaryResponse> successFuture = CompletableFuture.completedFuture(describeStreamSummaryResponse);
+
+        final CompletableFuture<DescribeStreamSummaryResponse> failedFuture1 = new CompletableFuture<>();
+        failedFuture1.completeExceptionally(KinesisException.builder().build());
+        final CompletableFuture<DescribeStreamSummaryResponse> failedFuture2 = new CompletableFuture<>();
+        failedFuture2.completeExceptionally(SdkClientException.builder().build());
+
+        given(kinesisClient.describeStreamSummary(describeStreamSummaryRequest))
+                .willReturn(failedFuture1)
+                .willReturn(failedFuture2)
+                .willReturn(successFuture);
+
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
 
         StreamIdentifier streamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(streamName);
         assertEquals(streamIdentifier, getStreamIdentifier(streamName));
@@ -174,7 +205,6 @@ public class KinesisClientAPIHandlerTest {
         DescribeStreamSummaryResponse describeStreamSummaryResponse = DescribeStreamSummaryResponse.builder()
                 .streamDescriptionSummary(streamDescriptionSummary)
                 .build();
-        final CompletableFuture<DescribeStreamSummaryResponse> successFuture = CompletableFuture.completedFuture(describeStreamSummaryResponse);
 
         final CompletableFuture<DescribeStreamSummaryResponse> failedFuture1 = new CompletableFuture<>();
         failedFuture1.completeExceptionally(mock(Throwable.class));
@@ -190,14 +220,14 @@ public class KinesisClientAPIHandlerTest {
 
         when(backoff.nextDelayMillis(eq(2))).thenReturn(-10L);
 
-        KinesisClientAPIHandler kinesisClientAPIHandler = createObjectUnderTest();
+        KinesisClientApiHandler kinesisClientAPIHandler = createObjectUnderTest();
 
         assertThrows(KinesisRetriesExhaustedException.class, ()->kinesisClientAPIHandler.getStreamIdentifier(streamName));
     }
 
     @Test
     public void testCreateFailureInvalidMaxRetry() {
-        assertThrows(IllegalArgumentException.class, () -> new KinesisClientAPIHandler(kinesisClient, backoff, -1));
+        assertThrows(IllegalArgumentException.class, () -> new KinesisClientApiHandler(kinesisClient, backoff, -1));
     }
 
     private StreamIdentifier getStreamIdentifier(final String streamName) {

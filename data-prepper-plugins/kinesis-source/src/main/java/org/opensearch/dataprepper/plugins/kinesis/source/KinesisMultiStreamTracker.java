@@ -25,9 +25,9 @@ import java.util.List;
 public class KinesisMultiStreamTracker implements MultiStreamTracker {
     private final KinesisSourceConfig sourceConfig;
     private final String applicationName;
-    private final KinesisClientAPIHandler kinesisClientAPIHandler;
+    private final KinesisClientApiHandler kinesisClientAPIHandler;
 
-    public KinesisMultiStreamTracker(final KinesisSourceConfig sourceConfig, final String applicationName, final KinesisClientAPIHandler kinesisClientAPIHandler) {
+    public KinesisMultiStreamTracker(final KinesisSourceConfig sourceConfig, final String applicationName, final KinesisClientApiHandler kinesisClientAPIHandler) {
         this.sourceConfig = sourceConfig;
         this.applicationName = applicationName;
         this.kinesisClientAPIHandler = kinesisClientAPIHandler;

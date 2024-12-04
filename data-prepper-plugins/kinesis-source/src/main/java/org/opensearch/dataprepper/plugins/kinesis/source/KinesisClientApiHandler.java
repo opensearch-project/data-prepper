@@ -17,13 +17,15 @@ import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisRetri
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRequest;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
+import software.amazon.awssdk.services.kinesis.model.KinesisException;
 import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 import software.amazon.kinesis.common.StreamIdentifier;
 
 import java.time.Duration;
+import java.util.concurrent.CompletionException;
 
 @Slf4j
-public class KinesisClientAPIHandler {
+public class KinesisClientApiHandler {
     private static final String COLON = ":";
 
     private final Backoff backoff;
@@ -31,7 +33,7 @@ public class KinesisClientAPIHandler {
     private int failedAttemptCount;
     private int maxRetryCount;
 
-    public KinesisClientAPIHandler(final KinesisAsyncClient kinesisClient, final Backoff backoff, final int maxRetryCount) {
+    public KinesisClientApiHandler(final KinesisAsyncClient kinesisClient, final Backoff backoff, final int maxRetryCount) {
         this.kinesisClient = kinesisClient;
         this.backoff = backoff;
         this.failedAttemptCount = 0;
@@ -43,15 +45,20 @@ public class KinesisClientAPIHandler {
 
     public StreamIdentifier getStreamIdentifier(final String streamName) {
         failedAttemptCount = 0;
+        DescribeStreamSummaryRequest describeStreamSummaryRequest = DescribeStreamSummaryRequest.builder()
+                .streamName(streamName).build();
         while (failedAttemptCount < maxRetryCount) {
             try {
-                DescribeStreamSummaryRequest describeStreamSummaryRequest = DescribeStreamSummaryRequest.builder()
-                        .streamName(streamName).build();
                 DescribeStreamSummaryResponse response = kinesisClient.describeStreamSummary(describeStreamSummaryRequest).join();
                 String streamIdentifierString = getStreamIdentifierString(response.streamDescriptionSummary());
                 return StreamIdentifier.multiStreamInstance(streamIdentifierString);
-            } catch (Exception ex) {
-                log.error("Failed to get stream summary for stream {}, retrying", streamName, ex);
+            } catch (CompletionException ex) {
+                Throwable cause = ex.getCause();
+                if (cause instanceof KinesisException || cause instanceof com.amazonaws.SdkClientException) {
+                    log.error("Failed to describe stream summary for stream {} with error {}. The kinesis source will retry.", streamName, ex.getMessage());
+                } else {
+                    log.error("Failed to describe stream summary for stream {} with error {}. The kinesis source will retry.", streamName, ex);
+                }
             }
             applyBackoff();
             ++failedAttemptCount;
@@ -62,7 +69,6 @@ public class KinesisClientAPIHandler {
     private void applyBackoff() {
         final long delayMillis = backoff.nextDelayMillis(failedAttemptCount);
         if (delayMillis < 0) {
-            Thread.currentThread().interrupt();
             throw new KinesisRetriesExhaustedException("Kinesis DescribeStreamSummary request retries exhausted. Make sure that Kinesis configuration is valid, Kinesis stream exists, and IAM role has required permissions.");
         }
         final Duration delayDuration = Duration.ofMillis(delayMillis);
@@ -71,7 +77,7 @@ public class KinesisClientAPIHandler {
         try {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
-            log.error("Thread is interrupted while polling SQS with retry.", e);
+            log.error("Thread is interrupted while polling Kinesis with retry.", e);
         }
     }
 
