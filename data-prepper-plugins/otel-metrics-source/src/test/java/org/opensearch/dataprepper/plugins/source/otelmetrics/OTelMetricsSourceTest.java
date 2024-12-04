@@ -13,6 +13,7 @@ import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
@@ -35,6 +36,7 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -96,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -103,6 +106,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
@@ -480,44 +484,47 @@ class OTelMetricsSourceTest {
     }
 
     @Test
-    void testHttpsFullJsonWithCustomPathAndAuthHeaderAndSsl_with_unsuccessful_response() throws InvalidProtocolBufferException {
+    void testHttpWithoutSslFailsWhenSslIsEnabled() throws InvalidProtocolBufferException {
         when(oTelMetricsSourceConfig.isSsl()).thenReturn(true);
         when(oTelMetricsSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
         when(oTelMetricsSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
-        when(oTelMetricsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
-                Map.of(
-                        "username", USERNAME,
-                        "password", PASSWORD
-                )));
-        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
-        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
-    
-        final GrpcAuthenticationProvider authenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
-        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
-                .thenReturn(authenticationProvider);
-    
-        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
-        when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
-    
         configureObjectUnderTest();
         SOURCE.start(buffer);
     
-        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/metrics";
-    
-        WebClient client = WebClient.builder("https://127.0.0.1:21891")
-                .factory(ClientFactory.builder().tlsNoVerify().build())
+        WebClient client = WebClient.builder("http://127.0.0.1:21891")
                 .build();
     
-        client.prepare()
-                .post(transformedPath)
-                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportMetricsRequest()).getBytes())
-                .execute()
+        CompletionException exception = assertThrows(CompletionException.class, () -> client.execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21891")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.copyOf(JsonFormat.printer().print(createExportMetricsRequest()).getBytes()))
                 .aggregate()
-                .whenComplete((response, throwable) -> {
-                    assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable);
-                })
-                .join();
+                .join());
+    
+        assertThat(exception.getCause(), instanceOf(ClosedSessionException.class));
     }
+    
+    @Test
+    void testGrpcFailsIfSslIsEnabledAndNoTls() {
+        when(oTelMetricsSourceConfig.isSsl()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
+        when(oTelMetricsSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+    
+        MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+    
+        StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
+  
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNKNOWN));
+    }
+    
     
     @Test
     void testServerStartCertFileSuccess() throws IOException {
