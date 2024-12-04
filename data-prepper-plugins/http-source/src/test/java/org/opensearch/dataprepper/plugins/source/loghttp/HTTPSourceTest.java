@@ -9,6 +9,7 @@ import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
@@ -23,7 +24,6 @@ import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,6 +72,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
@@ -82,7 +83,11 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -266,29 +271,29 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Then
-        Assertions.assertFalse(testBuffer.isEmpty());
+        assertFalse(testBuffer.isEmpty());
 
         final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
         List<Record<Log>> records = new ArrayList<>(result.getKey());
-        Assertions.assertEquals(1, records.size());
+        assertEquals(1, records.size());
         final Record<Log> record = records.get(0);
-        Assertions.assertEquals("somelog", record.getData().get("log", String.class));
+        assertEquals("somelog", record.getData().get("log", String.class));
         // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        assertEquals(1.0, requestReceivedCount.getValue());
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        assertEquals(1.0, successRequestsCount.getValue());
         final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        assertEquals(1.0, requestProcessDurationCount.getValue());
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
-        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
+        assertTrue(requestProcessDurationMax.getValue() > 0);
         final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
                 payloadSizeSummaryMeasurements, Statistic.MAX);
-        Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
+        assertEquals(testPayloadSize, payloadSizeMax.getValue());
     }
 
     @Test
@@ -313,26 +318,26 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Then
-        Assertions.assertFalse(testBuffer.isEmpty());
+        assertFalse(testBuffer.isEmpty());
 
         final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
         List<Record<Log>> records = new ArrayList<>(result.getKey());
-        Assertions.assertEquals(1, records.size());
+        assertEquals(1, records.size());
         final Record<Log> record = records.get(0);
-        Assertions.assertEquals("somelog", record.getData().get("log", String.class));
+        assertEquals("somelog", record.getData().get("log", String.class));
         // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        assertEquals(1.0, requestReceivedCount.getValue());
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        assertEquals(1.0, successRequestsCount.getValue());
         final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        assertEquals(1.0, requestProcessDurationCount.getValue());
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
-        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
+        assertTrue(requestProcessDurationMax.getValue() > 0);
     }
 
     @Test
@@ -397,14 +402,14 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.BAD_REQUEST)).join();
 
         // Then
-        Assertions.assertTrue(testBuffer.isEmpty());
+        assertTrue(testBuffer.isEmpty());
         // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        assertEquals(1.0, requestReceivedCount.getValue());
         final Measurement badRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 badRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, badRequestsCount.getValue());
+        assertEquals(1.0, badRequestsCount.getValue());
     }
 
     @Test
@@ -428,26 +433,26 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
 
         // Then
-        Assertions.assertTrue(testBuffer.isEmpty());
+        assertTrue(testBuffer.isEmpty());
         // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        assertEquals(1.0, requestReceivedCount.getValue());
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(0.0, successRequestsCount.getValue());
+        assertEquals(0.0, successRequestsCount.getValue());
         final Measurement requestsTooLargeCount = MetricsTestUtil.getMeasurementFromList(
                 requestsTooLargeMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestsTooLargeCount.getValue());
+        assertEquals(1.0, requestsTooLargeCount.getValue());
         final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        assertEquals(1.0, requestProcessDurationCount.getValue());
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
-        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
+        assertTrue(requestProcessDurationMax.getValue() > 0);
         final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
                 payloadSizeSummaryMeasurements, Statistic.MAX);
-        Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
+        assertEquals(testPayloadSize, payloadSizeMax.getValue());
     }
 
     @Test
@@ -487,17 +492,17 @@ class HTTPSourceTest {
         // verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(2.0, requestReceivedCount.getValue());
+        assertEquals(2.0, requestReceivedCount.getValue());
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        assertEquals(1.0, successRequestsCount.getValue());
         final Measurement requestTimeoutsCount = MetricsTestUtil.getMeasurementFromList(
                 requestTimeoutsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, requestTimeoutsCount.getValue());
+        assertEquals(1.0, requestTimeoutsCount.getValue());
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
         final double maxDurationInMillis = 1000 * requestProcessDurationMax.getValue();
-        Assertions.assertTrue(maxDurationInMillis > bufferTimeoutInMillis);
+        assertTrue(maxDurationInMillis > bufferTimeoutInMillis);
     }
 
     @Test
@@ -552,13 +557,13 @@ class HTTPSourceTest {
         // verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(testMaxPendingRequests + testThreadCount + 2, requestReceivedCount.getValue());
+        assertEquals(testMaxPendingRequests + testThreadCount + 2, requestReceivedCount.getValue());
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        assertEquals(1.0, successRequestsCount.getValue());
         final Measurement rejectedRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 rejectedRequestsMeasurements, Statistic.COUNT);
-        Assertions.assertEquals(1.0, rejectedRequestsCount.getValue());
+        assertEquals(1.0, rejectedRequestsCount.getValue());
     }
 
     @Test
@@ -570,7 +575,7 @@ class HTTPSourceTest {
 
         // Verify connections metric value is 0
         Measurement serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
-        Assertions.assertEquals(0, serverConnectionsMeasurement.getValue());
+        assertEquals(0, serverConnectionsMeasurement.getValue());
 
         final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
                 .authority("127.0.0.1:2021")
@@ -586,7 +591,7 @@ class HTTPSourceTest {
 
         // Verify connections metric value is 1
         serverConnectionsMeasurement = MetricsTestUtil.getMeasurementFromList(serverConnectionsMeasurements, Statistic.VALUE);
-        Assertions.assertEquals(1.0, serverConnectionsMeasurement.getValue());
+        assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
     @Test
@@ -714,6 +719,43 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
     }
 
+
+    @Test
+    void testHTTPRequestWhenSSLRequiredNoResponse() {
+        reset(sourceConfig);
+        when(sourceConfig.getPort()).thenReturn(2021);
+        when(sourceConfig.getPath()).thenReturn(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI);
+        when(sourceConfig.getThreadCount()).thenReturn(200);
+        when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
+        when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
+        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(200);
+        when(sourceConfig.isSsl()).thenReturn(true);
+        when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
+        when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+        testBuffer = getBuffer();
+        HTTPSourceUnderTest.start(testBuffer);
+
+        CompletableFuture<AggregatedHttpResponse> future = WebClient.builder()
+                .factory(ClientFactory.insecure())
+                .build()
+                .execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.POST)
+                                .path("/log/ingest")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
+                .aggregate();
+
+        ExecutionException exception = assertThrows(ExecutionException.class,
+                () -> future.get(2, TimeUnit.SECONDS)
+        );
+        assertInstanceOf(ClosedSessionException.class, exception.getCause());
+    }
+
     @Test
     void testHTTPSJsonResponse_with_custom_path_along_with_placeholder() {
         reset(sourceConfig);
@@ -784,7 +826,7 @@ class HTTPSourceTest {
 
             // When/Then
             final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            Assertions.assertEquals(expCause, ex);
+            assertEquals(expCause, ex);
         }
     }
 
@@ -798,7 +840,7 @@ class HTTPSourceTest {
 
             // When/Then
             assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            Assertions.assertTrue(Thread.interrupted());
+            assertTrue(Thread.interrupted());
         }
     }
 
@@ -830,7 +872,7 @@ class HTTPSourceTest {
 
             // When/Then
             final RuntimeException ex = assertThrows(RuntimeException.class, source::stop);
-            Assertions.assertEquals(expCause, ex);
+            assertEquals(expCause, ex);
         }
     }
 
@@ -846,7 +888,7 @@ class HTTPSourceTest {
 
             // When/Then
             assertThrows(RuntimeException.class, source::stop);
-            Assertions.assertTrue(Thread.interrupted());
+            assertTrue(Thread.interrupted());
         }
     }
 
@@ -884,7 +926,7 @@ class HTTPSourceTest {
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
 
         // Then
-        Assertions.assertTrue(testBuffer.isEmpty());
+        assertTrue(testBuffer.isEmpty());
     }
 
 }
