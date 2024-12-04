@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Consumes;
-import com.linecorp.armeria.server.annotation.ExceptionHandler;
 import com.linecorp.armeria.server.annotation.Post;
 
 import io.micrometer.core.instrument.Counter;
@@ -28,7 +27,6 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 
-@ExceptionHandler(HttpExceptionHandler.class)
 public class ArmeriaHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);
 
@@ -41,19 +39,20 @@ public class ArmeriaHttpService {
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
-    final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
-    final Buffer<Record<Object>> buffer;
-    // todo tlongo config
-    private int bufferWriteTimeoutInMillis = 10_000;
+    private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
+    private final Buffer<Record<Object>> buffer;
+
+    private final int bufferWriteTimeoutInMillis;
 
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
-    public ArmeriaHttpService(Buffer<Record<Object>> buffer, final PluginMetrics pluginMetrics) {
+    public ArmeriaHttpService(Buffer<Record<Object>> buffer, final PluginMetrics pluginMetrics, final int bufferWriteTimeoutInMillis) {
         this.buffer = buffer;
         this.oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
         // todo tlongo encapsulate into own class, since both, grpc and http, should contribute to those
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -62,8 +61,6 @@ public class ArmeriaHttpService {
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
-    // todo tlongo handle excpetions --> https://armeria.dev/docs/server-annotated-service#handling-exceptions
-    // todo tlongo handle backoff
     // todo tlongo healthcheck?
 
     @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
