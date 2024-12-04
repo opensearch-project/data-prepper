@@ -1,8 +1,10 @@
 package org.opensearch.dataprepper.plugins.source.oteltrace.http;
 
 
+import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
+import org.opensearch.dataprepper.GrpcRetryInfoCalculator;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
@@ -11,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.Any;
-import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.google.rpc.RetryInfo;
@@ -31,6 +32,12 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
     private static final Logger LOG = LoggerFactory.getLogger(HttpExceptionHandler.class);
 
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
+
+    private final GrpcRetryInfoCalculator retryInfoCalculator;
+
+    public HttpExceptionHandler(Duration retryInfoMinDelay, Duration retryInfoMaxDelay) {
+        this.retryInfoCalculator = new GrpcRetryInfoCalculator(retryInfoMinDelay, retryInfoMaxDelay);
+    }
 
     @Override
     public HttpResponse handleException(ServiceRequestContext ctx,
@@ -86,8 +93,7 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
             builder.setMessage(e.getMessage() == null ? code.name() :e.getMessage());
         }
         if (code == Status.Code.RESOURCE_EXHAUSTED) {
-            // todo tlongo use retry calculator
-            builder.addDetails(Any.pack(RetryInfo.newBuilder().setRetryDelay(Duration.newBuilder().setSeconds(1).setNanos(1000000).build()).build()));
+            builder.addDetails(Any.pack(retryInfoCalculator.createRetryInfo()));
         }
         return builder.build();
     }
