@@ -39,7 +39,7 @@ public interface ExpressionEvaluator {
         } catch (ExpressionEvaluationException e) {
             return false;
         }
-        throw new ClassCastException("Unexpected expression return type of " + result.getClass());
+        throw new ClassCastException("Unexpected expression return value of " + result);
     }
 
     Boolean isValidExpressionStatement(final String statement);

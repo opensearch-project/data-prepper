@@ -19,7 +19,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class ExpressionEvaluatorTest {
     private ExpressionEvaluator expressionEvaluator;
     class TestExpressionEvaluator implements ExpressionEvaluator {
+        private final boolean throwsExpressionEvaluationException;
+        private final boolean returnNull;
+        public TestExpressionEvaluator() {
+            throwsExpressionEvaluationException = false;
+            returnNull = false;
+        }
+
+        public TestExpressionEvaluator(boolean throwsExpressionEvaluationException, boolean returnNull) {
+            this.throwsExpressionEvaluationException = throwsExpressionEvaluationException;
+            this.returnNull = returnNull;
+        }
+
         public Object evaluate(final String statement, final Event event) {
+            if (throwsExpressionEvaluationException) {
+                throw new ExpressionEvaluationException("Expression Evaluation Exception", new RuntimeException("runtime exception"));
+            } else if (returnNull) {
+                return null;
+            }
             return event.get(statement, Object.class);
         }
 
@@ -48,14 +65,24 @@ public class ExpressionEvaluatorTest {
     public void testDefaultEvaluateConditional() {
         expressionEvaluator = new TestExpressionEvaluator();
         assertThat(expressionEvaluator.evaluateConditional("/status", event("{\"status\":true}")), equalTo(true));
-        
     }
 
     @Test
     public void testEvaluateReturningException() {
         expressionEvaluator = new TestExpressionEvaluator();
-        assertThat(expressionEvaluator.evaluateConditional("/status > 300", event("{\"nostatus\":true}")), equalTo(false));
-        
+        assertThat(expressionEvaluator.evaluateConditional("/status", event("{\"nostatus\":true}")), equalTo(false));
+    }
+
+    @Test
+    public void testThrowExpressionEvaluationException() {
+        expressionEvaluator = new TestExpressionEvaluator(true, false);
+        assertThat(expressionEvaluator.evaluateConditional("/status", event("{\"nostatus\":true}")), equalTo(false));
+    }
+
+    @Test
+    public void testExpressionEvaluationReturnsNull() {
+        expressionEvaluator = new TestExpressionEvaluator(false, true);
+        assertThat(expressionEvaluator.evaluateConditional("/status", event("{\"nostatus\":true}")), equalTo(false));
     }
 
     @Test

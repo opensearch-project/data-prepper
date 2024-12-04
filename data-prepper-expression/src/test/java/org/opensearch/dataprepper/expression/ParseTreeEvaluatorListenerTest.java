@@ -11,6 +11,9 @@ import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -19,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -46,6 +50,12 @@ class ParseTreeEvaluatorListenerTest {
             operatorConfiguration.greaterThanOperator(), operatorConfiguration.greaterThanOrEqualOperator(),
             operatorConfiguration.lessThanOperator(), operatorConfiguration.lessThanOrEqualOperator(),
             operatorConfiguration.regexEqualOperator(), operatorConfiguration.regexNotEqualOperator(),
+            operatorConfiguration.typeOfOperator(),
+            operatorConfiguration.concatOperator(),
+            operatorConfiguration.addOperator(),
+            operatorConfiguration.subtractOperator(),
+            operatorConfiguration.multiplyOperator(),
+            operatorConfiguration.divideOperator(),
             new NotOperator()
     );
     private final OperatorProvider operatorProvider = new OperatorProvider(operators);
@@ -184,10 +194,10 @@ class ParseTreeEvaluatorListenerTest {
         final String lessThanStatement = "1 < true";
         final String lessThanOrEqualStatement = "1 <= true";
         final Event testEvent = createTestEvent(new HashMap<>());
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(greaterThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(greaterThanOrEqualStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(lessThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(lessThanOrEqualStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(greaterThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(greaterThanOrEqualStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(lessThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(lessThanOrEqualStatement, testEvent), is(false));
     }
 
     @Test
@@ -216,10 +226,10 @@ class ParseTreeEvaluatorListenerTest {
         final String greaterThanOrEqualStatement = String.format(" /%s >= /%s", testKey, testKey);
         final String lessThanStatement = String.format(" /%s < %s", testKey, testValue);
         final String lessThanOrEqualStatement = String.format(" /%s <= /%s", testKey, testKey);
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(greaterThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(greaterThanOrEqualStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(lessThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(lessThanOrEqualStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(greaterThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(greaterThanOrEqualStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(lessThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(lessThanOrEqualStatement, testEvent), is(false));
     }
 
     @Test
@@ -236,8 +246,49 @@ class ParseTreeEvaluatorListenerTest {
         final String andStatement = "1 and false";
         final String orStatement = "true or 0";
         final Event testEvent = createTestEvent(new HashMap<>());
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(andStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(orStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(andStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(orStatement, testEvent), is(false));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidExpressionArguments")
+    void testSimpleConditionalOperatorExpressionWithInValidExpression(final String statement) {
+        //final String statement = "((/field1 + 10) - (( 2 + /field2 ) + 5) - 10)";
+        final Event testEvent = createTestEvent(new HashMap<>());
+        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(statement, testEvent));
+    }
+
+    private static Stream<Arguments> invalidExpressionArguments() {
+        return Stream.of(
+                Arguments.of("(/field1 + 10) + ( 2 + /field2 )"),
+                Arguments.of("(/field1 * 10) * ( 2 * /field2 )"),
+                Arguments.of("(/field1 / 10) + ( 2 / /field2 )"),
+                Arguments.of("(/field1 - 10) - ( 2 - /field2 )")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("booleanExpressionsGeneratingExceptions")
+    void testSimpleConditionalOperatorExpressionWithMissingField(final String statement, final boolean expectedResult) {
+        final String testKey = "testKey";
+        final int testValue = 1;
+        final Map<String, Object> data = Map.of(testKey, testValue);
+        final Event testEvent = createTestEvent(data);
+        assertThat(evaluateStatementOnEvent(statement, testEvent), is(expectedResult));
+    }
+
+    private static Stream<Arguments> booleanExpressionsGeneratingExceptions() {
+        return Stream.of(
+                Arguments.of( "(/field1 > 1) or (/field2 > 2)", false),
+                Arguments.of( "(/field1 < 1) or (/field2 < 2)", false),
+                Arguments.of( "(/testKey < \"two\") or (2 == 2)", true),
+                Arguments.of( "(/testKey < \"two\") or (2)", false),
+                Arguments.of( "(/testKey) or (2 == 2)", false),
+                Arguments.of( "not (/testKey)", false),
+                Arguments.of( "(/testKey < \"two\") and (2)", false),
+                Arguments.of( "(/testKey) and (2 == 2)", false),
+                Arguments.of( "(/testKey < \"two\") and (2 == 2)", false)
+        );
     }
 
     @Test
@@ -260,8 +311,8 @@ class ParseTreeEvaluatorListenerTest {
         final Event testEvent = createTestEvent(data);
         final String andStatement = String.format("/%s and false", testKey);
         final String orStatement = String.format("/%s or false", testKey);
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(andStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(orStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(andStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(orStatement, testEvent), is(false));
     }
 
     @Test
@@ -275,7 +326,7 @@ class ParseTreeEvaluatorListenerTest {
     void testSimpleNotOperatorExpressionWithInValidLiteralType() {
         final String notStatement = "not 1";
         final Event testEvent = createTestEvent(new HashMap<>());
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(notStatement, testEvent), is(false));
     }
 
     @Test
@@ -295,7 +346,7 @@ class ParseTreeEvaluatorListenerTest {
         final Map<String, Integer> data = Map.of(testKey, testValue);
         final String notStatement = String.format("not /%s", testKey);
         final Event testEvent = createTestEvent(data);
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(notStatement, testEvent), is(false));
     }
 
     @Test
@@ -305,10 +356,10 @@ class ParseTreeEvaluatorListenerTest {
         final String notPriorToGreaterThanOrEqualStatement = "not 1 >= 1";
         final String notPriorToLessThanStatement = "not 2 < 1";
         final String notPriorToLessThanOrEqualStatement = "not 1 <= 1";
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notPriorToGreaterThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notPriorToGreaterThanOrEqualStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notPriorToLessThanStatement, testEvent));
-        assertThrows(ExpressionEvaluationException.class, () -> evaluateStatementOnEvent(notPriorToLessThanOrEqualStatement, testEvent));
+        assertThat(evaluateStatementOnEvent(notPriorToGreaterThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(notPriorToGreaterThanOrEqualStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(notPriorToLessThanStatement, testEvent), is(false));
+        assertThat(evaluateStatementOnEvent(notPriorToLessThanOrEqualStatement, testEvent), is(false));
     }
 
     @Test
