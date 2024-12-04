@@ -1,7 +1,5 @@
 package org.opensearch.dataprepper.plugins.source.oteltrace.grpc;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -16,9 +14,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
@@ -29,12 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
-import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServerBuilder;
-import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
-import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
@@ -68,7 +60,7 @@ public class GrpcService {
         this.certificateProviderFactory = certificateProviderFactory;
     }
 
-    public void create(Buffer<Record<Object>> buffer, ServerBuilder serverBuilder) {
+    public com.linecorp.armeria.server.grpc.GrpcService create(Buffer<Record<Object>> buffer, ServerBuilder serverBuilder) {
 
         final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                 (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
@@ -95,31 +87,21 @@ public class GrpcService {
             grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors));
         }
 
+        // todo tlongo extract into separate grpc config. Can't we have only one healthcheck for the whole server? We are already configuring one OtelTraceSource
         if (oTelTraceSourceConfig.hasHealthCheck()) {
             LOG.info("Health check is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
+        // todo tlongo extract into separate grpc config
         if (oTelTraceSourceConfig.hasProtoReflectionService()) {
             LOG.info("Proto reflection service is enabled");
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }
 
-        // todo tlongo let this method return the grpc service. All things serverbuilder related have to be done by the source
-
         grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
 
-//        serverBuilder.disableServerHeader();
-        if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
-            serverBuilder.service(grpcServiceBuilder.build());
-        } else {
-            serverBuilder.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
-        }
-
-//        if (oTelTraceSourceConfig.enableHttpHealthCheck()) {
-//            serverBuilder.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
-//        }
-
+        // todo tlongo extract to otelTraceSource
         if (oTelTraceSourceConfig.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
@@ -132,32 +114,7 @@ public class GrpcService {
             }
         }
 
-//        serverBuilder.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
-//        if(oTelTraceSourceConfig.getMaxRequestLength() != null) {
-//            serverBuilder.maxRequestLength(oTelTraceSourceConfig.getMaxRequestLength().getBytes());
-//        }
-
-        // ACM Cert for SSL takes preference
-//        if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) { LOG.info("SSL/TLS is enabled.");
-//            final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
-//            final Certificate certificate = certificateProvider.getCertificate();
-//            serverBuilder.https(oTelTraceSourceConfig.getPort()).tls(
-//                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-//                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
-//                    )
-//            );
-//        } else {
-//            LOG.warn("Creating otel_trace_source without SSL/TLS. This is not secure.");
-//            LOG.warn("In order to set up TLS for the otel_trace_source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#ssl");
-//            serverBuilder.http(oTelTraceSourceConfig.getPort());
-//        }
-
-//        serverBuilder.maxNumConnections(oTelTraceSourceConfig.getMaxConnectionCount());
-//        final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
-//                .numThreads(oTelTraceSourceConfig.getThreadCount())
-//                .threadNamePrefix(pipelineName + "-otel_trace")
-//                .build();
-//        serverBuilder.blockingTaskExecutor(blockingTaskExecutor, true);
+        return grpcServiceBuilder.build();
     }
 
     private List<ServerInterceptor> getAuthenticationInterceptor() {

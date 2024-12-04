@@ -9,6 +9,7 @@ import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -21,11 +22,12 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
-import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpService;
+import org.opensearch.dataprepper.plugins.source.oteltrace.http.ArmeriaHttpService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +41,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     static final String SERVER_CONNECTIONS = "serverConnections";
-
 
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private final PluginMetrics pluginMetrics;
@@ -86,9 +87,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
             configureTLS(serverBuilder);
             configureTaskExecutor(serverBuilder);
 
-            // todo tlongo convert to factory method?
-            new GrpcService(pluginFactory, oTelTraceSourceConfig, pluginMetrics, pipelineName, certificateProviderFactory).create(buffer, serverBuilder);
-            new HttpService(oTelTraceSourceConfig, pluginMetrics).create(serverBuilder, buffer);
+            configureGrpcService(serverBuilder, buffer);
+            configureHttpService(serverBuilder, buffer);
 
             server = serverBuilder.build();
 
@@ -111,7 +111,26 @@ public class OTelTraceSource implements Source<Record<Object>> {
         } else {
             throw new RuntimeException(ex);
         }
+    }
 
+    private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, oTelTraceSourceConfig, pluginMetrics, pipelineName, certificateProviderFactory).create(buffer, serverBuilder);
+
+        if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
+            serverBuilder.service(grpcService);
+        } else {
+            serverBuilder.service(grpcService, DecodingService.newDecorator());
+        }
+    }
+
+    private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
+        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics);
+
+        if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
+            serverBuilder.annotatedService(httpService);
+        } else {
+            serverBuilder.annotatedService(httpService, DecodingService.newDecorator());
+        }
     }
 
     private void configureHeadersAndHealthCheck(ServerBuilder serverBuilder) {
@@ -127,7 +146,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private void configureTLS(ServerBuilder serverBuilder) {
-        if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) { LOG.info("SSL/TLS is enabled.");
+        if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
+            LOG.info("SSL/TLS is enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
             serverBuilder.https(oTelTraceSourceConfig.getPort()).tls(
