@@ -38,7 +38,6 @@ public class NeptuneStreamClient {
         this.retryCount = 0;
     }
 
-
     public void setStreamPosition(final long commitNum, final long opNum) {
         streamPositionInfo = new StreamPosition(commitNum, opNum);
     }

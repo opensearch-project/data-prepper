@@ -23,7 +23,7 @@ public class NeptuneSourceConfig {
     @JsonProperty("region")
     private String region;
     @JsonProperty("iam_auth")
-    private boolean iamAuth = false;
+    private boolean iamAuth;
 
     @JsonProperty("trust_store_file_path")
     private String trustStoreFilePath;

@@ -350,7 +350,7 @@ public class StreamWorker implements NeptuneStreamEventListener {
             LOG.warn("Stream is corrupt, stopping the worker and resetting the stream.");
             this.isUnrecoverableError = true;
         } else {
-            LOG.info("Error fetching stream data, stopping processing");
+            LOG.info("Error fetching stream data, stopping processing: {}", exception.getMessage());
         }
         return false;
     }
