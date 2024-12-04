@@ -14,21 +14,21 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
-import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Consumes;
+import com.linecorp.armeria.server.annotation.ExceptionHandler;
 import com.linecorp.armeria.server.annotation.Post;
 
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 
+@ExceptionHandler(HttpExceptionHandler.class)
 public class ArmeriaHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);
 
@@ -62,17 +62,19 @@ public class ArmeriaHttpService {
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
-    // todo tlongo handle excpetions
+    // todo tlongo handle excpetions --> https://armeria.dev/docs/server-annotated-service#handling-exceptions
     // todo tlongo handle backoff
     // todo tlongo healthcheck?
 
-    @Post("/hello")
+    @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
     @Consumes(value = "application/json")
-    public void hello(ExportTraceServiceRequest request) {
+    public ExportTraceServiceResponse exportTrace(ExportTraceServiceRequest request) {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
         requestProcessDuration.record(() -> processRequest(request));
+
+        return ExportTraceServiceResponse.newBuilder().build();
     }
 
     // todo tlongo exract in order to be used by http and grpc?

@@ -31,6 +31,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.25.3'
     testImplementation testLibs.slf4j.simple
     testImplementation libs.commons.io
+    testImplementation 'com.jayway.jsonpath:json-path-assert:2.6.0'
 }
 
 jacocoTestCoverageVerification {

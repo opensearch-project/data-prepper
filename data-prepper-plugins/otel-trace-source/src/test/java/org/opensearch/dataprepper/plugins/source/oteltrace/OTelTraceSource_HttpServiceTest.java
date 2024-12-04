@@ -33,12 +33,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -52,6 +54,7 @@ import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
@@ -65,6 +68,7 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import static com.jayway.jsonpath.matchers.JsonPathMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSource_HttpServiceTest {
@@ -152,6 +156,8 @@ class OTelTraceSource_HttpServiceTest {
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
+    // todo tlongo add test for invalid payload
+
     @Test
     void testHttpService() throws Exception {
         when(buffer.isByteBuffer()).thenReturn(true);
@@ -163,14 +169,36 @@ class OTelTraceSource_HttpServiceTest {
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
                         .method(HttpMethod.POST)
-                        .path("/hello")
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(), HttpData.copyOf(JsonFormat.printer().print(request).getBytes()))
                 .aggregate()
-                .whenComplete((response, throwable) -> assertJsonResponse("", response))
+                .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
                 .join();
 
         verify(buffer, times(1)).writeBytes(bytesCaptor.capture(), anyString(), anyInt());
+    }
+
+    @Test
+    void request_that_causes_overflow_exception_should_not_be_written_to_buffer() throws Exception {
+        Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+        ExportTraceServiceRequest request = createExportTraceRequest();
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(), HttpData.copyOf(JsonFormat.printer().print(request).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> {
+                    assertThat(response.status(), is(HttpStatus.INSUFFICIENT_STORAGE));
+                    assertResponseBodyForRetryInformation(response);
+                })
+                .join();
     }
 
     private ExportTraceServiceRequest createExportTraceRequest() {
@@ -189,9 +217,10 @@ class OTelTraceSource_HttpServiceTest {
                 .build();
     }
 
-    private void assertJsonResponse(final String expectedResponseBody, final AggregatedHttpResponse response) {
+    private void assertResponseBodyForRetryInformation(final AggregatedHttpResponse response) {
         String body = response.content(StandardCharsets.UTF_8);
 
-        assertThat(body, is(expectedResponseBody));
+        // todo tlongo assert delay value
+        assertThat(body, hasJsonPath("$.details[0].retryDelay"));
     }
 }
