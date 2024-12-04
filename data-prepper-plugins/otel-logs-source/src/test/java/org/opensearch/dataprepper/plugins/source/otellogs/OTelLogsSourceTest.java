@@ -771,7 +771,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void gRPC_with_auth_request_with_invalid_basic_auth_does_not_write_to_buffer() throws Exception{
+    void gRPC_with_auth_request_with_different_basic_auth_credentials_does_not_write_to_buffer() throws Exception{
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
         when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
         final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
@@ -781,8 +781,8 @@ class OTelLogsSourceTest {
         when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelLogsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
                 Map.of(
-                        "username", "wrong Username",
-                        "password", "wrong Password"
+                        "username", USERNAME,
+                        "password", PASSWORD
                 )));
         configureObjectUnderTest();
         SOURCE.start(buffer);

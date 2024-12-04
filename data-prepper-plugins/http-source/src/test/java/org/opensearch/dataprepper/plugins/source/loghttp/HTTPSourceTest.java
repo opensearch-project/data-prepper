@@ -619,75 +619,67 @@ class HTTPSourceTest {
 
     @Test
     public void testServerStartCertFileMissing() {
+        when(sourceConfig.isSsl()).thenReturn(true);
+        when(sourceConfig.getSslCertificateFile()).thenReturn(null);
+        when(sourceConfig.getSslKeyFile()).thenReturn(null);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-
-            when(sourceConfig.isSsl()).thenReturn(true);
-            when(sourceConfig.getSslCertificateFile()).thenReturn(null);
-            when(sourceConfig.getSslKeyFile()).thenReturn(null);
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
             assertThrows(NullPointerException.class, () -> HTTPSourceUnderTest.start(testBuffer));
         }
     }
 
     @Test
-    void testServerStartACMCertSuccess() throws IOException {
+    void testServerStartACMCertSuccess() throws IOException, NoSuchFieldException, IllegalAccessException {
+        final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
+        final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
+        final String certAsString = Files.readString(certFilePath);
+        final String keyAsString = Files.readString(keyFilePath);
+
+        when(certificate.getCertificate()).thenReturn(certAsString);
+        when(certificate.getPrivateKey()).thenReturn(keyAsString);
+        when(certificateProvider.getCertificate()).thenReturn(certificate);
+        when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+        when(sourceConfig.isSsl()).thenReturn(true);
+        when(server.stop()).thenReturn(completableFuture);
+
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+        Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
+        field.setAccessible(true);
+        field.set(HTTPSourceUnderTest, certificateProviderFactory);
+
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            when(server.stop()).thenReturn(completableFuture);
-
-            final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
-            final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
-            final String certAsString = Files.readString(certFilePath);
-            final String keyAsString = Files.readString(keyFilePath);
-
-            when(certificate.getCertificate()).thenReturn(certAsString);
-            when(certificate.getPrivateKey()).thenReturn(keyAsString);
-            when(certificateProvider.getCertificate()).thenReturn(certificate);
-            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            when(sourceConfig.isSsl()).thenReturn(true);
-
-
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
-            Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
-            field.setAccessible(true);
-            field.set(HTTPSourceUnderTest, certificateProviderFactory);
-
             HTTPSourceUnderTest.start(testBuffer);
-            HTTPSourceUnderTest.stop();
-
-            final ArgumentCaptor<InputStream> certificateIs = ArgumentCaptor.forClass(InputStream.class);
-            final ArgumentCaptor<InputStream> privateKeyIs = ArgumentCaptor.forClass(InputStream.class);
-            verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
-            final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
-            final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate, is(certAsString));
-            assertThat(actualPrivateKey, is(keyAsString));
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
         }
+        HTTPSourceUnderTest.stop();
+
+        final ArgumentCaptor<InputStream> certificateIs = ArgumentCaptor.forClass(InputStream.class);
+        final ArgumentCaptor<InputStream> privateKeyIs = ArgumentCaptor.forClass(InputStream.class);
+        verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
+        final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
+        final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
+        assertThat(actualCertificate, is(certAsString));
+        assertThat(actualPrivateKey, is(keyAsString));
     }
 
     @Test
-    void testServerStartACMCertNull() {
+    void testServerStartACMCertNull() throws NoSuchFieldException, IllegalAccessException {
+        when(certificate.getCertificate()).thenReturn(null);
+        when(certificateProvider.getCertificate()).thenReturn(certificate);
+        when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+        when(sourceConfig.isSsl()).thenReturn(true);
+
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+        Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
+        field.setAccessible(true);
+        field.set(HTTPSourceUnderTest, certificateProviderFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-
-            when(certificate.getCertificate()).thenReturn(null);
-            when(certificateProvider.getCertificate()).thenReturn(certificate);
-            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            when(sourceConfig.isSsl()).thenReturn(true);
-
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
-            Field field = HTTPSourceUnderTest.getClass().getDeclaredField("certificateProviderFactory");
-            field.setAccessible(true);
-            field.set(HTTPSourceUnderTest, certificateProviderFactory);
-
             assertThrows(NullPointerException.class, () -> HTTPSourceUnderTest.start(testBuffer));
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
         }
     }
 
