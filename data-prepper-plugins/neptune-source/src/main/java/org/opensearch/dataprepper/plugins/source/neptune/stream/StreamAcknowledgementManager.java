@@ -142,7 +142,9 @@ public class StreamAcknowledgementManager {
     }
 
     void shutdown() {
-        monitoringTask.cancel(true);
+        if (monitoringTask != null) {
+            monitoringTask.cancel(true);
+        }
         try {
             if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
                 this.executorService.shutdownNow();

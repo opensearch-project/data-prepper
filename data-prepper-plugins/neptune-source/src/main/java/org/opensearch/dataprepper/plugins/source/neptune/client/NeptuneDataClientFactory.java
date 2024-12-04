@@ -7,8 +7,12 @@ package org.opensearch.dataprepper.plugins.source.neptune.client;
 import org.opensearch.dataprepper.plugins.source.neptune.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.source.neptune.configuration.NeptuneSourceConfig;
 import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
+import software.amazon.awssdk.core.signer.NoOpSigner;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.neptunedata.NeptunedataClient;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -20,12 +24,28 @@ import java.util.UUID;
 
 public class NeptuneDataClientFactory {
     public static NeptunedataClient provideNeptuneDataClient(final NeptuneSourceConfig sourceConfig) {
-        final AwsConfig awsConfig = sourceConfig.getAwsConfig();
-        return NeptunedataClient
-                .builder()
-                .region(Region.of(sourceConfig.getRegion()))
-                .credentialsProvider(getAwsCredentials(Region.of(sourceConfig.getRegion()), awsConfig.getAwsStsRoleArn(), awsConfig.getAwsStsExternalId()))
-                .endpointOverride(URI.create(String.format("https://%s:%s", sourceConfig.getHost(), sourceConfig.getPort()))).build();
+        final URI endpoint = URI.create(String.format("https://%s:%s", sourceConfig.getHost(), sourceConfig.getPort()));
+        if (sourceConfig.isIamAuth()) {
+            final AwsConfig awsConfig = sourceConfig.getAwsConfig();
+            return NeptunedataClient.builder()
+                    .endpointOverride(endpoint)
+                    .region(Region.of(sourceConfig.getRegion()))
+                    .credentialsProvider(getAwsCredentials(Region.of(sourceConfig.getRegion()), awsConfig.getAwsStsRoleArn(), awsConfig.getAwsStsExternalId()))
+                    .build();
+        } else {
+            final ClientOverrideConfiguration clientOverrideConfiguration =
+                    // Do not sign the request
+                    ClientOverrideConfiguration.builder()
+                            .putAdvancedOption(SdkAdvancedClientOption.SIGNER, new NoOpSigner())
+                            .build();
+
+            return NeptunedataClient.builder()
+                    .endpointOverride(endpoint)
+                    .region(Region.of(sourceConfig.getRegion()))
+                    .overrideConfiguration(clientOverrideConfiguration)
+                    .credentialsProvider(AnonymousCredentialsProvider.create())
+                    .build();
+        }
     }
 
     private static AwsCredentialsProvider getAwsCredentials(
