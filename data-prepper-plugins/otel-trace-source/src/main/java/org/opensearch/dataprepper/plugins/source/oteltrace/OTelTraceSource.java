@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.http.ArmeriaHttpService;
+import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,12 +125,13 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
-        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics);
+        ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
+        HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(oTelTraceSourceConfig.getRetryInfo().getMinDelay(), oTelTraceSourceConfig.getRetryInfo().getMaxDelay());
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
-            serverBuilder.annotatedService(httpService);
+            serverBuilder.annotatedService(httpService, httpExceptionHandler);
         } else {
-            serverBuilder.annotatedService(httpService, DecodingService.newDecorator());
+            serverBuilder.annotatedService(httpService, DecodingService.newDecorator(), httpExceptionHandler);
         }
     }
 
