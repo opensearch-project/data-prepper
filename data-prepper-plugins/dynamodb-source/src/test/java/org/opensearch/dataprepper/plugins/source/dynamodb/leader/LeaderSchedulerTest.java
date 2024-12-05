@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.leader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -223,7 +224,10 @@ class LeaderSchedulerTest {
 
 
         // Should call describe table to get basic table info
-        verify(dynamoDbClient).describeTable(any(DescribeTableRequest.class));
+        ArgumentCaptor<DescribeTableRequest> describeTableRequestArgumentCaptor = ArgumentCaptor.forClass(DescribeTableRequest.class);
+        verify(dynamoDbClient).describeTable(describeTableRequestArgumentCaptor.capture());
+        DescribeTableRequest actualDescribeTableRequest = describeTableRequestArgumentCaptor.getValue();
+        assertThat(actualDescribeTableRequest.tableName(), equalTo(tableArn));
         // Should check PITR enabled or not
         verify(dynamoDbClient).describeContinuousBackups(any(DescribeContinuousBackupsRequest.class));
         // Acquire the init partition
@@ -252,7 +256,11 @@ class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Should call describe table to get basic table info
-        verify(dynamoDbClient).describeTable(any(DescribeTableRequest.class));
+        ArgumentCaptor<DescribeTableRequest> describeTableRequestArgumentCaptor = ArgumentCaptor.forClass(DescribeTableRequest.class);
+        verify(dynamoDbClient).describeTable(describeTableRequestArgumentCaptor.capture());
+        DescribeTableRequest actualDescribeTableRequest = describeTableRequestArgumentCaptor.getValue();
+        assertThat(actualDescribeTableRequest.tableName(), equalTo(tableArn));
+
         // Should check PITR enabled or not
         verify(dynamoDbClient).describeContinuousBackups(any(DescribeContinuousBackupsRequest.class));
 
@@ -277,7 +285,11 @@ class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Should call describe table to get basic table info
-        verify(dynamoDbClient).describeTable(any(DescribeTableRequest.class));
+        ArgumentCaptor<DescribeTableRequest> describeTableRequestArgumentCaptor = ArgumentCaptor.forClass(DescribeTableRequest.class);
+        verify(dynamoDbClient).describeTable(describeTableRequestArgumentCaptor.capture());
+        DescribeTableRequest actualDescribeTableRequest = describeTableRequestArgumentCaptor.getValue();
+        assertThat(actualDescribeTableRequest.tableName(), equalTo(tableArn));
+
         // Should check PITR enabled or not
         verify(dynamoDbClient).describeContinuousBackups(any(DescribeContinuousBackupsRequest.class));
 
