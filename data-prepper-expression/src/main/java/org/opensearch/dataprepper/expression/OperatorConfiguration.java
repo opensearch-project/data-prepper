@@ -275,7 +275,8 @@ class OperatorConfiguration {
 
     @Bean
     public AddBinaryOperator concatOperator() {
-        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, null); 
+        var operatorParameters= new OperatorParameters(DataPrepperExpressionParser.PLUS, null, null);
+        return new AddBinaryOperator(operatorParameters);
     }
 
     @Bean
@@ -321,7 +322,8 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Long.class, longOperations);
         operandsToOperationMap.put(Double.class, doubleOperations);
 
-        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, operandsToOperationMap);
+        var operatorParameters= new OperatorParameters(DataPrepperExpressionParser.PLUS, operandsToOperationMap, null);
+        return new AddBinaryOperator(operatorParameters);
     }
 
     @Bean
@@ -367,7 +369,8 @@ class OperatorConfiguration {
         strategy.put(Long.class, arg -> -arg.longValue());
         strategy.put(Float.class, arg -> -arg.floatValue());
 
-        return new ArithmeticSubtractOperator(DataPrepperExpressionParser.SUBTRACT, operandsToOperationMap, strategy);
+        var operatorParameters= new OperatorParameters(DataPrepperExpressionParser.SUBTRACT, operandsToOperationMap, strategy);
+        return new ArithmeticSubtractOperator(operatorParameters);
     }
 
     @Bean
@@ -408,7 +411,8 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Long.class, longOperations);
         operandsToOperationMap.put(Double.class, doubleOperations);
 
-        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.MULTIPLY, operandsToOperationMap);
+        var operatorParameters= new OperatorParameters(DataPrepperExpressionParser.MULTIPLY, operandsToOperationMap, null);
+        return new ArithmeticBinaryOperator(operatorParameters);
     }
 
     @Bean
@@ -449,6 +453,7 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Long.class, longOperations);
         operandsToOperationMap.put(Double.class, doubleOperations);
 
-        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.DIVIDE, operandsToOperationMap);
+        var operatorParameters= new OperatorParameters(DataPrepperExpressionParser.DIVIDE, operandsToOperationMap, null);
+        return new ArithmeticBinaryOperator(operatorParameters);
     }
 }
