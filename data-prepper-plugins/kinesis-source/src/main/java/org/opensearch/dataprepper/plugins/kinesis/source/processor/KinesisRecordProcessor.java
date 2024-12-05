@@ -39,6 +39,7 @@ import software.amazon.kinesis.processor.ShardRecordProcessor;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -170,28 +171,26 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
             // Track the records for checkpoint purpose
             kinesisCheckpointerTracker.addRecordForCheckpoint(extendedSequenceNumber, processRecordsInput.checkpointer());
 
-            // Get the size of bytes received from Kinesis stream
-            final List<Integer> recordBytes = new ArrayList<>();
-            processRecordsInput.records().forEach(kinesisClientRecord-> recordBytes.add(kinesisClientRecord.data().remaining()));
-            bytesReceivedSummary.record(recordBytes.stream().mapToLong(Integer::longValue).sum());
-
-            List<Record<Event>> records = kinesisRecordConverter.convert(
+            List<KinesisInputOutputRecord> kinesisOutputRecords = kinesisRecordConverter.convert(
                     kinesisStreamConfig.getCompression().getDecompressionEngine(),
                     processRecordsInput.records(), streamIdentifier.streamName());
 
             int eventCount = 0;
-            for (Record<Event> record: records) {
-                Event event = record.getData();
+            for (KinesisInputOutputRecord kinesisInputOutputRecord: kinesisOutputRecords) {
+                Record<Event> dataPrepperRecord = kinesisInputOutputRecord.getDataPrepperRecord();
+                int incomingRecordSizeBytes = kinesisInputOutputRecord.getKinesisClientRecord().data().position();
+                bytesReceivedSummary.record(incomingRecordSizeBytes);
+                Event event = dataPrepperRecord.getData();
                 acknowledgementSetOpt.ifPresent(acknowledgementSet -> acknowledgementSet.add(event));
 
-                bufferAccumulator.add(record);
+                bufferAccumulator.add(dataPrepperRecord);
+                bytesProcessedSummary.record(incomingRecordSizeBytes);
                 eventCount++;
             }
 
             // Flush buffer at the end
             bufferAccumulator.flush();
             recordsProcessed.increment(eventCount);
-            bytesProcessedSummary.record(recordBytes.stream().mapToLong(Integer::longValue).sum());
 
             // If acks are not enabled, mark the sequence number for checkpoint
             if (!acknowledgementsEnabled) {
