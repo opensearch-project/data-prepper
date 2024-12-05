@@ -7,7 +7,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation libs.avro.core
-    implementation 'org.apache.commons:commons-text:1.11.0'
+    implementation 'org.apache.commons:commons-text:1.12.0'
     implementation libs.parquet.avro
     implementation libs.parquet.column
     implementation libs.parquet.common
