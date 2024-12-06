@@ -12,6 +12,13 @@ import java.util.Properties;
 
 public class ConnectionManager {
     static final String JDBC_URL_FORMAT = "jdbc:mysql://%s:%d";
+    static final String USERNAME_KEY = "user";
+    static final String PASSWORD_KEY = "password";
+    static final String USE_SSL_KEY = "useSSL";
+    static final String REQUIRE_SSL_KEY = "requireSSL";
+    static final String TINY_INT_ONE_IS_BIT_KEY = "tinyInt1isBit";
+    static final String TRUE_VALUE = "true";
+    static final String FALSE_VALUE = "false";
     private final String hostName;
     private final int port;
     private final String username;
@@ -28,14 +35,15 @@ public class ConnectionManager {
 
     public Connection getConnection() throws SQLException {
         final Properties props = new Properties();
-        props.setProperty("user", username);
-        props.setProperty("password", password);
+        props.setProperty(USERNAME_KEY, username);
+        props.setProperty(PASSWORD_KEY, password);
         if (requireSSL) {
-            props.setProperty("useSSL", "true");
-            props.setProperty("requireSSL", "true");
+            props.setProperty(USE_SSL_KEY, TRUE_VALUE);
+            props.setProperty(REQUIRE_SSL_KEY, TRUE_VALUE);
         } else {
-            props.setProperty("useSSL", "false");
+            props.setProperty(USE_SSL_KEY, FALSE_VALUE);
         }
+        props.setProperty(TINY_INT_ONE_IS_BIT_KEY, FALSE_VALUE);
         final String jdbcUrl = String.format(JDBC_URL_FORMAT, hostName, port);
         return doGetConnection(jdbcUrl, props);
     }
