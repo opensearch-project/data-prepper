@@ -225,6 +225,8 @@ class GenericExpressionEvaluator_ArithmeticIT {
         int testStringLength = random.nextInt(10);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
+                Arguments.of("/status + /message", event("{\"status\": 200, \"nomessage\":\"msg\"}")),
+                Arguments.of("/status - /message", event("{\"status\": 200, \"nomessage\":\"msg\"}")),
                 // Can't mix Numbers and Strings when using operators
                 Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/status / /message", event("{\"status\": 200, \"message\":\"msg\"}")),
