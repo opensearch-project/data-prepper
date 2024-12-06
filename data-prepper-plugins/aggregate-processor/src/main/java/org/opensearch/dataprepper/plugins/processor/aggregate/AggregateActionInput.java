@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
+
 import java.util.Map;
 import java.util.function.Function;
 import java.time.Duration;
@@ -20,6 +22,8 @@ public interface AggregateActionInput {
      * @since 1.3
      */
     GroupState getGroupState();
+
+    EventHandle getEventHandle();
 
     /**
      * @return a map of Identification keys containing identification keys and

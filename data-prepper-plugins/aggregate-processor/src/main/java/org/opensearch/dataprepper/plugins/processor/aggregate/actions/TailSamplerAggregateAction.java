@@ -77,6 +77,10 @@ public class TailSamplerAggregateAction implements AggregateAction {
         if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {
             return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
         }
+        List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, List.of());
+        for (final Event event : events) {
+            event.getEventHandle().release(true);
+        }
         return new AggregateActionOutput(List.of());
     }
 

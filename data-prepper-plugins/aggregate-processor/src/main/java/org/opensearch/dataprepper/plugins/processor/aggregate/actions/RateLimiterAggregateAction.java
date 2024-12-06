@@ -35,6 +35,7 @@ public class RateLimiterAggregateAction implements AggregateAction {
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         if (rateLimiterMode == RateLimiterMode.DROP) {
             if (!rateLimiter.tryAcquire()) {
+                event.getEventHandle().release(true);
                 return AggregateActionResponse.nullEventResponse();
             }
         } else {
