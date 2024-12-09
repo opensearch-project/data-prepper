@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
 import com.amazonaws.SdkClientException;
+import com.linecorp.armeria.client.retry.Backoff;
 import lombok.Getter;
 import lombok.Setter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -42,6 +43,7 @@ import software.amazon.kinesis.exceptions.ThrottlingException;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -55,6 +57,10 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 public class KinesisService {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisService.class);
     private static final int GRACEFUL_SHUTDOWN_WAIT_INTERVAL_SECONDS = 20;
+    private static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
+    private static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
+    private static final double JITTER_RATE = 0.20;
+    private static final int NUM_OF_RETRIES = 3;
 
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
@@ -171,7 +177,8 @@ public class KinesisService {
 
         ConfigsBuilder configsBuilder =
                 new ConfigsBuilder(
-                        new KinesisMultiStreamTracker(kinesisClient, kinesisSourceConfig, applicationName),
+                        new KinesisMultiStreamTracker(kinesisSourceConfig, applicationName, new KinesisClientApiHandler(kinesisClient, Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                                .withMaxAttempts(NUM_OF_RETRIES), NUM_OF_RETRIES)),
                         applicationName, kinesisClient, dynamoDbClient, cloudWatchClient,
                         workerIdentifierGenerator.generate(), processorFactory
                 )

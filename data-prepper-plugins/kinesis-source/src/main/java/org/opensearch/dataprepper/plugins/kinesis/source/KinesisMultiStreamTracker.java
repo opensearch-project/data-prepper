@@ -10,13 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
-import com.amazonaws.arn.Arn;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
-import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamRequest;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamResponse;
-import software.amazon.awssdk.services.kinesis.model.StreamDescription;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
 import software.amazon.kinesis.common.StreamConfig;
 import software.amazon.kinesis.common.StreamIdentifier;
@@ -27,18 +22,15 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class KinesisMultiStreamTracker implements MultiStreamTracker {
-    private static final String COLON = ":";
-
-    private final KinesisAsyncClient kinesisClient;
     private final KinesisSourceConfig sourceConfig;
     private final String applicationName;
+    private final KinesisClientApiHandler kinesisClientAPIHandler;
 
-    public KinesisMultiStreamTracker(KinesisAsyncClient kinesisClient, final KinesisSourceConfig sourceConfig, final String applicationName) {
-        this.kinesisClient = kinesisClient;
+    public KinesisMultiStreamTracker(final KinesisSourceConfig sourceConfig, final String applicationName, final KinesisClientApiHandler kinesisClientAPIHandler) {
         this.sourceConfig = sourceConfig;
         this.applicationName = applicationName;
+        this.kinesisClientAPIHandler = kinesisClientAPIHandler;
     }
 
     @Override
@@ -52,24 +44,9 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
     }
 
     private StreamConfig getStreamConfig(KinesisStreamConfig kinesisStreamConfig) {
-        StreamIdentifier sourceStreamIdentifier = getStreamIdentifier(kinesisStreamConfig);
+        StreamIdentifier sourceStreamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(kinesisStreamConfig.getName());
         return new StreamConfig(sourceStreamIdentifier,
                 InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()));
-    }
-
-    private StreamIdentifier getStreamIdentifier(KinesisStreamConfig kinesisStreamConfig) {
-        DescribeStreamRequest describeStreamRequest = DescribeStreamRequest.builder()
-                .streamName(kinesisStreamConfig.getName())
-                .build();
-        DescribeStreamResponse describeStreamResponse = kinesisClient.describeStream(describeStreamRequest).join();
-        String streamIdentifierString = getStreamIdentifierString(describeStreamResponse.streamDescription());
-        return StreamIdentifier.multiStreamInstance(streamIdentifierString);
-    }
-
-    private String getStreamIdentifierString(StreamDescription streamDescription) {
-        String accountId = Arn.fromString(streamDescription.streamARN()).getAccountId();
-        long creationEpochSecond = streamDescription.streamCreationTimestamp().getEpochSecond();
-        return String.join(COLON, accountId, streamDescription.streamName(), String.valueOf(creationEpochSecond));
     }
 
     /**
