@@ -86,7 +86,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-@DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
+@DataPrepperPlugin(name = "opensearch", pluginType = Sink.class, pluginConfigurationType = OpenSearchSinkConfig.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
@@ -151,7 +151,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                         final SinkContext sinkContext,
                         final ExpressionEvaluator expressionEvaluator,
                         final AwsCredentialsSupplier awsCredentialsSupplier,
-                        final PluginConfigObservable pluginConfigObservable) {
+                        final PluginConfigObservable pluginConfigObservable,
+                        final OpenSearchSinkConfig openSearchSinkConfiguration) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
@@ -163,7 +164,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
     dynamicDocumentVersionDroppedEvents = pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS);
 
-    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator);
+    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfiguration);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();

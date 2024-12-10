@@ -40,15 +40,25 @@ public class OpenSearchSinkConfiguration {
     this.retryConfiguration = retryConfiguration;
   }
 
-  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
-    return readESConfig(pluginSetting, null);
-  }
+//  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
+//    return readESConfig(pluginSetting, null);
+//  }
+//
+//  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
+//    final ConnectionConfiguration connectionConfiguration =
+//            ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+//    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator);
+//    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
+//
+//    return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
+//  }
 
-  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
+  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
+    openSearchSinkConfig.validateConfig();
     final ConnectionConfiguration connectionConfiguration =
-            ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator);
-    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
+            ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig);
+    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(openSearchSinkConfig);
 
     return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
   }

@@ -101,12 +101,12 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.isOSBundle;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.waitForClusterStateUpdatesToFinish;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
-import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.AUTHENTICATION;
-import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.PASSWORD;
-import static org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig.USERNAME;
 
 public class OpenSearchSinkIT {
     private static final int LUCENE_CHAR_LENGTH_LIMIT = 32_766;
+    private static final String AUTHENTICATION = "authentication";
+    private static final String USERNAME = "username";
+    private static final String PASSWORD = "password";
     private static final String TEST_STRING_WITH_SPECIAL_CHARS = "Hello! Data-Prepper? #Example123";
     private static final String TEST_STRING_WITH_NON_LATIN_CHARS = "Привет,Γειά σας,こんにちは,你好";
     private static final String PLUGIN_NAME = "opensearch";
