@@ -124,7 +124,8 @@ public class BulkRetryStrategyTests {
                 pluginMetrics,
                 Integer.MAX_VALUE,
                 bulkRequestSupplier,
-                pluginSetting);
+                PIPELINE_NAME,
+                PLUGIN_NAME);
     }
 
     public BulkRetryStrategy createObjectUnderTest(
@@ -139,7 +140,8 @@ public class BulkRetryStrategyTests {
                 pluginMetrics,
                 maxRetries,
                 bulkRequestSupplier,
-                pluginSetting);
+                PIPELINE_NAME,
+                PLUGIN_NAME);
     }
 
     @Test
