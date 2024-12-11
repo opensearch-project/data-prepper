@@ -53,11 +53,11 @@ public class OpenSearchSinkConfiguration {
 //    return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
 //  }
 
-  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
+  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator) {
     openSearchSinkConfig.validateConfig();
     final ConnectionConfiguration connectionConfiguration =
             ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
-    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig);
+    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig, expressionEvaluator);
     final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(openSearchSinkConfig);
 
     return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);

@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.ConnectionClosedException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
@@ -64,7 +63,6 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 public class ConnectionConfiguration {
   static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -213,16 +211,11 @@ public class ConnectionConfiguration {
     ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
     final String username = openSearchSinkConfig.getUsername();
     final String password = openSearchSinkConfig.getPassword();
-    final AuthConfig authConfig = openSearchSinkConfig.getAuthConfig();
-    if (authConfig != null) {
-      builder = builder.withAuthConfig(authConfig);
-    } else {
-      if (username != null) {
-        builder = builder.withUsername(username);
-      }
-      if (password != null) {
-        builder = builder.withPassword(password);
-      }
+    if (username != null) {
+      builder = builder.withUsername(username);
+    }
+    if (password != null) {
+      builder = builder.withPassword(password);
     }
     final Integer socketTimeout = openSearchSinkConfig.getSocketTimeout();
     if (socketTimeout != null) {

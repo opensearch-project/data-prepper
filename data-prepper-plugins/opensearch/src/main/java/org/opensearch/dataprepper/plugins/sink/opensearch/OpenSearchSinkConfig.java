@@ -1,11 +1,11 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.linecorp.armeria.server.annotation.Get;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
+import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 
 import java.util.List;
@@ -25,10 +25,6 @@ public class OpenSearchSinkConfig {
     private String password = null;
 
     @Getter
-    @JsonProperty("authconfig")
-    private AuthConfig authConfig = null;
-
-    @Getter
     @JsonProperty("socket_timeout")
     private Integer socketTimeout = null;
 
@@ -40,11 +36,6 @@ public class OpenSearchSinkConfig {
     @JsonProperty("aws")
     @Valid
     private AwsAuthenticationConfiguration awsAuthenticationOptions;
-
-    @Getter
-    @Deprecated
-    @JsonProperty("aws_sigv4")
-    private Boolean awsSigv4 = false;
 
     @Getter
     @JsonProperty("cert")
@@ -69,18 +60,112 @@ public class OpenSearchSinkConfig {
         return Objects.requireNonNullElse(enableRequestCompression, defaultValue);
     }
 
+    @Getter
+    @JsonProperty("index")
+    private String indexAlias = null;
+
+    @Getter
+    @JsonProperty("index_type")
+    private String indexType = null;
+
+    @Getter
+    @JsonProperty("template_type")
+    private String templateType = TemplateType.V1.getTypeName();
+
+    @Getter
+    @JsonProperty("template_file")
+    private String templateFile = null;
+
+    @Getter
+    @JsonProperty("template_content")
+    private String templateContent = null;
+
+    @Getter
+    @JsonProperty("number_of_shards")
+    private Integer numShards = 0;
+
+    @Getter
+    @JsonProperty("number_of_replicas")
+    private Integer numReplicas = 0;
+
+    @JsonProperty("bulk_size")
+    private Long bulkSize;
+
+    public Long getBulkSize(Long defaultBulkSize) {
+        return bulkSize == null ? defaultBulkSize : bulkSize;
+    }
+
+    @JsonProperty("estimate_bulk_size_using_compression")
+    private Boolean estimateBulkSizeUsingCompression;
+
+    public Boolean getEstimateBulkSizeUsingCompression(boolean defaultValue) {
+        return Objects.requireNonNullElse(estimateBulkSizeUsingCompression, defaultValue);
+    }
+
+    @JsonProperty("max_local_compressions_for_estimation")
+    private Integer maxLocalCompressionsForEstimation;
+
+    public Integer getMaxLocalCompressionsForEstimation(Integer defaultValue) {
+        return Objects.requireNonNullElse(maxLocalCompressionsForEstimation, defaultValue);
+    }
+
+    @JsonProperty("flush_timeout")
+    private Long flushTimeout = null;
+
+    public Long getFlushTimeout(Long defaultFlushTimeout) {
+        return flushTimeout == null ? defaultFlushTimeout : flushTimeout;
+    }
+
+    @Getter
+    @JsonProperty("document_version_type")
+    private String versionType = null;
+
+    @Getter
+    @JsonProperty("document_version")
+    private String versionExpression = null;
+
+    @Getter
+    @JsonProperty("normalize_index")
+    private Boolean normalizeIndex = false;
+
+    @Getter
+    @JsonProperty("document_id")
+    private String documentId = null;
+
+    @Getter
+    @JsonProperty("routing")
+    private String routing = null;
+
+    @Getter
+    @JsonProperty("ism_policy_file")
+    private String ismPolicyFile = null;
+
+    @Getter
+    @JsonProperty("action")
+    private String action = OpenSearchBulkActions.INDEX.toString();
+
+    @Getter
+    @Valid
+    @JsonProperty("actions")
+    private List<ActionConfiguration> actions = null;
+
+    @Getter
+    @JsonProperty("document_root_key")
+    private String documentRootKey = null;
+
+
+
     public void validateConfig() {
-        isValidAuthConfig();
+        isActionValid();
     }
 
 
-    void isValidAuthConfig() {
-        if (authConfig != null) {
-            if (username != null || password != null) {
-                throw new IllegalStateException("Deprecated username and password should not be set " +
-                        "when authentication is configured.");
-            }
+    void isActionValid() {
+        if (action.equals("index") || action.equals("create") || action.equals("update") || action.equals("upsert") || action.equals("delete")) {
+            return;
         }
+        throw new IllegalArgumentException("action must be one of [index, create, update, upsert, delete]");
     }
+
 }
 

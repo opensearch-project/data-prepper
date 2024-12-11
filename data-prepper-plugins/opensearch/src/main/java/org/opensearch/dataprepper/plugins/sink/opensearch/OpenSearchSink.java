@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -53,6 +54,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWrit
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
@@ -117,7 +119,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String routing;
   private final String pipeline;
   private final String action;
-  private final List<Map<String, Object>> actions;
+  private final List<ActionConfiguration> actions;
   private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
@@ -151,12 +153,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                         final SinkContext sinkContext,
                         final ExpressionEvaluator expressionEvaluator,
                         final AwsCredentialsSupplier awsCredentialsSupplier,
+                        final PipelineDescription pipelineDescription,
                         final PluginConfigObservable pluginConfigObservable,
                         final OpenSearchSinkConfig openSearchSinkConfiguration) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     this.expressionEvaluator = expressionEvaluator;
+    this.pipeline = pipelineDescription.getPipelineName();
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     invalidActionErrorsCounter = pluginMetrics.counter(INVALID_ACTION_ERRORS);
@@ -164,7 +168,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
     dynamicDocumentVersionDroppedEvents = pluginMetrics.counter(INVALID_VERSION_EXPRESSION_DROPPED_EVENTS);
 
-    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfiguration);
+    this.openSearchSinkConfig = OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfiguration, expressionEvaluator);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
@@ -172,7 +176,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
-    this.pipeline = openSearchSinkConfig.getIndexConfiguration().getPipeline();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
@@ -430,9 +433,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       String eventAction = action;
       if (actions != null) {
-        for (final Map<String, Object> actionEntry: actions) {
-            final String condition = (String)actionEntry.get("when");
-            eventAction = (String)actionEntry.get("type");
+        for (final ActionConfiguration actionEntry: actions) {
+            final String condition = actionEntry.getWhen();
+            eventAction = actionEntry.getType();
             if (condition != null &&
                 expressionEvaluator.evaluateConditional(condition, event)) {
                     break;
