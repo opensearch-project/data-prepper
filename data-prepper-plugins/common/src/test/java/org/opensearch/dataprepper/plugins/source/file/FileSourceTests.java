@@ -14,17 +14,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +52,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class FileSourceTests {
@@ -82,6 +82,31 @@ public class FileSourceTests {
 
     private FileSource createObjectUnderTest() {
         fileSourceConfig = OBJECT_MAPPER.convertValue(pluginSettings, FileSourceConfig.class);
+        return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory());
+    }
+
+    /**
+     * Variant of creatgeObjectUnderTest that uses mocks for the configuration instead of object mapper, so we can
+     * pass concrete mocks to the FileSource through the FileSourceConfig.
+     * @param codec the codec to use in the configuration
+     * @param engine the {@link DecompressionEngine} to use in the configuration
+     * @return
+     */
+    private FileSource createObjectUnderTest(PluginModel codec, DecompressionEngine engine) {
+        FileSourceConfig fileSourceConfig = mock(FileSourceConfig.class);
+
+        when(fileSourceConfig.getFilePathToRead()).thenReturn(TEST_FILE_PATH_PLAIN);
+
+        if (codec != null) {
+            when(fileSourceConfig.getCodec()).thenReturn(codec);
+        }
+
+        if (engine != null) {
+            CompressionOption compressionOption = mock(CompressionOption.class);
+            when(compressionOption.getDecompressionEngine()).thenReturn(engine);
+            when(fileSourceConfig.getCompression()).thenReturn(compressionOption);
+        }
+
         return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory, TestEventFactory.getTestEventFactory());
     }
 
@@ -278,6 +303,9 @@ public class FileSourceTests {
         @Mock
         private Buffer buffer;
 
+        @Mock
+        private DecompressionEngine decompressionEngine;
+
         @BeforeEach
         void setUp() {
             Map<String, String> codecConfiguration = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -290,21 +318,18 @@ public class FileSourceTests {
 
         @Test
         void start_will_parse_codec_with_correct_inputStream() throws IOException {
-            createObjectUnderTest().start(buffer);
+            final FileInputStream decompressedStream = new FileInputStream(TEST_FILE_PATH_PLAIN);
+            DecompressionEngine mockEngine = mock(DecompressionEngine.class);
+            when(mockEngine.createInputStream(any(InputStream.class))).thenReturn(decompressedStream);
 
-            final ArgumentCaptor<InputStream> inputStreamArgumentCaptor = ArgumentCaptor.forClass(InputStream.class);
+            PluginModel fakeCodec = mock(PluginModel.class);
+            when(fakeCodec.getPluginName()).thenReturn("fake_codec");
+            when(fakeCodec.getPluginSettings()).thenReturn(Map.of());
+
+            createObjectUnderTest(fakeCodec, mockEngine).start(buffer);
 
             await().atMost(2, TimeUnit.SECONDS)
-                            .untilAsserted(() -> verify(inputCodec).parse(any(InputStream.class), any(Consumer.class)));
-            verify(inputCodec).parse(inputStreamArgumentCaptor.capture(), any(Consumer.class));
-
-            final InputStream actualInputStream = inputStreamArgumentCaptor.getValue();
-
-            final byte[] actualBytes = actualInputStream.readAllBytes();
-            final FileInputStream fileInputStream = new FileInputStream(TEST_FILE_PATH_PLAIN);
-            final byte[] expectedBytes = fileInputStream.readAllBytes();
-
-            assertThat(actualBytes, equalTo(expectedBytes));
+                            .untilAsserted(() -> verify(inputCodec).parse(eq(decompressedStream), any(Consumer.class)));
         }
 
         @Test
