@@ -54,8 +54,12 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     }
 
     @Override
-    public void update(PluginSetting pluginSetting) {
-        final ConnectionConfiguration newConfig = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+    public void update(final PluginSetting pluginSetting) {
+        return;
+    }
+
+    public void update(OpenSearchSinkConfig openSearchSinkConfig) {
+        final ConnectionConfiguration newConfig = ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         if (basicAuthChanged(newConfig)) {
             credentialsChangeCounter.increment();
             readWriteLock.writeLock().lock();

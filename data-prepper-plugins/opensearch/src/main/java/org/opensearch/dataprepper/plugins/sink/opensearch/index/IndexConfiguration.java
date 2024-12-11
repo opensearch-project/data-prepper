@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,7 +33,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -69,16 +67,11 @@ public class IndexConfiguration {
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String ACTIONS = "actions";
-    public static final String S3_AWS_REGION = "s3_aws_region";
-    public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
-    public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
     public static final String DISTRIBUTION_VERSION = "distribution_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
     public static final String DOCUMENT_VERSION_EXPRESSION = "document_version";
-    public static final String DOCUMENT_VERSION_TYPE = "document_version_type";
-    public static final String NORMALIZE_INDEX = "normalize_index";
 
     private IndexType indexType;
     private TemplateType templateType;
@@ -285,129 +278,6 @@ public class IndexConfiguration {
         return builder.build();
     }
 
-//    public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
-//        IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-//        final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
-//        if (indexAlias != null) {
-//            builder = builder.withIndexAlias(indexAlias);
-//        }
-//        final String indexType = pluginSetting.getStringOrDefault(INDEX_TYPE, null);
-//        if(indexType != null) {
-//            builder = builder.withIndexType(indexType);
-//        }
-//        final String templateType = pluginSetting.getStringOrDefault(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
-//        if(templateType != null) {
-//            builder = builder.withTemplateType(templateType);
-//        }
-//        final String templateFile = pluginSetting.getStringOrDefault(TEMPLATE_FILE, null);
-//        if (templateFile != null) {
-//            builder = builder.withTemplateFile(templateFile);
-//        }
-//
-//        final String templateContent = pluginSetting.getStringOrDefault(TEMPLATE_CONTENT, null);
-//        if (templateContent != null) {
-//            builder = builder.withTemplateContent(templateContent);
-//        }
-//
-//        if (templateContent != null && templateFile != null) {
-//            LOG.warn("Both template_content and template_file are configured. Only template_content will be used");
-//        }
-//
-//        builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_SHARDS, 0));
-//        builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
-//        final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
-//        builder = builder.withBulkSize(batchSize);
-//        final boolean estimateBulkSizeUsingCompression =
-//                pluginSetting.getBooleanOrDefault(ESTIMATE_BULK_SIZE_USING_COMPRESSION, DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION);
-//        builder = builder.withEstimateBulkSizeUsingCompression(estimateBulkSizeUsingCompression);
-//
-//        final int maxLocalCompressionsForEstimation =
-//                pluginSetting.getIntegerOrDefault(MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION);
-//        builder = builder.withMaxLocalCompressionsForEstimation(maxLocalCompressionsForEstimation);
-//
-//        final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
-//        builder = builder.withFlushTimeout(flushTimeout);
-//
-//        final String versionExpression = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_EXPRESSION, null);
-//        final String versionType = pluginSetting.getStringOrDefault(DOCUMENT_VERSION_TYPE, null);
-//        final boolean normalizeIndex = pluginSetting.getBooleanOrDefault(NORMALIZE_INDEX, false);
-//        builder = builder.withNormalizeIndex(normalizeIndex);
-//
-//        builder = builder.withVersionExpression(versionExpression);
-//        if (versionExpression != null && (!expressionEvaluator.isValidFormatExpression(versionExpression))) {
-//            throw new InvalidPluginConfigurationException(
-//                    String.format("document_version \"%s\" is not a valid format expression.", versionExpression));
-//        }
-//
-//        builder = builder.withVersionType(versionType);
-//
-//
-//        final String documentIdField = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
-//        final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID, null);
-//        if (Objects.nonNull(documentIdField) && Objects.nonNull(documentId)) {
-//            throw new InvalidPluginConfigurationException("Both document_id_field and document_id cannot be used at the same time. It is preferred to only use document_id as document_id_field is deprecated.");
-//        }
-//
-//        if (documentIdField != null) {
-//            LOG.warn("document_id_field is deprecated in favor of document_id, and support for document_id_field will be removed in a future major version release.");
-//            builder = builder.withDocumentIdField(documentIdField);
-//        } else if (documentId != null) {
-//            builder = builder.withDocumentId(documentId);
-//        }
-//
-//        final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
-//        final String routing = pluginSetting.getStringOrDefault(ROUTING, null);
-//        if (routingField != null) {
-//            LOG.warn("routing_field is deprecated in favor of routing, and support for routing_field will be removed in a future major version release.");
-//            builder = builder.withRoutingField(routingField);
-//        } else if (routing != null) {
-//            builder = builder.withRouting(routing);
-//        }
-//
-//        final String pipeline = pluginSetting.getStringOrDefault(PIPELINE, null);
-//        if (pipeline != null) {
-//            builder = builder.withPipeline(pipeline);
-//        }
-//
-//        final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
-//        builder = builder.withIsmPolicyFile(ismPolicyFile);
-//
-//        List<Map<String, Object>> actionsList = pluginSetting.getTypedListOfMaps(ACTIONS, String.class, Object.class);
-//
-//        if (actionsList != null) {
-//            builder.withActions(actionsList, expressionEvaluator);
-//        } else {
-//            builder.withAction(pluginSetting.getStringOrDefault(ACTION, OpenSearchBulkActions.INDEX.toString()), expressionEvaluator);
-//        }
-//
-//        if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
-//            || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
-//            builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
-//            builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
-//            builder.withS3AWSStsExternalId(pluginSetting.getStringOrDefault(S3_AWS_STS_EXTERNAL_ID, null));
-//
-//            final S3ClientProvider clientProvider = new S3ClientProvider(
-//                builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
-//            builder.withS3Client(clientProvider.buildS3Client());
-//        }
-//
-//        Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
-//        if (awsOption != null && !awsOption.isEmpty()) {
-//            builder.withServerless(OBJECT_MAPPER.convertValue(
-//                    awsOption.getOrDefault(SERVERLESS, false), Boolean.class));
-//        } else {
-//            builder.withServerless(false);
-//        }
-//
-//        final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
-//        builder.withDocumentRootKey(documentRootKey);
-//
-//        final String distributionVersion = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
-//                DistributionVersion.DEFAULT.getVersion());
-//        builder.withDistributionVersion(distributionVersion);
-//
-//        return builder.build();
-//    }
 
     public IndexType getIndexType() {
         return indexType;

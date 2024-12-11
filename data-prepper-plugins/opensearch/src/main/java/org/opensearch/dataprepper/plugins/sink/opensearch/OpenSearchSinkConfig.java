@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 
@@ -153,12 +154,32 @@ public class OpenSearchSinkConfig {
     @JsonProperty("document_root_key")
     private String documentRootKey = null;
 
+    @Getter
+    @JsonProperty("dlq_file")
+    private String dlqFile = null;
+
+    @Getter
+    @JsonProperty("max_retries")
+    private Integer maxRetries = null;
+
+    @Getter
+    @JsonProperty("dlq")
+    private DlqConfiguration dlq;
+
 
 
     public void validateConfig() {
         isActionValid();
+        isDlqValid();
     }
 
+    void isDlqValid() {
+        if (dlq != null) {
+            if (dlqFile!= null) {
+                throw new IllegalArgumentException("dlq_file option cannot be used along with dlq option");
+            }
+        }
+    }
 
     void isActionValid() {
         if (action.equals("index") || action.equals("create") || action.equals("update") || action.equals("upsert") || action.equals("delete")) {
