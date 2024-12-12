@@ -30,16 +30,13 @@ public interface ExpressionEvaluator {
         Object result;
         try {
             result = evaluate(statement, context);
-            if (result == null) {
-                return false;
-            }
             if (result instanceof Boolean) {
                 return (Boolean) result;
             }
+            throw new ClassCastException("Unexpected expression return value of " + result);
         } catch (ExpressionEvaluationException e) {
             return false;
         }
-        throw new ClassCastException("Unexpected expression return value of " + result);
     }
 
     Boolean isValidExpressionStatement(final String statement);

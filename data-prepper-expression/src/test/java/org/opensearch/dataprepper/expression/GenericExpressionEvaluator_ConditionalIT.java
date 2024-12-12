@@ -34,6 +34,7 @@ import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -114,8 +115,16 @@ class GenericExpressionEvaluator_ConditionalIT {
     }
 
     @ParameterizedTest
-    @MethodSource("invalidExpressionArguments")
+    @MethodSource("invalidExpressionSyntaxArguments")
     void testGenericExpressionEvaluatorThrows(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+
+        assertThrows(RuntimeException.class, () -> evaluator.evaluateConditional(expression, event));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidExpressionArguments")
+    void testGenericExpressionEvaluatorWithInvalidData(final String expression, final Event event) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
         assertThat(evaluator.evaluateConditional(expression, event), equalTo(false));
@@ -150,15 +159,12 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/status_code == 200", event("{\"status_code\": 200}"), true),
                 arguments("/status_code == 200", longEvent, true),
                 arguments("/status_code != 300", event("{\"status_code\": 200}"), true),
-                arguments("/status_code >= 300", event("{\"status_code_not_present\": 200}"), false),
-                arguments("/status_code != null and /status_code >= 300", event("{\"status_code_not_present\": 200}"), false),
-                arguments("not (/status_code >= 300)", event("{\"status_code_not_present\": 200}"), true),
-                arguments("(/status_code >= 300) or (/value == 10)", event("{\"status_code_not_present\": 200, \"value\" : 10}"), true),
-                arguments("(/status_code >= 300) and (/value == 15)", event("{\"status_code_not_present\": 200, \"value\" : 10}"), false),
-                arguments("(/value  == 10) or ((/status_code >= 300) and (/novalue == 15))", event("{\"status_code_not_present\": 200, \"value\" : 10}"), true),
                 arguments("/status_code == 200", event("{}"), false),
                 arguments("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 arguments("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
+                arguments("(/value  == 10) or ((/status_code >= 300) and (/novalue == 15))", event("{\"status_code_not_present\": 200, \"value\" : 10}"), true),
+                arguments("(/status_code >= 300) or (/value == 10)", event("{\"status_code_not_present\": 200, \"value\" : 10}"), true),
+                arguments("not (/status_code >= 300)", event("{\"status_code_not_present\": 200}"), true),
                 arguments("/part1@part2.part3 != 111", event("{\"success\": true, \"part1@part2.part3\":111, \"status_code\": 200}"), false),
                 arguments("/part1.part2@part3 != 111", event("{\"success\": true, \"part1.part2@part3\":222, \"status_code\": 200}"), true),
                 arguments("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
@@ -264,8 +270,17 @@ class GenericExpressionEvaluator_ConditionalIT {
         int testStringLength = random.nextInt(10);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
-                arguments("/missing", event("{}")),
+                arguments("not 5", event("{}")),
+                arguments("not null", event("{}")),
+                arguments("contains(\""+testTag2+"\")", tagEvent),
+                arguments("contains(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("/status_code >= 300", event("{\"status_code_not_present\": 200}")),
+                arguments("/status_code != null and /status_code >= 300", event("{\"status_code_not_present\": 200}")),
+                arguments("(/status_code >= 300) and (/value == 15)", event("{\"status_code2\": 200, \"value\" : 10}")),
+                arguments("/color in {\"blue\", 222.0, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
+                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
+                arguments("/status_code > 3", event("{\"success\": true, \"status_code_not_present\": 200}")),
                 arguments("/success <= /status_code", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/success > /status_code", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/success >= /status_code", event("{\"success\": true, \"status_code\": 200}")),
@@ -274,16 +289,37 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/status_code < null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/status_code <= null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("not /status_code", event("{\"status_code\": 200}")),
-                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}")),
+                arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}"))
+        );
+    }
+
+
+    private static Stream<Arguments> invalidExpressionSyntaxArguments() {
+        Random random = new Random();
+
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final String value = RandomStringUtils.randomAlphabetic(10);
+        Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        Event tagEvent = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(eventMap)
+                .build();
+        String testTag1 = RandomStringUtils.randomAlphabetic(6);
+        String testTag2 = RandomStringUtils.randomAlphabetic(7);
+        tagEvent.getMetadata().addTags(List.of(testTag1, testTag2));
+        String testMetadataKey = RandomStringUtils.randomAlphabetic(5);
+
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
+        return Stream.of(
+                arguments("/missing", event("{}")),
                 arguments("", event("{}")),
                 arguments("-false", event("{}")),
-                arguments("not 5", event("{}")),
-                arguments("not null", event("{}")),
                 arguments("not/status_code", event("{\"status_code\": 200}")),
                 arguments("trueand/status_code", event("{\"status_code\": 200}")),
                 arguments("trueor/status_code", event("{\"status_code\": 200}")),
                 arguments("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
-                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("hasTags(10)", tagEvent),
                 arguments("hasTags("+ testTag1+")", tagEvent),
                 arguments("hasTags(\""+ testTag1+")", tagEvent),
@@ -291,12 +327,9 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
-                arguments("contains(\""+testTag2+"\")", tagEvent),
-                arguments("contains(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
-                arguments("/color in {\"blue\", 222.0, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -311,7 +344,6 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
-                arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );
     }

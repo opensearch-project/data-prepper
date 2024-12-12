@@ -18,6 +18,12 @@ class AddBinaryOperator implements Operator<Object> {
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
 
+
+    @Override
+    public boolean isBooleanOperator() {
+        return false;
+    }
+
     public AddBinaryOperator(final int symbol,
             final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap) {
         this.symbol = symbol;

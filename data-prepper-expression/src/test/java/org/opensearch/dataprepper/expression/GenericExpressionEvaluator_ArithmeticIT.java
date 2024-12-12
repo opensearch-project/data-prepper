@@ -109,6 +109,13 @@ class GenericExpressionEvaluator_ArithmeticIT {
     }
 
     @ParameterizedTest
+    @MethodSource("exceptionExpressionSyntaxArguments")
+    void testArithmeticExpressionEvaluatorInvalidSyntax(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThrows(ExpressionParsingException.class, () -> evaluator.evaluate(expression, event));
+    }
+
+    @ParameterizedTest
     @MethodSource("exceptionExpressionArguments")
     void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
@@ -220,6 +227,18 @@ class GenericExpressionEvaluator_ArithmeticIT {
         );
     }
 
+    private static Stream<Arguments> exceptionExpressionSyntaxArguments() {
+        Random random = new Random();
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
+        return Stream.of(
+                Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}"))
+                //Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"))
+        );
+    }
+
     private static Stream<Arguments> exceptionExpressionArguments() {
         Random random = new Random();
         int testStringLength = random.nextInt(10);
@@ -233,9 +252,9 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/message * /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/message + /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/status - /message", event("{\"status\": 200, \"message\":\"msg\"}")),
-                Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
-                Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
-                Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                //Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                //Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                //Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/message - /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"))
         );

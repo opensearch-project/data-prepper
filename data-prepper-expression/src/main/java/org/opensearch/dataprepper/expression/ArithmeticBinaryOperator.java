@@ -18,6 +18,11 @@ class ArithmeticBinaryOperator implements Operator<Number> {
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
 
+    @Override
+    public boolean isBooleanOperator() {
+        return false;
+    }
+
     public ArithmeticBinaryOperator(final int symbol,
             final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap) {
         this.symbol = symbol;

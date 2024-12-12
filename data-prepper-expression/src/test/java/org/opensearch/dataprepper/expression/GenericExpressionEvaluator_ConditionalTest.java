@@ -76,7 +76,7 @@ class GenericExpressionEvaluator_ConditionalTest {
 
         doThrow(new RuntimeException()).when(parser).parse(eq(statement));
 
-        assertThat(statementEvaluator.evaluateConditional(statement, null), equalTo(false));
+        assertThrows(ExpressionParsingException.class, () -> statementEvaluator.evaluateConditional(statement, null));
 
         verify(parser).parse(eq(statement));
         verify(evaluator, times(0)).evaluate(any(), any());

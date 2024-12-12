@@ -21,6 +21,11 @@ class GenericEqualOperator extends BinaryOperator<Boolean> {
     }
 
     @Override
+    public boolean isBooleanOperator() {
+        return true;
+    }
+
+    @Override
     protected Boolean checkedEvaluate(final Object lhs, final Object rhs) {
         if (lhs == null || rhs == null) {
             return lhs == rhs;

@@ -112,18 +112,6 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         throw new RuntimeException("Hit error node in the parse tree: " + node.getText());
     }
 
-    private boolean isBooleanOperator(Operator<?> op) {
-        return (op instanceof GenericTypeOfOperator ||
-                op instanceof GenericEqualOperator ||
-                op instanceof NumericCompareOperator ||
-                op instanceof OrOperator ||
-                op instanceof AndOperator ||
-                op instanceof GenericInSetOperator ||
-                op instanceof NotOperator ||
-                op instanceof GenericNotOperator ||
-                op instanceof GenericRegexMatchOperator);
-    }
-
     @Override
     public void exitEveryRule(ParserRuleContext ctx) {
         if (!operatorSymbolStack.isEmpty()) {
@@ -135,7 +123,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
                     try {
                         performSingleOperation(op, ctx);
                     } catch (final Exception e) {
-                        if (e instanceof IllegalArgumentException && isBooleanOperator(op)) {
+                        if (e instanceof IllegalArgumentException && op.isBooleanOperator()) {
                             operandStack.push(false);
                         } else {
                             throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "

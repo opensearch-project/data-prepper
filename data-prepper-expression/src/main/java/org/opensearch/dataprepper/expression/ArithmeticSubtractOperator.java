@@ -30,6 +30,11 @@ class ArithmeticSubtractOperator implements Operator<Number> {
     }
 
     @Override
+    public boolean isBooleanOperator() {
+        return false;
+    }
+
+    @Override
     public int getNumberOfOperands(final RuleContext ctx) {
         if (ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression)
             return 2;
