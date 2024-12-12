@@ -7,4 +7,4 @@
 
 
 ### Security
-* Fix otel_logs_source server configuration for getHttpAuthenticationService ([#5215](https://github.com/opensearch-project/data-prepper/pull/5215))
+* Fix otel_logs_source server configuration for `getHttpAuthenticationService`. Fixes [CVE-2024-55886](https://github.com/opensearch-project/data-prepper/security/advisories/GHSA-725p-63vv-v948). ([#5215](https://github.com/opensearch-project/data-prepper/pull/5215))
