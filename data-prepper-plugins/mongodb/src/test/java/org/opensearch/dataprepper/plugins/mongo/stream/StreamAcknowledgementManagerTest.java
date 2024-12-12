@@ -1,11 +1,13 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
@@ -22,11 +24,18 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamAcknowledgementManager.GIVE_UP_PARTITION_COUNT;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamAcknowledgementManager.NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamAcknowledgementManager.NO_DATA_EXTEND_LEASE_COUNT;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamAcknowledgementManager.POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.mongo.stream.StreamAcknowledgementManager.RECORDS_CHECKPOINTED;
 
 @ExtendWith(MockitoExtension.class)
 public class StreamAcknowledgementManagerTest {
@@ -41,11 +50,32 @@ public class StreamAcknowledgementManagerTest {
     private AcknowledgementSet acknowledgementSet;
     @Mock
     private Consumer<Void> stopWorkerConsumer;
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter positiveAcknowledgementSets;
+    @Mock
+    private Counter negativeAcknowledgementSets;
+    @Mock
+    private Counter recordsCheckpointed;
+    @Mock
+    private Counter noDataExtendLeaseCount;
+    @Mock
+    private Counter giveupPartitionCount;
+
     private StreamAcknowledgementManager streamAckManager;
+
+
 
     @BeforeEach
     public void setup() {
-        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
+        when(pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME)).thenReturn(positiveAcknowledgementSets);
+        when(pluginMetrics.counter(NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME)).thenReturn(negativeAcknowledgementSets);
+        when(pluginMetrics.counter(RECORDS_CHECKPOINTED)).thenReturn(recordsCheckpointed);
+        when(pluginMetrics.counter(NO_DATA_EXTEND_LEASE_COUNT)).thenReturn(noDataExtendLeaseCount);
+        when(pluginMetrics.counter(GIVE_UP_PARTITION_COUNT)).thenReturn(giveupPartitionCount);
+
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0, pluginMetrics);
     }
 
     @Test
@@ -57,7 +87,7 @@ public class StreamAcknowledgementManagerTest {
     @Test
     public void createAcknowledgementSet_enabled_ackSetWithAck() {
         lenient().when(timeout.getSeconds()).thenReturn(10_000L);
-        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0, pluginMetrics);
         streamAckManager.init(stopWorkerConsumer);
         final String resumeToken = UUID.randomUUID().toString();
         final long recordCount = new Random().nextLong();
@@ -78,12 +108,15 @@ public class StreamAcknowledgementManagerTest {
            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
+        verify(positiveAcknowledgementSets).increment();
+        verifyNoInteractions(negativeAcknowledgementSets);
+        verify(recordsCheckpointed).increment(anyDouble());
     }
 
     @Test
     public void createAcknowledgementSet_enabled_multipleAckSetWithAck() {
         lenient().when(timeout.getSeconds()).thenReturn(10_000L);
-        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0);
+        streamAckManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint, timeout, 0, 0, pluginMetrics);
         streamAckManager.init(stopWorkerConsumer);
         final String resumeToken1 = UUID.randomUUID().toString();
         final long recordCount1 = new Random().nextLong();
@@ -114,6 +147,10 @@ public class StreamAcknowledgementManagerTest {
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
+
+        verify(positiveAcknowledgementSets, times(2)).increment();
+        verifyNoInteractions(negativeAcknowledgementSets);
+        verify(recordsCheckpointed, times(2)).increment(anyDouble());
     }
 
     @Test
@@ -149,6 +186,9 @@ public class StreamAcknowledgementManagerTest {
                 verify(partitionCheckpoint).giveUpPartition());
         assertThat(streamAckManager.getCheckpoints().peek().getResumeToken(), is(resumeToken1));
         assertThat(streamAckManager.getCheckpoints().peek().getRecordCount(), is(recordCount1));
+        verify(positiveAcknowledgementSets).increment();
+        verify(negativeAcknowledgementSets).increment();
+        verify(giveupPartitionCount).increment();
         verify(stopWorkerConsumer).accept(null);
     }
 
@@ -173,5 +213,6 @@ public class StreamAcknowledgementManagerTest {
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
                 verify(stopWorkerConsumer).accept(null));
+        verify(negativeAcknowledgementSets).increment();
     }
 }

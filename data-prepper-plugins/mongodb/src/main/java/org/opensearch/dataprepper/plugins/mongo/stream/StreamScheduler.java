@@ -109,7 +109,7 @@ public class StreamScheduler implements Runnable {
     private StreamWorker getStreamWorker (final StreamPartition streamPartition) {
         final DataStreamPartitionCheckpoint partitionCheckpoint = new DataStreamPartitionCheckpoint(sourceCoordinator, streamPartition);
         final StreamAcknowledgementManager streamAcknowledgementManager = new StreamAcknowledgementManager(acknowledgementSetManager, partitionCheckpoint,
-                sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, DEFAULT_CHECKPOINT_INTERVAL_MILLS);
+                sourceConfig.getPartitionAcknowledgmentTimeout(), DEFAULT_MONITOR_WAIT_TIME_MS, DEFAULT_CHECKPOINT_INTERVAL_MILLS, pluginMetrics);
         final PartitionKeyRecordConverter recordConverter = getPartitionKeyRecordConverter(streamPartition);
         final CollectionConfig partitionCollectionConfig = sourceConfig.getCollections().stream()
                 .filter(collectionConfig -> collectionConfig.getCollection().equals(streamPartition.getCollection()))
