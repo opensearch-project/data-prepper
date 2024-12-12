@@ -34,6 +34,8 @@ public interface ExpressionEvaluator {
                 return (Boolean) result;
             }
             throw new ClassCastException("Unexpected expression return value of " + result);
+        } catch (ExpressionParsingException e) {
+            throw e;
         } catch (ExpressionEvaluationException e) {
             return false;
         }

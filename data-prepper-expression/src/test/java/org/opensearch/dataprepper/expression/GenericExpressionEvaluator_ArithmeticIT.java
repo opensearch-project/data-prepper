@@ -235,7 +235,6 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}"))
-                //Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"))
         );
     }
 
@@ -252,9 +251,6 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/message * /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/message + /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/status - /message", event("{\"status\": 200, \"message\":\"msg\"}")),
-                //Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
-                //Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
-                //Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("/message - /status", event("{\"status\": 200, \"message\":\"msg\"}")),
                 Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"))
         );
