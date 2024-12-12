@@ -17,6 +17,11 @@ class GenericNotOperator implements Operator<Boolean> {
     }
 
     @Override
+    public boolean isBooleanOperator() {
+        return true;
+    }
+
+    @Override
     public int getNumberOfOperands(final RuleContext ctx) {
         return innerOperator.getNumberOfOperands(ctx);
     }

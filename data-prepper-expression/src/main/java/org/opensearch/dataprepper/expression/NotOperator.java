@@ -19,6 +19,11 @@ class NotOperator implements Operator<Boolean> {
             .getDisplayName(DataPrepperExpressionParser.NOT);
 
     @Override
+    public boolean isBooleanOperator() {
+        return true;
+    }
+
+    @Override
     public int getNumberOfOperands(final RuleContext ctx) {
         return 1;
     }
