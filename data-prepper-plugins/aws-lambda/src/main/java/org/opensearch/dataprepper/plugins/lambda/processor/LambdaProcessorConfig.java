@@ -20,10 +20,10 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
 @JsonClassDescription("The <code>aws_lambda</code> processor enables invocation of an AWS Lambda function within your Data Prepper pipeline in order to process events." + 
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class LambdaProcessorConfig extends LambdaCommonConfig {
-  static final String DEFAULT_INVOCATION_TYPE = "request-response"
+  static final String DEFAULT_INVOCATION_TYPE = "request-response";
 
   @JsonPropertyDescription("Specifies the invocation type, either <code>request-response</code> or <code>event</code>. Default is <code>request-response</code>.")
-  @JsonProperty("invocation_type", defaultValue = DEFAULT_INVOCATION_TYPE)
+  @JsonProperty(value = "invocation_type", defaultValue = DEFAULT_INVOCATION_TYPE)
   private InvocationType invocationType = InvocationType.REQUEST_RESPONSE;
 
   @JsonPropertyDescription("Specifies how Data Prepper interprets and processes Lambda function responses. Default is <code>false</code>.")
