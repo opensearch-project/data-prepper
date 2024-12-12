@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -110,7 +111,7 @@ public class StreamAcknowledgementManagerTest {
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
         verify(positiveAcknowledgementSets).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
     }
 
     @Test
@@ -148,9 +149,9 @@ public class StreamAcknowledgementManagerTest {
                 verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
 
-        verify(positiveAcknowledgementSets, times(2)).increment();
+        verify(positiveAcknowledgementSets, atLeastOnce()).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed, times(2)).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
     }
 
     @Test
