@@ -18,6 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
@@ -109,12 +111,10 @@ public class StreamAcknowledgementManager {
                     }
                 } else {
                     if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
-                        LOG.debug("No records processed. Extend the lease of the partition worker.");
+                        LOG.info(NOISY, "No records processed. Extend the lease of the partition worker.");
                         partitionCheckpoint.extendLease();
                         this.noDataExtendLeaseCount.increment();
                         lastCheckpointTime = System.currentTimeMillis();
-                    } else {
-
                     }
                 }
             } catch (Exception e) {
