@@ -1,7 +1,9 @@
 package org.opensearch.dataprepper.plugins.mongo.stream;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
@@ -32,17 +34,35 @@ public class StreamAcknowledgementManager {
 
     private boolean enableAcknowledgement = false;
 
+    private final Counter positiveAcknowledgementSets;
+    private final Counter negativeAcknowledgementSets;
+    private final Counter recordsCheckpointed;
+    private final Counter noDataExtendLeaseCount;
+    private final Counter giveupPartitionCount;
+    public static final String POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME = "positiveAcknowledgementSets";
+    public static final String NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME = "negativeAcknowledgementSets";
+    public static final String RECORDS_CHECKPOINTED = "recordsCheckpointed";
+    public static final String NO_DATA_EXTEND_LEASE_COUNT = "noDataExtendLeaseCount";
+    public static final String GIVE_UP_PARTITION_COUNT = "giveupPartitionCount";
+
+
     public StreamAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
                                         final DataStreamPartitionCheckpoint partitionCheckpoint,
                                         final Duration partitionAcknowledgmentTimeout,
                                         final int acknowledgementMonitorWaitTimeInMs,
-                                        final int checkPointIntervalInMs) {
+                                        final int checkPointIntervalInMs,
+                                        final PluginMetrics pluginMetrics) {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.partitionCheckpoint = partitionCheckpoint;
         this.partitionAcknowledgmentTimeout = partitionAcknowledgmentTimeout;
         this.acknowledgementMonitorWaitTimeInMs = acknowledgementMonitorWaitTimeInMs;
         this.checkPointIntervalInMs = checkPointIntervalInMs;
-        executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-ack-monitor"));
+        this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("mongodb-stream-ack-monitor"));
+        this.positiveAcknowledgementSets = pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
+        this.negativeAcknowledgementSets = pluginMetrics.counter(NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
+        this.recordsCheckpointed = pluginMetrics.counter(RECORDS_CHECKPOINTED);
+        this.noDataExtendLeaseCount = pluginMetrics.counter(NO_DATA_EXTEND_LEASE_COUNT);
+        this.giveupPartitionCount = pluginMetrics.counter(GIVE_UP_PARTITION_COUNT);
     }
 
     void init(final Consumer<Void> stopWorkerConsumer) {
@@ -79,10 +99,11 @@ public class StreamAcknowledgementManager {
                         if (checkpointStatus.isNegativeAcknowledgement()) {
                             // Give up partition and should interrupt parent thread to stop processing stream
                             if (lastCheckpointStatus != null && lastCheckpointStatus.isPositiveAcknowledgement()) {
-                                partitionCheckpoint.checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
+                                checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
                             }
                             LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
                             partitionCheckpoint.giveUpPartition();
+                            this.giveupPartitionCount.increment();
                             break;
                         }
                     }
@@ -90,7 +111,10 @@ public class StreamAcknowledgementManager {
                     if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
                         LOG.debug("No records processed. Extend the lease of the partition worker.");
                         partitionCheckpoint.extendLease();
+                        this.noDataExtendLeaseCount.increment();
                         lastCheckpointTime = System.currentTimeMillis();
+                    } else {
+
                     }
                 }
             } catch (Exception e) {
@@ -111,6 +135,7 @@ public class StreamAcknowledgementManager {
     private void checkpoint(final String resumeToken, final long recordCount) {
         LOG.debug("Perform regular checkpointing for resume token {} at record count {}", resumeToken, recordCount);
         partitionCheckpoint.checkpoint(resumeToken, recordCount);
+        this.recordsCheckpointed.increment(recordCount);
     }
 
     Optional<AcknowledgementSet> createAcknowledgementSet(final String resumeToken, final long recordNumber) {
@@ -126,9 +151,11 @@ public class StreamAcknowledgementManager {
             final CheckpointStatus ackCheckpointStatus = ackStatus.get(resumeToken);
             ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
             if (result) {
+                this.positiveAcknowledgementSets.increment();
                 ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.POSITIVE_ACK);
                 LOG.debug("Received acknowledgment of completion from sink for checkpoint {}", resumeToken);
             } else {
+                this.negativeAcknowledgementSets.increment();
                 ackCheckpointStatus.setAcknowledged(CheckpointStatus.AcknowledgmentStatus.NEGATIVE_ACK);
                 LOG.warn("Negative acknowledgment received for checkpoint {}, resetting checkpoint", resumeToken);
                 // default CheckpointStatus acknowledged value is false. The monitorCheckpoints method will time out
