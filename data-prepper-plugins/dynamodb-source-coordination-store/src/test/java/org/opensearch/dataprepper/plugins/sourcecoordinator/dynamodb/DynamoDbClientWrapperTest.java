@@ -62,6 +62,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -464,8 +465,10 @@ public class DynamoDbClientWrapperTest {
 
         final int pageLimit = new Random().nextInt(20);
 
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, pageLimit);
+                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, pageLimit, ttl);
 
         assertThat(result.isEmpty(), equalTo(true));
 
@@ -513,8 +516,10 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20));
+                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);
 
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(acquiredItem));
@@ -530,6 +535,10 @@ public class DynamoDbClientWrapperTest {
         final Instant newPartitionOwnershipTimeout = partitionOwnershipArgumentCaptor.getValue();
 
         assertThat(newPartitionOwnershipTimeout.isAfter(now.plus(ownershipTimeout)), equalTo(true));
+
+        final ArgumentCaptor<Long> expiryTimeArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(acquiredItem).setExpirationTime(expiryTimeArgumentCaptor.capture());
+        assertThat(expiryTimeArgumentCaptor.getValue(), greaterThan(Instant.now().getEpochSecond()));
 
         verify(acquiredItem).setPartitionPriority(newPartitionOwnershipTimeout.toString());
     }
@@ -574,8 +583,10 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20));
+                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);
 
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(acquiredItem));
@@ -593,6 +604,10 @@ public class DynamoDbClientWrapperTest {
         assertThat(newPartitionOwnershipTimeout.isAfter(now.plus(ownershipTimeout)), equalTo(true));
 
         verify(acquiredItem).setPartitionPriority(newPartitionOwnershipTimeout.toString());
+
+        final ArgumentCaptor<Long> expiryTimeArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(acquiredItem).setExpirationTime(expiryTimeArgumentCaptor.capture());
+        assertThat(expiryTimeArgumentCaptor.getValue(), greaterThan(Instant.now().getEpochSecond()));
     }
 
     @ParameterizedTest
@@ -635,8 +650,10 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20));
+                ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);
 
         assertThat(result.isEmpty(), equalTo(true));
 
@@ -653,6 +670,10 @@ public class DynamoDbClientWrapperTest {
         assertThat(newPartitionOwnershipTimeout.isAfter(now.plus(ownershipTimeout)), equalTo(true));
 
         verify(acquiredItem).setPartitionPriority(newPartitionOwnershipTimeout.toString());
+
+        final ArgumentCaptor<Long> expiryTimeArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(acquiredItem).setExpirationTime(expiryTimeArgumentCaptor.capture());
+        assertThat(expiryTimeArgumentCaptor.getValue(), greaterThan(Instant.now().getEpochSecond()));
     }
 
     @Test
@@ -681,7 +702,7 @@ public class DynamoDbClientWrapperTest {
         reflectivelySetField(objectUnderTest, "table", table);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED, sourceStatusCombinationKey, new Random().nextInt(20));
+                ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED, sourceStatusCombinationKey, new Random().nextInt(20), Duration.ofSeconds(new Random().nextInt()));
 
         assertThat(result.isEmpty(), equalTo(true));
 
@@ -716,7 +737,7 @@ public class DynamoDbClientWrapperTest {
         reflectivelySetField(objectUnderTest, "table", table);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED, sourceStatusCombinationKey, new Random().nextInt(20));
+                ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED, sourceStatusCombinationKey, new Random().nextInt(20), Duration.ofSeconds(new Random().nextInt()));
 
         assertThat(result.isEmpty(), equalTo(true));
 
