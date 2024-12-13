@@ -31,7 +31,7 @@ public class AggregateProcessorConfig {
 
     @JsonPropertyDescription("An unordered list by which to group events. Events with the same values as these keys are put into the same group. " +
             "If an event does not contain one of the <code>identification_keys</code>, then the value of that key is considered to be equal to <code>null</code>. " +
-            "At least one <code>identification_key</code> is required. And example configuration is [\"sourceIp\", \"destinationIp\", \"port\"].")
+            "At least one <code>identification_key</code> is required. An example configuration is [\"sourceIp\", \"destinationIp\", \"port\"].")
     @JsonProperty("identification_keys")
     @NotEmpty
     @ExampleValues({
