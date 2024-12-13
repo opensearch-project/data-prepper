@@ -54,7 +54,6 @@ public class ArmeriaHttpService {
         this.oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
-        // todo tlongo encapsulate into own class, since both, grpc and http, should contribute to those
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
@@ -62,6 +61,7 @@ public class ArmeriaHttpService {
     }
 
     // todo tlongo healthcheck?
+    // todo tlongo authentication for http (Auth in Grpc Service is grpc specific)
 
     @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
     @Consumes(value = "application/json")
