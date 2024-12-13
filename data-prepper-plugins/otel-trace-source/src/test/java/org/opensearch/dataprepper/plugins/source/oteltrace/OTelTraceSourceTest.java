@@ -10,12 +10,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
@@ -30,10 +29,12 @@ import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -42,9 +43,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
@@ -58,7 +56,6 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -73,7 +70,6 @@ import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -91,11 +87,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -103,11 +96,11 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -125,6 +118,7 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSourceTest {
+    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
     private static final String USERNAME = "test_user";
     private static final String PASSWORD = "test_password";
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
@@ -232,164 +226,6 @@ class OTelTraceSourceTest {
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-    }
-
-    @Test
-    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpsFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
-
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, true);
-        settingsMap.put("useAcmCertForSSL", false);
-        settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-        settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-        pluginSetting = new PluginSetting("otel_trace", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
-
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
-        SOURCE.start(buffer);
-
-        WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTPS)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-        WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTPS)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpFullBytesWithNonUnframedRequests() {
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.PROTOBUF)
-                        .build(),
-                HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.PROTOBUF)
-                        .build(),
-                HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpFullJsonWithUnframedRequests() throws InvalidProtocolBufferException {
-        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:21890")
-                                .method(HttpMethod.POST)
-                                .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                                .contentType(MediaType.JSON_UTF_8)
-                                .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpCompressionWithUnframedRequests() throws IOException {
-        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
-        when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:21890")
-                                .method(HttpMethod.POST)
-                                .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                                .contentType(MediaType.JSON_UTF_8)
-                                .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
-                                .build(),
-                        createGZipCompressedPayload(JsonFormat.printer().print(createExportTraceRequest())))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
-                .join();
-    }
-
-    @Test
-    void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
-        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
-        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-
-        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
-        WebClient.of().execute(RequestHeaders.builder()
-                                .scheme(SessionProtocol.HTTP)
-                                .authority("127.0.0.1:21890")
-                                .method(HttpMethod.POST)
-                                .path(transformedPath)
-                                .contentType(MediaType.JSON_UTF_8)
-                                .build(),
-                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
-                .aggregate()
-                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
-                .join();
     }
 
     @Test
@@ -673,49 +509,6 @@ class OTelTraceSourceTest {
     }
 
     @Test
-    void start_with_Health_configured_unframed_requests_includes_HTTPHealthCheck_service() throws IOException {
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
-             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
-
-            when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
-            final String certAsString = Files.readString(certFilePath);
-            final String keyAsString = Files.readString(keyFilePath);
-            when(certificate.getCertificate()).thenReturn(certAsString);
-            when(certificate.getPrivateKey()).thenReturn(keyAsString);
-            when(certificateProvider.getCertificate()).thenReturn(certificate);
-            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            final Map<String, Object> settingsMap = new HashMap<>();
-            settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-            settingsMap.put("health_check_service", "true");
-            settingsMap.put("unframed_requests", "true");
-
-            testPluginSetting = new PluginSetting(null, settingsMap);
-            testPluginSetting.setPipelineName("pipeline");
-
-            oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
-            source.start(buffer);
-            source.stop();
-        }
-
-        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
-        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
-        verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
-        verify(serverBuilder).service(eq("/health"), isA(HealthCheckService.class));
-    }
-
-    @Test
     void start_without_Health_configured_does_not_include_HealthCheck_service() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
@@ -741,48 +534,6 @@ class OTelTraceSourceTest {
             settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
             settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "false");
-
-            testPluginSetting = new PluginSetting(null, settingsMap);
-            testPluginSetting.setPipelineName("pipeline");
-            oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
-            source.start(buffer);
-            source.stop();
-        }
-
-        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
-        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
-        verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
-        verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
-    }
-
-    @Test
-    void start_without_Health_configured_unframed_requests_does_not_include_HealthCheck_service() throws IOException {
-        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
-             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
-            when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
-
-            when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
-            final String certAsString = Files.readString(certFilePath);
-            final String keyAsString = Files.readString(keyFilePath);
-            when(certificate.getCertificate()).thenReturn(certAsString);
-            when(certificate.getPrivateKey()).thenReturn(keyAsString);
-            when(certificateProvider.getCertificate()).thenReturn(certificate);
-            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
-            final Map<String, Object> settingsMap = new HashMap<>();
-            settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-            settingsMap.put("health_check_service", "false");
-            settingsMap.put("unframed_requests", "true");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -1116,29 +867,6 @@ class OTelTraceSourceTest {
         assertEquals(1.0, serverConnectionsMeasurement.getValue());
     }
 
-    static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            return Stream.of(
-                    arguments(TimeoutException.class, Status.Code.RESOURCE_EXHAUSTED),
-                    arguments(SizeOverflowException.class, Status.Code.RESOURCE_EXHAUSTED),
-                    arguments(Exception.class, Status.Code.INTERNAL),
-                    arguments(RuntimeException.class, Status.Code.INTERNAL)
-            );
-        }
-    }
-
-    private ExportTraceServiceRequest createInvalidExportTraceRequest() {
-        final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
-                .setTraceState("SUCCESS").build();
-        final ExportTraceServiceRequest successRequest = ExportTraceServiceRequest.newBuilder()
-                .addResourceSpans(ResourceSpans.newBuilder()
-                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
-                .build();
-
-        return successRequest;
-    }
-
     private ExportTraceServiceRequest createExportTraceRequest() {
         final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
                 .setTraceId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
@@ -1168,14 +896,4 @@ class OTelTraceSourceTest {
                 .collect(Collectors.toList());
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
-
-    private byte[] createGZipCompressedPayload(final String payload) throws IOException {
-        // Create a GZip compressed request body
-        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        try (final GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
-            gzipStream.write(payload.getBytes(StandardCharsets.UTF_8));
-        }
-        return byteStream.toByteArray();
-    }
-
 }
