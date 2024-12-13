@@ -101,7 +101,6 @@ public class GrpcService {
 
         grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
 
-        // todo tlongo extract to otelTraceSource
         if (oTelTraceSourceConfig.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
