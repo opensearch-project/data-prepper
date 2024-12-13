@@ -3,7 +3,7 @@ services:
   data-prepper:
     restart: unless-stopped
     container_name: data-prepper
-    image: opensearch-data-prepper:2.11.0-SNAPSHOT
+    image: opensearchproject/data-prepper:2
     volumes:
       - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
@@ -21,7 +21,6 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
-      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=M__!!ega123!"
     ulimits:
       memlock:
         soft: -1
