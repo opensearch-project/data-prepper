@@ -22,13 +22,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class OpenSearchSinkConfigurationTests {
-    private static final String VALID_SINK_CONFIG = "test-configurations/valid_sink_config.yaml";
-    private static final String INVALID_ACTION_CONFIG = "test-configurations/invalid-action-config.yaml";
-    private static final String INVALID_ACTIONS_CONFIG = "test-configurations/invalid-actions-config.yaml";
-    private static final String INVALID_ACTION_WITH_EXPRESSION_CONFIG = "test-configurations/invalid-action-with-expression-config.yaml";
-    private static final String INVALID_ACTIONS_WITH_EXPRESSION_CONFIG = "test-configurations/invalid-actions-with-expression-config.yaml";
-    private static final String CREATE_ACTION_CONFIG = "test-configurations/create-action-config.yaml";
-    private static final String CREATE_ACTIONS_WITH_EXPRESSION_CONFIG = "test-configurations/create-actions-with-expression-config.yaml";
+    private static final String OPEN_SEARCH_SINK_CONFIGURATIONS = "open-search-sink-configurations.yaml";
+    private static final String VALID_SINK_CONFIG = "valid-sink";
+    private static final String INVALID_ACTION_CONFIG = "invalid-action";
+    private static final String INVALID_ACTIONS_CONFIG = "invalid-actions";
+    private static final String INVALID_ACTION_WITH_EXPRESSION_CONFIG = "invalid-action-with-expression";
+    private static final String INVALID_ACTIONS_WITH_EXPRESSION_CONFIG = "invalid-actions-with-expression";
+    private static final String CREATE_ACTION_CONFIG = "create-action";
+    private static final String CREATE_ACTIONS_WITH_EXPRESSION_CONFIG = "create-actions-with-expression";
     private ExpressionEvaluator expressionEvaluator;
 
     ObjectMapper objectMapper;
@@ -36,7 +37,7 @@ public class OpenSearchSinkConfigurationTests {
     @Test
     public void testReadESConfig() throws IOException {
         final OpenSearchSinkConfiguration openSearchSinkConfiguration = OpenSearchSinkConfiguration.readOSConfig(
-                generateOpenSearchSourceConfig(VALID_SINK_CONFIG));
+                generateOpenSearchSinkConfig(VALID_SINK_CONFIG));
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
         assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
@@ -45,12 +46,12 @@ public class OpenSearchSinkConfigurationTests {
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidAction() throws IOException {
-        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(INVALID_ACTION_CONFIG));
+        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTION_CONFIG));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidActions() throws IOException {
-        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(INVALID_ACTIONS_CONFIG));
+        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTIONS_CONFIG));
 
     }
 
@@ -58,20 +59,20 @@ public class OpenSearchSinkConfigurationTests {
     public void testInvalidActionWithExpression() throws IOException {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(false);
-        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(INVALID_ACTION_WITH_EXPRESSION_CONFIG), expressionEvaluator);
+        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTION_WITH_EXPRESSION_CONFIG), expressionEvaluator);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidActionsWithExpression() throws IOException {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(false);
-        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(INVALID_ACTIONS_WITH_EXPRESSION_CONFIG), expressionEvaluator);
+        OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTIONS_WITH_EXPRESSION_CONFIG), expressionEvaluator);
     }
 
     @Test
     public void testReadOSConfigWithBulkActionCreate() throws IOException {
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
-                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(CREATE_ACTION_CONFIG));
+                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(CREATE_ACTION_CONFIG));
 
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
@@ -85,17 +86,19 @@ public class OpenSearchSinkConfigurationTests {
         when(expressionEvaluator.isValidFormatExpression("${getMetadata(\"action\")}")).thenReturn(true);
 
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
-                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(CREATE_ACTIONS_WITH_EXPRESSION_CONFIG));
+                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(CREATE_ACTIONS_WITH_EXPRESSION_CONFIG));
 
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
         assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
     }
 
-    private OpenSearchSinkConfig generateOpenSearchSourceConfig(String yamlFile) throws IOException {
-        final File configurationFile = new File(getClass().getClassLoader().getResource(yamlFile).getFile());
+
+    private OpenSearchSinkConfig generateOpenSearchSinkConfig(String pipelineName) throws IOException {
+        final File configurationFile = new File(getClass().getClassLoader().getResource(OPEN_SEARCH_SINK_CONFIGURATIONS).getFile());
         objectMapper = new ObjectMapper(new YAMLFactory());
-        final Map<String, Object> pipelineConfig = objectMapper.readValue(configurationFile, Map.class);
+        final Map<String, Object> pipelineConfigs = objectMapper.readValue(configurationFile, Map.class);
+        final Map<String, Object> pipelineConfig = (Map<String, Object>) pipelineConfigs.get(pipelineName);
         final Map<String, Object> sinkMap = (Map<String, Object>) pipelineConfig.get("sink");
         final Map<String, Object> opensearchSinkMap = (Map<String, Object>) sinkMap.get("opensearch");
         String json = objectMapper.writeValueAsString(opensearchSinkMap);
@@ -103,4 +106,5 @@ public class OpenSearchSinkConfigurationTests {
 
         return openSearchSinkConfig;
     }
+
 }

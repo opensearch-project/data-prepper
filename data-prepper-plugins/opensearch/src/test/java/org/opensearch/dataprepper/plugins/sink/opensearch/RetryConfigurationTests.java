@@ -23,11 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 public class RetryConfigurationTests {
-    private static final String INVALID_MAX_RETRIES_CONFIG = "test-configurations/invalid-max-retries-config.yaml";
-    private static final String NO_DLQ_FILE_PATH = "test-configurations/no-dlq-file-path-config.yaml";
-    private static final String DLQ_FILE_PATH_10_RETRIES = "test-configurations/dlq-file-path-10-retries-config.yaml";
-    private static final String WITH_DLQ_PLUGIN_10_RETRIES = "test-configurations/with-dlq-plugin-10-retries-config.yaml";
-    private static final String DLQ_FILE_AND_DLQ_PLUGIN = "test-configurations/dlq-file-and-dlq-plugin-config.yaml";
+    private static final String OPEN_SEARCH_SINK_CONFIGURATIONS = "open-search-sink-configurations.yaml";
+    private static final String INVALID_MAX_RETRIES_CONFIG = "invalid-max-retries";
+    private static final String NO_DLQ_FILE_PATH = "no-dlq-file-path";
+    private static final String DLQ_FILE_PATH_10_RETRIES = "dlq-file-path-10-retries";
+    private static final String WITH_DLQ_PLUGIN_10_RETRIES = "with-dlq-plugin-10-retries";
+    private static final String DLQ_FILE_AND_DLQ_PLUGIN = "dlq-file-and-dlq-plugin";
 
     ObjectMapper objectMapper;
 
@@ -40,13 +41,13 @@ public class RetryConfigurationTests {
 
     @Test
     public void testReadRetryConfigInvalidMaxRetries() throws IOException {
-        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSourceConfig(INVALID_MAX_RETRIES_CONFIG));
+        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSinkConfig(INVALID_MAX_RETRIES_CONFIG));
         assertThrows(IllegalArgumentException.class, () -> retryConfiguration.getMaxRetries());
     }
 
     @Test
     public void testReadRetryConfigNoDLQFilePath() throws IOException {
-        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSourceConfig(NO_DLQ_FILE_PATH));
+        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSinkConfig(NO_DLQ_FILE_PATH));
         assertNull(retryConfiguration.getDlqFile());
         assertEquals(retryConfiguration.getMaxRetries(), Integer.MAX_VALUE);
         assertFalse(retryConfiguration.getDlq().isPresent());
@@ -56,7 +57,7 @@ public class RetryConfigurationTests {
     public void testReadRetryConfigWithDLQFilePath() throws IOException {
         final String fakeDlqFilePath = "foo.txt";
         final int maxRetries = 10;
-        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSourceConfig(DLQ_FILE_PATH_10_RETRIES));
+        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSinkConfig(DLQ_FILE_PATH_10_RETRIES));
         assertEquals(fakeDlqFilePath, retryConfiguration.getDlqFile());
         assertEquals(maxRetries, retryConfiguration.getMaxRetries());
     }
@@ -64,7 +65,7 @@ public class RetryConfigurationTests {
     @Test
     public void testReadRetryConfigWithDLQPlugin() throws IOException {
         final int maxRetries = 10;
-        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSourceConfig(WITH_DLQ_PLUGIN_10_RETRIES));
+        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSinkConfig(WITH_DLQ_PLUGIN_10_RETRIES));
         Optional<DlqConfiguration> dlqConfiguration = retryConfiguration.getDlq();
         assertInstanceOf(S3DlqWriterConfig.class, dlqConfiguration.get().getS3DlqWriterConfig());
         assertEquals(maxRetries, retryConfiguration.getMaxRetries());
@@ -72,13 +73,14 @@ public class RetryConfigurationTests {
 
     @Test
     public void testReadRetryConfigWithDLQPluginAndDLQFilePath() {
-        assertThrows(RuntimeException.class, () -> OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(DLQ_FILE_AND_DLQ_PLUGIN)));
+        assertThrows(RuntimeException.class, () -> OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(DLQ_FILE_AND_DLQ_PLUGIN)));
     }
 
-    private OpenSearchSinkConfig generateOpenSearchSourceConfig(String yamlFile) throws IOException {
-        final File configurationFile = new File(getClass().getClassLoader().getResource(yamlFile).getFile());
+    private OpenSearchSinkConfig generateOpenSearchSinkConfig(String pipelineName) throws IOException {
+        final File configurationFile = new File(getClass().getClassLoader().getResource(OPEN_SEARCH_SINK_CONFIGURATIONS).getFile());
         objectMapper = new ObjectMapper(new YAMLFactory());
-        final Map<String, Object> pipelineConfig = objectMapper.readValue(configurationFile, Map.class);
+        final Map<String, Object> pipelineConfigs = objectMapper.readValue(configurationFile, Map.class);
+        final Map<String, Object> pipelineConfig = (Map<String, Object>) pipelineConfigs.get(pipelineName);
         final Map<String, Object> sinkMap = (Map<String, Object>) pipelineConfig.get("sink");
         final Map<String, Object> opensearchSinkMap = (Map<String, Object>) sinkMap.get("opensearch");
         String json = objectMapper.writeValueAsString(opensearchSinkMap);
