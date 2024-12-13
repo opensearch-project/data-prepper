@@ -114,10 +114,13 @@ public class GrokProcessorConfig {
 
     @JsonProperty(TAGS_ON_TIMEOUT)
     @JsonPropertyDescription("The tags to add to the event metadata if the grok match times out.")
-    @ExampleValues({
-        @Example(value = "_timeout", description = "Events are tagged with this string if grok match times out.")
-    })
     private List<String> tagsOnTimeout = Collections.emptyList();
+
+    @JsonProperty(INCLUDE_PERFORMANCE_METADATA)
+    @JsonPropertyDescription("A boolean value to determine whether to include performance metadata into event metadata. " +
+            "If set to true, the events coming out of grok will have new fields such as <code>_total_grok_patterns_attempted</code> and <code>_total_grok_processing_time</code>." +
+            "You can use this metadata to perform performance testing and tuning of your grok patterns. By default, it is not included.")
+    private boolean includePerformanceMetadata = false;
 
     @JsonProperty(GROK_WHEN)
     @ExampleValues({
@@ -126,12 +129,6 @@ public class GrokProcessorConfig {
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/test != false</code>. " +
             "If specified, the <code>grok</code> processor will only run on events when the expression evaluates to true. ")
     private String grokWhen;
-
-    @JsonProperty(INCLUDE_PERFORMANCE_METADATA)
-    @JsonPropertyDescription("A boolean value to determine whether to include performance metadata into event metadata. " +
-            "If set to true, the events coming out of grok will have new fields such as <code>_total_grok_patterns_attempted</code> and <code>_total_grok_processing_time</code>." +
-            "You can use this metadata to perform performance testing and tuning of your grok patterns. By default, it is not included.")
-    private boolean includePerformanceMetadata = false;
 
     public boolean isBreakOnMatch() {
         return breakOnMatch;

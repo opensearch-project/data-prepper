@@ -52,7 +52,7 @@ class InstanceApiStrategyTest {
     }
 
     @Test
-    void test_describeDb_returns_correct_results() {
+    void test_describeDb_without_read_replicas_returns_correct_results() {
         final String dbInstanceId = UUID.randomUUID().toString();
         final String host = UUID.randomUUID().toString();
         final int port = random.nextInt();
@@ -72,8 +72,51 @@ class InstanceApiStrategyTest {
         DbMetadata dbMetadata = objectUnderTest.describeDb(dbInstanceId);
 
         assertThat(dbMetadata.getDbIdentifier(), equalTo(dbInstanceId));
-        assertThat(dbMetadata.getHostName(), equalTo(host));
+        assertThat(dbMetadata.getEndpoint(), equalTo(host));
         assertThat(dbMetadata.getPort(), equalTo(port));
+    }
+
+    @Test
+    void test_describeDb_with_read_replicas_returns_correct_results() {
+        final String dbInstanceId = UUID.randomUUID().toString();
+        final String endpoint = UUID.randomUUID().toString();
+        final int port = random.nextInt();
+        final String readerEndpoint = UUID.randomUUID().toString();
+        final String readerInstanceId = UUID.randomUUID().toString();
+        final DescribeDbInstancesRequest describeDbInstancesRequest = DescribeDbInstancesRequest.builder()
+                .dbInstanceIdentifier(dbInstanceId)
+                .build();
+        final DescribeDbInstancesResponse describeDbInstancesResponse = DescribeDbInstancesResponse.builder()
+                .dbInstances(DBInstance.builder()
+                        .endpoint(Endpoint.builder()
+                                .address(endpoint)
+                                .port(port)
+                                .build())
+                        .readReplicaDBInstanceIdentifiers(readerInstanceId)
+                        .build())
+                .build();
+        when(rdsClient.describeDBInstances(describeDbInstancesRequest)).thenReturn(describeDbInstancesResponse);
+
+        final DescribeDbInstancesRequest describeReaderInstancesRequest = DescribeDbInstancesRequest.builder()
+                .dbInstanceIdentifier(readerInstanceId)
+                .build();
+        final DescribeDbInstancesResponse describeReaderInstancesResponse = DescribeDbInstancesResponse.builder()
+                .dbInstances(DBInstance.builder()
+                        .endpoint(Endpoint.builder()
+                                .address(readerEndpoint)
+                                .port(port)
+                                .build())
+                        .build())
+                .build();
+        when(rdsClient.describeDBInstances(describeReaderInstancesRequest)).thenReturn(describeReaderInstancesResponse);
+
+        DbMetadata dbMetadata = objectUnderTest.describeDb(dbInstanceId);
+
+        assertThat(dbMetadata.getDbIdentifier(), equalTo(dbInstanceId));
+        assertThat(dbMetadata.getEndpoint(), equalTo(endpoint));
+        assertThat(dbMetadata.getPort(), equalTo(port));
+        assertThat(dbMetadata.getReaderEndpoint(), equalTo(readerEndpoint));
+        assertThat(dbMetadata.getReaderPort(), equalTo(port));
     }
 
     @Test

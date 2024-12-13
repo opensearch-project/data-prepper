@@ -9,5 +9,5 @@ protobuf==3.20.3
 requests==2.32.0
 setuptools==70.0.0
 urllib3==2.2.2
-werkzeug==3.0.3
+werkzeug==3.0.6
 zipp==3.19.1

@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -99,6 +100,38 @@ public class JiraIteratorTest {
         jiraIterator.setCrawlerQWaitTimeMillis(1);
         assertTrue(jiraIterator.hasNext());
         assertNotNull(jiraIterator.next());
+    }
+
+    @Test
+    void testStartCrawlerThreads() {
+        jiraIterator = createObjectUnderTest();
+        jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.hasNext();
+        jiraIterator.hasNext();
+        assertTrue(jiraIterator.showFutureList().size() == 1);
+    }
+
+    @Test
+    void testFuturesCompleted() throws InterruptedException {
+        jiraIterator = createObjectUnderTest();
+        List<IssueBean> mockIssues = new ArrayList<>();
+        IssueBean issue1 = createIssueBean(false);
+        mockIssues.add(issue1);
+        IssueBean issue2 = createIssueBean(false);
+        mockIssues.add(issue2);
+        IssueBean issue3 = createIssueBean(false);
+        mockIssues.add(issue3);
+        when(mockSearchResults.getIssues()).thenReturn(mockIssues);
+        when(mockSearchResults.getTotal()).thenReturn(0);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+
+        jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.setCrawlerQWaitTimeMillis(1);
+        jiraIterator.hasNext();
+
+        Thread.sleep(1);
+        jiraIterator.showFutureList().forEach(future -> assertTrue(future.isDone()));
+        assertEquals(jiraIterator.showItemInfoQueue().size(), mockIssues.size());
     }
 
     @Test

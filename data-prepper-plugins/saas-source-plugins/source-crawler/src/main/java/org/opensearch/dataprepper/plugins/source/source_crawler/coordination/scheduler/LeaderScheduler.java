@@ -21,7 +21,7 @@ public class LeaderScheduler implements Runnable {
     /**
      * Default duration to extend the timeout of lease
      */
-    private static final int DEFAULT_EXTEND_LEASE_MINUTES = 3;
+    private static final Duration DEFAULT_EXTEND_LEASE_MINUTES = Duration.ofMinutes(3);
 
     /**
      * Default interval to run lease check and shard discovery
@@ -68,7 +68,7 @@ public class LeaderScheduler implements Runnable {
                     Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
                     leaderProgressState.setLastPollTime(updatedPollTime);
                     leaderPartition.setLeaderProgressState(leaderProgressState);
-                    coordinator.saveProgressStateForPartition(leaderPartition, null);
+                    coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
                 }
 
             } catch (Exception e) {
@@ -78,7 +78,7 @@ public class LeaderScheduler implements Runnable {
                     // Extend the timeout
                     // will always be a leader until shutdown
                     try {
-                        coordinator.saveProgressStateForPartition(leaderPartition, Duration.ofMinutes(DEFAULT_EXTEND_LEASE_MINUTES));
+                        coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
                     } catch (final Exception e) {
                         LOG.error("Failed to save Leader partition state. This process will retry.");
                     }
