@@ -32,7 +32,7 @@ public class KinesisInputOutputRecordTest {
 
         KinesisInputOutputRecord kinesisInputOutputRecord = KinesisInputOutputRecord.builder().build();
 
-        assertNull(kinesisInputOutputRecord.getKinesisClientRecord());
+        assertEquals(0L, kinesisInputOutputRecord.getIncomingRecordSizeBytes());
         assertNull(kinesisInputOutputRecord.getDataPrepperRecord());
     }
 
@@ -46,13 +46,12 @@ public class KinesisInputOutputRecordTest {
                 .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
 
         KinesisInputOutputRecord kinesisInputOutputRecord = KinesisInputOutputRecord.builder()
-                .withKinesisClientRecord(kinesisClientRecord)
+                .withIncomingRecordSizeBytes(100L)
                 .withDataPrepperRecord(record)
                 .build();
 
-        assertNotNull(kinesisInputOutputRecord.getKinesisClientRecord());
         assertNotNull(kinesisInputOutputRecord.getDataPrepperRecord());
         assertEquals(kinesisInputOutputRecord.getDataPrepperRecord(), record);
-        assertEquals(kinesisInputOutputRecord.getKinesisClientRecord(), kinesisClientRecord);
+        assertEquals(100L, kinesisInputOutputRecord.getIncomingRecordSizeBytes());
     }
 }

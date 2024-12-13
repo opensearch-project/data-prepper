@@ -39,9 +39,7 @@ import software.amazon.kinesis.processor.ShardRecordProcessor;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 
-import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Optional;
@@ -178,7 +176,7 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
             int eventCount = 0;
             for (KinesisInputOutputRecord kinesisInputOutputRecord: kinesisOutputRecords) {
                 Record<Event> dataPrepperRecord = kinesisInputOutputRecord.getDataPrepperRecord();
-                int incomingRecordSizeBytes = kinesisInputOutputRecord.getKinesisClientRecord().data().position();
+                long incomingRecordSizeBytes = kinesisInputOutputRecord.getIncomingRecordSizeBytes();
                 bytesReceivedSummary.record(incomingRecordSizeBytes);
                 Event event = dataPrepperRecord.getData();
                 acknowledgementSetOpt.ifPresent(acknowledgementSet -> acknowledgementSet.add(event));

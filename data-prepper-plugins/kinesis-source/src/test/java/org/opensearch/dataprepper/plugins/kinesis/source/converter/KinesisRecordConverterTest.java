@@ -15,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputConfig;

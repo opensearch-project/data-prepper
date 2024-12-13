@@ -50,7 +50,7 @@ public class KinesisRecordConverter {
                 event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
                 event.getMetadata().setExternalOriginationTime(externalOriginationTime);
                 records.add(KinesisInputOutputRecord.builder()
-                        .withKinesisClientRecord(kinesisClientRecord)
+                        .withIncomingRecordSizeBytes(kinesisClientRecord.data().position())
                         .withDataPrepperRecord(record).build());
             });
         }

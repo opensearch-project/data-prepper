@@ -15,12 +15,11 @@ import lombok.Builder;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import software.amazon.kinesis.retrieval.KinesisClientRecord;
 
 @Builder(setterPrefix = "with")
 @Getter
 @AllArgsConstructor
 public class KinesisInputOutputRecord {
     private Record<Event> dataPrepperRecord;
-    private KinesisClientRecord kinesisClientRecord;
+    private long incomingRecordSizeBytes;
 }

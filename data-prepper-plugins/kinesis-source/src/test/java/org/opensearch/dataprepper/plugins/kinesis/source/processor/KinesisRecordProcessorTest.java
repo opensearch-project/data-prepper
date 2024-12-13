@@ -224,15 +224,16 @@ public class KinesisRecordProcessorTest {
                 .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
         List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
         kinesisClientRecords.add(kinesisClientRecord);
+        final long recordsSize = kinesisClientRecords.stream()
+                .map(kclRecord -> kclRecord.data().position())
+                .mapToLong(Integer::longValue).sum();
+
         records.add(KinesisInputOutputRecord.builder()
                 .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
+                .withIncomingRecordSizeBytes(recordsSize).build()
         );
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
 
-        final Long recordsSize = kinesisClientRecords.stream()
-                .map(kclRecord -> kclRecord.data().position())
-                .mapToLong(Integer::longValue).sum();
 
         InputStream inputStream = mock(InputStream.class);
         when(decompressionEngine.createInputStream(inputStream)).thenReturn(inputStream);
@@ -267,8 +268,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     @Test
@@ -287,14 +288,13 @@ public class KinesisRecordProcessorTest {
                 .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
         List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
         kinesisClientRecords.add(kinesisClientRecord);
-        records.add(KinesisInputOutputRecord.builder()
-                .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
-        );
-
-        final Long recordsSize = kinesisClientRecords.stream()
+        final long recordsSize = kinesisClientRecords.stream()
                 .map(kclRecord -> kclRecord.data().position())
                 .mapToLong(Integer::longValue).sum();
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
 
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
@@ -322,8 +322,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     @Test
@@ -353,13 +353,13 @@ public class KinesisRecordProcessorTest {
         List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         kinesisClientRecords.add(kinesisClientRecord);
-        records.add(KinesisInputOutputRecord.builder()
-                .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
-        );
-        final Long recordsSize = kinesisClientRecords.stream()
+        final long recordsSize = kinesisClientRecords.stream()
                 .map(kclRecord -> kclRecord.data().position())
                 .mapToLong(Integer::longValue).sum();
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
         when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
@@ -390,8 +390,8 @@ public class KinesisRecordProcessorTest {
         verify(acknowledgementSetSuccesses, atLeastOnce()).increment();
         verify(recordProcessed, times(1)).increment(anyDouble());
         verifyNoInteractions(recordProcessingErrors);
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     @Test
@@ -420,13 +420,13 @@ public class KinesisRecordProcessorTest {
         List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         kinesisClientRecords.add(kinesisClientRecord);
-        records.add(KinesisInputOutputRecord.builder()
-                .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
-        );
-        final Long recordsSize = kinesisClientRecords.stream()
+        final long recordsSize = kinesisClientRecords.stream()
                 .map(kclRecord -> kclRecord.data().position())
                 .mapToLong(Integer::longValue).sum();
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
         when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
@@ -456,8 +456,8 @@ public class KinesisRecordProcessorTest {
 
         verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
         verify(recordProcessed, times(1)).increment(anyDouble());
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     @Test
@@ -475,17 +475,16 @@ public class KinesisRecordProcessorTest {
                 .data(ByteBuffer.wrap(event.toJsonString().getBytes()))
                 .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
         kinesisClientRecords.add(kinesisClientRecord);
+        final long recordsSize = kinesisClientRecords.stream()
+                .map(kclRecord -> kclRecord.data().position())
+                .mapToLong(Integer::longValue).sum();
         records.add(KinesisInputOutputRecord.builder()
                 .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
+                .withIncomingRecordSizeBytes(recordsSize).build()
         );
         when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
         doThrow(exception).when(bufferAccumulator).add(any(Record.class));
-
-        final Long recordsSize = kinesisClientRecords.stream()
-                .map(kclRecord -> kclRecord.data().position())
-                .mapToLong(Integer::longValue).sum();
 
         kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
@@ -494,8 +493,8 @@ public class KinesisRecordProcessorTest {
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
         verify(recordProcessingErrors, times(1)).increment();
         verify(recordProcessed, times(0)).increment(anyDouble());
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(0)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(0)).record(eq((double) recordsSize));
     }
 
     @Test
@@ -513,13 +512,13 @@ public class KinesisRecordProcessorTest {
         List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
         when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
         kinesisClientRecords.add(kinesisClientRecord);
-        records.add(KinesisInputOutputRecord.builder()
-                .withDataPrepperRecord(record)
-                .withKinesisClientRecord(kinesisClientRecord).build()
-        );
-        final Long recordsSize = kinesisClientRecords.stream()
+        final long recordsSize = kinesisClientRecords.stream()
                 .map(kclRecord -> kclRecord.data().position())
                 .mapToLong(Integer::longValue).sum();
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
 
         when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamId))).thenReturn(records);
         final Throwable exception = mock(RuntimeException.class);
@@ -532,8 +531,8 @@ public class KinesisRecordProcessorTest {
         assertDoesNotThrow(() -> kinesisRecordProcessor.processRecords(processRecordsInput));
         verify(recordProcessingErrors, times(1)).increment();
         verify(recordProcessed, times(0)).increment(anyDouble());
-        verify(bytesReceivedSummary, times(1)).record(eq(recordsSize.doubleValue()));
-        verify(bytesProcessedSummary, times(1)).record(eq(recordsSize.doubleValue()));
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     @Test
