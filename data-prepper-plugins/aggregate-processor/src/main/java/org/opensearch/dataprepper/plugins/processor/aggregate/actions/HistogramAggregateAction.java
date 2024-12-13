@@ -225,6 +225,7 @@ public class HistogramAggregateAction implements AggregateAction {
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(groupState)
+                .withEventHandle(aggregateActionInput.getEventHandle())
                 .build();
         } else {
             List<Double> explicitBoundsList = new ArrayList<Double>();
@@ -262,6 +263,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .withExplicitBoundsList(explicitBoundsList)
                 .withExemplars(exemplarList)
                 .withAttributes(attr)
+                .withEventHandle(aggregateActionInput.getEventHandle())
                 .build(false);
             event = (Event)histogram;
         }

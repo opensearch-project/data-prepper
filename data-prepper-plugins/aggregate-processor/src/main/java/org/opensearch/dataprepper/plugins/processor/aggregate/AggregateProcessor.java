@@ -125,6 +125,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             }
             final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
             final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
+            aggregateGroupForEvent.attachToEventAcknowledgementSet(event);
 
             final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
 
@@ -147,6 +148,11 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         actionHandleEventsOutCounter.increment(handleEventsOut);
         actionHandleEventsDroppedCounter.increment(handleEventsDropped);
         return recordsOut;
+    }
+
+    @Override
+    public boolean holdsEvents() {
+        return aggregateAction.holdsEvents();
     }
 
     public static long getTimeNanos(final Instant time) {
