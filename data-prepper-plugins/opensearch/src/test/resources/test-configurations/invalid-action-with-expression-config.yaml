@@ -1,0 +1,10 @@
+sink:
+  opensearch:
+    hosts: [ "http://localhost:9200" ]
+    index: "no-more-plugin-setting"
+    index_type: "trace-analytics-raw"
+    action: "${anInvalidFunction()}"
+    aws:
+      sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+      region: "us-east-2"
+      serverless: true

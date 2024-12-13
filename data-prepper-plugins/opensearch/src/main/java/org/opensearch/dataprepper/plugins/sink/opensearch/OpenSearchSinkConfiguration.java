@@ -39,6 +39,10 @@ public class OpenSearchSinkConfiguration {
     this.retryConfiguration = retryConfiguration;
   }
 
+  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
+    return readOSConfig(openSearchSinkConfig, null);
+  }
+
   public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator) {
     openSearchSinkConfig.validateConfig();
     final ConnectionConfiguration connectionConfiguration =

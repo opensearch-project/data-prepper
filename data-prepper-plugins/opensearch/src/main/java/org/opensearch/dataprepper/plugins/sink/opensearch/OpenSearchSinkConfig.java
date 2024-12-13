@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import lombok.Getter;
+import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
@@ -182,9 +183,11 @@ public class OpenSearchSinkConfig {
     }
 
     void isActionValid() {
-        if (action.equals("index") || action.equals("create") || action.equals("update") || action.equals("upsert") || action.equals("delete")) {
+        if (EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action)) {
             return;
         }
+
+        System.out.println(action);
         throw new IllegalArgumentException("action must be one of [index, create, update, upsert, delete]");
     }
 
