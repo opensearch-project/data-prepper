@@ -35,12 +35,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
     private static final String PLUGIN_NAME = "otel_trace_source";
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
+
+    // todo tlongo include in config
+    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     static final String SERVER_CONNECTIONS = "serverConnections";
@@ -84,7 +88,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
         if (server == null) {
             ServerBuilder serverBuilder = Server.builder();
-            serverBuilder = serverBuilder.port(oTelTraceSourceConfig.getPort(), SessionProtocol.HTTP);
+            serverBuilder = serverBuilder.port(oTelTraceSourceConfig.getPort(), inferProtocolFromConfig());
 
             configureHeadersAndHealthCheck(serverBuilder);
             configureTLS(serverBuilder);
@@ -108,6 +112,14 @@ public class OTelTraceSource implements Source<Record<Object>> {
         LOG.info("Started otel_trace_source on port " + oTelTraceSourceConfig.getPort() + "...");
     }
 
+    private SessionProtocol inferProtocolFromConfig() {
+        if (oTelTraceSourceConfig.isSsl()) {
+            return SessionProtocol.HTTPS;
+        } else {
+            return SessionProtocol.HTTP;
+        }
+    }
+
     private void handleExecutionException(ExecutionException ex) {
         if (ex.getCause() != null && ex.getCause() instanceof RuntimeException) {
             throw (RuntimeException) ex.getCause();
@@ -128,7 +140,12 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
     private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
         ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
-        HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, oTelTraceSourceConfig.getRetryInfo().getMinDelay(), oTelTraceSourceConfig.getRetryInfo().getMaxDelay());
+        RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
+                ? oTelTraceSourceConfig.getRetryInfo()
+                : DEFAULT_RETRY_INFO;
+
+        // todo tlongo move creation of handler to ArmeriaHttpService
+        HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.annotatedService(httpService, httpExceptionHandler);
