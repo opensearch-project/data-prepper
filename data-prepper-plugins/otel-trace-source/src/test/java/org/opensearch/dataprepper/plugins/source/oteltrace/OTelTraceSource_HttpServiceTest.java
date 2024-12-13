@@ -180,7 +180,7 @@ class OTelTraceSource_HttpServiceTest {
     }
 
     @Test
-    void request_that_causes_overflow_exception_should_not_be_written_to_buffer() throws Exception {
+    void request_that_causes_overflow_exception_should_not_be_written_to_buffer_and_return_retry_information() throws Exception {
         Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
         configureObjectUnderTest();
         SOURCE.start(buffer);
