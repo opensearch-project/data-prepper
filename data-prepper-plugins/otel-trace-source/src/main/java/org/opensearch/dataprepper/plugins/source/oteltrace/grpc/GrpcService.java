@@ -99,6 +99,7 @@ public class GrpcService {
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }
 
+        // todo tlongo still needed with new http-service?
         grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
 
         if (oTelTraceSourceConfig.getAuthentication() != null) {
