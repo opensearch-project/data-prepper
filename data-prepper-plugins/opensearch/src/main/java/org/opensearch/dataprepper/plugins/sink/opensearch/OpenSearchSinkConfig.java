@@ -168,7 +168,6 @@ public class OpenSearchSinkConfig {
     private DlqConfiguration dlq;
 
 
-
     public void validateConfig() {
         isActionValid();
         isDlqValid();

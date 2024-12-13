@@ -1,0 +1,9 @@
+sink:
+  opensearch:
+    hosts: [ "http://localhost:9200" ]
+    dlq:
+      s3:
+        bucket: "my-dlq-bucket"
+        key_path_prefix: "dlq-files/"
+    dlq_file: null
+    max_retries: 10

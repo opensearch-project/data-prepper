@@ -28,7 +28,7 @@ public class OpenSearchSinkConfigurationTests {
     private static final String INVALID_ACTION_WITH_EXPRESSION_CONFIG = "test-configurations/invalid-action-with-expression-config.yaml";
     private static final String INVALID_ACTIONS_WITH_EXPRESSION_CONFIG = "test-configurations/invalid-actions-with-expression-config.yaml";
     private static final String CREATE_ACTION_CONFIG = "test-configurations/create-action-config.yaml";
-    private static final String CREATE_ACTION_WITH_EXPRESSION_CONFIG = "test-configurations/create-action-with-expression-config.yaml";
+    private static final String CREATE_ACTIONS_WITH_EXPRESSION_CONFIG = "test-configurations/create-actions-with-expression-config.yaml";
     private static final String PLUGIN_NAME = "opensearch";
     private static final String PIPELINE_NAME = "integTestPipeline";
     private ExpressionEvaluator expressionEvaluator;
@@ -87,7 +87,7 @@ public class OpenSearchSinkConfigurationTests {
         when(expressionEvaluator.isValidFormatExpression("${getMetadata(\"action\")}")).thenReturn(true);
 
         final OpenSearchSinkConfiguration openSearchSinkConfiguration =
-                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(CREATE_ACTION_CONFIG));
+                OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSourceConfig(CREATE_ACTIONS_WITH_EXPRESSION_CONFIG));
 
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());

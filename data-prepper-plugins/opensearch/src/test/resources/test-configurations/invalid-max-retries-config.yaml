@@ -1,0 +1,6 @@
+sink:
+  opensearch:
+    hosts: [ "http://localhost:9200" ]
+    dlq: null
+    dlq_file: null
+    max_retries: -1
