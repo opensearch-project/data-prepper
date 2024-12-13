@@ -86,9 +86,4 @@ public class RetryConfiguration {
    }
    return builder.build();
   }
-
-  public static RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
-    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
-    return builder.build();
-  }
 }

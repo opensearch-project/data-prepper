@@ -66,7 +66,6 @@ public class RetryConfigurationTests {
         final int maxRetries = 10;
         final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generateOpenSearchSourceConfig(WITH_DLQ_PLUGIN_10_RETRIES));
         Optional<DlqConfiguration> dlqConfiguration = retryConfiguration.getDlq();
-        S3DlqWriterConfig s3DlqWriterConfig = dlqConfiguration.get().getS3DlqWriterConfig();
         assertInstanceOf(S3DlqWriterConfig.class, dlqConfiguration.get().getS3DlqWriterConfig());
         assertEquals(maxRetries, retryConfiguration.getMaxRetries());
     }
