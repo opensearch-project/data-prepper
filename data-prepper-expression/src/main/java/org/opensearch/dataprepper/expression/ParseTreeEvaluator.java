@@ -37,7 +37,7 @@ class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
             walker.walk(listener, parseTree);
             return listener.getResult();
         } catch (final Exception e) {
-            LOG.error("Unable to evaluate event", e);
+            LOG.error(e.getMessage());
             throw new ExpressionEvaluationException(e.getMessage(), e);
         }
     }
