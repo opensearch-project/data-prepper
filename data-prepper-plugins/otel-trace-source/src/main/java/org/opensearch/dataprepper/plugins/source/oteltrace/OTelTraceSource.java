@@ -126,7 +126,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
     private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
         ArmeriaHttpService httpService = new ArmeriaHttpService(buffer, pluginMetrics, oTelTraceSourceConfig.getRequestTimeoutInMillis());
-        HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(oTelTraceSourceConfig.getRetryInfo().getMinDelay(), oTelTraceSourceConfig.getRetryInfo().getMaxDelay());
+        HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, oTelTraceSourceConfig.getRetryInfo().getMinDelay(), oTelTraceSourceConfig.getRetryInfo().getMaxDelay());
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.annotatedService(httpService, httpExceptionHandler);

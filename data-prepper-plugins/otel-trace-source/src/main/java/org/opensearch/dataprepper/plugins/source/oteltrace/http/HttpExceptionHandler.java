@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.GrpcRetryInfoCalculator;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,22 +27,36 @@ import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.micrometer.core.instrument.Counter;
 
-// todo tlongo add metrics. See GrpcExceptionHandler
+// todo tlongo add tests for metrics
 public class HttpExceptionHandler implements ExceptionHandlerFunction {
     private static final Logger LOG = LoggerFactory.getLogger(HttpExceptionHandler.class);
 
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
+    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
+    public static final String BAD_REQUESTS = "badRequests";
+    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
+    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
 
+    private final Counter requestTimeoutsCounter;
+    private final Counter badRequestsCounter;
+    private final Counter requestsTooLargeCounter;
+    private final Counter internalServerErrorCounter;
     private final GrpcRetryInfoCalculator retryInfoCalculator;
 
-    public HttpExceptionHandler(Duration retryInfoMinDelay, Duration retryInfoMaxDelay) {
+    public HttpExceptionHandler(final PluginMetrics pluginMetrics, Duration retryInfoMinDelay, Duration retryInfoMaxDelay) {
+        requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
+        badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
+        requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
+        internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
         this.retryInfoCalculator = new GrpcRetryInfoCalculator(retryInfoMinDelay, retryInfoMaxDelay);
     }
 
     @Override
-    public HttpResponse handleException(ServiceRequestContext ctx,
-                                        HttpRequest req, Throwable e) {
+    public HttpResponse handleException(final ServiceRequestContext ctx,
+                                        final HttpRequest req,
+                                        final Throwable e) {
         final Throwable exceptionCause = e instanceof BufferWriteException ? e.getCause() : e;
         StatusHolder statusHolder = createStatus(exceptionCause);
 
@@ -60,17 +75,23 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
 
     private StatusHolder createStatus(Throwable e) {
         if (e instanceof RequestTimeoutException || e instanceof TimeoutException) {
+            requestTimeoutsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.RESOURCE_EXHAUSTED), createHttpStatusFromProtoBufStatus(Status.Code.RESOURCE_EXHAUSTED));
         } else if (e instanceof SizeOverflowException) {
+            requestsTooLargeCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.RESOURCE_EXHAUSTED), createHttpStatusFromProtoBufStatus(Status.Code.RESOURCE_EXHAUSTED));
         } else if (e instanceof BadRequestException) {
+            badRequestsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.INVALID_ARGUMENT), createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
         } else if ((e instanceof StatusRuntimeException) && (e.getMessage().contains("Invalid protobuf byte sequence") || e.getMessage().contains("Can't decode compressed frame"))) {
+            badRequestsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.INVALID_ARGUMENT), createHttpStatusFromProtoBufStatus(Status.Code.INVALID_ARGUMENT));
         } else if (e instanceof RequestCancelledException) {
+            requestTimeoutsCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.CANCELLED), createHttpStatusFromProtoBufStatus(Status.Code.CANCELLED));
         } else {
             LOG.error("Unexpected exception handling http request", e);
+            internalServerErrorCounter.increment();
             return new StatusHolder(createStatus(e, Status.Code.INTERNAL), createHttpStatusFromProtoBufStatus(Status.Code.INTERNAL));
         }
     }
