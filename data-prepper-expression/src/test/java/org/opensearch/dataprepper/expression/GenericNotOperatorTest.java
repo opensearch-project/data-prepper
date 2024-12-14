@@ -68,6 +68,7 @@ class GenericNotOperatorTest {
                 .getRuleIndex();
 
         assertThat(genericNotOperator.shouldEvaluate(context), is(true));
+        assertThat(genericNotOperator.isBooleanOperator(), is(true));
     }
 
     @Test
