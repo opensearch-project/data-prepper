@@ -465,7 +465,7 @@ public class DynamoDbClientWrapperTest {
 
         final int pageLimit = new Random().nextInt(20);
 
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, pageLimit, ttl);
@@ -516,7 +516,7 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);
@@ -583,7 +583,7 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);
@@ -650,7 +650,7 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
         reflectivelySetField(objectUnderTest, "table", table);
 
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
         final Optional<SourcePartitionStoreItem> result = objectUnderTest.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.valueOf(sourcePartitionStatus), sourceStatusCombinationKey, new Random().nextInt(20), ttl);

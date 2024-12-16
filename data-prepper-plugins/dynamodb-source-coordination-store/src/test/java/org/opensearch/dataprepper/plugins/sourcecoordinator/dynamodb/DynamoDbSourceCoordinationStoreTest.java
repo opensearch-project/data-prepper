@@ -245,8 +245,9 @@ public class DynamoDbSourceCoordinationStoreTest {
         final String ownerId = UUID.randomUUID().toString();
         final String sourceIdentifier = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
                 SourcePartitionStatus.ASSIGNED,
                 String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
@@ -273,8 +274,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         final String ownerId = UUID.randomUUID().toString();
         final String sourceIdentifier = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
-
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
         final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
 
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
@@ -296,8 +297,9 @@ public class DynamoDbSourceCoordinationStoreTest {
         final String ownerId = UUID.randomUUID().toString();
         final String sourceIdentifier = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
         final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
 
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
@@ -329,8 +331,9 @@ public class DynamoDbSourceCoordinationStoreTest {
         final String ownerId = UUID.randomUUID().toString();
         final String sourceIdentifier = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
-        final Duration ttl = Duration.ofSeconds(new Random().nextInt());
+        final Duration ttl = Duration.ofSeconds(new Random().nextInt(5)+10);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
         final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
 
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
