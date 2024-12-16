@@ -269,15 +269,6 @@ public class IndexConfiguration {
         return builder.build();
     }
 
-    public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
-        return readIndexConfig(pluginSetting, null);
-    }
-
-    public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
-        IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-        return builder.build();
-    }
-
 
     public IndexType getIndexType() {
         return indexType;

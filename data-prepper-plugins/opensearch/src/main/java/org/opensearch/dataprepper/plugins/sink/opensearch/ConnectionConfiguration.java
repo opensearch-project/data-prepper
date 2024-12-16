@@ -248,13 +248,6 @@ public class ConnectionConfiguration {
     return builder.build();
   }
 
-  public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
-    //Must fix all calls to this function
-    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
-    ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
-    return builder.build();
-  }
-
 
   public RestHighLevelClient createClient(AwsCredentialsSupplier awsCredentialsSupplier) {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
