@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -17,20 +19,17 @@ import org.opensearch.client.transport.aws.AwsSdk2Transport;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -49,20 +48,45 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.SERVERLESS;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 @ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
-    private static final String PROXY_PARAMETER = "proxy";
+    private static final String OPEN_SEARCH_SINK_CONFIGURATIONS = "open-search-sink-configurations.yaml";
+    private static final String EMPTY_SINK_CONFIG = "empty-sink";
+    private static final String ES6_DEFAULT_CONFIG = "es6-default";
+    private static final String AWS_SERVERLESS_DEFAULT = "aws-serverless-default";
+    private static final String AWS_SERVERLESS_NO_CERT = "aws-serverless-no-cert";
+    private static final String BASIC_CREDENTIALS_NO_CERT = "basic-credentials-no-cert";
+    private static final String BASIC_CREDENTIALS_NO_CERT_INSECURE = "basic-credentials-no-cert-insecure";
+    private static final String BASIC_CREDENTIALS_WITH_CERT = "basic-credentials-with-cert";
+    private static final String AWS_REGION_ONLY = "aws-region-only";
+    private static final String SERVERLESS_OPTIONS = "serverless-options";
+    private static final String AWS_REGION_ONLY_INSECURE = "aws-region-only-insecure";
+    private static final String AWS_WITH_CERT = "aws-with-cert";
+    private static final String AWS_WITH_CERT_AND_ARN = "aws-with-cert-and-arn";
+    private static final String AWS_WITH_2_HEADER = "aws-with-2-header";
+    private static final String VALID_PROXY_IP = "valid-proxy-ip";
+    private static final String VALID_PROXY_HOST_NAME = "valid-proxy-host-name";
+    private static final String VALID_HTTP_PROXY_SCHEME = "valid-http-proxy-scheme";
+    private static final String INVALID_HTTP_PROXY_PORT = "invalid-http-proxy-port";
+    private static final String INVALID_HTTP_PROXY_NO_PORT = "invalid-http-proxy-no-port";
+    private static final String INVALID_HTTP_PROXY_PORT_NOT_IN_RANGE = "invalid-http-proxy-port-not-in-range";
+    private static final String INVALID_HTTP_PROXY_NOT_HTTP = "invalid-http-proxy-not-http";
+
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
-    private final String TEST_USERNAME = "admin";
-    private final String TEST_PASSWORD = "admin";
-    private final String TEST_PIPELINE_NAME = "Test-Pipeline";
+    private final String TEST_USERNAME = "test-username";
+    private final String TEST_PASSWORD = "test-password";
     private final Integer TEST_CONNECT_TIMEOUT = 5;
     private final Integer TEST_SOCKET_TIMEOUT = 10;
-    private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
     private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
+    private final String TEST_NETWORK_POLICY = "test network policy";
+    private final String TEST_COLLECTION_NAME = "test collection";
+    private final String TEST_VPCE_ID = "test vpce id";
+    private final String TEST_EXTERNAL_ID = "test-external-id";
+    private final String TEST_HEADER_NAME_1 = "header1";
+    private final String TEST_HEADER_NAME_2 = "header2";
+    private final String TEST_HEADER_VALUE_1 = "test-header-1";
+    private final String TEST_HEADER_VALUE_2 = "test-header-2";
 
     @Mock
     private ApacheHttpClient.Builder apacheHttpClientBuilder;
@@ -71,12 +95,13 @@ class ConnectionConfigurationTests {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
+    ObjectMapper objectMapper;
+
     @Test
-    void testReadConnectionConfigurationDefault() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+    void testReadConnectionConfigurationDefault() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(EMPTY_SINK_CONFIG);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
         assertNull(connectionConfiguration.getUsername());
         assertNull(connectionConfiguration.getPassword());
@@ -84,37 +109,30 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getCertPath());
         assertNull(connectionConfiguration.getConnectTimeout());
         assertNull(connectionConfiguration.getSocketTimeout());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
         assertTrue(connectionConfiguration.isRequestCompressionEnabled());
     }
 
     @Test
-    void testReadConnectionConfigurationES6Default() {
-        final Map<String, Object> configMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(DISTRIBUTION_VERSION, "es6");
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+    void testReadConnectionConfigurationES6Default() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(ES6_DEFAULT_CONFIG);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertFalse(connectionConfiguration.isRequestCompressionEnabled());
     }
 
     @Test
-    void testReadConnectionConfigurationAwsOptionServerlessDefault() {
-        final String testArn = TEST_ROLE;
-        final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, null, TEST_CERT_PATH, false, Collections.emptyMap());
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+    void testReadConnectionConfigurationAwsOptionServerlessDefault() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_SERVERLESS_DEFAULT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertTrue(connectionConfiguration.isServerless());
     }
 
     @Test
     void testCreateClientDefault() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(EMPTY_SINK_CONFIG);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
@@ -122,10 +140,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateOpenSearchClientDefault() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(EMPTY_SINK_CONFIG);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
@@ -137,13 +154,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateOpenSearchClientAwsServerlessDefault() throws IOException {
-        final Map<String, Object> configMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(SERVERLESS, true);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_SERVERLESS_NO_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
 
@@ -165,80 +178,35 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testReadConnectionConfigurationWithDeprecatedBasicCredentialsAndNoCert() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+    void testReadConnectionConfigurationWithBasicCredentialsAndNoCert() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_NO_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
         assertEquals(TEST_USERNAME, connectionConfiguration.getUsername());
         assertEquals(TEST_PASSWORD, connectionConfiguration.getPassword());
         assertEquals(TEST_CONNECT_TIMEOUT, connectionConfiguration.getConnectTimeout());
         assertEquals(TEST_SOCKET_TIMEOUT, connectionConfiguration.getSocketTimeout());
         assertFalse(connectionConfiguration.isAwsSigv4());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
     }
 
-    @Test
-    void testReadConnectionConfigurationWithBasicCredentialsAndNoCert() {
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
-        final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
-        assertNull(connectionConfiguration.getUsername());
-        assertNull(connectionConfiguration.getPassword());
-        assertNotNull(connectionConfiguration.getAuthConfig());
-        assertEquals(TEST_USERNAME, connectionConfiguration.getAuthConfig().getUsername());
-        assertEquals(TEST_PASSWORD, connectionConfiguration.getAuthConfig().getPassword());
-        assertEquals(TEST_CONNECT_TIMEOUT, connectionConfiguration.getConnectTimeout());
-        assertEquals(TEST_SOCKET_TIMEOUT, connectionConfiguration.getSocketTimeout());
-        assertFalse(connectionConfiguration.isAwsSigv4());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
-    }
-
-    @Test
-    void testReadConnectionConfigurationWithBothDeprecatedBasicCredentialsAndAuthConfigShouldThrow() {
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
-        assertThrows(IllegalStateException.class,
-                () -> ConnectionConfiguration.readConnectionConfiguration(pluginSetting));
-    }
-
-    @Test
-    void testCreateClientWithDeprecatedBasicCredentialsAndNoCert() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
-        assertNotNull(client);
-        client.close();
-    }
 
     @Test
     void testCreateClientWithBasicCredentialsAndNoCert() throws IOException {
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
-        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_NO_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }
 
+
     @Test
     void testCreateOpenSearchClientNoCert() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_NO_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
@@ -249,10 +217,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateClientInsecure() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_NO_CERT_INSECURE);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
@@ -260,10 +227,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateOpenSearchClientInsecure() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_NO_CERT_INSECURE);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
@@ -274,10 +240,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateClientWithCertPath() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_WITH_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
@@ -285,10 +250,9 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateOpenSearchClientWithCertPath() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(BASIC_CREDENTIALS_WITH_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
@@ -299,88 +263,50 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateClientWithAWSSigV4AndRegion() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, "us-west-2", null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_REGION_ONLY);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertEquals("us-west-2", connectionConfiguration.getAwsRegion());
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertEquals("us-east-2", connectionConfiguration.getAwsRegion());
         assertTrue(connectionConfiguration.isAwsSigv4());
     }
 
     @Test
     void testServerlessOptions() throws IOException {
-        final String serverlessNetworkPolicyName = UUID.randomUUID().toString();
-        final String serverlessCollectionName = UUID.randomUUID().toString();
-        final String serverlessVpceId = UUID.randomUUID().toString();
-
-        final Map<String, Object> metadata = new HashMap<>();
-        final Map<String, Object> awsOptionMetadata = new HashMap<>();
-        final Map<String, String> serverlessOptionsMetadata = new HashMap<>();
-        serverlessOptionsMetadata.put("network_policy_name", serverlessNetworkPolicyName);
-        serverlessOptionsMetadata.put("collection_name", serverlessCollectionName);
-        serverlessOptionsMetadata.put("vpce_id", serverlessVpceId);
-        awsOptionMetadata.put("region", UUID.randomUUID().toString());
-        awsOptionMetadata.put("serverless", true);
-        awsOptionMetadata.put("serverless_options", serverlessOptionsMetadata);
-        awsOptionMetadata.put("sts_role_arn", TEST_ROLE);
-        metadata.put("hosts", TEST_HOSTS);
-        metadata.put("username", UUID.randomUUID().toString());
-        metadata.put("password", UUID.randomUUID().toString());
-        metadata.put("connect_timeout", 1);
-        metadata.put("socket_timeout", 1);
-        metadata.put("aws", awsOptionMetadata);
-
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
-        final ConnectionConfiguration connectionConfiguration = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertThat(connectionConfiguration.getServerlessNetworkPolicyName(), equalTo(serverlessNetworkPolicyName));
-        assertThat(connectionConfiguration.getServerlessCollectionName(), equalTo(serverlessCollectionName));
-        assertThat(connectionConfiguration.getServerlessVpceId(), equalTo(serverlessVpceId));
-    }
-
-    @Test
-    void testCreateClientWithAWSSigV4DefaultRegion() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(SERVERLESS_OPTIONS);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
-        assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertThat(connectionConfiguration.getServerlessNetworkPolicyName(), equalTo(TEST_NETWORK_POLICY));
+        assertThat(connectionConfiguration.getServerlessCollectionName(), equalTo(TEST_COLLECTION_NAME));
+        assertThat(connectionConfiguration.getServerlessVpceId(), equalTo(TEST_VPCE_ID));
     }
 
     @Test
     void testCreateClientWithAWSSigV4AndInsecure() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_REGION_ONLY_INSECURE);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
         assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
     }
 
     @Test
     void testCreateClientWithAWSSigV4AndCertPath() throws IOException {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, null, TEST_CERT_PATH, false);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_CERT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
         assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
     }
 
     @Test
-    void testCreateClientWithAWSSigV4AndSTSRole() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
+    void testCreateClientWithAWSSigV4AndSTSRole() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_CERT_AND_ARN);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
         assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
-        assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
@@ -397,16 +323,10 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testCreateOpenSearchClientWithAWSSigV4AndSTSRole() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
+    void testCreateOpenSearchClientWithAWSSigV4AndSTSRole() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_CERT_AND_ARN);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertThat(connectionConfiguration, notNullValue());
-        assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
-        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
-        assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
@@ -430,17 +350,10 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testCreateClientWithAWSOption() {
-        final String headerName1 = UUID.randomUUID().toString();
-        final String headerValue1 = UUID.randomUUID().toString();
-        final String headerName2 = UUID.randomUUID().toString();
-        final String headerValue2 = UUID.randomUUID().toString();
-        final String testArn = TEST_ROLE;
-        final String externalId = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, externalId, null,false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+    void testCreateClientWithAWSOption() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_2_HEADER);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -456,27 +369,20 @@ class ConnectionConfigurationTests {
         final AwsCredentialsOptions actualOptions = awsCredentialsOptionsArgumentCaptor.getValue();
 
         assertThat(actualOptions.getStsRoleArn(), equalTo(TEST_ROLE));
-        assertThat(actualOptions.getStsExternalId(), equalTo(externalId));
+        assertThat(actualOptions.getStsExternalId(), equalTo(TEST_EXTERNAL_ID));
         assertThat(actualOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(actualOptions.getStsHeaderOverrides().size(), equalTo(2));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName1));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName1), equalTo(headerValue1));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName2));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName2), equalTo(headerValue2));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_1), equalTo(TEST_HEADER_VALUE_1));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_2), equalTo(TEST_HEADER_VALUE_2));
     }
 
     @Test
-    void testCreateOpenSearchClientWithAWSOption() {
-        final String headerName1 = UUID.randomUUID().toString();
-        final String headerValue1 = UUID.randomUUID().toString();
-        final String headerName2 = UUID.randomUUID().toString();
-        final String headerValue2 = UUID.randomUUID().toString();
-        final String testArn = TEST_ROLE;
-        final String externalId = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, externalId, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+    void testCreateOpenSearchClientWithAWSOption() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_2_HEADER);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -489,7 +395,7 @@ class ConnectionConfigurationTests {
         final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
 
         assertNotNull(openSearchClient);
-        assertThat(openSearchClient._transport(),  instanceOf(AwsSdk2Transport.class));
+        assertThat(openSearchClient._transport(), instanceOf(AwsSdk2Transport.class));
         final AwsSdk2Transport opensearchTransport = (AwsSdk2Transport) openSearchClient._transport();
         assertThat(opensearchTransport.options().credentials(), equalTo(awsCredentialsProvider));
 
@@ -500,23 +406,17 @@ class ConnectionConfigurationTests {
         assertThat(actualOptions.getStsRoleArn(), equalTo(TEST_ROLE));
         assertThat(actualOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(actualOptions.getStsHeaderOverrides().size(), equalTo(2));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName1));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName1), equalTo(headerValue1));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName2));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName2), equalTo(headerValue2));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_1), equalTo(TEST_HEADER_VALUE_1));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_2), equalTo(TEST_HEADER_VALUE_2));
     }
 
     @Test
-    void testCreateClientWithAWSSigV4AndHeaderOverrides() {
-        final String headerName1 = UUID.randomUUID().toString();
-        final String headerValue1 = UUID.randomUUID().toString();
-        final String headerName2 = UUID.randomUUID().toString();
-        final String headerValue2 = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
-        configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+    void testCreateClientWithAWSSigV4AndHeaderOverrides() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_2_HEADER);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -535,23 +435,17 @@ class ConnectionConfigurationTests {
         assertThat(actualOptions.getRegion(), equalTo(Region.US_EAST_1));
         assertThat(actualOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(actualOptions.getStsHeaderOverrides().size(), equalTo(2));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName1));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName1), equalTo(headerValue1));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName2));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName2), equalTo(headerValue2));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_1), equalTo(TEST_HEADER_VALUE_1));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_2), equalTo(TEST_HEADER_VALUE_2));
     }
 
     @Test
-    void testCreateOpenSearchClientWithAWSSigV4AndHeaderOverrides() {
-        final String headerName1 = UUID.randomUUID().toString();
-        final String headerValue1 = UUID.randomUUID().toString();
-        final String headerName2 = UUID.randomUUID().toString();
-        final String headerValue2 = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
-        configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+    void testCreateOpenSearchClientWithAWSSigV4AndHeaderOverrides() throws IOException {
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(AWS_WITH_2_HEADER);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
@@ -577,21 +471,18 @@ class ConnectionConfigurationTests {
         assertThat(actualOptions.getRegion(), equalTo(Region.US_EAST_1));
         assertThat(actualOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(actualOptions.getStsHeaderOverrides().size(), equalTo(2));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName1));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName1), equalTo(headerValue1));
-        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName2));
-        assertThat(actualOptions.getStsHeaderOverrides().get(headerName2), equalTo(headerValue2));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_1), equalTo(TEST_HEADER_VALUE_1));
+        assertThat(actualOptions.getStsHeaderOverrides(), hasKey(TEST_HEADER_NAME_2));
+        assertThat(actualOptions.getStsHeaderOverrides().get(TEST_HEADER_NAME_2), equalTo(TEST_HEADER_VALUE_2));
     }
 
     @Test
     void testCreateAllClients_WithValidHttpProxy_HostIP() throws IOException {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "121.121.121.121:80";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(VALID_PROXY_IP);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -601,13 +492,10 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateAllClients_WithValidHttpProxy_HostName() throws IOException {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:80";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(VALID_PROXY_HOST_NAME);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -617,13 +505,10 @@ class ConnectionConfigurationTests {
 
     @Test
     void testCreateAllClients_WithValidHttpProxy_SchemeProvided() throws IOException {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "http://example.com:4350";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(VALID_HTTP_PROXY_SCHEME);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
@@ -632,51 +517,39 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testCreateClient_WithInvalidHttpProxy_InvalidPort() {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+    void testCreateClient_WithInvalidHttpProxy_InvalidPort() throws IOException {
         final String testHttpProxy = "example.com:port";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(INVALID_HTTP_PROXY_PORT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
-    void testCreateClient_WithInvalidHttpProxy_NoPort() {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+    void testCreateClient_WithInvalidHttpProxy_NoPort() throws IOException {
         final String testHttpProxy = "example.com";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(INVALID_HTTP_PROXY_NO_PORT);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
-    void testCreateClient_WithInvalidHttpProxy_PortNotInRange() {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+    void testCreateClient_WithInvalidHttpProxy_PortNotInRange() throws IOException {
         final String testHttpProxy = "example.com:888888";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(INVALID_HTTP_PROXY_PORT_NOT_IN_RANGE);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
-    void testCreateClient_WithInvalidHttpProxy_NotHttp() {
-        final Map<String, Object> metadata = generateConfigurationMetadata(
-                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+    void testCreateClient_WithInvalidHttpProxy_NotHttp() throws IOException {
         final String testHttpProxy = "socket://example.com:port";
-        metadata.put(PROXY_PARAMETER, testHttpProxy);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(INVALID_HTTP_PROXY_NOT_HTTP);
         final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
@@ -691,62 +564,16 @@ class ConnectionConfigurationTests {
         client.close();
     }
 
-    private PluginSetting generatePluginSetting(
-            final List<String> hosts, final String username, final String password,
-            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
-            final String awsStsRoleArn, final String certPath, final boolean insecure) {
-        final Map<String, Object> metadata = generateConfigurationMetadata(hosts, username, password, connectTimeout, socketTimeout, awsSigv4, awsRegion, awsStsRoleArn, certPath, insecure);
-        return getPluginSettingByConfigurationMetadata(metadata);
-    }
+    private OpenSearchSinkConfig generateOpenSearchSinkConfig(String pipelineName) throws IOException {
+        final File configurationFile = new File(getClass().getClassLoader().getResource(OPEN_SEARCH_SINK_CONFIGURATIONS).getFile());
+        objectMapper = new ObjectMapper(new YAMLFactory());
+        final Map<String, Object> pipelineConfigs = objectMapper.readValue(configurationFile, Map.class);
+        final Map<String, Object> pipelineConfig = (Map<String, Object>) pipelineConfigs.get(pipelineName);
+        final Map<String, Object> sinkMap = (Map<String, Object>) pipelineConfig.get("sink");
+        final Map<String, Object> opensearchSinkMap = (Map<String, Object>) sinkMap.get("opensearch");
+        String json = objectMapper.writeValueAsString(opensearchSinkMap);
+        OpenSearchSinkConfig openSearchSinkConfig = objectMapper.readValue(json, OpenSearchSinkConfig.class);
 
-    private Map<String, Object> generateConfigurationMetadata(
-            final List<String> hosts, final String username, final String password,
-            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
-            final String awsStsRoleArn, final String certPath, final boolean insecure) {
-        final Map<String, Object> metadata = new HashMap<>();
-        metadata.put("hosts", hosts);
-        metadata.put("username", username);
-        metadata.put("password", password);
-        metadata.put("connect_timeout", connectTimeout);
-        metadata.put("socket_timeout", socketTimeout);
-        metadata.put("aws_sigv4", awsSigv4);
-        if (awsRegion != null) {
-            metadata.put("aws_region", awsRegion);
-        }
-        metadata.put("aws_sts_role_arn", awsStsRoleArn);
-        metadata.put("cert", certPath);
-        metadata.put("insecure", insecure);
-        return metadata;
-    }
-
-
-    private Map<String, Object> generateConfigurationMetadataWithAwsOption(
-            final List<String> hosts, final String username, final String password,
-            final Integer connectTimeout, final Integer socketTimeout, final boolean serverless, final boolean awsSigv4, final String awsRegion,
-            final String awsStsRoleArn, final String awsStsExternalId, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
-        final Map<String, Object> metadata = new HashMap<>();
-        final Map<String, Object> awsOptionMetadata = new HashMap<>();
-        metadata.put("hosts", hosts);
-        metadata.put("username", username);
-        metadata.put("password", password);
-        metadata.put("connect_timeout", connectTimeout);
-        metadata.put("socket_timeout", socketTimeout);
-        if (awsRegion != null) {
-            awsOptionMetadata.put("region", awsRegion);
-        }
-        awsOptionMetadata.put("serverless", serverless);
-        awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
-        awsOptionMetadata.put("sts_external_id", awsStsExternalId);
-        awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
-        metadata.put("aws", awsOptionMetadata);
-        metadata.put("cert", certPath);
-        metadata.put("insecure", insecure);
-        return metadata;
-    }
-
-    private PluginSetting getPluginSettingByConfigurationMetadata(final Map<String, Object> metadata) {
-        final PluginSetting pluginSetting = new PluginSetting("opensearch", metadata);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return pluginSetting;
+        return openSearchSinkConfig;
     }
 }

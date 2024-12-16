@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
 
 import java.util.Optional;

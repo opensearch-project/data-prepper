@@ -5,7 +5,7 @@ valid-sink:
       index: "no-more-plugin-setting"
       index_type: "trace-analytics-raw"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 invalid-action:
@@ -16,7 +16,7 @@ invalid-action:
       index_type: "trace-analytics-raw"
       action: "invalid"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 invalid-actions:
@@ -28,7 +28,7 @@ invalid-actions:
       actions:
         - type: "invalid"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 invalid-action-with-expression:
@@ -39,7 +39,7 @@ invalid-action-with-expression:
       index_type: "trace-analytics-raw"
       action: "${anInvalidFunction()}"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 invalid-actions-with-expression:
@@ -51,7 +51,7 @@ invalid-actions-with-expression:
       actions:
         - type: "${anInvalidFunction()}"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 create-action:
@@ -62,7 +62,7 @@ create-action:
       index_type: "trace-analytics-raw"
       action: "update"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 create-actions-with-expression:
@@ -75,7 +75,7 @@ create-actions-with-expression:
         - type: "create"
           when: "${getMetadata(\"action\")}"
       aws:
-        sts_role_arn: "arn:aws:iam::867344451130:role/OSIJiraPipeline"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
         region: "us-east-2"
         serverless: true
 invalid-max-retries:
@@ -119,3 +119,180 @@ dlq-file-and-dlq-plugin:
           key_path_prefix: "dlq-files/"
       dlq_file: foo.txt
       max_retries: 10
+empty-sink:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+aws-serverless-default:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      cert: "./src/test/resources/test-ca.pem"
+      aws:
+        serverless: true
+        region: "us-east-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+es6-default:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      distribution_version: "es6"
+aws-serverless-no-cert:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        serverless: true
+        region: "us-east-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+basic-credentials-no-cert:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+basic-credentials-no-cert-insecure:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      insecure: true
+basic-credentials-with-cert:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      cert: "./src/test/resources/test-ca.pem"
+      connect_timeout: 5
+      socket_timeout: 10
+aws-region-only:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        region: "us-east-2"
+serverless-options:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      aws:
+        serverless: true
+        region: "us-east-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        serverless_options:
+          network_policy_name: "test network policy"
+          collection_name: "test collection"
+          vpce_id: "test vpce id"
+aws-region-only-insecure:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        region: "us-east-1"
+      insecure: true
+aws-with-cert:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        region: "us-east-1"
+      cert: "./src/test/resources/test-ca.pem"
+aws-with-cert-and-arn:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+      cert: "./src/test/resources/test-ca.pem"
+aws-with-2-header:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      aws:
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        sts_external_id: "test-external-id"
+        sts_header_overrides:
+          header1: "test-header-1"
+          header2: "test-header-2"
+valid-proxy-ip:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "121.121.121.121:80"
+valid-proxy-host-name:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "example.com:80"
+valid-http-proxy-scheme:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "http://example.com:4350"
+invalid-http-proxy-port:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy:  "example.com:port"
+invalid-http-proxy-no-port:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "example.com"
+invalid-http-proxy-port-not-in-range:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "example.com:888888"
+invalid-http-proxy-not-http:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      username: "test-username"
+      password: "test-password"
+      connect_timeout: 5
+      socket_timeout: 10
+      cert: "./src/test/resources/test-ca.pem"
+      proxy: "socket://example.com:port"
