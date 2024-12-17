@@ -237,7 +237,8 @@ public class DynamoDbClientWrapper {
                                                                     final Duration ownershipTimeout,
                                                                     final SourcePartitionStatus sourcePartitionStatus,
                                                                     final String sourceStatusCombinationKey,
-                                                                    final int pageLimit) {
+                                                                    final int pageLimit,
+                                                                    final Duration ttl) {
         try {
 
             final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX);
@@ -273,8 +274,11 @@ public class DynamoDbClientWrapper {
                     item.setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
                     item.setSourceStatusCombinationKey(String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, item.getSourceIdentifier(), SourcePartitionStatus.ASSIGNED));
                     item.setPartitionPriority(partitionOwnershipTimeout.toString());
-                    final boolean acquired = this.tryAcquirePartitionItem(item);
+                    if (Objects.nonNull(ttl)) {
+                        item.setExpirationTime(Instant.now().plus(ttl).getEpochSecond());
+                    }
 
+                    final boolean acquired = this.tryAcquirePartitionItem(item);
                     if (acquired) {
                         return Optional.of(item);
                     }
