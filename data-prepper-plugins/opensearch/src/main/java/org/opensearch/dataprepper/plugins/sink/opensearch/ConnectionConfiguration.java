@@ -275,11 +275,11 @@ public class ConnectionConfiguration {
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
     final boolean insecure = pluginSetting.getBooleanOrDefault(INSECURE, false);
-    if (certPath != null) {
-      builder = builder.withCert(certPath);
-    } else {
-      //We will set insecure flag only if certPath is null
-      builder = builder.withInsecure(insecure);
+    // Insecure == true will override configured certPath
+    if (insecure) {
+      builder.withInsecure(insecure);
+    } else if (certPath != null) {
+      builder.withCert(certPath);
     }
     final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
     builder = builder.withProxy(proxy);
