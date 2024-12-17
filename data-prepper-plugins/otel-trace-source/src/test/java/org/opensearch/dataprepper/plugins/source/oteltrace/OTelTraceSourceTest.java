@@ -125,14 +125,6 @@ class OTelTraceSourceTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
-    private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
-            .addResourceSpans(ResourceSpans.newBuilder()
-                    .addScopeSpans(ScopeSpans.newBuilder()
-                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
-    private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
-            .addResourceSpans(ResourceSpans.newBuilder()
-                    .addScopeSpans(ScopeSpans.newBuilder()
-                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
 
     @Mock
     private ServerBuilder serverBuilder;

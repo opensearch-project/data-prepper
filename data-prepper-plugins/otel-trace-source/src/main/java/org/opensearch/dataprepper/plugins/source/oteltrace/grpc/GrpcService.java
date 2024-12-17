@@ -50,6 +50,7 @@ public class GrpcService {
     private final GrpcAuthenticationProvider authenticationProvider;
     private final PluginMetrics pluginMetrics;
     private final String pipelineName;
+    // todo tlongo check why unused
     private final CertificateProviderFactory certificateProviderFactory;
 
     public GrpcService(PluginFactory pluginFactory, OTelTraceSourceConfig oTelTraceSourceConfig, PluginMetrics pluginMetrics, String pipelineName, CertificateProviderFactory certificateProviderFactory) {
@@ -129,7 +130,7 @@ public class GrpcService {
         final PluginModel authenticationConfiguration = oTelTraceSourceConfig.getAuthentication();
 
         if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
-            LOG.warn("Creating otel-trace-source without authentication. This is not secure.");
+            LOG.warn("Creating otel_trace_source grpc service without authentication. This is not secure.");
             LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
         }
 

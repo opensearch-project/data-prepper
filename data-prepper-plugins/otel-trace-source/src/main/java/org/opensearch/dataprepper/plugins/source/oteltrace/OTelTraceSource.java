@@ -5,22 +5,29 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import static org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME;
+
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.util.BlockingTaskExecutor;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -36,7 +43,10 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
@@ -87,8 +97,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         }
 
         if (server == null) {
-            ServerBuilder serverBuilder = Server.builder();
-            serverBuilder = serverBuilder.port(oTelTraceSourceConfig.getPort(), inferProtocolFromConfig());
+            ServerBuilder serverBuilder = Server.builder().port(oTelTraceSourceConfig.getPort(), inferProtocolFromConfig());
 
             configureHeadersAndHealthCheck(serverBuilder);
             configureTLS(serverBuilder);
@@ -147,11 +156,42 @@ public class OTelTraceSource implements Source<Record<Object>> {
         // todo tlongo move creation of handler to ArmeriaHttpService
         HttpExceptionHandler httpExceptionHandler = new HttpExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
 
+        configureAuthentication(serverBuilder);
+
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.annotatedService(httpService, httpExceptionHandler);
         } else {
             serverBuilder.annotatedService(httpService, DecodingService.newDecorator(), httpExceptionHandler);
         }
+    }
+
+    // todo tlongo move to http service -> Create additional layer. See GrpcService
+    private void configureAuthentication(ServerBuilder serverBuilder) {
+        if (oTelTraceSourceConfig.getAuthentication() == null || oTelTraceSourceConfig.getAuthentication().getPluginName().equals(UNAUTHENTICATED_PLUGIN_NAME)) {
+            LOG.warn("Creating otel_trace_source http service without authentication. This is not secure.");
+            LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
+        } else {
+            ArmeriaHttpAuthenticationProvider authenticationProvider = createAuthenticationProvider(oTelTraceSourceConfig.getAuthentication());
+            authenticationProvider.getAuthenticationDecorator().ifPresent(serverBuilder::decorator);
+        }
+    }
+
+    // todo tlongo move to http service -> Create additional layer. See GrpcService
+    private ArmeriaHttpAuthenticationProvider createAuthenticationProvider(final PluginModel authenticationConfiguration) {
+        Map<String, Object> pluginSettings = authenticationConfiguration.getPluginSettings();
+
+        // controversial
+        // the world would be a nicer place, if mere configs were not be treated as plugins
+        // this method replaces the process of
+        //       yaml -> pluginmodel -> pluginsettings -> configPojo -> pluginfactory -> provider
+        // with
+        //       yaml -> configPojo -> provider (we could eliminate using Plugin* Classes all together by parsing the yaml section at startup, e.g. like retryInfo)
+        // pros:
+        //   - we can easily reason about the origins of the provider
+        //   - it becomes testable
+        // cons:
+        //   - currently tied to one impl by using 'new'.
+        return new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig(pluginSettings.get("username").toString(), pluginSettings.get("password").toString()));
     }
 
     private void configureHeadersAndHealthCheck(ServerBuilder serverBuilder) {
