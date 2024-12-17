@@ -55,7 +55,7 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
 
     @Override
     public void update(final PluginSetting pluginSetting) {
-        return;
+        //not implemented
     }
 
     public void update(OpenSearchSinkConfig openSearchSinkConfig) {

@@ -6,9 +6,9 @@ import lombok.Getter;
 import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 
 import java.util.List;
 import java.util.Objects;
