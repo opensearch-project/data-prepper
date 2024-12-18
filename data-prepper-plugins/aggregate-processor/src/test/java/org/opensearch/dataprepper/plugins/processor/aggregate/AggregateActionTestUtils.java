@@ -5,6 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
+import org.opensearch.dataprepper.model.event.EventHandle;
+
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.HashMap;
 import java.time.Duration;
@@ -15,10 +20,12 @@ public class AggregateActionTestUtils {
         private final GroupState groupState;
         private final Map<Object, Object> identificationKeys;
         private Function<Duration, Boolean> customShouldConclude;
+        private EventHandle eventHandle;
 
         public TestAggregateActionInput(Map<Object, Object> identificationKeys) {
             this.groupState = new AggregateActionTestUtils.TestGroupState();
             this.identificationKeys = identificationKeys;
+            this.eventHandle = new AggregateEventHandle(Instant.now());
         }
 
         @Override
@@ -29,6 +36,11 @@ public class AggregateActionTestUtils {
         @Override
         public GroupState getGroupState() {
             return groupState;
+        }
+
+        @Override
+        public EventHandle getEventHandle() {
+            return eventHandle;
         }
 
         @Override

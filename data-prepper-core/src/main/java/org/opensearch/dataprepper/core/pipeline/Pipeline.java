@@ -347,7 +347,7 @@ public class Pipeline {
      * @param records records that needs to published to each sink
      * @return List of Future, each future for each sink
      */
-    List<Future<Void>> publishToSinks(final Collection<Record> records) {
+    public List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
 

@@ -30,6 +30,14 @@ public interface AggregateAction {
     }
 
     /**
+     * indicates if the action holds the events or not
+     *
+     */
+    default boolean holdsEvents() {
+        return false;
+    }
+
+    /**
      * Concludes a group of Events
      *
      * @param aggregateActionInput The {@link AggregateActionInput} from previous calls to handleEvent
