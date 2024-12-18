@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
@@ -15,8 +16,9 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.time.Duration;
 import java.time.Instant;
@@ -79,14 +81,18 @@ public class TailSamplerAggregateAction implements AggregateAction {
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         int randomInt = random.nextInt(100);
+        aggregateActionInput.getEventHandle().release(true);
         if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {
             return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
         }
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, List.of());
         for (final Event event : events) {
-            event.getEventHandle().release(true);
+            EventHandle eventHandle = event.getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         }
-        return new AggregateActionOutput(List.of());
+        return new AggregateActionOutput(Collections.emptyList());
     }
 
 }

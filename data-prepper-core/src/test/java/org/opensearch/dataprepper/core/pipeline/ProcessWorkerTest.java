@@ -6,6 +6,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 import org.opensearch.dataprepper.model.CheckpointState;
@@ -130,6 +134,61 @@ public class ProcessWorkerTest {
 
             processWorker.run();
         }
+    }
+
+    @Test
+    void testProcessWorkerWithProcessorsNotHoldingEvents() {
+        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+        Event event = mock(Event.class);
+        Record record = mock(Record.class);
+        when(eventHandle.release(true)).thenReturn(true);
+        lenient().when(event.getEventHandle()).thenReturn(eventHandle);
+        when(record.getData()).thenReturn(event);
+        final List<Record> records = List.of(record);
+        final CheckpointState checkpointState = mock(CheckpointState.class);
+        final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
+        when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
+
+        final Processor processor1 = mock(Processor.class);
+        when(processor1.holdsEvents()).thenReturn(false);
+        when(processor1.execute(records)).thenReturn(List.of());
+        when(processor1.isReadyForShutdown()).thenReturn(true);
+        processors = List.of(processor1);
+        when(source.areAcknowledgementsEnabled()).thenReturn(true);
+
+        final ProcessWorker processWorker = createObjectUnderTest();
+
+        processWorker.run();
+
+        verify(eventHandle, atLeast(1)).release(true);
+    }
+
+
+    @Test
+    void testProcessWorkerWithProcessorsHoldingEvents() {
+        EventHandle eventHandle = mock(EventHandle.class);
+        Event event = mock(Event.class);
+        Record record = mock(Record.class);
+        lenient().when(event.getEventHandle()).thenReturn(eventHandle);
+        when(record.getData()).thenReturn(event);
+        final List<Record> records = List.of(record);
+        final CheckpointState checkpointState = mock(CheckpointState.class);
+        final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
+        when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
+
+        final Processor processor1 = mock(Processor.class);
+        when(processor1.holdsEvents()).thenReturn(true);
+        when(processor1.execute(records)).thenReturn(List.of());
+        when(processor1.isReadyForShutdown()).thenReturn(true);
+
+        processors = List.of(processor1);
+        when(source.areAcknowledgementsEnabled()).thenReturn(true);
+
+        final ProcessWorker processWorker = createObjectUnderTest();
+
+        processWorker.run();
+
+        verify(eventHandle, never()).release(true);
     }
 
     @Test

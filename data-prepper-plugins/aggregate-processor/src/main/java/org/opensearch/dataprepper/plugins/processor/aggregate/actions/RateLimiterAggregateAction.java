@@ -8,11 +8,16 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 
 import com.google.common.util.concurrent.RateLimiter;
+
+import java.util.List;
+import java.util.Collections;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action 
@@ -35,12 +40,22 @@ public class RateLimiterAggregateAction implements AggregateAction {
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         if (rateLimiterMode == RateLimiterMode.DROP) {
             if (!rateLimiter.tryAcquire()) {
-                event.getEventHandle().release(true);
                 return AggregateActionResponse.nullEventResponse();
             }
         } else {
             rateLimiter.acquire();
         }
         return new AggregateActionResponse(event);
+    }
+
+    @Override
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
+        if (aggregateActionInput != null) {
+            EventHandle eventHandle = aggregateActionInput.getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
+        }
+        return new AggregateActionOutput(Collections.emptyList());
     }
 }
