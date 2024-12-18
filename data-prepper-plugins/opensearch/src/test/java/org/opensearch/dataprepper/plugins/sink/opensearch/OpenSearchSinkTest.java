@@ -29,7 +29,6 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
