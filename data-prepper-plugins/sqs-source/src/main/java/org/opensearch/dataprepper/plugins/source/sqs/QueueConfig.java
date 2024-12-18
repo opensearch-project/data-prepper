@@ -13,14 +13,13 @@ import org.hibernate.validator.constraints.time.DurationMin;
 
 public class QueueConfig {
 
-    private static final int DEFAULT_MAXIMUM_MESSAGES = 10;
+    private static final Integer DEFAULT_MAXIMUM_MESSAGES = null;
     private static final Boolean DEFAULT_VISIBILITY_DUPLICATE_PROTECTION = false;
-    private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = null;
     private static final Duration DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT = Duration.ofHours(2);
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
     static final int DEFAULT_NUMBER_OF_WORKERS = 1;
-    private static final int DEFAULT_BATCH_SIZE = 10;
 
     @JsonProperty("url")
     @NotNull
@@ -33,14 +32,7 @@ public class QueueConfig {
     @JsonProperty("maximum_messages")
     @Min(1)
     @Max(10)
-    private int maximumMessages = DEFAULT_MAXIMUM_MESSAGES;
-
-    @JsonProperty("batch_size")
-    @Max(10)
-    private Integer batchSize = DEFAULT_BATCH_SIZE;
-
-    @JsonProperty("polling_frequency")
-    private Duration pollingFrequency = Duration.ZERO;
+    private Integer maximumMessages = DEFAULT_MAXIMUM_MESSAGES;
 
     @JsonProperty("poll_delay")
     @DurationMin(seconds = 0)
@@ -68,15 +60,7 @@ public class QueueConfig {
         return url;
     }
 
-    public Duration getPollingFrequency() {
-        return pollingFrequency;
-    }
-
-    public Integer getBatchSize() {
-        return batchSize;
-    }
-
-    public int getMaximumMessages() {
+    public Integer getMaximumMessages() {
         return maximumMessages;
     }
     

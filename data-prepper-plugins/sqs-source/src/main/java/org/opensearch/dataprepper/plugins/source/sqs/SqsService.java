@@ -15,7 +15,6 @@
  import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
  import software.amazon.awssdk.core.retry.RetryPolicy;
  import software.amazon.awssdk.services.sqs.SqsClient;
- import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
  import org.opensearch.dataprepper.model.buffer.Buffer;
  import org.opensearch.dataprepper.model.event.Event;
  import org.opensearch.dataprepper.model.record.Record;

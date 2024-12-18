@@ -19,4 +19,4 @@ sqs-pipeline:
         region: <AWS_REGION>
         sts_role_arn: <IAM_ROLE_ARN>
   sink:
-    - stdout: 
+    - stdout:

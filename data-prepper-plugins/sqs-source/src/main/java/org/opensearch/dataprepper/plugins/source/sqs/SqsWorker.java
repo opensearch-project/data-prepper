@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -21,7 +20,6 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
@@ -44,7 +42,6 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
     static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
-    static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
     static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
     static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
@@ -58,7 +55,6 @@ public class SqsWorker implements Runnable {
     private final Counter acknowledgementSetCallbackCounter;
     private final Counter sqsVisibilityTimeoutChangedCount;
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
-    private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private final QueueConfig queueConfig;
     private int failedAttemptCount;
@@ -93,7 +89,6 @@ public class SqsWorker implements Runnable {
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
         sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
-        sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
         sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
@@ -108,7 +103,6 @@ public class SqsWorker implements Runnable {
 
             } catch (final Exception e) {
                 LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
-                // There shouldn't be any exceptions caught here, but added backoff just to control the amount of logging in case of an exception is thrown.
                 applyBackoff();
             }
 
@@ -163,14 +157,20 @@ public class SqsWorker implements Runnable {
         }
     }
 
-
     private ReceiveMessageRequest createReceiveMessageRequest() {
-        return ReceiveMessageRequest.builder()
+        ReceiveMessageRequest.Builder requestBuilder = ReceiveMessageRequest.builder()
                 .queueUrl(queueConfig.getUrl())
-                .maxNumberOfMessages(queueConfig.getMaximumMessages())
-                .visibilityTimeout((int) queueConfig.getVisibilityTimeout().getSeconds())
-                .waitTimeSeconds((int) queueConfig.getWaitTime().getSeconds())
-                .build();
+                .waitTimeSeconds((int) queueConfig.getWaitTime().getSeconds());
+
+        if (queueConfig.getMaximumMessages() != null) {
+            requestBuilder.maxNumberOfMessages(queueConfig.getMaximumMessages());
+        }
+
+        if (queueConfig.getVisibilityTimeout() != null) {
+            requestBuilder.visibilityTimeout((int) queueConfig.getVisibilityTimeout().getSeconds());
+        }
+
+        return requestBuilder.build();
     }
 
     private List<DeleteMessageBatchRequestEntry> processSqsEvents(final List<Message> messages) {
@@ -181,7 +181,15 @@ public class SqsWorker implements Runnable {
         for (Message message : messages) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
-            final int visibilityTimeout = (int)queueConfig.getVisibilityTimeout().getSeconds();
+
+            final int visibilityTimeout;
+            if (queueConfig.getVisibilityTimeout() != null) {
+                visibilityTimeout = (int) queueConfig.getVisibilityTimeout().getSeconds();
+            } else {
+                visibilityTimeout = (int) Duration.ofSeconds(30).getSeconds();
+
+            }
+
             final int maxVisibilityTimeout = (int)queueConfig.getVisibilityDuplicateProtectionTimeout().getSeconds();
             final int progressCheckInterval = visibilityTimeout/2 - 1;
             if (endToEndAcknowledgementsEnabled) {
@@ -197,7 +205,7 @@ public class SqsWorker implements Runnable {
                         if (visibilityDuplicateProtectionEnabled) {
                             messageVisibilityTimesMap.remove(message);
                         }
-                        if (result == true) {
+                        if (result) {
                             deleteSqsMessages(waitingForAcknowledgements);
                         }
                     },
@@ -205,12 +213,12 @@ public class SqsWorker implements Runnable {
                 if (visibilityDuplicateProtectionEnabled) {
                     acknowledgementSet.addProgressCheck(
                         (ratio) -> {
-                            final int newVisibilityTimeoutSeconds = visibilityTimeout;
                             int newValue = messageVisibilityTimesMap.getOrDefault(message, visibilityTimeout) + progressCheckInterval;
                             if (newValue >= maxVisibilityTimeout) {
                                 return;
                             }
                             messageVisibilityTimesMap.put(message, newValue);
+                            final int newVisibilityTimeoutSeconds = visibilityTimeout;
                             increaseVisibilityTimeout(message, newVisibilityTimeoutSeconds);
                         },
                         Duration.ofSeconds(progressCheckInterval));
@@ -245,9 +253,9 @@ public class SqsWorker implements Runnable {
             final AcknowledgementSet acknowledgementSet) {
         try {
             sqsEventProcessor.addSqsObject(message, queueConfig.getUrl(), bufferAccumulator, acknowledgementSet);
-            // TODO: see implementation in s3
             return Optional.of(buildDeleteMessageBatchRequestEntry(message));
         } catch (final Exception e) {
+            sqsMessagesFailedCounter.increment();
             LOG.error("Error processing from SQS: {}. Retrying with exponential backoff.", e.getMessage());
             applyBackoff();
             return Optional.empty();
