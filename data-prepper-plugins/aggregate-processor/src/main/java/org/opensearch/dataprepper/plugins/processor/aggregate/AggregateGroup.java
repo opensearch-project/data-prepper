@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.AggregateEventHandle;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.Event;

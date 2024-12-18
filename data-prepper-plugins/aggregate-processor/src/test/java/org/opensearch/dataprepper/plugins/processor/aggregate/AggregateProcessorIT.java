@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.InternalEventHandle;
-import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -65,8 +63,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static org.mockito.Mockito.mock;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.closeTo;

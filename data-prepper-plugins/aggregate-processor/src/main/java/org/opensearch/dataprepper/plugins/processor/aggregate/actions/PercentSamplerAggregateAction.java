@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOut
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
-import java.util.List;
 import java.util.Collections;
 
 /**

@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 
 import com.google.common.util.concurrent.RateLimiter;
 
-import java.util.List;
 import java.util.Collections;
 
 /**
