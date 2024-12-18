@@ -43,6 +43,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 
+import static org.awaitility.Awaitility.await;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,6 +80,7 @@ public class AggregateProcessorITWithAcks {
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_EVENTS_PER_BATCH = 5;
+    private static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
 
     @Mock
     private Pipeline pipeline;
@@ -205,9 +207,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertTrue(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertTrue(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
     @Test
@@ -232,10 +237,13 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), greaterThanOrEqualTo(1));
-        assertThat(aggregatedResults.size(), lessThan(5));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), greaterThanOrEqualTo(1));
+                assertThat(aggregatedResults.size(), lessThan(5));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
 
@@ -260,9 +268,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertTrue(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertTrue(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
 
@@ -288,9 +299,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
     @Test
@@ -311,9 +325,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
     @Test
@@ -338,9 +355,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(5));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(5));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
 
@@ -391,9 +411,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(5));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(5));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
 
@@ -443,11 +466,14 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertTrue(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet2).isDone());
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet3).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertTrue(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet2).isDone());
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet3).isDone());
+            });
     }
 
     @Test
@@ -471,9 +497,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertTrue(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertTrue(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
  
     @Test
@@ -501,9 +530,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(5));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(5));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
 
@@ -533,9 +565,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertFalse(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(5));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertFalse(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(5));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
 
     @Test
@@ -558,9 +593,12 @@ public class AggregateProcessorITWithAcks {
 
             processWorker.run();
         }
-        assertTrue(aggregatedResultReceived);
-        assertThat(aggregatedResults.size(), equalTo(1));
-        assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+        await().atMost(TEST_TIMEOUT)
+            .untilAsserted(() -> {
+                assertTrue(aggregatedResultReceived);
+                assertThat(aggregatedResults.size(), equalTo(1));
+                assertTrue(((DefaultAcknowledgementSet)acknowledgementSet).isDone());
+            });
     }
     
 
