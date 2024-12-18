@@ -42,6 +42,7 @@ import software.amazon.awssdk.services.kinesis.model.StreamDescription;
 import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.metrics.MetricsLevel;
+import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -271,6 +272,30 @@ public class KinesisServiceTest {
         assertNotNull(schedulerObjectUnderTest.metricsConfig());
         assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
         assertNotNull(schedulerObjectUnderTest.processorConfig());
+        assertNotNull(schedulerObjectUnderTest.retrievalConfig());
+        verify(workerIdentifierGenerator, times(1)).generate();
+    }
+
+    @Test
+    void testCreateSchedulerWithPollingStrategyAndPollingConfig() {
+        when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
+        when(kinesisSourceConfig.getPollingConfig()).thenReturn(kinesisStreamPollingConfig);
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
+            pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
+        Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
+
+        assertEquals(kinesisService.getApplicationName(), pipelineName);
+        assertNotNull(schedulerObjectUnderTest);
+        assertNotNull(schedulerObjectUnderTest.checkpointConfig());
+        assertNotNull(schedulerObjectUnderTest.leaseManagementConfig());
+        assertSame(schedulerObjectUnderTest.leaseManagementConfig().initialPositionInStream().getInitialPositionInStream(), InitialPositionInStream.TRIM_HORIZON);
+        assertNotNull(schedulerObjectUnderTest.lifecycleConfig());
+        assertNotNull(schedulerObjectUnderTest.metricsConfig());
+        assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
+        assertNotNull(schedulerObjectUnderTest.processorConfig());
+        assertNotNull(schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig());
+        assertEquals(((PollingConfig)schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig()).maxRecords(), kinesisStreamPollingConfig.getMaxPollingRecords());
+        assertEquals(((PollingConfig)schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig()).idleTimeBetweenReadsInMillis(), kinesisStreamPollingConfig.getIdleTimeBetweenReads().toMillis());
         assertNotNull(schedulerObjectUnderTest.retrievalConfig());
         verify(workerIdentifierGenerator, times(1)).generate();
     }
