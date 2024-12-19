@@ -150,7 +150,7 @@ public class OpenSearchSinkIT {
 
     public OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
-        assertNotNull(openSearchSinkConfig);
+        when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
@@ -164,6 +164,7 @@ public class OpenSearchSinkIT {
         testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
+        when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
