@@ -1,15 +1,19 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Size;
 
 public class ServerlessOptions {
 
+    @Size(min = 1, message = "network_policy_name cannot be empty")
     @JsonProperty("network_policy_name")
     private String networkPolicyName;
 
+    @Size(min = 1, message = "collection_name cannot be empty")
     @JsonProperty("collection_name")
     private String collectionName;
 
+    @Size(min = 1, message = "vpce_id cannot be empty")
     @JsonProperty("vpce_id")
     private String vpceId;
 
