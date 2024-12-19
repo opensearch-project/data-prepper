@@ -90,6 +90,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
@@ -133,9 +134,6 @@ public class OpenSearchSinkIT {
     ObjectMapper objectMapper;
 
     @Mock
-    private PluginFactory pluginFactory;
-
-    @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
     @Mock
@@ -152,6 +150,7 @@ public class OpenSearchSinkIT {
 
     public OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
+        assertNotNull(openSearchSinkConfig);
         OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
@@ -166,7 +165,7 @@ public class OpenSearchSinkIT {
         when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
         OpenSearchSink sink = new OpenSearchSink(
-                pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
+                pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
             sink.doInitialize();
         }
