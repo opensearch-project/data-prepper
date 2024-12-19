@@ -42,4 +42,5 @@ public class RateLimiterAggregateAction implements AggregateAction {
         }
         return new AggregateActionResponse(event);
     }
+
 }

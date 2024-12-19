@@ -34,6 +34,15 @@ public interface Processor<InputRecord extends Record<?>, OutputRecord extends R
     void prepareForShutdown();
 
     /**
+     * @since 2.11
+     * Indicates if the processor holds the events or not
+     * Holding events indicates that the events are not ready to be released.
+     */
+    default boolean holdsEvents() {
+        return false;
+    }
+
+    /**
      * @since 1.2
      * Returns true if the Processor's internal state is safe to be shutdown.
      *
