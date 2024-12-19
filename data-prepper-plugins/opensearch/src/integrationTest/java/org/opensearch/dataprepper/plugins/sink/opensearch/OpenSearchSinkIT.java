@@ -422,13 +422,14 @@ public class OpenSearchSinkIT {
         @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
 
         final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+        Map<String, Object> metadata = initializeConfigurationMetadata(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
                 estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         // generate temporary directory for dlq file
         final File tempDirectory = Files.createTempDirectory("").toFile();
         // add dlq file path into setting
         final String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
-        pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
+        metadata.put(RetryConfiguration.DLQ_FILE, expDLQFile);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
 
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
@@ -823,8 +824,9 @@ public class OpenSearchSinkIT {
         final String testIdField = "someId";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -849,9 +851,10 @@ public class OpenSearchSinkIT {
         final String testIdField = "someId";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -876,15 +879,16 @@ public class OpenSearchSinkIT {
         final String testIdField = "someId";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "create");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
         when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);
+        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -909,15 +913,16 @@ public class OpenSearchSinkIT {
         final String testIdField = "someId";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
         when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
         when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
         when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        pluginSetting.getSettings().put(IndexConfiguration.ACTION, actionFormatExpression);
+        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -935,13 +940,14 @@ public class OpenSearchSinkIT {
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -968,13 +974,14 @@ public class OpenSearchSinkIT {
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -994,7 +1001,8 @@ public class OpenSearchSinkIT {
         aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.UPDATE.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1024,17 +1032,18 @@ public class OpenSearchSinkIT {
 
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(createJsonEvent));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
 
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ROOT_KEY, documentRootKey);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ROOT_KEY, documentRootKey);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> actionMap = new HashMap<>();
         actionMap.put("type", OpenSearchBulkActions.CREATE.toString());
 
 
         aList.add(actionMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1059,7 +1068,8 @@ public class OpenSearchSinkIT {
         actionMap = new HashMap<>();
         actionMap.put("type", OpenSearchBulkActions.UPDATE.toString());
         aList.add(actionMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1087,9 +1097,10 @@ public class OpenSearchSinkIT {
         actionMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(actionMap);
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField); 
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
 
         sink.output(testRecords);
@@ -1113,13 +1124,15 @@ public class OpenSearchSinkIT {
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
+
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1139,7 +1152,8 @@ public class OpenSearchSinkIT {
         aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1161,13 +1175,14 @@ public class OpenSearchSinkIT {
         final String testIdField = "someId";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value1", "newKey", "newValue")));
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1197,13 +1212,14 @@ public class OpenSearchSinkIT {
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, testTemplateFile);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.DELETE.toString());
         aList.add(aMap);
-        pluginSetting.getSettings().put(IndexConfiguration.ACTIONS, aList);
+        metadata.put(IndexConfiguration.ACTIONS, aList);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -1307,8 +1323,9 @@ public class OpenSearchSinkIT {
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, null);
-        pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID, testDocumentIdField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentIdField);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
 
@@ -1332,8 +1349,9 @@ public class OpenSearchSinkIT {
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, null);
-        pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
+        metadata.put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
 
@@ -1359,10 +1377,11 @@ public class OpenSearchSinkIT {
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, null);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
         if (!testRouting.isEmpty()) {
-            pluginSetting.getSettings().put(IndexConfiguration.ROUTING, "${"+testRouting+"}");
+            metadata.put(IndexConfiguration.ROUTING, "${"+testRouting+"}");
         }
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
 
@@ -1390,9 +1409,10 @@ public class OpenSearchSinkIT {
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, null);
-        pluginSetting.getSettings().put(IndexConfiguration.ROUTING, "${/"+testRouting+"}");
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
+        metadata.put(IndexConfiguration.ROUTING, "${/"+testRouting+"}");
         when(expressionEvaluator.isValidFormatExpression(any(String.class))).thenReturn(true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
 
@@ -1418,9 +1438,10 @@ public class OpenSearchSinkIT {
 
         final String prefix = RandomStringUtils.randomAlphabetic(5);
         final String suffix = RandomStringUtils.randomAlphabetic(6);
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(null, testIndexAlias, null);
-        pluginSetting.getSettings().put(IndexConfiguration.ROUTING, prefix+"-${/"+testRouting+"}-"+suffix);
+        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
+        metadata.put(IndexConfiguration.ROUTING, prefix+"-${/"+testRouting+"}-"+suffix);
         when(expressionEvaluator.isValidFormatExpression(any(String.class))).thenReturn(true);
+        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
         final String expectedRouting = prefix+"-"+routing+"-"+suffix;
@@ -1664,6 +1685,15 @@ public class OpenSearchSinkIT {
                 OpenSearchIntegrationHelper.getVersion()) >= 0 ?
                 DistributionVersion.ES6.getVersion() : DistributionVersion.DEFAULT.getVersion();
         metadata.put(IndexConfiguration.DISTRIBUTION_VERSION, distributionVersion);
+        return metadata;
+    }
+
+    private Map<String, Object> initializeConfigurationMetadata(final String indexType, final String indexAlias,
+                                                              final String templateFilePath, final boolean estimateBulkSizeUsingCompression,
+                                                              final boolean requestCompressionEnabled) throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
+        metadata.put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, estimateBulkSizeUsingCompression);
+        metadata.put(ConnectionConfiguration.REQUEST_COMPRESSION_ENABLED, requestCompressionEnabled);
         return metadata;
     }
 
