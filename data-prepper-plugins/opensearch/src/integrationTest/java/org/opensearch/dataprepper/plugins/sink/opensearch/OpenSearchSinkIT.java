@@ -150,7 +150,6 @@ public class OpenSearchSinkIT {
 
     public OpenSearchSink createObjectUnderTest(OpenSearchSinkConfig openSearchSinkConfig, boolean doInitialize) {
         when(pipelineDescription.getPipelineName()).thenReturn(PIPELINE_NAME);
-        assertNotNull(openSearchSinkConfig);
         OpenSearchSink sink = new OpenSearchSink(
                 pluginSetting, null, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         if (doInitialize) {
@@ -176,6 +175,7 @@ public class OpenSearchSinkIT {
     public void setup() {
         pluginConfigObservable = mock(PluginConfigObservable.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
+        pipelineDescription = mock(PipelineDescription.class);
         when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
 
     }
