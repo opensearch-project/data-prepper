@@ -27,11 +27,6 @@ class AggregateGroupManager {
         return allGroups.computeIfAbsent(identificationKeysMap, (hash) -> new AggregateGroup(identificationKeysMap.getKeyMap()));
     }
 
-    AggregateGroup getAggregateGroupForEvent(final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap, final Event event) {
-        AggregateGroup aggregateGroup = getAggregateGroup(identificationKeysMap);
-        aggregateGroup.attachToEventAcknowledgementSet(event);
-        return aggregateGroup;
-    }
 
     List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> getGroupsToConclude(final boolean forceConclude) {
         final List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = new ArrayList<>();
