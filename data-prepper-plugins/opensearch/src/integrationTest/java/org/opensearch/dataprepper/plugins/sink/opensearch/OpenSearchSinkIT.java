@@ -1648,7 +1648,8 @@ public class OpenSearchSinkIT {
 
         final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
-        metadata.put(AUTHENTICATION, Map.of(USERNAME, username, PASSWORD, password));
+        metadata.put(USERNAME, username);
+        metadata.put(PASSWORD, password);
         metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);

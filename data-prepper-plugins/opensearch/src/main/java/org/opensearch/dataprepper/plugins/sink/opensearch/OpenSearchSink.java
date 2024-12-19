@@ -129,6 +129,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final Counter bulkRequestErrorsCounter;
   private final Counter invalidActionErrorsCounter;
   private final Counter dynamicIndexDroppedEvents;
+  private PluginSetting pluginSetting;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private final Counter dynamicDocumentVersionDroppedEvents;
   private OpenSearchClient openSearchClient;
@@ -157,6 +158,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     this.expressionEvaluator = expressionEvaluator;
+    this.pluginSetting = pluginSetting;
     this.pipeline = pipelineDescription.getPipelineName();
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -276,8 +278,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
-            pipeline,
-            PLUGIN_NAME);
+            pluginSetting);
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
