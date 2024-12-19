@@ -54,7 +54,6 @@ public class IndexConfiguration {
     public static final String ESTIMATE_BULK_SIZE_USING_COMPRESSION = "estimate_bulk_size_using_compression";
     public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
-    public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ROUTING = "routing";
