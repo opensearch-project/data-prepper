@@ -142,9 +142,6 @@ public class OpenSearchSinkIT {
     private ExpressionEvaluator expressionEvaluator;
 
     @Mock
-    private OpenSearchSinkConfig openSearchSinkConfig;
-
-    @Mock
     private PipelineDescription pipelineDescription;
 
     @Mock
@@ -1694,9 +1691,6 @@ public class OpenSearchSinkIT {
 
     private OpenSearchSinkConfig generateOpenSearchSinkConfigByMetadata(final Map<String, Object> configurationMetadata) throws JsonProcessingException {
         objectMapper = new ObjectMapper();
-        List<String> hosts = new ArrayList<>();
-        hosts.add("test_host");
-        configurationMetadata.put("hosts", hosts);
         String json = new ObjectMapper().writeValueAsString(configurationMetadata);
         OpenSearchSinkConfig openSearchSinkConfig = objectMapper.readValue(json, OpenSearchSinkConfig.class);
 
