@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.util.Collections;
 
@@ -46,6 +47,12 @@ public interface AggregateAction {
      * @since 1.3
      */
     default AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
+        if (aggregateActionInput != null) {
+            EventHandle eventHandle = aggregateActionInput.getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
+        }
         return new AggregateActionOutput(Collections.emptyList());
     }
 

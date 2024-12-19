@@ -8,14 +8,10 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
-import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
-
-import java.util.Collections;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action 
@@ -52,14 +48,4 @@ public class PercentSamplerAggregateAction implements AggregateAction {
         return AggregateActionResponse.nullEventResponse();
     }
 
-    @Override
-    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
-        if (aggregateActionInput != null) {
-            EventHandle eventHandle = aggregateActionInput.getEventHandle();
-            if (eventHandle != null) {
-                eventHandle.release(true);
-            }
-        }
-        return new AggregateActionOutput(Collections.emptyList());
-    }
 }

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import com.google.common.collect.Maps;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -24,6 +25,12 @@ class AggregateGroupManager {
 
     AggregateGroup getAggregateGroup(final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap) {
         return allGroups.computeIfAbsent(identificationKeysMap, (hash) -> new AggregateGroup(identificationKeysMap.getKeyMap()));
+    }
+
+    AggregateGroup getAggregateGroupForEvent(final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap, final Event event) {
+        AggregateGroup aggregateGroup = getAggregateGroup(identificationKeysMap);
+        aggregateGroup.attachToEventAcknowledgementSet(event);
+        return aggregateGroup;
     }
 
     List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> getGroupsToConclude(final boolean forceConclude) {
