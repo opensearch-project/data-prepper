@@ -15,11 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputConfig;
+import org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisInputOutputRecord;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 
 import java.io.ByteArrayInputStream;
@@ -99,13 +98,13 @@ public class KinesisRecordConverterTest {
         InputStream inputStream = new ByteArrayInputStream(writer.toString().getBytes());
         when(decompressionEngine.createInputStream(any(InputStream.class))).thenReturn(inputStream);
 
-        List<Record<Event>> events = kinesisRecordConverter.convert(decompressionEngine, List.of(kinesisClientRecord), streamId);
+        List<KinesisInputOutputRecord> kinesisOutputRecords = kinesisRecordConverter.convert(decompressionEngine, List.of(kinesisClientRecord), streamId);
 
-        assertEquals(events.size(), numRecords);
-        events.forEach(eventRecord -> {
-            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE), partitionKey);
-            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), sequenceNumber);
-            assertEquals(eventRecord.getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), subsequenceNumber);
+        assertEquals(kinesisOutputRecords.size(), numRecords);
+        kinesisOutputRecords.forEach(KinesisInputOutputRecord -> {
+            assertEquals(KinesisInputOutputRecord.getDataPrepperRecord().getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_PARTITION_KEY_METADATA_ATTRIBUTE), partitionKey);
+            assertEquals(KinesisInputOutputRecord.getDataPrepperRecord().getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), sequenceNumber);
+            assertEquals(KinesisInputOutputRecord.getDataPrepperRecord().getData().getMetadata().getAttribute(MetadataKeyAttributes.KINESIS_SUB_SEQUENCE_NUMBER_METADATA_ATTRIBUTE), subsequenceNumber);
         });
     }
 
