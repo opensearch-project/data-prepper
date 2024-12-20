@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.sink;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
@@ -14,7 +15,7 @@ public class NoopSink implements Sink<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(NoopSink.class);
 
     @Override
-    public void output(Collection<Record<Object>> records) {
+    public void output(Collection<Record<Object>> records, final PipelineIf failurePipeline) {
         LOG.info("Releasing events for NOOP sink");
         for (Record<Object> record : records) {
             Event event =  (Event)record.getData();

@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -169,7 +170,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      * @param records Records to be output
      */
     @Override
-    public void doOutput(final Collection<Record<Event>> records) {
-        s3SinkService.output(records);
+    public void doOutput(final Collection<Record<Event>> records, final PipelineIf failurePipeline) {
+        s3SinkService.output(records, failurePipeline);
     }
 }

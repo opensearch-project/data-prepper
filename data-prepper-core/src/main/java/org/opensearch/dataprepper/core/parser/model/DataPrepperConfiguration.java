@@ -34,6 +34,7 @@ import java.util.Objects;
 public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
+    static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq";
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
 
     static final int MAX_TAGS_NUMBER = 3;
@@ -212,6 +213,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             this.metricTagFilters = metricTagFilters;
         }
     }
+
+    public String getFailurePipelineName() { return DEFAULT_FAILURE_PIPELINE_NAME; }
 
     public Duration getProcessorShutdownTimeout() {
         return processorShutdownTimeout;

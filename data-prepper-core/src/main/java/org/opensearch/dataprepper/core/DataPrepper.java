@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.DataPrepperShutdownListener;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.parser.PipelineTransformer;
+import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineObserver;

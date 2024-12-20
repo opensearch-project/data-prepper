@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluationException;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -380,7 +381,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   @Override
-  public void doOutput(final Collection<Record<Event>> records) {
+  public void doOutput(final Collection<Record<Event>> records, final PipelineIf failurePipelineObj) {
     final long threadId = Thread.currentThread().getId();
     if (!bulkRequestMap.containsKey(threadId)) {
       bulkRequestMap.put(threadId, bulkRequestSupplier.get());

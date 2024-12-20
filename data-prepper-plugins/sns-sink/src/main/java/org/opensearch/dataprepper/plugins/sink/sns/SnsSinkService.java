@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.plugins.sink.sns.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.sns.dlq.SnsSinkFailedDlqData;
 import org.slf4j.Logger;
@@ -115,7 +116,7 @@ public class SnsSinkService {
     /**
      * @param records received records and add into buffer.
      */
-    void output(Collection<Record<Event>> records) {
+    void output(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         reentrantLock.lock();
         try {
             for (Record<Event> record : records) {
