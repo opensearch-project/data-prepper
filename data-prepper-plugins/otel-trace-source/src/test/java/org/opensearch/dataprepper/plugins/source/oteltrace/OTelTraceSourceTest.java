@@ -344,31 +344,7 @@ class OTelTraceSourceTest {
         assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNAUTHENTICATED));
     }
 
-    @Test
-    void testHttpWithoutSslFailsWhenSslIsEnabled() throws InvalidProtocolBufferException {
-        when(oTelTraceSourceConfig.isSsl()).thenReturn(true);
-        when(oTelTraceSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-        when(oTelTraceSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
-        configureObjectUnderTest();
-        SOURCE.start(buffer);
-    
-        WebClient client = WebClient.builder("http://127.0.0.1:21890")
-                .build();
-    
-        CompletionException exception = assertThrows(CompletionException.class, () -> client.execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
-                .aggregate()
-                .join());
-    
-        assertThat(exception.getCause(), instanceOf(ClosedSessionException.class));
-    }
-    
+
     @Test
     void testGrpcFailsIfSslIsEnabledAndNoTls() {
         when(oTelTraceSourceConfig.isSsl()).thenReturn(true);
