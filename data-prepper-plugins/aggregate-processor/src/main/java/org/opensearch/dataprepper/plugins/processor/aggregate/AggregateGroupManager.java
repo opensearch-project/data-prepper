@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import com.google.common.collect.Maps;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
-import org.opensearch.dataprepper.model.event.Event;
 
 import java.time.Duration;
 import java.util.ArrayList;
