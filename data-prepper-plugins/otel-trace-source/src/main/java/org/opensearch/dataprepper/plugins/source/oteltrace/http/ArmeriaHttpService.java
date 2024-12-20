@@ -61,8 +61,8 @@ public class ArmeriaHttpService {
     }
 
     // todo tlongo healthcheck?
-    // todo tlongo authentication for http (Auth in Grpc Service is grpc specific)
 
+    // todo tlongo make path configurable
     @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
     @Consumes(value = "application/json")
     public ExportTraceServiceResponse exportTrace(ExportTraceServiceRequest request) {
