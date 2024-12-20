@@ -85,7 +85,7 @@ class GenericExpressionEvaluatorTest {
 
         doThrow(new RuntimeException()).when(parser).parse(eq(statement));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, null));
+        assertThrows(ExpressionParsingException.class, () -> statementEvaluator.evaluate(statement, null));
 
         verify(parser).parse(eq(statement));
         verify(evaluator, times(0)).evaluate(any(), any());
@@ -100,7 +100,7 @@ class GenericExpressionEvaluatorTest {
         doReturn(parseTree).when(parser).parse(eq(statement));
         doThrow(new RuntimeException()).when(evaluator).evaluate(eq(parseTree), eq(event));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluateConditional(statement, event));
+        assertThat(statementEvaluator.evaluateConditional(statement, event), equalTo(false));
 
         verify(parser).parse(eq(statement));
         verify(evaluator).evaluate(eq(parseTree), eq(event));

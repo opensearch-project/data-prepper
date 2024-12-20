@@ -124,13 +124,13 @@ public class KeyValueProcessorConfig {
     })
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
-    @JsonProperty(value = "include_keys", defaultValue = "[]")
+    @JsonProperty("include_keys")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
-    @JsonProperty(value = "exclude_keys", defaultValue = "[]")
+    @JsonProperty("exclude_keys")
     @JsonPropertyDescription("An array specifying the parsed keys that should be excluded from the destination field. " +
             "By default, no keys will be excluded.")
     @NotNull

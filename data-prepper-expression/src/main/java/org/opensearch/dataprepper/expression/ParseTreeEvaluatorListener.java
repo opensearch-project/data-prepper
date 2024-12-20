@@ -123,8 +123,12 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
                     try {
                         performSingleOperation(op, ctx);
                     } catch (final Exception e) {
-                        throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
+                        if (e instanceof IllegalArgumentException && op.isBooleanOperator()) {
+                            operandStack.push(false);
+                        } else {
+                            throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
                                 + getPartialStatementFromContext(ctx), e);
+                        }
                     }
                 }
             }

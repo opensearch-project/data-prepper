@@ -36,11 +36,15 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
      */
     @Override
     public Object evaluate(final String statement, final Event context) {
+        ParseTree parseTree = null;
         try {
-            final ParseTree parseTree = parser.parse(statement);
-            return evaluator.evaluate(parseTree, context);
+            parseTree = parser.parse(statement);
+        } catch (final Exception exception) {
+            throw new ExpressionParsingException("Unable to parse statement \"" + statement + "\"", exception);
         }
-        catch (final Exception exception) {
+        try {
+            return evaluator.evaluate(parseTree, context);
+        } catch (final Exception exception) {
             throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
         }
     }
