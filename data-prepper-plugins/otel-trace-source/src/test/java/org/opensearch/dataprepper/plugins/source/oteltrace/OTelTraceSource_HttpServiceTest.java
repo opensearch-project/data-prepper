@@ -5,8 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Named.named;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,10 +26,10 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -63,6 +66,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.ClosedSessionException;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
@@ -85,7 +89,6 @@ import static com.jayway.jsonpath.matchers.JsonPathMatchers.*;
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSource_HttpServiceTest {
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -147,7 +150,6 @@ class OTelTraceSource_HttpServiceTest {
         when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-        when(oTelTraceSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
         // default: we don't want authentication
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(null);
@@ -208,8 +210,33 @@ class OTelTraceSource_HttpServiceTest {
 
         makeRequestAndAssertResponse("/opentelemetry.proto.collector.trace.v1.TraceService/Export", createExportTraceRequest(), (response, throwable) -> {
             assertThat(response.status(), is(HttpStatus.INSUFFICIENT_STORAGE));
-            assertResponseBodyForRetryInformation(response);
+            assertResponseBodyForRetryInformation(response, "0.100s");
         });
+    }
+
+    @Test
+    void request_over_http_with_ssl_enabled_fails() {
+        when(oTelTraceSourceConfig.isSsl()).thenReturn(true);
+        when(oTelTraceSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
+        when(oTelTraceSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        WebClient client = WebClient.builder("http://127.0.0.1:21890")
+                .build();
+
+        CompletionException exception = assertThrows(CompletionException.class, () -> client.execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21890")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
+                .aggregate()
+                .join());
+
+        assertThat(exception.getCause(), instanceOf(ClosedSessionException.class));
     }
 
     @ParameterizedTest
@@ -277,9 +304,6 @@ class OTelTraceSource_HttpServiceTest {
                 .join();
     }
 
-
-    // todo tlongo https test
-
     private ExportTraceServiceRequest createExportTraceRequest() {
         final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
                 .setTraceId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
@@ -296,10 +320,10 @@ class OTelTraceSource_HttpServiceTest {
                 .build();
     }
 
-    private void assertResponseBodyForRetryInformation(final AggregatedHttpResponse response) {
+    private void assertResponseBodyForRetryInformation(final AggregatedHttpResponse response, String expectedDelay) {
         String body = response.content(StandardCharsets.UTF_8);
 
-        // todo tlongo assert delay value
-        assertThat(body, hasJsonPath("$.details[0].retryDelay"));
+        // todo tlongo map to numeric value when creating status in exception handler
+        assertThat(body, hasJsonPath("$.details[0].retryDelay", equalTo(expectedDelay)));
     }
 }
