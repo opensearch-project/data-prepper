@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
+// todo tlongo rename
 public class GrpcRetryInfoCalculator {
 
     private final Duration minimumDelay;
