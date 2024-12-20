@@ -41,6 +41,7 @@ public class PutAllAggregateAction implements AggregateAction {
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(aggregateActionInput.getGroupState())
+                .withEventHandle(aggregateActionInput.getEventHandle())
                 .build();
 
         return new AggregateActionOutput(List.of(event));

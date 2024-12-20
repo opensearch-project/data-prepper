@@ -137,7 +137,8 @@ public class ProcessWorker implements Runnable {
 
             try {
                 records = processor.execute(records);
-                if (inputEvents != null) {
+                // acknowledge missing events only if the processor is not holding events
+                if (!processor.holdsEvents() && inputEvents != null) {
                     processAcknowledgements(inputEvents, records);
                 }
             } catch (final Exception e) {

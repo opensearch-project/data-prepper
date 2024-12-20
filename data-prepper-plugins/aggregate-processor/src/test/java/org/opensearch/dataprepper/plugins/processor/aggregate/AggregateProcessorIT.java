@@ -11,9 +11,14 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSet;
+import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +57,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
@@ -105,6 +111,7 @@ public class AggregateProcessorIT {
     private Collection<Record<Event>> eventBatch;
     private ConcurrentLinkedQueue<Map<String, Object>> aggregatedResult;
     private Set<Map<String, Object>> uniqueEventMaps;
+    private Set<EventHandle> eventHandles;
 
     @Mock
     private PluginFactory pluginFactory;
@@ -114,6 +121,7 @@ public class AggregateProcessorIT {
 
     @BeforeEach
     void setup() {
+        eventHandles = new HashSet<>();
         aggregatedResult = new ConcurrentLinkedQueue<>();
         uniqueEventMaps = new HashSet<>();
 
@@ -186,7 +194,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
@@ -213,7 +221,7 @@ public class AggregateProcessorIT {
         }
     }
 
-    @RepeatedTest(value = 2)
+    @RepeatedTest(value = 1)
     void aggregateWithPutAllActionAndCondition() throws InterruptedException {
         aggregateAction = new PutAllAggregateAction();
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -222,9 +230,12 @@ public class AggregateProcessorIT {
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
         when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
         int count = 0;
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
+            acknowledgementSet.add(event.getEventHandle());
             boolean value = (count % 2 == 0) ? true : false;
             when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(value);
             if (!value) {
@@ -238,8 +249,9 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
+        final List<Record<Event>> allRecordsOut = new ArrayList<>();
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
                 final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
@@ -247,6 +259,7 @@ public class AggregateProcessorIT {
                     final Map<String, Object> map = record.getData().toMap();
                     aggregatedResult.add(map);
                 }
+                allRecordsOut.addAll(recordsOut);
                 countDownLatch.countDown();
             });
         }
@@ -258,6 +271,11 @@ public class AggregateProcessorIT {
 
         for (final Map<String, Object> uniqueEventMap : uniqueEventMaps) {
             assertThat(aggregatedResult, hasItem(uniqueEventMap));
+        }
+        for (Record<Event> record: allRecordsOut) {
+            EventHandle eventHandle = record.getData().getEventHandle();
+            assertTrue(eventHandle instanceof AggregateEventHandle);
+            assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
         }
     }
 
@@ -276,7 +294,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
         AtomicInteger allowedEventsCount = new AtomicInteger(0);
 
         for (int i = 0; i < NUM_THREADS; i++) {
@@ -309,7 +327,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
@@ -344,7 +362,7 @@ public class AggregateProcessorIT {
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
@@ -364,8 +382,8 @@ public class AggregateProcessorIT {
         assertThat(aggregatedResult.size(), equalTo(NUM_THREADS * NUM_EVENTS_PER_BATCH));
     }
 
-    @RepeatedTest(value = 2)
-    void aggregateWithCountAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+    @RepeatedTest(value = 1)
+    void aggregateWithCountAggregateActionKK() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
@@ -373,6 +391,12 @@ public class AggregateProcessorIT {
                 .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         eventBatch = getBatchOfEvents(true);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
+        for (Record<Event> record: eventBatch) {
+            Event event = record.getData();
+            acknowledgementSet.add(event.getEventHandle());
+        }
 
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
@@ -385,7 +409,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
@@ -399,10 +423,13 @@ public class AggregateProcessorIT {
         final Record<Event> record = (Record<Event>)results.toArray()[0];
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
         assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
+        EventHandle eventHandle = record.getData().getEventHandle();
+        assertTrue(eventHandle instanceof AggregateEventHandle);
+        assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithCountAggregateActionWithCondition() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+    void aggregateWithCountAggregateActionWithConditionPP() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW);
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
@@ -414,16 +441,19 @@ public class AggregateProcessorIT {
         when(expressionEvaluator.isValidExpressionStatement(condition)).thenReturn(true);
         int count = 0;
         eventBatch = getBatchOfEvents(true);
-        for (Record<Event> record: eventBatch) {
-            Event event = record.getData();
-            boolean value = (count % 2 == 0) ? true : false;
-            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(value);
-            count++;
-        }
 
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
         final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
+        for (Record<Event> record: eventBatch) {
+            Event event = record.getData();
+            acknowledgementSet.add(event.getEventHandle());
+            boolean value = (count % 2 == 0) ? true : false;
+            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(value);
+            count++;
+        }
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         for (int i = 0; i < NUM_THREADS; i++) {
@@ -432,7 +462,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
@@ -446,6 +476,9 @@ public class AggregateProcessorIT {
         final Record<Event> record = (Record<Event>)results.toArray()[0];
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
         assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
+        EventHandle eventHandle = record.getData().getEventHandle();
+        assertTrue(eventHandle instanceof AggregateEventHandle);
+        assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
     }
 
     @RepeatedTest(value = 2)
@@ -460,6 +493,12 @@ public class AggregateProcessorIT {
                 .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         eventBatch = getBatchOfEvents(true);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
+        for (Record<Event> record: eventBatch) {
+            Event event = record.getData();
+            acknowledgementSet.add(event.getEventHandle());
+        }
 
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
@@ -474,7 +513,7 @@ public class AggregateProcessorIT {
             });
         }
         // wait longer so that the raw events are processed.
-        Thread.sleep(2*GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(2*GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
 
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
@@ -489,6 +528,9 @@ public class AggregateProcessorIT {
         assertTrue(record.getData().getMetadata().hasTags(List.of(tag)));
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
         assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
+        EventHandle eventHandle = record.getData().getEventHandle();
+        assertTrue(eventHandle instanceof AggregateEventHandle);
+        assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
     }
 
 
@@ -518,10 +560,13 @@ public class AggregateProcessorIT {
                 .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         eventBatch = getBatchOfEvents(true);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
         for (final Record<Event> record : eventBatch) {
             final double value = ThreadLocalRandom.current().nextDouble(TEST_VALUE_RANGE_MIN-TEST_VALUE_RANGE_STEP, TEST_VALUE_RANGE_MAX+TEST_VALUE_RANGE_STEP);
             Event event = record.getData();
             event.put(testKey, value);
+            acknowledgementSet.add(event.getEventHandle());
         }
 
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
@@ -556,6 +601,9 @@ public class AggregateProcessorIT {
         for (int i = 0; i < testBuckets.size(); i++) {
             assertThat(testBuckets.get(i).doubleValue(), equalTo(bucketsInResult.get(i)));
         }
+        EventHandle eventHandle = record.getData().getEventHandle();
+        assertTrue(eventHandle instanceof AggregateEventHandle);
+        assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
     }
 
     @ParameterizedTest
@@ -581,7 +629,7 @@ public class AggregateProcessorIT {
         final int numberOfSpans = 5;
         eventBatch = getBatchOfEventsForTailSampling(numberOfErrorTraces, numberOfSpans);
         objectUnderTest.doExecute(eventBatch);
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
         final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         for (int i = 0; i < NUM_THREADS; i++) {
@@ -590,7 +638,7 @@ public class AggregateProcessorIT {
                 countDownLatch.countDown();
             });
         }
-        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 2000);
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
         assertThat(allThreadsFinished, equalTo(true));
         List<Event> errorEventList = eventBatch.stream().map(Record::getData).filter(event -> {

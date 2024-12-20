@@ -47,4 +47,5 @@ public class PercentSamplerAggregateAction implements AggregateAction {
         }
         return AggregateActionResponse.nullEventResponse();
     }
+
 }
