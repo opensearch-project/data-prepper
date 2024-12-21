@@ -508,16 +508,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
 
     String pipelineValue = null;
-    if (pipeline != null) {
-      try {
-        pipelineValue = event.formatString(pipeline, expressionEvaluator);
-      } catch (final ExpressionEvaluationException | EventKeyNotFoundException e) {
-        LOG.error("Unable to construct pipeline with format {}", pipeline, e);
-      }
-      if (StringUtils.isEmpty(pipelineValue) || StringUtils.isBlank(pipelineValue)) {
-        pipelineValue = null;
-      }
-    }
 
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
