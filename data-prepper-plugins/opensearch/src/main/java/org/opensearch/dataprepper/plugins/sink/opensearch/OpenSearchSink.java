@@ -507,11 +507,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
     }
 
-    String pipelineValue = null;
-
     final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
-    return SerializedJson.fromStringAndOptionals(document, docId, routingValue, pipelineValue);
+    return SerializedJson.fromStringAndOptionals(document, docId, routingValue, null);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {

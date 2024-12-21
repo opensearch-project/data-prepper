@@ -215,7 +215,6 @@ public class OpenSearchSinkTest {
         final EventHandle eventHandle = mock(EventHandle.class);
         when(event.getEventHandle()).thenReturn(eventHandle);
         final String index = UUID.randomUUID().toString();
-        when(event.formatString(pipelineDescription.getPipelineName(), expressionEvaluator)).thenReturn(null);
         when(event.formatString(versionExpression, expressionEvaluator)).thenReturn("not_a_number");
         when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
         final Record<Event> eventRecord = new Record<>(event);
@@ -293,24 +292,6 @@ public class OpenSearchSinkTest {
     }
 
     @Test
-    void test_pipeline_in_document() throws IOException {
-        String pipelineValue = UUID.randomUUID().toString();
-        String pipelineKey = UUID.randomUUID().toString();
-        String pipelineName = UUID.randomUUID().toString();
-        when(pipelineDescription.getPipelineName()).thenReturn(pipelineName);
-        final OpenSearchSink objectUnderTest = createObjectUnderTest();
-        final Event event = JacksonEvent.builder()
-                .withEventType("event")
-                .withData(Collections.singletonMap(pipelineKey, pipelineValue))
-                .build();
-        assertThat(objectUnderTest.getDocument(event).getPipelineField(), equalTo(Optional.of(pipelineName)));
-
-        when(pipelineDescription.getPipelineName()).thenReturn("${"+pipelineKey+"}");
-        final OpenSearchSink objectUnderTest2 = createObjectUnderTest();
-        assertThat(objectUnderTest2.getDocument(event).getPipelineField(), equalTo(Optional.of(pipelineValue)));
-    }
-
-    @Test
     void doOutput_with_invalid_version_expression_result_catches_RuntimeException_and_creates_DLQObject() throws IOException {
 
         when(pluginSetting.getName()).thenReturn("opensearch");
@@ -323,7 +304,6 @@ public class OpenSearchSinkTest {
         final EventHandle eventHandle = mock(EventHandle.class);
         when(event.getEventHandle()).thenReturn(eventHandle);
         final String index = UUID.randomUUID().toString();
-        when(event.formatString(pipelineDescription.getPipelineName(), expressionEvaluator)).thenReturn(null);
         when(event.formatString(versionExpression, expressionEvaluator)).thenThrow(RuntimeException.class);
         when(event.formatString(indexConfiguration.getIndexAlias(), expressionEvaluator)).thenReturn(index);
         final Record<Event> eventRecord = new Record<>(event);
