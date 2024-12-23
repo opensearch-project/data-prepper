@@ -1341,32 +1341,6 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"info/ids/rid", "rid"})
-    public void testOpenSearchRoutingField(final String testRoutingField) throws IOException, InterruptedException {
-        final String expectedRoutingField = UUID.randomUUID().toString();
-        final String testIndexAlias = "test_index";
-        final Event testEvent = JacksonEvent.builder()
-                .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
-                .withEventType("event")
-                .build();
-        testEvent.put(testRoutingField, expectedRoutingField);
-
-        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
-
-        Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
-        metadata.put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
-        final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
-        final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
-        sink.output(testRecords);
-
-        final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
-        for (String routingField : routingFields) {
-            assertThat(routingField, equalTo(expectedRoutingField));
-        }
-        sink.shutdown();
-    }
-
-    @ParameterizedTest
     @ValueSource(strings = {"", "info/ids/rid", "rid"})
     public void testOpenSearchRouting(final String testRouting) throws IOException, InterruptedException {
         final String expectedRouting = UUID.randomUUID().toString();
