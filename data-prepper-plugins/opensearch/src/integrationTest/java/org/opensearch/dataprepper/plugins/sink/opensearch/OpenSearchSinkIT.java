@@ -889,12 +889,7 @@ public class OpenSearchSinkIT {
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
         metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         Event event = (Event) testRecords.get(0).getData();
-        event.getMetadata().setAttribute("action", "create");
-        final String actionFormatExpression = "${getMetadata(\"action\")}";
-        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
-        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
-        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
+        event.getMetadata().setAttribute("action", "create");metadata.put(IndexConfiguration.ACTION, "create");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
@@ -924,12 +919,7 @@ public class OpenSearchSinkIT {
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
         metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         Event event = (Event) testRecords.get(0).getData();
-        event.getMetadata().setAttribute("action", "unknown");
-        final String actionFormatExpression = "${getMetadata(\"action\")}";
-        when(expressionEvaluator.isValidFormatExpression(actionFormatExpression)).thenReturn(true);
-        when(expressionEvaluator.isValidExpressionStatement("getMetadata(\"action\")")).thenReturn(true);
-        when(expressionEvaluator.evaluate("getMetadata(\"action\")", event)).thenReturn(event.getMetadata().getAttribute("action"));
-        metadata.put(IndexConfiguration.ACTION, actionFormatExpression);
+        event.getMetadata().setAttribute("action", "unknown");metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
@@ -1326,7 +1316,7 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"${/info/ids/id}", "${/id}"})
+    @ValueSource(strings = {"info/ids/id", "id"})
     public void testOpenSearchDocumentId(final String testDocumentIdField) throws IOException, InterruptedException {
         final String expectedId = UUID.randomUUID().toString();
         final String testIndexAlias = "test_index";
@@ -1335,11 +1325,12 @@ public class OpenSearchSinkIT {
                 .withEventType("event")
                 .build();
         testEvent.put(testDocumentIdField, expectedId);
+        String testDocumentId = "${/" + testDocumentIdField + "}";
 
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentId);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
