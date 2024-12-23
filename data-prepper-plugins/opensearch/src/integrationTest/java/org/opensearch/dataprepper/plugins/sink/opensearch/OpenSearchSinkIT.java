@@ -919,8 +919,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
         metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
-        Event event = (Event) testRecords.get(0).getData();
-        event.getMetadata().setAttribute("action", "unknown");metadata.put(IndexConfiguration.ACTION, "unknown");
+        metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
