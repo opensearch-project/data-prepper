@@ -77,7 +77,6 @@ public class IndexConfiguration {
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final String documentId;
-    private final String routingField;
     private final String routing;
     private final long bulkSize;
     private final boolean estimateBulkSizeUsingCompression;
@@ -141,7 +140,6 @@ public class IndexConfiguration {
         this.estimateBulkSizeUsingCompression = builder.estimateBulkSizeUsingCompression;
         this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
         this.flushTimeout = builder.flushTimeout;
-        this.routingField = builder.routingField;
         this.routing = builder.routing;
 
         String documentIdField = builder.documentIdField;
@@ -290,10 +288,6 @@ public class IndexConfiguration {
 
     public String getDocumentId() { return documentId; }
 
-    public String getRoutingField() {
-        return routingField;
-    }
-
     public String getRouting() {
         return routing;
     }
@@ -423,7 +417,6 @@ public class IndexConfiguration {
         private String templateContent;
         private int numShards;
         private int numReplicas;
-        private String routingField;
         private String routing;
         private String pipeline;
         private String documentIdField;
@@ -488,11 +481,6 @@ public class IndexConfiguration {
         public Builder withDocumentId(final String documentId) {
             checkNotNull(documentId, "document_id cannot be null");
             this.documentId = documentId;
-            return this;
-        }
-
-        public Builder withRoutingField(final String routingField) {
-            this.routingField = routingField;
             return this;
         }
 

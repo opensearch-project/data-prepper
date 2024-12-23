@@ -146,7 +146,6 @@ public class OpenSearchSinkTest {
         when(indexConfiguration.getAction()).thenReturn("index");
         when(indexConfiguration.getDocumentId()).thenReturn(null);
         when(indexConfiguration.getDocumentIdField()).thenReturn(null);
-        when(indexConfiguration.getRoutingField()).thenReturn(null);
         when(indexConfiguration.getRouting()).thenReturn(null);
         when(indexConfiguration.getActions()).thenReturn(null);
         when(indexConfiguration.getDocumentRootKey()).thenReturn(null);
@@ -257,22 +256,6 @@ public class OpenSearchSinkTest {
         assertThat(failedDlqDataResult.getMessage().startsWith("Unable to convert the result of evaluating document_version"), equalTo(true));
 
         verify(dynamicDocumentVersionDroppedEvents).increment();
-    }
-
-    @Test
-    void test_routing_field_in_document() throws IOException {
-        String routingFieldKey = UUID.randomUUID().toString();
-        String routingKey = UUID.randomUUID().toString();
-        String routingFieldValue = UUID.randomUUID().toString();
-        when(indexConfiguration.getRoutingField()).thenReturn(routingFieldKey);
-        when(indexConfiguration.getRouting()).thenReturn(routingKey);
-        final OpenSearchSink objectUnderTest = createObjectUnderTest();
-        final Event event = JacksonEvent.builder()
-                .withEventType("event")
-                .withData(Collections.singletonMap(routingFieldKey, routingFieldValue))
-                .build();
-        assertThat(objectUnderTest.getDocument(event).getRoutingField(), equalTo(Optional.of(routingFieldValue)));
-
     }
 
     @Test

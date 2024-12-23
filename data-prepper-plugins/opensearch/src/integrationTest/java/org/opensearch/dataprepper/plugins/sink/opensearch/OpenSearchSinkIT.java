@@ -89,6 +89,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
@@ -908,7 +909,7 @@ public class OpenSearchSinkIT {
     }
 
     @Test
-    public void testOpenSearchBulkActionsCreateWithInvalidExpression() throws IOException, InterruptedException {
+    public void testOpenSearchBulkActionsCreateWithInvalidExpression() throws IOException {
         final String testIndexAlias = "test-alias";
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -921,12 +922,9 @@ public class OpenSearchSinkIT {
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
-        final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
-        sink.output(testRecords);
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
         final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
         assertThat(retSources.size(), equalTo(0));
-        assertThat(sink.getInvalidActionErrorsCount(), equalTo(1.0));
-        sink.shutdown();
     }
 
     @Test
