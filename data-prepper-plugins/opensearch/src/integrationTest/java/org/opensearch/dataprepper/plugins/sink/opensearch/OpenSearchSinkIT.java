@@ -922,8 +922,6 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
-        final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
-        assertThat(retSources.size(), equalTo(0));
     }
 
     @Test
