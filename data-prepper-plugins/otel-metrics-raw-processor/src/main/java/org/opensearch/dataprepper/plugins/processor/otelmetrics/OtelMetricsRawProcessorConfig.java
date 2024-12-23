@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>otel_metrics</code> processor serializes a collection of <code>ExportMetricsServiceRequest</code> records " +
+@JsonClassDescription("The OTel metrics processor serializes a collection of <code>ExportMetricsServiceRequest</code> records " +
         "sent from the <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/sources/otel-metrics-source/\">OTel metrics source</a> into a collection of string records.")
 public class OtelMetricsRawProcessorConfig {
 

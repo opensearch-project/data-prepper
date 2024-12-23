@@ -35,7 +35,7 @@ import java.util.List;
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The <code>split_string</code> processor splits a field into an array using a delimiting character.")
+@JsonClassDescription("The split string processor splits a field into an array using a delimiting character.")
 public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     @JsonPropertyOrder
     public static class Entry {

@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Duration;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>otel_traces</code> processor completes trace-group-related fields in all incoming " +
+@JsonClassDescription("The OTel traces processor completes trace-group-related fields in all incoming " +
         "span records by state caching the root span information for each <code>traceId</code>.")
 public class OtelTraceRawProcessorConfig {
     static final long DEFAULT_TG_FLUSH_INTERVAL_SEC = 180L;

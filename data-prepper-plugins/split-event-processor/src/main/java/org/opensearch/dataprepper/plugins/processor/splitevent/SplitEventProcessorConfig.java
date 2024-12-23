@@ -33,7 +33,7 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaPr
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The <code>split_event</code> processor is used to split events based on a delimiter and " +
+@JsonClassDescription("The split event processor is used to split events based on a delimiter and " +
         "generates multiple events from a user-specified field.")
 public class SplitEventProcessorConfig {
     static final String DELIMITER_REGEX_KEY = "delimiter_regex";

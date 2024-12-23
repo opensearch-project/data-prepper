@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>aggregate</code> processor groups events based on the values of identification_keys. " +
+@JsonClassDescription("The aggregate processor groups events based on the values of identification_keys. " +
         "Then, the processor performs an action on each group, helping reduce unnecessary log volume and " +
         "creating aggregated logs over time.")
 public class AggregateProcessorConfig {

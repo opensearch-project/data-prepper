@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>delete_entries</code> processor deletes fields from events. " +
+@JsonClassDescription("The delete entries processor deletes fields from events. " +
         "You can define the keys you want to delete in the <code>with_keys</code> configuration. " +
         "Those keys and their values are deleted from events.")
 public class DeleteEntryProcessorConfig {

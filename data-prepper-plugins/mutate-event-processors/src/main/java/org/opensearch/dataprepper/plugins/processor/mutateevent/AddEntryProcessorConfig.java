@@ -55,7 +55,7 @@ import java.util.stream.Stream;
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The <code>add_entries</code> processor adds entries to an event.")
+@JsonClassDescription("The add entries processor adds entries to an event.")
 public class AddEntryProcessorConfig {
     static final String VALUE_EXPRESSION_KEY = "value_expression";
     static final String METADATA_KEY_KEY = "metadata_key";

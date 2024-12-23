@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>map_to_list</code> processor converts a map of key-value pairs to a list of objects. " +
+@JsonClassDescription("The map to list processor converts a map of key-value pairs to a list of objects. " +
         "Each object contains the key and value in separate fields.")
 public class MapToListProcessorConfig {
     private static final String DEFAULT_KEY_NAME = "key";

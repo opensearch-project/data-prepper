@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>translate</code> processor transforms values in events into preconfigured values.")
+@JsonClassDescription("The translate processor transforms values in events into preconfigured values.")
 public class TranslateProcessorConfig {
 
     @JsonProperty("file")

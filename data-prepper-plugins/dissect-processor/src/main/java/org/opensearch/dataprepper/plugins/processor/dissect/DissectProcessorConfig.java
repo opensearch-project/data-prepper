@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>dissect</code> processor extracts values from an event and maps them to individual fields " +
+@JsonClassDescription("The dissect processor extracts values from an event and maps them to individual fields " +
         "based on user-defined <code>dissect</code> patterns. The processor is well suited for field extraction from log " +
         "messages with a known structure.")
 public class DissectProcessorConfig {

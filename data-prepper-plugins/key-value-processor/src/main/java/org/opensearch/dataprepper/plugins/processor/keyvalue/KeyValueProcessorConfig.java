@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @JsonPropertyOrder
-@JsonClassDescription("You can use the <code>key_value</code> processor to create structured data by parsing key-value pairs from strings.")
+@JsonClassDescription("You can use the key-value processor to create structured data by parsing key-value pairs from strings.")
 public class KeyValueProcessorConfig {
     static final String VALUE_GROUPING_KEY = "value_grouping";
     static final String FIELD_DELIMITER_REGEX_KEY = "field_delimiter_regex";

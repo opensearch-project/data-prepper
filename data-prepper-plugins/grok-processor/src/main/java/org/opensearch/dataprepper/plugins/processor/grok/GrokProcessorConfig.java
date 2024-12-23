@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>grok</code> processor uses pattern matching to structure and extract important keys from " +
+@JsonClassDescription("The grok processor uses pattern matching to structure and extract important keys from " +
         "unstructured data.")
 public class GrokProcessorConfig {
 

@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter;
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The <code>date</code> processor adds a default timestamp to an event, parses timestamp fields, " +
+@JsonClassDescription("The date processor adds a default timestamp to an event, parses timestamp fields, " +
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
         "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {
@@ -142,7 +142,7 @@ public class DateProcessorConfig {
     })
     private List<DateMatch> match;
 
-    @JsonProperty("destination")
+    @JsonProperty(value = "destination", defaultValue = DEFAULT_DESTINATION)
     @JsonPropertyDescription("The field used to store the timestamp parsed by the date processor. " +
             "Can be used with both <code>match</code> and <code>from_time_received</code>. Default is <code>@timestamp</code>.")
     private String destination = DEFAULT_DESTINATION;

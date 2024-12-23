@@ -17,7 +17,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>select_entries</code> processor selects entries from an event.")
+@JsonClassDescription("The select entries processor selects entries from an event.")
 public class SelectEntriesProcessorConfig {
     @NotEmpty
     @NotNull
