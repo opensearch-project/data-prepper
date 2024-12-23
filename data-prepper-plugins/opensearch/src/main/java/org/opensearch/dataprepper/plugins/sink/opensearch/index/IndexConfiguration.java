@@ -55,7 +55,7 @@ public class IndexConfiguration {
     public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID = "document_id";
-    public static final String ROUTING_FIELD = "routing_field";
+    public static final String ROUTING_FIELD = "routing";
     public static final String ROUTING = "routing";
     public static final String PIPELINE = "pipeline";
     public static final String ISM_POLICY_FILE = "ism_policy_file";

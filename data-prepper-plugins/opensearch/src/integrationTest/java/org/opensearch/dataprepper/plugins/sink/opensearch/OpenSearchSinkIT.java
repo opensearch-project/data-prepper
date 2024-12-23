@@ -826,10 +826,11 @@ public class OpenSearchSinkIT {
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
@@ -853,10 +854,11 @@ public class OpenSearchSinkIT {
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
@@ -881,10 +883,11 @@ public class OpenSearchSinkIT {
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "create");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
@@ -915,10 +918,11 @@ public class OpenSearchSinkIT {
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         Event event = (Event) testRecords.get(0).getData();
         event.getMetadata().setAttribute("action", "unknown");
         final String actionFormatExpression = "${getMetadata(\"action\")}";
@@ -941,11 +945,12 @@ public class OpenSearchSinkIT {
         final String testTemplateFile = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
@@ -975,11 +980,12 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
@@ -1025,6 +1031,7 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         final String documentRootKey = "root_key";
 
@@ -1039,7 +1046,7 @@ public class OpenSearchSinkIT {
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
 
         metadata.put(IndexConfiguration.DOCUMENT_ROOT_KEY, documentRootKey);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> actionMap = new HashMap<>();
         actionMap.put("type", OpenSearchBulkActions.CREATE.toString());
@@ -1093,6 +1100,7 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "key", "value")));
 
@@ -1102,7 +1110,7 @@ public class OpenSearchSinkIT {
         aList.add(actionMap);
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
@@ -1125,11 +1133,12 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value1")));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.CREATE.toString());
@@ -1177,10 +1186,11 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value1", "newKey", "newValue")));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
@@ -1213,11 +1223,12 @@ public class OpenSearchSinkIT {
                 getClass().getClassLoader().getResource(TEST_TEMPLATE_BULK_FILE)).getFile();
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
         List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
         aMap.put("type", OpenSearchBulkActions.DELETE.toString());
@@ -1315,7 +1326,7 @@ public class OpenSearchSinkIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"info/ids/id", "id"})
+    @ValueSource(strings = {"${/info/ids/id}", "${/id}"})
     public void testOpenSearchDocumentId(final String testDocumentIdField) throws IOException, InterruptedException {
         final String expectedId = UUID.randomUUID().toString();
         final String testIndexAlias = "test_index";
@@ -1640,6 +1651,7 @@ public class OpenSearchSinkIT {
         securityAccessor.createUser(username, password, roleName);
 
         final String testIdField = "someId";
+        final String testDocumentID = "${/someId}";
         final String testId = "foo";
 
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
@@ -1648,7 +1660,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
         metadata.put(USERNAME, username);
         metadata.put(PASSWORD, password);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentID);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
 
