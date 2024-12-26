@@ -39,6 +39,7 @@ class SqsSourceTest {
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         sqsSource = new SqsSource(pluginMetrics, sqsSourceConfig, acknowledgementSetManager, awsCredentialsSupplier);
+        buffer = mock(Buffer.class);
     }
 
     @Test
@@ -48,7 +49,6 @@ class SqsSourceTest {
 
     @Test
     void start_should_not_throw_when_buffer_is_not_null() {
-        Buffer<Record<Event>> buffer = mock(Buffer.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/example-role");
         when(sqsSourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);

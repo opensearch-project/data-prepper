@@ -73,7 +73,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
         }
     }
 
-    private JsonNode parseMessageBody(String messageBody) {
+    JsonNode parseMessageBody(String messageBody) {
         try {
             return objectMapper.readTree(messageBody);
         } catch (Exception e) {

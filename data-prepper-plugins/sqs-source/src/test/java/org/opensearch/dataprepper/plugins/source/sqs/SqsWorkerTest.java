@@ -29,6 +29,7 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -45,6 +46,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -107,7 +109,6 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(SqsWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(acknowledgementSetCallbackCounter);
         when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangedCount);
         when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangeFailedCount);
-
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(false);
         when(sqsSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(100);
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
@@ -278,5 +279,97 @@ class SqsWorkerTest {
         assertThat(actualChangeVisibilityRequest.queueUrl(), equalTo(queueConfig.getUrl()));
         assertThat(actualChangeVisibilityRequest.receiptHandle(), equalTo(testReceiptHandle));
         verify(sqsMessagesReceivedCounter).increment(1);
+    }
+    @Test
+    void increaseVisibilityTimeout_doesNothing_whenIsStopped() throws IOException {
+        when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
+        when(queueConfig.getVisibilityDuplicateProtection()).thenReturn(false);
+        when(queueConfig.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(30));
+        AcknowledgementSet mockAcknowledgementSet = mock(AcknowledgementSet.class);
+        when(acknowledgementSetManager.create(any(), any())).thenReturn(mockAcknowledgementSet);
+        Message message = Message.builder()
+                .messageId(UUID.randomUUID().toString())
+                .receiptHandle(UUID.randomUUID().toString())
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World\"}]}")
+                .build();
+        ReceiveMessageResponse response = ReceiveMessageResponse.builder()
+                .messages(message)
+                .build();
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(response);
+        SqsWorker sqsWorker = createObjectUnderTest();
+        sqsWorker.stop();
+        int messagesProcessed = sqsWorker.processSqsMessages();
+        assertThat(messagesProcessed, equalTo(1));
+        verify(sqsEventProcessor).addSqsObject(eq(message),
+                eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"),
+                any(),
+                eq(mockAcknowledgementSet));
+        verify(sqsClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
+        verify(sqsVisibilityTimeoutChangeFailedCount, never()).increment();
+    }
+
+    @Test
+    void deleteSqsMessages_incrementsFailedCounter_whenDeleteResponseHasFailedDeletes() throws IOException {
+        final Message message1 = Message.builder()
+                .messageId(UUID.randomUUID().toString())
+                .receiptHandle(UUID.randomUUID().toString())
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World 1\"}]}")
+                .build();
+        final Message message2 = Message.builder()
+                .messageId(UUID.randomUUID().toString())
+                .receiptHandle(UUID.randomUUID().toString())
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World 2\"}]}")
+                .build();
+
+        final ReceiveMessageResponse receiveResponse = ReceiveMessageResponse.builder()
+                .messages(message1, message2)
+                .build();
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveResponse);
+
+        DeleteMessageBatchResultEntry successfulDelete = DeleteMessageBatchResultEntry.builder()
+                .id(message1.messageId())
+                .build();
+
+        BatchResultErrorEntry failedDelete = BatchResultErrorEntry.builder()
+                .id(message2.messageId())
+                .code("ReceiptHandleIsInvalid")
+                .senderFault(true)
+                .message("Failed to delete message due to invalid receipt handle.")
+                .build();
+
+        DeleteMessageBatchResponse deleteResponse = DeleteMessageBatchResponse.builder()
+                .successful(successfulDelete)
+                .failed(failedDelete)
+                .build();
+
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenReturn(deleteResponse);
+        SqsWorker sqsWorker = createObjectUnderTest();
+        int messagesProcessed = sqsWorker.processSqsMessages();
+        assertThat(messagesProcessed, equalTo(2));
+        verify(sqsMessagesReceivedCounter).increment(2);
+        verify(sqsMessagesDeletedCounter).increment(1);
+        verify(sqsMessagesDeleteFailedCounter).increment(1);
+    }
+    @Test
+    void processSqsMessages_handlesException_correctly_when_addSqsObject_throwsException() throws IOException {
+        final Message message = Message.builder()
+                .messageId(UUID.randomUUID().toString())
+                .receiptHandle(UUID.randomUUID().toString())
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World\"}]}")
+                .build();
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(
+                ReceiveMessageResponse.builder().messages(message).build()
+        );
+        doThrow(new RuntimeException("Processing failed")).when(sqsEventProcessor)
+                .addSqsObject(eq(message), eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"),
+                        any(), any());
+        SqsWorker sqsWorker = createObjectUnderTest();
+        int messagesProcessed = sqsWorker.processSqsMessages();
+        assertThat(messagesProcessed, equalTo(1));
+        verify(sqsMessagesReceivedCounter).increment(1);
+        verify(sqsMessagesFailedCounter).increment();
+        verify(backoff).nextDelayMillis(anyInt());
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesDeletedCounter, never()).increment(anyInt());
     }
 }
