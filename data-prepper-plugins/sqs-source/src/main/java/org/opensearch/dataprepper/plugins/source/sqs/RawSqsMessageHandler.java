@@ -53,7 +53,6 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
                 .withEventType("sqs-event")
                 .withData(dataNode)
                 .build());
-        
 
             if (Objects.nonNull(acknowledgementSet)) {
                 acknowledgementSet.add(event.getData());
@@ -63,12 +62,6 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
 
         } catch (Exception e) {
             LOG.error("Error processing SQS message: {}", e.getMessage(), e);
-            throw new RuntimeException(e);
-        }
-
-        try {
-            bufferAccumulator.flush();
-        } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -44,6 +44,7 @@ public class QueueConfig {
     private Duration visibilityTimeout = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
     @JsonProperty("visibility_duplication_protection")
+    @NotNull
     private Boolean visibilityDuplicateProtection = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION;
 
     @JsonProperty("visibility_duplicate_protection_timeout")

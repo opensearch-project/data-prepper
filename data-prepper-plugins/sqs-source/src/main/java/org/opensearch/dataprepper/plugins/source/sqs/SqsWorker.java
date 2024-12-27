@@ -242,7 +242,15 @@ public class SqsWorker implements Runnable {
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
-        }         
+        }
+
+        if (!messages.isEmpty()) {
+            try {
+                bufferAccumulator.flush();
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         return deleteMessageBatchRequestEntryCollection;
     }

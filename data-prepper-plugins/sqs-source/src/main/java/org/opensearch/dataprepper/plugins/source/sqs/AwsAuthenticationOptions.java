@@ -23,7 +23,7 @@
 
      @JsonProperty("sts_role_arn")
      @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
-     protected String awsStsRoleArn;
+     private String awsStsRoleArn;
 
      @JsonProperty("sts_external_id")
      @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
