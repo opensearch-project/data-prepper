@@ -55,10 +55,10 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
-        this.accessToken = jiraSourceConfig.getAccessToken();
-        this.refreshToken = jiraSourceConfig.getRefreshToken();
-        this.clientId = jiraSourceConfig.getClientId();
-        this.clientSecret = jiraSourceConfig.getClientSecret();
+        this.accessToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken();
+        this.refreshToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken();
+        this.clientId = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
+        this.clientSecret = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
 
     public String getJiraAccountCloudId() {

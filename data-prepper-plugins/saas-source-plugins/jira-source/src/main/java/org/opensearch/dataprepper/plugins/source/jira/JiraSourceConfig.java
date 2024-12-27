@@ -1,16 +1,15 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 
 @Getter
 public class JiraSourceConfig implements CrawlerSourceConfig {
@@ -20,14 +19,15 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     /**
      * Jira account url
      */
-    @JsonProperty("account_url")
-    private String accountUrl;
+    @JsonProperty("hosts")
+    private List<String> hosts;
 
     /**
-     * A map of connector credentials specific to this source
+     * Authentication Config to Access Jira
      */
-    @JsonProperty("connector_credentials")
-    private Map<String, String> connectorCredentials;
+    @JsonProperty("authentication")
+    @Valid
+    private AuthenticationConfig authenticationConfig;
 
     /**
      * List of projects to ingest
@@ -78,43 +78,11 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @JsonProperty("backoff_time")
     private Duration backOff = DEFAULT_BACKOFF_MILLIS;
 
-    public String getJiraId() {
-        return this.getConnectorCredentials().get("jira_id");
-    }
-
-    public String getJiraCredential() {
-        return this.getConnectorCredentials().get("jira_credential");
+    public String getAccountUrl() {
+        return this.getHosts().get(0);
     }
 
     public String getAuthType() {
-        return this.getConnectorCredentials().get("auth_type");
+        return this.getAuthenticationConfig().getAuthType();
     }
-
-    public String getAccessToken() {
-        return fetchGivenOAuthAttribute("access_token");
-    }
-
-    public String getRefreshToken() {
-        return fetchGivenOAuthAttribute("refresh_token");
-    }
-
-    public String getClientId() {
-        return fetchGivenOAuthAttribute("client_id");
-    }
-
-    public String getClientSecret() {
-        return fetchGivenOAuthAttribute("client_secret");
-    }
-
-    private String fetchGivenOAuthAttribute(String givenAttribute) {
-        if (!OAUTH2.equals(getAuthType())) {
-            throw new RuntimeException("Authentication Type is not OAuth2.");
-        }
-        String attributeValue = this.getConnectorCredentials().get(givenAttribute);
-        if (attributeValue == null || attributeValue.isEmpty()) {
-            throw new RuntimeException(String.format("%s is required for OAuth2 AuthType", givenAttribute));
-        }
-        return attributeValue;
-    }
-
 }

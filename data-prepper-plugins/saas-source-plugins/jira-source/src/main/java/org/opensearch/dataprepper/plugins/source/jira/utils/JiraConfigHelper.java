@@ -62,13 +62,13 @@ public class JiraConfigHelper {
         }
 
         if (BASIC.equals(authType)) {
-            if (config.getJiraId() == null || config.getJiraCredential() == null) {
+            if (config.getAuthenticationConfig().getBasicConfig().getUsername() == null || config.getAuthenticationConfig().getBasicConfig().getPassword() == null) {
                 throw new RuntimeException("Jira ID or Credential are required for Basic AuthType");
             }
         }
 
         if (OAUTH2.equals(authType)) {
-            if (config.getAccessToken() == null || config.getRefreshToken() == null) {
+            if (config.getAuthenticationConfig().getOauth2Config().getAccessToken() == null || config.getAuthenticationConfig().getOauth2Config().getRefreshToken() == null) {
                 throw new RuntimeException("Access Token or Refresh Token are required for OAuth2 AuthType");
             }
         }

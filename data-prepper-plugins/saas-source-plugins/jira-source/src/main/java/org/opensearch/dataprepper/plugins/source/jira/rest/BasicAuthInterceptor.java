@@ -17,8 +17,8 @@ public class BasicAuthInterceptor implements ClientHttpRequestInterceptor {
     private final String password;
 
     public BasicAuthInterceptor(JiraSourceConfig config) {
-        this.username = config.getJiraId();
-        this.password = config.getJiraCredential();
+        this.username = config.getAuthenticationConfig().getBasicConfig().getUsername();
+        this.password = config.getAuthenticationConfig().getBasicConfig().getPassword();;
     }
 
     @Override

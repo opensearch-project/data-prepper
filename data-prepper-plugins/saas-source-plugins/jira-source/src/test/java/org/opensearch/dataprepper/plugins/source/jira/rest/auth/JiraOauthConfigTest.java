@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -38,7 +39,13 @@ public class JiraOauthConfigTest {
     @Mock
     RestTemplate restTemplateMock;
 
-    JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+
+    JiraSourceConfig jiraSourceConfig;
+
+    @BeforeEach
+    void setUp() {
+        jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+    }
 
     @Test
     void testRenewToken() throws InterruptedException {

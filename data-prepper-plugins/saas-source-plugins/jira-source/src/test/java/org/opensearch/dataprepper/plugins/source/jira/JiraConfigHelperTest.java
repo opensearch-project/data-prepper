@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 
 import java.util.List;
@@ -22,6 +25,15 @@ public class JiraConfigHelperTest {
 
     @Mock
     JiraSourceConfig jiraSourceConfig;
+
+    @Mock
+    AuthenticationConfig authenticationConfig;
+
+    @Mock
+    BasicConfig basicConfig;
+
+    @Mock
+    Oauth2Config  oauth2Config;
 
     @Test
     void testInitialization() {
@@ -68,16 +80,18 @@ public class JiraConfigHelperTest {
     void testValidateConfigBasic() {
         when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
         when(jiraSourceConfig.getAuthType()).thenReturn(BASIC);
+        when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraId()).thenReturn("id");
+        when(basicConfig.getUsername()).thenReturn("id");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraCredential()).thenReturn("credential");
-        when(jiraSourceConfig.getJiraId()).thenReturn(null);
+        when(basicConfig.getPassword()).thenReturn("credential");
+        when(basicConfig.getUsername()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraId()).thenReturn("id");
+        when(basicConfig.getUsername()).thenReturn("id");
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 
@@ -85,16 +99,18 @@ public class JiraConfigHelperTest {
     void testValidateConfigOauth2() {
         when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
         when(jiraSourceConfig.getAuthType()).thenReturn(OAUTH2);
+        when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn("id");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getRefreshToken()).thenReturn("credential");
-        when(jiraSourceConfig.getAccessToken()).thenReturn(null);
+        when(oauth2Config.getRefreshToken()).thenReturn("credential");
+        when(oauth2Config.getAccessToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn("id");
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 }
