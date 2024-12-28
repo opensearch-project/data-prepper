@@ -22,21 +22,21 @@ public class StreamWorker {
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 60_000;
 
     private final EnhancedSourceCoordinator sourceCoordinator;
-    private final BinaryLogClient binaryLogClient;
+    private final ReplicationLogClient replicationLogClient;
     private final PluginMetrics pluginMetrics;
 
     StreamWorker(final EnhancedSourceCoordinator sourceCoordinator,
-                 final BinaryLogClient binaryLogClient,
+                 final ReplicationLogClient replicationLogClient,
                  final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
-        this.binaryLogClient = binaryLogClient;
+        this.replicationLogClient = replicationLogClient;
         this.pluginMetrics = pluginMetrics;
     }
 
     public static StreamWorker create(final EnhancedSourceCoordinator sourceCoordinator,
-                                      final BinaryLogClient binaryLogClient,
+                                      final ReplicationLogClient replicationLogClient,
                                       final PluginMetrics pluginMetrics) {
-        return new StreamWorker(sourceCoordinator, binaryLogClient, pluginMetrics);
+        return new StreamWorker(sourceCoordinator, replicationLogClient, pluginMetrics);
     }
 
     public void processStream(final StreamPartition streamPartition) {
@@ -51,16 +51,18 @@ public class StreamWorker {
             }
         }
 
-        setStartBinlogPosition(streamPartition);
+        if (replicationLogClient instanceof BinaryLogClient) {
+            setStartBinlogPosition(streamPartition);
+        }
 
         try {
             LOG.info("Connect to database to read change events.");
-            binaryLogClient.connect();
+            replicationLogClient.connect();
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             try {
-                binaryLogClient.disconnect();
+                replicationLogClient.disconnect();
             } catch (Exception e) {
                 LOG.error("Binary log client failed to disconnect.", e);
             }
@@ -90,6 +92,7 @@ public class StreamWorker {
             final String binlogFilename = startBinlogPosition.getBinlogFilename();
             final long binlogPosition = startBinlogPosition.getBinlogPosition();
             LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
+            BinaryLogClient binaryLogClient = (BinaryLogClient) replicationLogClient;
             binaryLogClient.setBinlogFilename(binlogFilename);
             binaryLogClient.setBinlogPosition(binlogPosition);
         }
