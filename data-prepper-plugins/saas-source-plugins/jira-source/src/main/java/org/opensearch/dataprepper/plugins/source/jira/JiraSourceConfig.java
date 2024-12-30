@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.time.Duration;
@@ -29,6 +30,9 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @Valid
     private AuthenticationConfig authenticationConfig;
 
+    @JsonProperty("filter")
+    private FilterConfig filterConfig;
+
     /**
      * List of projects to ingest
      */
@@ -44,19 +48,6 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @Size(max = 1000, message = "Issue type filter should be less than 1000")
     private List<String> issueType = new ArrayList<>();
 
-    /**
-     * Optional Inclusion patterns for filtering some tickets
-     */
-    @JsonProperty("inclusion_patterns")
-    @Size(max = 100, message = "inclusion pattern filters should not be more than 1000")
-    private List<String> inclusionPatterns;
-
-    /**
-     * Optional Exclusion patterns for excluding some tickets
-     */
-    @JsonProperty("exclusion_patterns")
-    @Size(max = 1000, message = "exclusion pattern filter should be less than 1000")
-    private List<String> exclusionPatterns;
 
     /**
      * Optional Status filter to ingest the tickets

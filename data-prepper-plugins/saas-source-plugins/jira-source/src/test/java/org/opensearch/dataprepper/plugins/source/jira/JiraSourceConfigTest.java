@@ -89,9 +89,7 @@ public class JiraSourceConfigTest {
     @Test
     void testGetters() throws JsonProcessingException {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
-        assertEquals(jiraSourceConfig.getInclusionPatterns(), inclusionPatternList);
         assertEquals(jiraSourceConfig.getIssueType(), issueTypeList);
-        assertEquals(jiraSourceConfig.getExclusionPatterns(), exclusionPatternList);
         assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
         assertEquals(jiraSourceConfig.getProject(), projectList);
         assertEquals(jiraSourceConfig.getStatus(), statusList);
