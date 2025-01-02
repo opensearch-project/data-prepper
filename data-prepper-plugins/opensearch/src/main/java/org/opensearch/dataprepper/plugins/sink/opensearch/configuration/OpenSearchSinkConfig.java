@@ -1,19 +1,24 @@
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
-import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.util.List;
 import java.util.Objects;
 
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_BULK_SIZE;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_FLUSH_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
+
 public class OpenSearchSinkConfig {
+
     @Getter
     @JsonProperty("hosts")
     private List<String> hosts;
@@ -45,7 +50,7 @@ public class OpenSearchSinkConfig {
 
     @Getter
     @JsonProperty("insecure")
-    private Boolean insecure = false;
+    private boolean insecure = false;
 
     @Getter
     @JsonProperty("proxy")
@@ -58,8 +63,9 @@ public class OpenSearchSinkConfig {
     @JsonProperty("enable_request_compression")
     private Boolean enableRequestCompression = null;
 
-    public Boolean getEnableRequestCompression(boolean defaultValue) {
-        return Objects.requireNonNullElse(enableRequestCompression, defaultValue);
+    public boolean getEnableRequestCompression() {
+        final DistributionVersion distributionVersion = DistributionVersion.fromTypeName(getDistributionVersion());
+        return Objects.requireNonNullElse(enableRequestCompression, !DistributionVersion.ES6.equals(distributionVersion));
     }
 
     @Getter
@@ -90,33 +96,21 @@ public class OpenSearchSinkConfig {
     @JsonProperty("number_of_replicas")
     private Integer numReplicas = 0;
 
+    @Getter
     @JsonProperty("bulk_size")
-    private Long bulkSize;
+    private Long bulkSize = DEFAULT_BULK_SIZE;
 
-    public Long getBulkSize(Long defaultBulkSize) {
-        return bulkSize == null ? defaultBulkSize : bulkSize;
-    }
-
+    @Getter
     @JsonProperty("estimate_bulk_size_using_compression")
-    private Boolean estimateBulkSizeUsingCompression;
+    private boolean estimateBulkSizeUsingCompression = DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
 
-    public Boolean getEstimateBulkSizeUsingCompression(boolean defaultValue) {
-        return Objects.requireNonNullElse(estimateBulkSizeUsingCompression, defaultValue);
-    }
-
+    @Getter
     @JsonProperty("max_local_compressions_for_estimation")
-    private Integer maxLocalCompressionsForEstimation;
+    private Integer maxLocalCompressionsForEstimation = DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
 
-    public Integer getMaxLocalCompressionsForEstimation(Integer defaultValue) {
-        return Objects.requireNonNullElse(maxLocalCompressionsForEstimation, defaultValue);
-    }
-
+    @Getter
     @JsonProperty("flush_timeout")
-    private Long flushTimeout = null;
-
-    public Long getFlushTimeout(Long defaultFlushTimeout) {
-        return flushTimeout == null ? defaultFlushTimeout : flushTimeout;
-    }
+    private Long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
 
     @Getter
     @JsonProperty("document_version_type")
@@ -128,7 +122,7 @@ public class OpenSearchSinkConfig {
 
     @Getter
     @JsonProperty("normalize_index")
-    private Boolean normalizeIndex = false;
+    private boolean normalizeIndex = false;
 
     @Getter
     @JsonProperty("document_id")
@@ -167,27 +161,22 @@ public class OpenSearchSinkConfig {
     @JsonProperty("dlq")
     private DlqConfiguration dlq;
 
-
-    public void validateConfig() {
-        isActionValid();
-        isDlqValid();
-    }
-
-    void isDlqValid() {
+    @AssertTrue(message = "dlq_file option cannot be used along with dlq option")
+    public boolean isDlqValid() {
         if (dlq != null) {
             if (dlqFile!= null) {
-                throw new IllegalArgumentException("dlq_file option cannot be used along with dlq option");
+                return false;
             }
         }
+        return true;
     }
 
-    void isActionValid() {
+    @AssertTrue(message = "action must be one of [index, create, update, upsert, delete]")
+    public boolean isActionValid() {
         if (EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action)) {
-            return;
+            return true;
         }
-
-        System.out.println(action);
-        throw new IllegalArgumentException("action must be one of [index, create, update, upsert, delete]");
+        return false;
     }
 
 }

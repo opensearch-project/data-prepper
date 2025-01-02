@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
@@ -227,7 +228,7 @@ public class ConnectionConfiguration {
     }
 
     final String certPath = openSearchSinkConfig.getCertPath();
-    final boolean insecure = openSearchSinkConfig.getInsecure();
+    final boolean insecure = openSearchSinkConfig.isInsecure();
     if (certPath != null) {
       builder = builder.withCert(certPath);
     } else {
@@ -239,9 +240,7 @@ public class ConnectionConfiguration {
       builder = builder.withProxy(proxy);
     }
 
-    final String distributionVersionName = openSearchSinkConfig.getDistributionVersion();
-    final DistributionVersion distributionVersion = DistributionVersion.fromTypeName(distributionVersionName);
-    final boolean requestCompressionEnabled = openSearchSinkConfig.getEnableRequestCompression(!DistributionVersion.ES6.equals(distributionVersion));
+    final boolean requestCompressionEnabled = openSearchSinkConfig.getEnableRequestCompression();
     builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
     return builder.build();

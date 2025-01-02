@@ -104,9 +104,6 @@ public final class BulkRetryStrategy {
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
-    private final String pluginId;
-    private final String pluginName;
-    private final String pipelineName;
     private final ObjectMapper objectMapper;
 
     private final Counter sentDocumentsCounter;
@@ -156,9 +153,6 @@ public final class BulkRetryStrategy {
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
         this.maxRetries = maxRetries;
-        this.pipelineName = pipelineName;
-        this.pluginId = pluginName;
-        this.pluginName = pluginName;
         this.objectMapper = new ObjectMapper();
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);

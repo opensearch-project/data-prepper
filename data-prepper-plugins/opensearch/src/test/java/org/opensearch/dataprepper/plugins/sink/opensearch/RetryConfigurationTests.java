@@ -10,6 +10,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.Test;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriterConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 
 import java.io.File;
 import java.io.IOException;

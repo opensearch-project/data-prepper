@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -44,7 +45,6 @@ public class OpenSearchSinkConfiguration {
   }
 
   public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator) {
-    openSearchSinkConfig.validateConfig();
     final ConnectionConfiguration connectionConfiguration =
             ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig, expressionEvaluator);

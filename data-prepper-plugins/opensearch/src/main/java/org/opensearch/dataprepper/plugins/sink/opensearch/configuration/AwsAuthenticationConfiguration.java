@@ -31,7 +31,7 @@ public class AwsAuthenticationConfiguration {
     private Map<String, String> awsStsHeaderOverrides;
 
     @JsonProperty("serverless")
-    private Boolean serverless = false;
+    private boolean serverless = false;
 
     @JsonProperty("serverless_options")
     private ServerlessOptions serverlessOptions;
@@ -52,7 +52,7 @@ public class AwsAuthenticationConfiguration {
         return awsStsHeaderOverrides;
     }
 
-    public Boolean isServerlessCollection() {
+    public boolean isServerlessCollection() {
         return serverless;
     }
 

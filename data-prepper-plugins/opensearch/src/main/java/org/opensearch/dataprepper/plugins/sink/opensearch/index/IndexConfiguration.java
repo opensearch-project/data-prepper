@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
-import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
@@ -218,12 +218,12 @@ public class IndexConfiguration {
 
         builder = builder.withNumShards(openSearchSinkConfig.getNumShards())
                 .withNumReplicas(openSearchSinkConfig.getNumReplicas())
-                .withBulkSize(openSearchSinkConfig.getBulkSize(DEFAULT_BULK_SIZE))
-                .withEstimateBulkSizeUsingCompression(openSearchSinkConfig.getEstimateBulkSizeUsingCompression(DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION))
-                .withMaxLocalCompressionsForEstimation(openSearchSinkConfig.getMaxLocalCompressionsForEstimation(DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION))
-                .withFlushTimeout(openSearchSinkConfig.getFlushTimeout(DEFAULT_FLUSH_TIMEOUT))
+                .withBulkSize(openSearchSinkConfig.getBulkSize())
+                .withEstimateBulkSizeUsingCompression(openSearchSinkConfig.isEstimateBulkSizeUsingCompression())
+                .withMaxLocalCompressionsForEstimation(openSearchSinkConfig.getMaxLocalCompressionsForEstimation())
+                .withFlushTimeout(openSearchSinkConfig.getFlushTimeout())
                 .withVersionType(openSearchSinkConfig.getVersionType())
-                .withNormalizeIndex(openSearchSinkConfig.getNormalizeIndex())
+                .withNormalizeIndex(openSearchSinkConfig.isNormalizeIndex())
                 .withIsmPolicyFile(openSearchSinkConfig.getIsmPolicyFile())
                 .withDocumentRootKey(openSearchSinkConfig.getDocumentRootKey())
                 .withDistributionVersion(openSearchSinkConfig.getDistributionVersion());
