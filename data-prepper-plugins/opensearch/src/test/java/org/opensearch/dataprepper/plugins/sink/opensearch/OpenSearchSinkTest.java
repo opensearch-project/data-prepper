@@ -246,7 +246,7 @@ public class OpenSearchSinkTest {
                     .thenReturn(UUID.randomUUID().toString());
 
             dlqObjectMockedStatic.when(DlqObject::builder).thenReturn(dlqObjectBuilder);
-            objectUnderTest.doOutput(List.of(eventRecord));
+            objectUnderTest.doOutput(List.of(eventRecord), null);
         }
 
         final FailedDlqData failedDlqDataResult = failedDlqData.getValue();
@@ -350,7 +350,7 @@ public class OpenSearchSinkTest {
                     .thenReturn(UUID.randomUUID().toString());
 
             dlqObjectMockedStatic.when(DlqObject::builder).thenReturn(dlqObjectBuilder);
-            objectUnderTest.doOutput(List.of(eventRecord));
+            objectUnderTest.doOutput(List.of(eventRecord), null);
         }
 
         final FailedDlqData failedDlqDataResult = failedDlqData.getValue();
