@@ -119,7 +119,7 @@ public class JiraServiceTest {
 
         Map<String, Object> nameMap = new HashMap<>();
         nameMap.put("include", projectKey);
-        projectMap.put("name", nameMap);
+        projectMap.put("key", nameMap);
         filterMap.put("project", projectMap);
 
 

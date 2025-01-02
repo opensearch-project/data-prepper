@@ -5,6 +5,6 @@ import lombok.Getter;
 
 @Getter
 public class ProjectConfig {
-    @JsonProperty("name")
+    @JsonProperty("key")
     private NameConfig nameConfig;
 }

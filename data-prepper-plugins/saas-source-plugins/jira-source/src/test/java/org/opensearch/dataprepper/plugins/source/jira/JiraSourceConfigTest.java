@@ -80,7 +80,7 @@ public class JiraSourceConfigTest {
 
         Map<String, Object> nameMap = new HashMap<>();
         nameMap.put("include", projectList);
-        projectMap.put("name", nameMap);
+        projectMap.put("key", nameMap);
         filterMap.put("project", projectMap);
 
         configMap.put("filter", filterMap);
