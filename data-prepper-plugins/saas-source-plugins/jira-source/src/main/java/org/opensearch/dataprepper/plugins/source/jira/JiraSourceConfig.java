@@ -2,14 +2,12 @@ package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -30,31 +28,13 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @Valid
     private AuthenticationConfig authenticationConfig;
 
+
+    /**
+     * Filter Config to filter what tickets get ingested
+     */
     @JsonProperty("filter")
     private FilterConfig filterConfig;
 
-    /**
-     * List of projects to ingest
-     */
-    @JsonProperty("projects")
-    @Size(max = 1000, message = "Project type filter should not be more than 1000")
-    private List<String> project = new ArrayList<>();
-
-    /**
-     * List of specific issue types to ingest.
-     * Ex: Story, Epic, Task etc
-     */
-    @JsonProperty("issue_types")
-    @Size(max = 1000, message = "Issue type filter should be less than 1000")
-    private List<String> issueType = new ArrayList<>();
-
-
-    /**
-     * Optional Status filter to ingest the tickets
-     */
-    @JsonProperty("statuses")
-    @Size(max = 1000, message = "Status filter should be less than 1000")
-    private List<String> status = new ArrayList<>();
 
     /**
      * Number of worker threads to spawn to parallel source fetching

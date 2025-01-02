@@ -25,9 +25,12 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PROJECT_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PROJECT_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.STATUS_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.STATUS_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.SUFFIX;
 
 
@@ -117,26 +120,41 @@ public class JiraService {
     private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration)) ) {
             validateProjectFilters(configuration);
         }
         StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
-            jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectKeyFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration))) {
+            jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeFilter(configuration))) {
-            jiraQl.append(ISSUE_TYPE_IN).append(JiraConfigHelper.getIssueTypeFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
+            jiraQl.append(PROJECT_NOT_IN).append(JiraConfigHelper.getProjectNameExcludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusFilter(configuration))) {
-            jiraQl.append(STATUS_IN).append(JiraConfigHelper.getIssueStatusFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeIncludeFilter(configuration))) {
+            jiraQl.append(ISSUE_TYPE_IN).append(JiraConfigHelper.getIssueTypeIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        log.trace("Created issue filter criteria JiraQl query: {}", jiraQl);
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeExcludeFilter(configuration))) {
+            jiraQl.append(ISSUE_TYPE_NOT_IN).append(JiraConfigHelper.getIssueTypeExcludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusIncludeFilter(configuration))) {
+            jiraQl.append(STATUS_IN).append(JiraConfigHelper.getIssueStatusIncludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusExcludeFilter(configuration))) {
+            jiraQl.append(STATUS_NOT_IN).append(JiraConfigHelper.getIssueStatusExcludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        log.error("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
 
@@ -149,7 +167,13 @@ public class JiraService {
         log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
-        JiraConfigHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {
+        JiraConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
+            Matcher matcher = regex.matcher(projectFilter);
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+                badFilters.add(projectFilter);
+            }
+        });
+        JiraConfigHelper.getProjectNameExcludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);

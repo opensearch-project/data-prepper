@@ -4,6 +4,7 @@ package org.opensearch.dataprepper.plugins.source.jira.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
@@ -14,18 +15,23 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAU
  */
 @Slf4j
 public class JiraConfigHelper {
-
-    public static final String ISSUE_STATUS_FILTER = "status";
-    public static final String ISSUE_TYPE_FILTER = "issuetype";
-
-
     /**
      * Get Issue Status Filter from repository configuration.
      *
      * @return List Issue Status Filter.
      */
-    public static List<String> getIssueStatusFilter(JiraSourceConfig repositoryConfiguration) {
-        return repositoryConfiguration.getStatus();
+    public static List<String> getIssueStatusIncludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getStatusConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getStatusConfig().getInclude();
+    }
+
+    public static List<String> getIssueStatusExcludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getStatusConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getStatusConfig().getExclude();
     }
 
     /**
@@ -33,8 +39,18 @@ public class JiraConfigHelper {
      *
      * @return List Issue Type Filter.
      */
-    public static List<String> getIssueTypeFilter(JiraSourceConfig repositoryConfiguration) {
-        return repositoryConfiguration.getIssueType();
+    public static List<String> getIssueTypeIncludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getIssueTypeConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getIssueTypeConfig().getInclude();
+    }
+
+    public static List<String> getIssueTypeExcludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getIssueTypeConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getIssueTypeConfig().getExclude();
     }
 
     /**
@@ -43,8 +59,22 @@ public class JiraConfigHelper {
      *
      * @return List Project Filter.
      */
-    public static List<String> getProjectKeyFilter(JiraSourceConfig repositoryConfiguration) {
-        return repositoryConfiguration.getProject();
+    public static List<String> getProjectNameIncludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getProjectConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig().getInclude();
+    }
+
+    public static List<String> getProjectNameExcludeFilter(JiraSourceConfig repositoryConfiguration) {
+        if (repositoryConfiguration.getFilterConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getProjectConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig() == null) {
+            return new ArrayList<>();
+        }
+        return repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig().getExclude();
     }
 
 
