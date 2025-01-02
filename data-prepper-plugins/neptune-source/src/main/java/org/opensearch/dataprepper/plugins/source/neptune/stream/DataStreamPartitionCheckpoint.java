@@ -48,6 +48,7 @@ public class DataStreamPartitionCheckpoint extends S3FolderPartitionCoordinator 
      * Note that this should be called on a regular basis even there are no changes to resume token
      * As the checkpoint will also extend the timeout for the lease
      *
+     * @param checkpointProgress checkpoint progress object, including info e.g. stream position, record count
      */
     public void checkpoint(final StreamCheckpoint checkpointProgress) {
         LOG.debug("Checkpoint stream partition with record number {}", checkpointProgress.getRecordCount());

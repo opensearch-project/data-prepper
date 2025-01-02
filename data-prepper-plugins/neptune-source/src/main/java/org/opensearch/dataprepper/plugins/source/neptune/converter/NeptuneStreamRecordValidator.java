@@ -29,8 +29,8 @@ import java.io.IOException;
 
 /**
  * Validates if the record from Neptune Streams is a valid record.
- * (1) If {@link NeptuneSourceConfig#isEnableNonStringIndexing()} is true, then all datatypes are valid and mapped to
- * OS datatypes as defined in https://docs.aws.amazon.com/neptune/latest/userguide/full-text-search-non-string-indexing-mapping.html.
+ * (1) If enableNonStringIndexing in {@link NeptuneSourceConfig} is true, then all datatypes are valid and mapped to
+ * OS datatypes as defined in <a href="https://docs.aws.amazon.com/neptune/latest/userguide/full-text-search-non-string-indexing-mapping.html">Mapping of SPARQL and Gremlin datatypes to OpenSearch</a>
  * (2) Otherwise, only String datatypes are supported and any non-string record is dropped.
  */
 public class NeptuneStreamRecordValidator {

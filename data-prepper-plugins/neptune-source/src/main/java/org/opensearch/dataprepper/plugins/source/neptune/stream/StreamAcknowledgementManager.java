@@ -7,7 +7,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.plugins.source.neptune.stream.model.StreamCheckpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 import java.time.Duration;
 import java.time.Instant;

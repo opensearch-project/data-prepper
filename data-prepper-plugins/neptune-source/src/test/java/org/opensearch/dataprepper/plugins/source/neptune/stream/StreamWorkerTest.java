@@ -3,7 +3,6 @@ package org.opensearch.dataprepper.plugins.source.neptune.stream;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,13 +13,9 @@ import org.opensearch.dataprepper.plugins.source.neptune.configuration.NeptuneSo
 import org.opensearch.dataprepper.plugins.source.neptune.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.neptune.coordination.state.StreamProgressState;
-import org.opensearch.dataprepper.plugins.source.neptune.model.S3PartitionStatus;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamWorker.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.source.neptune.stream.StreamWorker.BYTES_RECEIVED;
