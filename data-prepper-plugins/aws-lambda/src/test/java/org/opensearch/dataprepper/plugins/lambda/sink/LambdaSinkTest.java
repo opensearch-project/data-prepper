@@ -207,7 +207,7 @@ public class LambdaSinkTest {
 
             lambdaCommonHandler.when(() ->
                     LambdaCommonHandler.isSuccess(any(InvokeResponse.class))).thenReturn(true);
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
         }
@@ -281,7 +281,7 @@ public class LambdaSinkTest {
 
             lambdaCommonHandler.when(() ->
                     LambdaCommonHandler.isSuccess(any(InvokeResponse.class))).thenReturn(true);
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             verify(numberOfRecordsFailedCounter, times(1)).increment(1);
         }
