@@ -100,18 +100,6 @@ public class JiraRestClient {
         return invokeRestApi(uri, String.class).getBody();
     }
 
-    /**
-     * Gets project keys.
-     *
-     * @return the issue
-     */
-    @Timed(PROJECTS_FETCH_LATENCY_TIMER)
-    public String getProjects() {
-        String url = authConfig.getUrl() + REST_API_PROJECTS;
-        URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
-        return invokeRestApi(uri, String.class).getBody();
-    }
-
     private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException{
         AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
