@@ -106,12 +106,26 @@ public class JiraServiceTest {
         List<String> hosts = new ArrayList<>();
         hosts.add(ACCESSIBLE_RESOURCES);
 
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> projectMap = new HashMap<>();
+        Map<String, Object> issueTypeMap = new HashMap<>();
+        Map<String, Object> statusMap = new HashMap<>();
+
+        issueTypeMap.put("include", issueType);
+        filterMap.put("issue_type", issueTypeMap);
+
+        statusMap.put("include", issueStatus);
+        filterMap.put("status", statusMap);
+
+        Map<String, Object> nameMap = new HashMap<>();
+        nameMap.put("include", projectKey);
+        projectMap.put("name", nameMap);
+        filterMap.put("project", projectMap);
+
+
         jiraSourceConfigMap.put("hosts", hosts);
         jiraSourceConfigMap.put("authentication", authenticationMap);
-        jiraSourceConfigMap.put("issue_types", issueType);
-        jiraSourceConfigMap.put("statuses", issueStatus);
-        jiraSourceConfigMap.put("projects", projectKey);
-
+        jiraSourceConfigMap.put("filter", filterMap);
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);

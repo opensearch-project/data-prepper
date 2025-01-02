@@ -26,8 +26,6 @@ public class JiraSourceConfigTest {
     private final String accountUrl = "https://example.atlassian.net";
     private List<String> projectList = new ArrayList<>();
     private List<String> issueTypeList = new ArrayList<>();
-    private List<String> inclusionPatternList = new ArrayList<>();
-    private List<String> exclusionPatternList = new ArrayList<>();
     private List<String> statusList = new ArrayList<>();
     private JiraSourceConfig jiraSourceConfig;
 
@@ -62,23 +60,30 @@ public class JiraSourceConfigTest {
 
         projectList.add("project1");
         projectList.add("project2");
-        configMap.put("projects", projectList);
 
         issueTypeList.add("issue type 1");
         issueTypeList.add("issue type 2");
-        configMap.put("issue_types", issueTypeList);
-
-        inclusionPatternList.add("pattern 1");
-        inclusionPatternList.add("pattern 2");
-        configMap.put("inclusion_patterns", inclusionPatternList);
-
-        exclusionPatternList.add("pattern 3");
-        exclusionPatternList.add("pattern 4");
-        configMap.put("exclusion_patterns", exclusionPatternList);
 
         statusList.add("status 1");
         statusList.add("status 2");
-        configMap.put("statuses", statusList);
+
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> projectMap = new HashMap<>();
+        Map<String, Object> issueTypeMap = new HashMap<>();
+        Map<String, Object> statusMap = new HashMap<>();
+
+        issueTypeMap.put("include", issueTypeList);
+        filterMap.put("issue_type", issueTypeMap);
+
+        statusMap.put("include", statusList);
+        filterMap.put("status", statusMap);
+
+        Map<String, Object> nameMap = new HashMap<>();
+        nameMap.put("include", projectList);
+        projectMap.put("name", nameMap);
+        filterMap.put("project", projectMap);
+
+        configMap.put("filter", filterMap);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonConfig = objectMapper.writeValueAsString(configMap);
@@ -89,10 +94,10 @@ public class JiraSourceConfigTest {
     @Test
     void testGetters() throws JsonProcessingException {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
-        assertEquals(jiraSourceConfig.getIssueType(), issueTypeList);
+        assertEquals(jiraSourceConfig.getFilterConfig().getIssueTypeConfig().getInclude(), issueTypeList);
         assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
-        assertEquals(jiraSourceConfig.getProject(), projectList);
-        assertEquals(jiraSourceConfig.getStatus(), statusList);
+        assertEquals(jiraSourceConfig.getFilterConfig().getProjectConfig().getNameConfig().getInclude(), projectList);
+        assertEquals(jiraSourceConfig.getFilterConfig().getStatusConfig().getInclude(), statusList);
         assertEquals(jiraSourceConfig.getAccountUrl(), accountUrl);
         assertNotNull(jiraSourceConfig.getBackOff());
         assertEquals(jiraSourceConfig.getAuthenticationConfig().getBasicConfig().getPassword(), password);
