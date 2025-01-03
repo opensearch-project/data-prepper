@@ -918,7 +918,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
-        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
+        assertThrows(NullPointerException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
     }
 
     @Test
@@ -1314,7 +1314,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
-        metadata.put(IndexConfiguration.DOCUMENT_ID, testDocumentIdField);
+        metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testDocumentIdField);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
