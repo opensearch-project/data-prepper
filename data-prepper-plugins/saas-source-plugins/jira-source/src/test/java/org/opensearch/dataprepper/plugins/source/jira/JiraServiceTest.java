@@ -77,7 +77,6 @@ public class JiraServiceTest {
             return objectMapper.readValue(inputStream, JiraSourceConfig.class);
         } catch (IOException ex) {
             log.error("Failed to parse pipeline Yaml", ex);
-            System.out.println("mewo mewo mewo");
         }
         return null;
     }

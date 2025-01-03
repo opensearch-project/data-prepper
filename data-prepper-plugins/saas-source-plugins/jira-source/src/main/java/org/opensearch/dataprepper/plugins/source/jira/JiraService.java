@@ -14,8 +14,10 @@ import org.springframework.util.CollectionUtils;
 import javax.inject.Named;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -166,15 +168,21 @@ public class JiraService {
     private void validateProjectFilters(JiraSourceConfig configuration) {
         log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
+        Set<String> includedProjects = new HashSet<>();
+        List<String> includedAndExcludedProjects = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
         JiraConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
+            includedProjects.add(projectFilter);
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);
             }
         });
         JiraConfigHelper.getProjectNameExcludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
+            if (includedProjects.contains(projectFilter)) {
+                includedAndExcludedProjects.add(projectFilter);
+            }
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);
             }
@@ -186,6 +194,14 @@ public class JiraService {
                     "Invalid project key found in filter configuration for "
                     + filters);
         }
+        if (!includedAndExcludedProjects.isEmpty()) {
+            String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
+            log.error("One or more project keys found in both include and exclude: {}", includedAndExcludedProjects);
+            throw new BadRequestException("Bad request exception occurred " +
+                    "Project filters is invalid because the following projects are listed in both include and exclude"
+                    + filters);
+        }
+
     }
 
 }
