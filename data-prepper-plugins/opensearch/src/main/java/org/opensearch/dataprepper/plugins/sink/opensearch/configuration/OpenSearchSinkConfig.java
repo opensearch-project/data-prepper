@@ -142,9 +142,9 @@ public class OpenSearchSinkConfig {
     @AssertTrue(message = "action must be one of index, create, update, upsert, delete")
     boolean isActionValid() {
         if (action == null) {         //action will be null if the string doesn't match one of the enums
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     public String getAction() {

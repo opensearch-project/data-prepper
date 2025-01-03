@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 
 public class ActionConfiguration {
@@ -12,12 +11,12 @@ public class ActionConfiguration {
     @JsonProperty("type")
     private OpenSearchBulkActions type;
 
-    @AssertTrue(message = "type must be one of index, create, update, upsert, delete")
-    boolean isTypeValid() {
-        if (type == null) {         //type will be null if the string doesnt match one of the enums
-            return true;
+    @AssertTrue(message = "action must be one of index, create, update, upsert, delete")
+    boolean isActionValid() {
+        if (type == null) {         //type will be null if the string doesn't match one of the enums
+            return false;
         }
-        return false;
+        return true;
     }
 
     public String getType() {
