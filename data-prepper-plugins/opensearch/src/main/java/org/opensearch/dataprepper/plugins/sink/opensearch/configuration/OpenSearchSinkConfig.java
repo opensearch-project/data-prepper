@@ -136,9 +136,12 @@ public class OpenSearchSinkConfig {
     @JsonProperty("ism_policy_file")
     private String ismPolicyFile = null;
 
-    @Getter
     @JsonProperty("action")
-    private String action = OpenSearchBulkActions.INDEX.toString();
+    private OpenSearchBulkActions action = OpenSearchBulkActions.INDEX;
+
+    public String getAction() {
+        return action.toString();
+    }
 
     @Getter
     @Valid
@@ -169,14 +172,6 @@ public class OpenSearchSinkConfig {
             }
         }
         return true;
-    }
-
-    @AssertTrue(message = "action must be one of [index, create, update, upsert, delete]")
-    public boolean isActionValid() {
-        if (EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, action)) {
-            return true;
-        }
-        return false;
     }
 
 }

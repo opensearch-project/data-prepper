@@ -8,20 +8,16 @@ import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 
 public class ActionConfiguration {
-    @Getter
     @Size(min = 1, message = "type cannot be empty")
     @JsonProperty("type")
-    private String type;
+    private OpenSearchBulkActions type;
+
+    public String getType() {
+        return type.toString();
+    }
 
     @Getter
     @JsonProperty("when")
     private String when;
 
-    @AssertTrue(message = "type must be one of index, create, update, upsert, delete")
-    boolean isTypeValid() {
-        if (EnumUtils.isValidEnumIgnoreCase(OpenSearchBulkActions.class, type)) {
-            return true;
-        }
-        return false;
-    }
 }
