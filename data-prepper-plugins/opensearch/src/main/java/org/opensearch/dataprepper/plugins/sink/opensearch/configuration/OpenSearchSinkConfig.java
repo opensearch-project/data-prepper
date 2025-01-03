@@ -18,7 +18,7 @@ public class OpenSearchSinkConfig {
     public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
     public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
-    private static final String DEFAULT_AWS_REGION = "us-east-1";
+    public static final String DEFAULT_AWS_REGION = "us-east-1";
     @Getter
     @JsonProperty("hosts")
     private List<String> hosts;
