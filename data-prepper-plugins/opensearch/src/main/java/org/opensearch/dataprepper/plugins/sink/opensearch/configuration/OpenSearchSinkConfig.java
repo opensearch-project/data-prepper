@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
-import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
@@ -12,13 +11,11 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import java.util.List;
 import java.util.Objects;
 
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_BULK_SIZE;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_FLUSH_TIMEOUT;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
-
 public class OpenSearchSinkConfig {
-
+    public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
+    public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
+    public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     @Getter
     @JsonProperty("hosts")
     private List<String> hosts;

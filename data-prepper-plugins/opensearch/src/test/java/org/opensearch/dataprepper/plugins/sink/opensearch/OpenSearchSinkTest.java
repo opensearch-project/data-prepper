@@ -68,8 +68,8 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.DYNAMIC_INDEX_DROPPED_EVENTS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.INVALID_ACTION_ERRORS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.INVALID_VERSION_EXPRESSION_DROPPED_EVENTS;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_BULK_SIZE;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_FLUSH_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_BULK_SIZE;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_FLUSH_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 public class OpenSearchSinkTest {

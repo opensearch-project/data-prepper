@@ -37,6 +37,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_BULK_SIZE;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_FLUSH_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
 
 public class IndexConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(IndexConfiguration.class);
@@ -58,10 +62,6 @@ public class IndexConfiguration {
     public static final String ROUTING = "routing";
     public static final String PIPELINE = "pipeline";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
-    public static final long DEFAULT_BULK_SIZE = 5L;
-    public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
-    public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
-    public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String ACTIONS = "actions";
     public static final String SERVERLESS = "serverless";
