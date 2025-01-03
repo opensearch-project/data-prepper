@@ -859,7 +859,7 @@ public class OpenSearchSinkIT {
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
-        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE);
+        metadata.put(IndexConfiguration.ACTION, OpenSearchBulkActions.CREATE.toString());
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
@@ -934,7 +934,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.CREATE);
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -968,7 +968,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.CREATE);
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -989,7 +989,7 @@ public class OpenSearchSinkIT {
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson2(testIdField, testId, "name", "value2")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.UPDATE);
+        aMap.put("type", OpenSearchBulkActions.UPDATE.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -1028,7 +1028,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> actionMap = new HashMap<>();
-        actionMap.put("type", OpenSearchBulkActions.CREATE);
+        actionMap.put("type", OpenSearchBulkActions.CREATE.toString());
 
 
         aList.add(actionMap);
@@ -1056,7 +1056,7 @@ public class OpenSearchSinkIT {
         testRecords = Collections.singletonList(jsonStringToRecord(updateJsonEvent));
         aList = new ArrayList<>();
         actionMap = new HashMap<>();
-        actionMap.put("type", OpenSearchBulkActions.UPDATE);
+        actionMap.put("type", OpenSearchBulkActions.UPDATE.toString());
         aList.add(actionMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -1084,7 +1084,7 @@ public class OpenSearchSinkIT {
 
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> actionMap = new HashMap<>();
-        actionMap.put("type", OpenSearchBulkActions.UPSERT);
+        actionMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(actionMap);
 
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
@@ -1118,7 +1118,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.CREATE);
+        aMap.put("type", OpenSearchBulkActions.CREATE.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -1140,7 +1140,7 @@ public class OpenSearchSinkIT {
         testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson3(testIdField, testId, "name", "value3", "newKey", "newValue")));
         aList = new ArrayList<>();
         aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.UPSERT);
+        aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -1169,7 +1169,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.UPSERT);
+        aMap.put("type", OpenSearchBulkActions.UPSERT.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
@@ -1206,7 +1206,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
         List<Map<String, Object>> aList = new ArrayList<>();
         Map<String, Object> aMap = new HashMap<>();
-        aMap.put("type", OpenSearchBulkActions.DELETE);
+        aMap.put("type", OpenSearchBulkActions.DELETE.toString());
         aList.add(aMap);
         metadata.put(IndexConfiguration.ACTIONS, aList);
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
