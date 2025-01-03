@@ -12,6 +12,14 @@ public class ActionConfiguration {
     @JsonProperty("type")
     private OpenSearchBulkActions type;
 
+    @AssertTrue(message = "type must be one of index, create, update, upsert, delete")
+    boolean isTypeValid() {
+        if (type == null) {         //type will be null if the string doesnt match one of the enums
+            return true;
+        }
+        return false;
+    }
+
     public String getType() {
         return type.toString();
     }
