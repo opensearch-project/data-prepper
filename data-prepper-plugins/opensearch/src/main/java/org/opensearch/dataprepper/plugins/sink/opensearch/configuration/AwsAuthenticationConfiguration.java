@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;

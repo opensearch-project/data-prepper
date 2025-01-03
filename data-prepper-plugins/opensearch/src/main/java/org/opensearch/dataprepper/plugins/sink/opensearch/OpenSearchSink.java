@@ -115,6 +115,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final IndexType indexType;
   private final String documentIdField;
   private final String documentId;
+  private final String routingField;
   private final String routing;
   private final String pipeline;
   private final String action;
@@ -171,6 +172,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
+    this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.routing = openSearchSinkConfig.getIndexConfiguration().getRouting();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.actions = openSearchSinkConfig.getIndexConfiguration().getActions();
@@ -496,7 +498,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
 
     String routingValue = null;
-    if (routing != null) {
+    if (routingField != null) {
+      routingValue = event.get(routingField, String.class);
+    } else if (routing != null) {
       try {
         routingValue = event.formatString(routing, expressionEvaluator);
       } catch (final ExpressionEvaluationException | EventKeyNotFoundException e) {

@@ -31,8 +31,9 @@ import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ServerlessOptions;
+
 import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -209,6 +210,7 @@ public class ConnectionConfiguration {
 
     builder.withAwsSigv4(false);
     final AwsAuthenticationConfiguration awsAuthenticationConfiguration = openSearchSinkConfig.getAwsAuthenticationOptions();
+    boolean awsSigv4 = openSearchSinkConfig.isAwsSigv4();
     if (awsAuthenticationConfiguration != null) {
       builder = builder.withAwsSigv4(true)
               .withAwsRegion(awsAuthenticationConfiguration.getAwsRegion().toString())
@@ -223,7 +225,20 @@ public class ConnectionConfiguration {
                 .withServerlessCollectionName(serverlessOptions.getCollectionName())
                 .withServerlessVpceId(serverlessOptions.getVpceId());
       }
-    } else {
+    } else if (awsSigv4) {
+      builder = builder.withAwsSigv4(awsSigv4)
+              .withAwsRegion(openSearchSinkConfig.getAwsRegion())
+              .withAWSStsRoleArn(openSearchSinkConfig.getAwsStsRoleArn())
+              .withAWSStsExternalId(openSearchSinkConfig.getAwsStsExternalId())
+              .withAwsStsHeaderOverrides(openSearchSinkConfig.getAwsStsHeaderOverrides());
+
+      final ServerlessOptions serverlessOptions = openSearchSinkConfig.getServerlessOptions();
+      if (serverlessOptions != null) {
+        builder = builder.withServerlessNetworkPolicyName(serverlessOptions.getNetworkPolicyName())
+                .withServerlessCollectionName(serverlessOptions.getCollectionName())
+                .withServerlessVpceId(serverlessOptions.getVpceId());
+      }
+    }  else {
       builder.withServerless(false);
     }
 

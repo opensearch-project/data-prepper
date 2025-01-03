@@ -58,6 +58,7 @@ public class IndexConfiguration {
     public static final String ESTIMATE_BULK_SIZE_USING_COMPRESSION = "estimate_bulk_size_using_compression";
     public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
+    public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING = "routing";
     public static final String PIPELINE = "pipeline";
@@ -76,6 +77,7 @@ public class IndexConfiguration {
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final String documentId;
+    private final String routingField;
     private final String routing;
     private final long bulkSize;
     private final boolean estimateBulkSizeUsingCompression;
@@ -96,7 +98,6 @@ public class IndexConfiguration {
     private final boolean normalizeIndex;
 
     private static final String S3_PREFIX = "s3://";
-    private static final String DEFAULT_AWS_REGION = "us-east-1";
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
@@ -139,6 +140,7 @@ public class IndexConfiguration {
         this.estimateBulkSizeUsingCompression = builder.estimateBulkSizeUsingCompression;
         this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
         this.flushTimeout = builder.flushTimeout;
+        this.routingField = builder.routingField;
         this.routing = builder.routing;
 
         String documentIdField = builder.documentIdField;
@@ -207,12 +209,21 @@ public class IndexConfiguration {
         if (templateContent != null && templateFile != null) {
             LOG.warn("Both template_content and template_file are configured. Only template_content will be used");
         }
+
+        final String documentIdField = openSearchSinkConfig.getDocumentIdField();
         final String documentId = openSearchSinkConfig.getDocumentId();
-        if (documentId != null) {
+        if (documentIdField != null) {
+            LOG.warn("document_id_field is deprecated in favor of document_id, and support for document_id_field will be removed in a future major version release.");
+            builder = builder.withDocumentIdField(documentIdField);
+        } else if (documentId != null) {
             builder = builder.withDocumentId(documentId);
         }
+        final String routingField = openSearchSinkConfig.getRoutingField();
         final String routing = openSearchSinkConfig.getRouting();
-        if (routing != null) {
+        if (routingField != null) {
+            LOG.warn("routing_field is deprecated in favor of routing, and support for routing_field will be removed in a future major version release.");
+            builder = builder.withRoutingField(routingField);
+        } else if (routing != null) {
             builder = builder.withRouting(routing);
         }
 
@@ -286,6 +297,10 @@ public class IndexConfiguration {
     }
 
     public String getDocumentId() { return documentId; }
+
+    public String getRoutingField() {
+        return routingField;
+    }
 
     public String getRouting() {
         return routing;
@@ -416,6 +431,7 @@ public class IndexConfiguration {
         private String templateContent;
         private int numShards;
         private int numReplicas;
+        private String routingField;
         private String routing;
         private String pipeline;
         private String documentIdField;
@@ -480,6 +496,11 @@ public class IndexConfiguration {
         public Builder withDocumentId(final String documentId) {
             checkNotNull(documentId, "document_id cannot be null");
             this.documentId = documentId;
+            return this;
+        }
+
+        public Builder withRoutingField(final String routingField) {
+            this.routingField = routingField;
             return this;
         }
 
