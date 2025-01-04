@@ -48,8 +48,7 @@
          try {
              return Arn.fromString(awsStsRoleArn);
          } catch (final Exception e) {
-             throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
-         }
+             throw new IllegalArgumentException(String.format("The value provided for sts_role_arn is not a valid AWS ARN. Provided value: %s", awsStsRoleArn));         }
      }
 
      public String getAwsStsRoleArn() {

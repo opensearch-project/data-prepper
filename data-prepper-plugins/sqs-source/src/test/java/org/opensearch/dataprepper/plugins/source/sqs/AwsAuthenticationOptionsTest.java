@@ -87,12 +87,12 @@ class AwsAuthenticationOptionsTest {
 
         try (final MockedStatic<Arn> arnMockedStatic = mockStatic(Arn.class)) {
             arnMockedStatic.when(() -> Arn.fromString(invalidFormatArn))
-                    .thenThrow(new IllegalArgumentException("Invalid ARN format for awsStsRoleArn. Check the format of " + invalidFormatArn));
+                    .thenThrow(new IllegalArgumentException("The value provided for sts_role_arn is not a valid AWS ARN. Provided value: " + invalidFormatArn));
 
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
                 awsAuthenticationOptions.validateStsRoleArn();
             });
-            assertThat(exception.getMessage(), equalTo("Invalid ARN format for awsStsRoleArn. Check the format of " + invalidFormatArn));
+            assertThat(exception.getMessage(), equalTo("The value provided for sts_role_arn is not a valid AWS ARN. Provided value: " + invalidFormatArn));
         }
     }
 

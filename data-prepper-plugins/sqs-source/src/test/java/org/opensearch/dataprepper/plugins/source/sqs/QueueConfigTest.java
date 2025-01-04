@@ -21,6 +21,6 @@ public class QueueConfigTest {
         assertFalse(queueConfig.getVisibilityDuplicateProtection(), "Visibility duplicate protection should default to false");
         assertEquals(Duration.ofHours(2), queueConfig.getVisibilityDuplicateProtectionTimeout(),
                 "Visibility duplicate protection timeout should default to 2 hours");
-        assertEquals(Duration.ofSeconds(20), queueConfig.getWaitTime(), "Wait time should default to 20 seconds");
+        assertNull(queueConfig.getWaitTime(), "Wait time should default to null");
     }
 }

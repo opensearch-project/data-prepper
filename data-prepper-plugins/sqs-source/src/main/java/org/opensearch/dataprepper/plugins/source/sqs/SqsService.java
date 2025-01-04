@@ -69,9 +69,11 @@
 
         sqsSourceConfig.getQueues().forEach(queueConfig -> {
             String queueUrl = queueConfig.getUrl();
+            String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
+
             int numWorkers = queueConfig.getNumWorkers();
             ExecutorService executorService = Executors.newFixedThreadPool(
-                    numWorkers, BackgroundThreadFactory.defaultExecutorThreadFactory("sqs-source-new-" + queueUrl));
+                    numWorkers, BackgroundThreadFactory.defaultExecutorThreadFactory("sqs-source" + queueName));
             allSqsUrlExecutorServices.add(executorService);
             List<SqsWorker> workers = IntStream.range(0, numWorkers)
                     .mapToObj(i -> new SqsWorker(

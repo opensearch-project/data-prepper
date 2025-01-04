@@ -87,6 +87,7 @@ class SqsWorkerTest {
     private Counter sqsVisibilityTimeoutChangedCount;
     @Mock
     private Counter sqsVisibilityTimeoutChangeFailedCount;
+    private int mockBufferTimeoutMillis = 10000;
 
     private SqsWorker createObjectUnderTest() {
         return new SqsWorker(
@@ -110,7 +111,7 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangedCount);
         when(pluginMetrics.counter(SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangeFailedCount);
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(false);
-        when(sqsSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(100);
+        when(sqsSourceConfig.getBufferTimeout()).thenReturn(Duration.ofSeconds(10));
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         when(queueConfig.getWaitTime()).thenReturn(Duration.ofSeconds(1));
     }
@@ -163,7 +164,7 @@ class SqsWorkerTest {
         int messagesProcessed = sqsWorker.processSqsMessages();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(sqsEventProcessor, times(1)).addSqsObject(eq(message), eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"), any(), isNull());
+        verify(sqsEventProcessor, times(1)).addSqsObject(eq(message), eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"), eq(buffer), eq(mockBufferTimeoutMillis), isNull());
         verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter).increment(1);
         verify(sqsMessagesDeletedCounter).increment(1);
@@ -177,7 +178,7 @@ class SqsWorkerTest {
         SqsWorker sqsWorker = createObjectUnderTest();
         int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
-        verify(sqsEventProcessor, never()).addSqsObject(any(), anyString(), any(), any());
+        verify(sqsEventProcessor, never()).addSqsObject(any(), anyString(), any(), anyInt(), any());
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter, never()).increment(anyDouble());
         verify(sqsMessagesDeletedCounter, never()).increment(anyDouble());
@@ -201,9 +202,10 @@ class SqsWorkerTest {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(response);
         int messagesProcessed = createObjectUnderTest().processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
-        verify(sqsEventProcessor).addSqsObject(eq(message),
+        verify(sqsEventProcessor, times(1)).addSqsObject(eq(message),
                 eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"),
-                any(),
+                eq(buffer),
+                eq(mockBufferTimeoutMillis),
                 eq(acknowledgementSet));
         verify(sqsMessagesReceivedCounter).increment(1);
         verifyNoInteractions(sqsMessagesDeletedCounter);
@@ -264,7 +266,7 @@ class SqsWorkerTest {
         final int messagesProcessed = createObjectUnderTest().processSqsMessages();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(sqsEventProcessor).addSqsObject(any(), anyString(), any(), any());
+        verify(sqsEventProcessor).addSqsObject(any(), anyString(), any(), anyInt(), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
 
         ArgumentCaptor<Consumer<ProgressCheck>> progressConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -300,9 +302,10 @@ class SqsWorkerTest {
         sqsWorker.stop();
         int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
-        verify(sqsEventProcessor).addSqsObject(eq(message),
+        verify(sqsEventProcessor, times(1)).addSqsObject(eq(message),
                 eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"),
-                any(),
+                eq(buffer),
+                eq(mockBufferTimeoutMillis),
                 eq(mockAcknowledgementSet));
         verify(sqsClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
         verify(sqsVisibilityTimeoutChangeFailedCount, never()).increment();
@@ -362,7 +365,7 @@ class SqsWorkerTest {
         );
         doThrow(new RuntimeException("Processing failed")).when(sqsEventProcessor)
                 .addSqsObject(eq(message), eq("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"),
-                        any(), any());
+                        any(), anyInt(), any());
         SqsWorker sqsWorker = createObjectUnderTest();
         int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));

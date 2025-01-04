@@ -16,15 +16,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
-import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 
 import java.time.Duration;
@@ -61,7 +61,8 @@ public class SqsWorker implements Runnable {
     private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private volatile boolean isStopped = false;
-    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final Buffer<Record<Event>> buffer;
+    private final int bufferTimeoutMillis;
     private Map<Message, Integer> messageVisibilityTimesMap;
 
     public SqsWorker(final Buffer<Record<Event>> buffer,
@@ -79,12 +80,11 @@ public class SqsWorker implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
-        this.bufferAccumulator = BufferAccumulator.create(buffer, sqsSourceConfig.getNumberOfRecordsToAccumulate(), sqsSourceConfig.getBufferTimeout());
+        this.buffer = buffer;
+        this.bufferTimeoutMillis = (int) sqsSourceConfig.getBufferTimeout().toMillis();
 
         messageVisibilityTimesMap = new HashMap<>();
-
         failedAttemptCount = 0;
-
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
@@ -131,9 +131,11 @@ public class SqsWorker implements Runnable {
     private List<Message> getMessagesFromSqs() {
         try {
             final ReceiveMessageRequest request = createReceiveMessageRequest();
-            final List<Message> messages = sqsClient.receiveMessage(request).messages();
+            final ReceiveMessageResponse response = sqsClient.receiveMessage(request);
+            List<Message> messages = response.messages();
             failedAttemptCount = 0;
             return messages;
+
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
             applyBackoff();
@@ -160,16 +162,18 @@ public class SqsWorker implements Runnable {
     private ReceiveMessageRequest createReceiveMessageRequest() {
         ReceiveMessageRequest.Builder requestBuilder = ReceiveMessageRequest.builder()
                 .queueUrl(queueConfig.getUrl())
-                .waitTimeSeconds((int) queueConfig.getWaitTime().getSeconds());
+                .attributeNamesWithStrings("All")
+                .messageAttributeNames("All");
 
+        if (queueConfig.getWaitTime() != null) {
+            requestBuilder.waitTimeSeconds((int) queueConfig.getWaitTime().getSeconds());
+        }
         if (queueConfig.getMaximumMessages() != null) {
             requestBuilder.maxNumberOfMessages(queueConfig.getMaximumMessages());
         }
-
         if (queueConfig.getVisibilityTimeout() != null) {
             requestBuilder.visibilityTimeout((int) queueConfig.getVisibilityTimeout().getSeconds());
         }
-
         return requestBuilder.build();
     }
 
@@ -244,14 +248,6 @@ public class SqsWorker implements Runnable {
             }
         }
 
-        if (!messages.isEmpty()) {
-            try {
-                bufferAccumulator.flush();
-            } catch (final Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
         return deleteMessageBatchRequestEntryCollection;
     }
 
@@ -260,7 +256,7 @@ public class SqsWorker implements Runnable {
             final Message message,
             final AcknowledgementSet acknowledgementSet) {
         try {
-            sqsEventProcessor.addSqsObject(message, queueConfig.getUrl(), bufferAccumulator, acknowledgementSet);
+            sqsEventProcessor.addSqsObject(message, queueConfig.getUrl(), buffer, bufferTimeoutMillis, acknowledgementSet);
             return Optional.of(buildDeleteMessageBatchRequestEntry(message));
         } catch (final Exception e) {
             sqsMessagesFailedCounter.increment();

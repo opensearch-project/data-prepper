@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,10 +19,10 @@ import org.hibernate.validator.constraints.time.DurationMin;
 public class QueueConfig {
 
     private static final Integer DEFAULT_MAXIMUM_MESSAGES = null;
-    private static final Boolean DEFAULT_VISIBILITY_DUPLICATE_PROTECTION = false;
+    private static final boolean DEFAULT_VISIBILITY_DUPLICATE_PROTECTION = false;
     private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = null;
     private static final Duration DEFAULT_VISIBILITY_DUPLICATE_PROTECTION_TIMEOUT = Duration.ofHours(2);
-    private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
+    private static final Duration DEFAULT_WAIT_TIME_SECONDS = null;
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
     static final int DEFAULT_NUMBER_OF_WORKERS = 1;
 
@@ -45,7 +50,7 @@ public class QueueConfig {
 
     @JsonProperty("visibility_duplication_protection")
     @NotNull
-    private Boolean visibilityDuplicateProtection = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION;
+    private boolean visibilityDuplicateProtection = DEFAULT_VISIBILITY_DUPLICATE_PROTECTION;
 
     @JsonProperty("visibility_duplicate_protection_timeout")
     @DurationMin(seconds = 30)
@@ -73,7 +78,7 @@ public class QueueConfig {
         return visibilityTimeout;
     }
 
-    public Boolean getVisibilityDuplicateProtection() {
+    public boolean getVisibilityDuplicateProtection() {
         return visibilityDuplicateProtection;
     }
 

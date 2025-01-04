@@ -1,76 +1,51 @@
 package org.opensearch.dataprepper.plugins.source.sqs;
 
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.Message;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.time.Instant;
-import java.util.Objects;
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 
-/**
- * Implements the SqsMessageHandler to read and parse SQS messages generically and push to buffer.
- */
+import java.util.Collections;
+import java.util.Map;
+
 public class RawSqsMessageHandler implements SqsMessageHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(RawSqsMessageHandler.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Processes the SQS message, attempting to parse it as JSON, and adds it to the buffer.
-     *
-     * @param message            - the SQS message for processing
-     * @param url                - the SQS queue url
-     * @param bufferAccumulator  - the buffer accumulator
-     * @param acknowledgementSet - the acknowledgement set for end-to-end acknowledgements
-     */
     @Override
     public void handleMessage(final Message message,
-                              final String url, 
-                              final BufferAccumulator<Record<Event>> bufferAccumulator,
+                              final String url,
+                              final Buffer<Record<Event>> buffer,
+                              final int bufferTimeoutMillis,
                               final AcknowledgementSet acknowledgementSet) {
         try {
-            ObjectNode dataNode = objectMapper.createObjectNode();
-            dataNode.set("message", parseMessageBody(message.body()));
-            dataNode.put("queueUrl", url);
-
-            Instant now = Instant.now();
-            int unixTimestamp = (int) now.getEpochSecond(); 
-            dataNode.put("sentTimestamp", unixTimestamp);
-
-            final Record<Event> event = new Record<Event>(JacksonEvent.builder()
-                .withEventType("sqs-event")
-                .withData(dataNode)
-                .build());
-
-            if (Objects.nonNull(acknowledgementSet)) {
-                acknowledgementSet.add(event.getData());
+            final Map<MessageSystemAttributeName, String> systemAttributes = message.attributes();
+            final Map<String, MessageAttributeValue> customAttributes = message.messageAttributes();
+            final Event event = JacksonEvent.builder()
+                    .withEventType("DOCUMENT")
+                    .withData(Collections.singletonMap("message", message.body()))
+                    .build();
+            final EventMetadata eventMetadata = event.getMetadata();
+            eventMetadata.setAttribute("url", url);
+            final String sentTimestamp = systemAttributes.get(MessageSystemAttributeName.SENT_TIMESTAMP);
+            eventMetadata.setAttribute("SentTimestamp", sentTimestamp);
+            for (Map.Entry<String, MessageAttributeValue> entry : customAttributes.entrySet()) {
+                eventMetadata.setAttribute(entry.getKey(), entry.getValue().stringValue());
             }
-
-            bufferAccumulator.add(new Record<>(event.getData()));
-
+            if (acknowledgementSet != null) {
+                acknowledgementSet.add(event);
+            }
+            buffer.write(new Record<>(event), bufferTimeoutMillis);
         } catch (Exception e) {
             LOG.error("Error processing SQS message: {}", e.getMessage(), e);
             throw new RuntimeException(e);
-        }
-    }
-
-    JsonNode parseMessageBody(String messageBody) {
-        try {
-            return objectMapper.readTree(messageBody);
-        } catch (Exception e) {
-            return objectMapper.getNodeFactory().textNode(messageBody);
         }
     }
 }
