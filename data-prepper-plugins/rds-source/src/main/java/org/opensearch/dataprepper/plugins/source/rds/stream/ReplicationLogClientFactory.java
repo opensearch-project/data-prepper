@@ -10,8 +10,12 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import software.amazon.awssdk.services.rds.RdsClient;
+
+import java.util.List;
+import java.util.NoSuchElementException;
 
 public class ReplicationLogClientFactory {
 
@@ -31,33 +35,46 @@ public class ReplicationLogClientFactory {
         engineType = sourceConfig.getEngine();
         username = sourceConfig.getAuthenticationConfig().getUsername();
         password = sourceConfig.getAuthenticationConfig().getPassword();
-        database = "my_db";  // TODO: extact database name from source config
+        if (sourceConfig.getEngine() == EngineType.POSTGRES) {
+            database = getDatabaseName(sourceConfig.getTableNames());
+        }
     }
 
-    public ReplicationLogClient create() {
+    public ReplicationLogClient create(StreamPartition streamPartition) {
         if (engineType == EngineType.MYSQL) {
-            BinaryLogClient binaryLogClient = new BinaryLogClient(
-                    dbMetadata.getEndpoint(),
-                    dbMetadata.getPort(),
-                    username,
-                    password);
-            binaryLogClient.setSSLMode(sslMode);
-            final EventDeserializer eventDeserializer = new EventDeserializer();
-            eventDeserializer.setCompatibilityMode(
-                    EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
-            );
-            binaryLogClient.setEventDeserializer(eventDeserializer);
-            return new BinlogClientWrapper(binaryLogClient);
-        } else if (engineType == EngineType.POSTGRES) {
-            return new LogicalReplicationClient(
-                    dbMetadata.getEndpoint(),
-                    dbMetadata.getPort(),
-                    username,
-                    password,
-                    database);
-        } else {
-            throw new UnsupportedOperationException("Unsupported engine type: " + engineType);
+            return new BinlogClientWrapper(createBinaryLogClient());
+        } else { // Postgres
+            return createLogicalReplicationClient(streamPartition);
         }
+    }
+
+    private BinaryLogClient createBinaryLogClient() {
+        BinaryLogClient binaryLogClient = new BinaryLogClient(
+                dbMetadata.getEndpoint(),
+                dbMetadata.getPort(),
+                username,
+                password);
+        binaryLogClient.setSSLMode(sslMode);
+        final EventDeserializer eventDeserializer = new EventDeserializer();
+        eventDeserializer.setCompatibilityMode(
+                EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG
+        );
+        binaryLogClient.setEventDeserializer(eventDeserializer);
+        return binaryLogClient;
+    }
+
+    private LogicalReplicationClient createLogicalReplicationClient(StreamPartition streamPartition) {
+        final String replicationSlotName = streamPartition.getProgressState().get().getReplicationSlotName();
+        if (replicationSlotName == null) {
+            throw new NoSuchElementException("Replication slot name is not found in progress state.");
+        }
+        return new LogicalReplicationClient(
+                dbMetadata.getEndpoint(),
+                dbMetadata.getPort(),
+                username,
+                password,
+                database,
+                replicationSlotName);
     }
 
     public void setSSLMode(SSLMode sslMode) {
@@ -67,5 +84,9 @@ public class ReplicationLogClientFactory {
     public void setCredentials(String username, String password) {
         this.username = username;
         this.password = password;
+    }
+
+    private String getDatabaseName(List<String> tableNames) {
+        return tableNames.get(0).split("\\.")[0];
     }
 }

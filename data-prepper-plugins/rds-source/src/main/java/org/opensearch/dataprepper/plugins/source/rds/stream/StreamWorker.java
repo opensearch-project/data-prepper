@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +52,10 @@ public class StreamWorker {
             }
         }
 
-        if (replicationLogClient instanceof BinaryLogClient) {
+        if (replicationLogClient instanceof BinlogClientWrapper) {
             setStartBinlogPosition(streamPartition);
+        } else {
+            setStartLsn(streamPartition);
         }
 
         try {
@@ -92,9 +95,20 @@ public class StreamWorker {
             final String binlogFilename = startBinlogPosition.getBinlogFilename();
             final long binlogPosition = startBinlogPosition.getBinlogPosition();
             LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
-            BinaryLogClient binaryLogClient = (BinaryLogClient) replicationLogClient;
+            BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.setBinlogFilename(binlogFilename);
             binaryLogClient.setBinlogPosition(binlogPosition);
+        }
+    }
+
+    private void setStartLsn(final StreamPartition streamPartition) {
+        final String startLsn = streamPartition.getProgressState().get().getCurrentLsn();
+        LOG.debug("Will start replication stream from LSN {}.", startLsn);
+
+        if (startLsn != null) {
+            LOG.debug("Will start logical replication from LSN {}", startLsn);
+            LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
+            logicalReplicationClient.setStartLsn(LogSequenceNumber.valueOf(startLsn));
         }
     }
 }

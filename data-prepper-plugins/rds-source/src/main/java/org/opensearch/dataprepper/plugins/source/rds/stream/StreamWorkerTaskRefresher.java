@@ -121,9 +121,9 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         final DbTableMetadata dbTableMetadata = getDBTableMetadata(streamPartition);
         final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
 
-        final ReplicationLogClient replicationLogClient = replicationLogClientFactory.create();
+        final ReplicationLogClient replicationLogClient = replicationLogClientFactory.create(streamPartition);
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final BinaryLogClient binaryLogClient = (BinaryLogClient) replicationLogClient;
+            final BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.registerEventListener(BinlogEventListener.create(
                     streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                     streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));

@@ -16,6 +16,12 @@ public class StreamProgressState {
     @JsonProperty("currentPosition")
     private BinlogCoordinate currentPosition;
 
+    @JsonProperty("currentLsn")
+    private String currentLsn;
+
+    @JsonProperty("replicationSlotName")
+    private String replicationSlotName;
+
     @JsonProperty("waitForExport")
     private boolean waitForExport = false;
 
@@ -26,8 +32,20 @@ public class StreamProgressState {
         return currentPosition;
     }
 
+    public String getCurrentLsn() {
+        return currentLsn;
+    }
+
+    public String getReplicationSlotName() {
+        return replicationSlotName;
+    }
+
     public void setCurrentPosition(BinlogCoordinate currentPosition) {
         this.currentPosition = currentPosition;
+    }
+
+    public void setReplicationSlotName(String replicationSlotName) {
+        this.replicationSlotName = replicationSlotName;
     }
 
     public boolean shouldWaitForExport() {

@@ -28,7 +28,10 @@ import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.stream.ReplicationLogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
@@ -103,10 +106,12 @@ public class RdsService {
                 new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
         final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
         final String s3PathPrefix = getS3PathPrefix();
+
         final SchemaManager schemaManager = getSchemaManager(sourceConfig, dbMetadata);
         DbTableMetadata dbTableMetadata;
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(schemaManager);
+            final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(
+                    (MySqlSchemaManager) schemaManager);
             dbTableMetadata  = new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
         } else {
             dbTableMetadata = new DbTableMetadata(dbMetadata, Collections.emptyMap());
@@ -173,13 +178,29 @@ public class RdsService {
     }
 
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
-        final ConnectionManager connectionManager = new ConnectionManager(
+        // For MySQL
+        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+            final ConnectionManager connectionManager = new ConnectionManager(
+                    "127.0.0.1",
+                    5432,
+                    sourceConfig.getAuthenticationConfig().getUsername(),
+                    sourceConfig.getAuthenticationConfig().getPassword(),
+                    sourceConfig.isTlsEnabled());
+            return new MySqlSchemaManager(connectionManager);
+        }
+        // For Postgres
+        final PostgresConnectionManager connectionManager = new PostgresConnectionManager(
                 "127.0.0.1",
                 5432,
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
-                sourceConfig.isTlsEnabled());
-        return new SchemaManager(connectionManager);
+                sourceConfig.isTlsEnabled(),
+                getDatabaseName(sourceConfig.getTableNames()));
+        return new PostgresSchemaManager(connectionManager);
+    }
+
+    private String getDatabaseName(List<String> tableNames) {
+        return tableNames.get(0).split("\\.")[0];
     }
 
     private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
@@ -212,13 +233,11 @@ public class RdsService {
         return s3PathPrefix;
     }
 
-    private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
+    private Map<String, Map<String, String>> getColumnDataTypeMap(final MySqlSchemaManager schemaManager) {
         return sourceConfig.getTableNames().stream()
                 .collect(Collectors.toMap(
                         fullTableName -> fullTableName,
                         fullTableName -> schemaManager.getColumnDataTypes(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
                 ));
     }
-
-
 }
