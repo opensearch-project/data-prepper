@@ -21,7 +21,7 @@ import java.util.List;
  */
 
 @JsonPropertyOrder
-@JsonClassDescription("The CSV processor parses comma-separated values (CSVs) strings into structured data.")
+@JsonClassDescription("The <code>csv</code> processor parses comma-separated values (CSVs) strings into structured data.")
 public class CsvProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DELIMITER = ",";

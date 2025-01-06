@@ -17,7 +17,7 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The substitute string processor matches a key’s value against a regular expression and " +
+@JsonClassDescription("The <code>substitute_string</code> processor matches a key’s value against a regular expression and " +
         "replaces all matches with a replacement string.")
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
     @JsonPropertyOrder

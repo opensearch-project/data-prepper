@@ -22,7 +22,7 @@ import org.opensearch.dataprepper.plugins.processor.obfuscation.action.Obfuscati
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The obfuscate processor enables obfuscation of fields inside your documents in order to " +
+@JsonClassDescription("The <code>obfuscate</code> processor enables obfuscation of fields inside your documents in order to " +
         "protect sensitive data.")
 public class ObfuscationProcessorConfig {
 

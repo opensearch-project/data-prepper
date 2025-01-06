@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter;
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The date processor adds a default timestamp to an event, parses timestamp fields, " +
+@JsonClassDescription("The <code>date</code> processor adds a default timestamp to an event, parses timestamp fields, " +
         "and converts timestamp information to the International Organization for Standardization (ISO) 8601 format. " +
         "This timestamp information can be used as an event timestamp.")
 public class DateProcessorConfig {

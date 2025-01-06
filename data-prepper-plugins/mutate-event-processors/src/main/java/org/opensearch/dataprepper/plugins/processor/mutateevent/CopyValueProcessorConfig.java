@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The copy values processor copies values within an event to other fields within the event.")
+@JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
 public class CopyValueProcessorConfig {
     static final String FROM_LIST_KEY = "from_list";
     static final String TO_LIST_KEY = "to_list";

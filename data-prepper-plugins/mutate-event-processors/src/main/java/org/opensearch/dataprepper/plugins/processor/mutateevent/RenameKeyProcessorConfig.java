@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 @JsonPropertyOrder
-@JsonClassDescription("The rename keys processor renames keys in an event.")
+@JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")
 public class RenameKeyProcessorConfig {
     @JsonPropertyOrder
     public static class Entry {

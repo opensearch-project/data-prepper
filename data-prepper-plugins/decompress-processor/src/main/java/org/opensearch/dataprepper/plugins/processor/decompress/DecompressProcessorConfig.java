@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.plugins.processor.decompress.encoding.DecoderE
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The decompress processor decompresses any Base64-encoded " +
+@JsonClassDescription("The <code>decompress</code> processor decompresses any Base64-encoded " +
         "compressed fields inside of an event.")
 public class DecompressProcessorConfig {
 

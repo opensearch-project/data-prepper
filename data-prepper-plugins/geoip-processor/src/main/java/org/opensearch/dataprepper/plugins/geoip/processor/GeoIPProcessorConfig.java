@@ -21,7 +21,7 @@ import java.util.List;
  * An implementation class of GeoIP Processor configuration
  */
 @JsonPropertyOrder
-@JsonClassDescription("The geoip processor enriches events with geographic information extracted from IP addresses " +
+@JsonClassDescription("The <code>geoip</code> processor enriches events with geographic information extracted from IP addresses " +
         "contained in the events.")
 public class GeoIPProcessorConfig {
 

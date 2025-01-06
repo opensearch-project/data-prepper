@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
         )
 })
 @JsonPropertyOrder
-@JsonClassDescription("The list to map processor converts a list of objects from an event, " +
+@JsonClassDescription("The <code>list_to_map</code> processor converts a list of objects from an event, " +
         "where each object contains a <code>key</code> field, into a map of target keys.")
 public class ListToMapProcessorConfig {
     public enum FlattenedElement {

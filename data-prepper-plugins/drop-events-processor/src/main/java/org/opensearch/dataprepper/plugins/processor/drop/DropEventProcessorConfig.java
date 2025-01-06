@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.HandleFailedEventsOption;
 
 @JsonPropertyOrder
-@JsonClassDescription("The drop events processor conditionally drops events.")
+@JsonClassDescription("The <code>drop_events</code> processor conditionally drops events.")
 public class DropEventProcessorConfig {
 
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/log_type == \"DEBUG\"</code>. " +

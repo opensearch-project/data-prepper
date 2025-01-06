@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The flatten processor transforms nested objects inside of events into flattened structures.")
+@JsonClassDescription("The <code>flatten</code> processor transforms nested objects inside of events into flattened structures.")
 public class FlattenProcessorConfig {
     static final String REMOVE_LIST_INDICES_KEY = "remove_list_indices";
 

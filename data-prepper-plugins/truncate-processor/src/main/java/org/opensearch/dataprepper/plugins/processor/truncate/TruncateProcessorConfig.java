@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The truncate processor truncates a key's value at the beginning, the end, " +
+@JsonClassDescription("The <code>truncate</code> processor truncates a key's value at the beginning, the end, " +
         "or on both sides of the value string, based on the processor’s configuration.")
 public class TruncateProcessorConfig {
     public static class Entry {
