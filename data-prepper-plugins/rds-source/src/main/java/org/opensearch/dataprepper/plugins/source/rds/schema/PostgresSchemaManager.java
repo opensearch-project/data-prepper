@@ -48,9 +48,9 @@ public class PostgresSchemaManager implements SchemaManager {
                         .withSlotName(slotName)
                         .withOutputPlugin("pgoutput")
                         .make();
-                LOG.info("Replication slot created successfully.");
+                LOG.info("Replication slot {} created successfully. ", slotName);
             } catch (Exception e) {
-                LOG.info("Failed to create replication slot: {}", e.getMessage());
+                LOG.info("Failed to create replication slot {}: {}", slotName, e.getMessage());
             }
         } catch (Exception e) {
             LOG.error("Exception when creating replication slot. ", e);

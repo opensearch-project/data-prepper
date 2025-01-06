@@ -21,9 +21,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PostgresReplicationEventProcessor {
+public class LogicalReplicationEventProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PostgresReplicationEventProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationEventProcessor.class);
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
@@ -39,10 +39,10 @@ public class PostgresReplicationEventProcessor {
 
     private Map<Long, TableMetadata> tableMetadataMap;
 
-    public PostgresReplicationEventProcessor(final StreamPartition streamPartition,
-                                             final RdsSourceConfig sourceConfig,
-                                             final Buffer<Record<Event>> buffer,
-                                             final String s3Prefix) {
+    public LogicalReplicationEventProcessor(final StreamPartition streamPartition,
+                                            final RdsSourceConfig sourceConfig,
+                                            final Buffer<Record<Event>> buffer,
+                                            final String s3Prefix) {
         this.streamPartition = streamPartition;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.buffer = buffer;
@@ -71,10 +71,12 @@ public class PostgresReplicationEventProcessor {
             processDeleteMessage(msg);
         } else if (messageType == 'C') {
             processCommitMessage(msg);
+        } else {
+            throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
         }
     }
 
-    private void processBeginMessage(ByteBuffer msg) {
+    void processBeginMessage(ByteBuffer msg) {
         currentLsn = msg.getLong();
         long epochMicro = msg.getLong();
         currentEventTimestamp = convertPostgresEventTimestamp(epochMicro);
@@ -83,7 +85,7 @@ public class PostgresReplicationEventProcessor {
         LOG.debug("Processed BEGIN message with LSN: {}, Timestamp: {}, TransactionId: {}", currentLsn, currentEventTimestamp, transaction_xid);
     }
 
-    private void processRelationMessage(ByteBuffer msg) {
+    void processRelationMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         // null terminated string
         String schemaName = getNullTerminatedString(msg);
@@ -117,7 +119,7 @@ public class PostgresReplicationEventProcessor {
         LOG.debug("Processed an Relation message with RelationId: {} Namespace: {} RelationName: {} ReplicaId: {}", tableId, schemaName, tableName, replicaId);
     }
 
-    private void processCommitMessage(ByteBuffer msg) {
+    void processCommitMessage(ByteBuffer msg) {
         int flag = msg.get();
         long commitLsn = msg.getLong();
         long endLsn = msg.getLong();
@@ -134,7 +136,7 @@ public class PostgresReplicationEventProcessor {
         LOG.debug("Processed a COMMIT message with Flag: {} CommitLsn: {} EndLsn: {} Timestamp: {}", flag, commitLsn, endLsn, epochMicro);
     }
 
-    private void processInsertMessage(ByteBuffer msg) {
+    void processInsertMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
@@ -147,7 +149,7 @@ public class PostgresReplicationEventProcessor {
         LOG.debug("Processed an INSERT message with table id: {}", tableId);
     }
 
-    private void processUpdateMessage(ByteBuffer msg) {
+    void processUpdateMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         char typeId = (char) msg.get();
 
@@ -167,7 +169,7 @@ public class PostgresReplicationEventProcessor {
         }
     }
 
-    private void processDeleteMessage(ByteBuffer msg) {
+    void processDeleteMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         char typeId = (char) msg.get();
 

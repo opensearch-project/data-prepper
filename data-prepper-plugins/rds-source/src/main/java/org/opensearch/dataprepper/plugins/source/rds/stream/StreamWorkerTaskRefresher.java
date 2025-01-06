@@ -129,7 +129,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                     streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
         } else {
             final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
-            logicalReplicationClient.setEventProcessor(new PostgresReplicationEventProcessor(
+            logicalReplicationClient.setEventProcessor(new LogicalReplicationEventProcessor(
                 streamPartition, sourceConfig, buffer, s3Prefix
             ));
         }

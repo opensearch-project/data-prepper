@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
 import software.amazon.awssdk.services.rds.RdsClient;
 
 import java.util.List;
@@ -19,29 +20,25 @@ import java.util.NoSuchElementException;
 
 public class ReplicationLogClientFactory {
 
+    private final RdsSourceConfig sourceConfig;
     private final RdsClient rdsClient;
     private final DbMetadata dbMetadata;
-    private final EngineType engineType;
     private String username;
     private String password;
-    private String database;
     private SSLMode sslMode = SSLMode.REQUIRED;
 
     public ReplicationLogClientFactory(final RdsSourceConfig sourceConfig,
                                        final RdsClient rdsClient,
                                        final DbMetadata dbMetadata) {
+        this.sourceConfig = sourceConfig;
         this.rdsClient = rdsClient;
         this.dbMetadata = dbMetadata;
-        engineType = sourceConfig.getEngine();
         username = sourceConfig.getAuthenticationConfig().getUsername();
         password = sourceConfig.getAuthenticationConfig().getPassword();
-        if (sourceConfig.getEngine() == EngineType.POSTGRES) {
-            database = getDatabaseName(sourceConfig.getTableNames());
-        }
     }
 
     public ReplicationLogClient create(StreamPartition streamPartition) {
-        if (engineType == EngineType.MYSQL) {
+        if (sourceConfig.getEngine() == EngineType.MYSQL) {
             return new BinlogClientWrapper(createBinaryLogClient());
         } else { // Postgres
             return createLogicalReplicationClient(streamPartition);
@@ -68,13 +65,14 @@ public class ReplicationLogClientFactory {
         if (replicationSlotName == null) {
             throw new NoSuchElementException("Replication slot name is not found in progress state.");
         }
-        return new LogicalReplicationClient(
+        final PostgresConnectionManager connectionManager = new PostgresConnectionManager(
                 dbMetadata.getEndpoint(),
                 dbMetadata.getPort(),
                 username,
                 password,
-                database,
-                replicationSlotName);
+                !sourceConfig.getTlsConfig().isInsecure(),
+                getDatabaseName(sourceConfig.getTableNames()));
+        return new LogicalReplicationClient(connectionManager, replicationSlotName);
     }
 
     public void setSSLMode(SSLMode sslMode) {

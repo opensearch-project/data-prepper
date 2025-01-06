@@ -103,7 +103,6 @@ public class StreamWorker {
 
     private void setStartLsn(final StreamPartition streamPartition) {
         final String startLsn = streamPartition.getProgressState().get().getCurrentLsn();
-        LOG.debug("Will start replication stream from LSN {}.", startLsn);
 
         if (startLsn != null) {
             LOG.debug("Will start logical replication from LSN {}", startLsn);
