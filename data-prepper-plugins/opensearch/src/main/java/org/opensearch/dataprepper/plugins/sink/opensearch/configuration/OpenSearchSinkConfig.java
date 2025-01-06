@@ -203,15 +203,6 @@ public class OpenSearchSinkConfig {
     private String awsRegion = DEFAULT_AWS_REGION;
 
     @Deprecated
-    @AssertTrue(message = "aws_region option cannot be used along with aws option. It is preferred to only use aws option as aws_region is deprecated.")
-    public boolean isNotAwsRegionAndAwsOption() {
-        if (awsAuthenticationOptions != null && awsRegion != null) {
-            return false;
-        }
-        return true;
-    }
-
-    @Deprecated
     @Getter
     @JsonProperty("aws_sts_role_arn")
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
@@ -302,7 +293,5 @@ public class OpenSearchSinkConfig {
     @Getter
     @JsonProperty("routing_field")
     private String routingField = null;
-
-
 }
 
