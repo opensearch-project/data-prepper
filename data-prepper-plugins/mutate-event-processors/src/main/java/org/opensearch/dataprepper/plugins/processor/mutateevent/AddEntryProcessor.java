@@ -102,7 +102,6 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                                 .addArgument(entry.getValueExpression())
                                 .addArgument(entry.getFormat())
                                 .addArgument(entry.getValue())
-                                .setCause(e)
                                 .log();
                     }
                 }

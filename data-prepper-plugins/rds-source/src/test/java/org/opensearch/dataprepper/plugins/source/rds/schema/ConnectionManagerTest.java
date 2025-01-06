@@ -20,6 +20,13 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.FALSE_VALUE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.PASSWORD_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.REQUIRE_SSL_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.TINY_INT_ONE_IS_BIT_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.TRUE_VALUE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.USERNAME_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.USE_SSL_KEY;
 
 
 class ConnectionManagerTest {
@@ -51,10 +58,11 @@ class ConnectionManagerTest {
 
         assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(ConnectionManager.JDBC_URL_FORMAT, hostName, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
-        assertThat(properties.getProperty("user"), is(username));
-        assertThat(properties.getProperty("password"), is(password));
-        assertThat(properties.getProperty("useSSL"), is("true"));
-        assertThat(properties.getProperty("requireSSL"), is("true"));
+        assertThat(properties.getProperty(USERNAME_KEY), is(username));
+        assertThat(properties.getProperty(PASSWORD_KEY), is(password));
+        assertThat(properties.getProperty(USE_SSL_KEY), is(TRUE_VALUE));
+        assertThat(properties.getProperty(REQUIRE_SSL_KEY), is(TRUE_VALUE));
+        assertThat(properties.getProperty(TINY_INT_ONE_IS_BIT_KEY), is(FALSE_VALUE));
     }
 
     @Test
@@ -69,9 +77,10 @@ class ConnectionManagerTest {
 
         assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(ConnectionManager.JDBC_URL_FORMAT, hostName, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
-        assertThat(properties.getProperty("user"), is(username));
-        assertThat(properties.getProperty("password"), is(password));
-        assertThat(properties.getProperty("useSSL"), is("false"));
+        assertThat(properties.getProperty(USERNAME_KEY), is(username));
+        assertThat(properties.getProperty(PASSWORD_KEY), is(password));
+        assertThat(properties.getProperty(USE_SSL_KEY), is(FALSE_VALUE));
+        assertThat(properties.getProperty(TINY_INT_ONE_IS_BIT_KEY), is(FALSE_VALUE));
     }
 
     private ConnectionManager createObjectUnderTest() {

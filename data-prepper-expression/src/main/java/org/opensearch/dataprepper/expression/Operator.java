@@ -12,6 +12,8 @@ interface Operator<T> {
         return 2;
     }
 
+    boolean isBooleanOperator();
+
     boolean shouldEvaluate(final RuleContext ctx);
 
     int getSymbol();
