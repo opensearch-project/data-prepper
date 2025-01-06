@@ -181,8 +181,8 @@ public class RdsService {
         // For MySQL
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
             final MySqlConnectionManager connectionManager = new MySqlConnectionManager(
-                    "127.0.0.1",
-                    5432,
+                    dbMetadata.getEndpoint(),
+                    dbMetadata.getPort(),
                     sourceConfig.getAuthenticationConfig().getUsername(),
                     sourceConfig.getAuthenticationConfig().getPassword(),
                     sourceConfig.isTlsEnabled());
@@ -190,8 +190,8 @@ public class RdsService {
         }
         // For Postgres
         final PostgresConnectionManager connectionManager = new PostgresConnectionManager(
-                "127.0.0.1",
-                5432,
+                dbMetadata.getEndpoint(),
+                dbMetadata.getPort(),
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled(),
@@ -207,8 +207,8 @@ public class RdsService {
         final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getEndpoint();
         final int readerPort = dbMetadata.getReaderPort() == 0 ? dbMetadata.getPort() : dbMetadata.getReaderPort();
         final MySqlConnectionManager readerConnectionManager = new MySqlConnectionManager(
-                "127.0.0.1",
-                5432,
+                readerEndpoint,
+                readerPort,
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled());
