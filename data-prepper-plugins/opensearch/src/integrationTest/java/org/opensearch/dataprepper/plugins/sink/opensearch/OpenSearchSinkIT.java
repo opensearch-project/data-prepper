@@ -888,7 +888,8 @@ public class OpenSearchSinkIT {
         Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, testTemplateFile);
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         Event event = (Event) testRecords.get(0).getData();
-        event.getMetadata().setAttribute("action", "create");metadata.put(IndexConfiguration.ACTION, "create");
+        event.getMetadata().setAttribute("action", "create");
+        metadata.put(IndexConfiguration.ACTION, "create");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
         final OpenSearchSink sink = createObjectUnderTest(openSearchSinkConfig, true);
         sink.output(testRecords);
