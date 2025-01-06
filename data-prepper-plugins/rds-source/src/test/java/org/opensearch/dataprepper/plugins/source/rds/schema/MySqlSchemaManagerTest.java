@@ -53,7 +53,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaMa
 class MySqlSchemaManagerTest {
 
     @Mock
-    private ConnectionManager connectionManager;
+    private MySqlConnectionManager connectionManager;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Connection connection;

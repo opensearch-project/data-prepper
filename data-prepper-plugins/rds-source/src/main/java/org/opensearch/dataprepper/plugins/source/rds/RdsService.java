@@ -26,7 +26,7 @@ import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
-import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
@@ -180,7 +180,7 @@ public class RdsService {
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         // For MySQL
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final ConnectionManager connectionManager = new ConnectionManager(
+            final MySqlConnectionManager connectionManager = new MySqlConnectionManager(
                     "127.0.0.1",
                     5432,
                     sourceConfig.getAuthenticationConfig().getUsername(),
@@ -206,7 +206,7 @@ public class RdsService {
     private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getEndpoint();
         final int readerPort = dbMetadata.getReaderPort() == 0 ? dbMetadata.getPort() : dbMetadata.getReaderPort();
-        final ConnectionManager readerConnectionManager = new ConnectionManager(
+        final MySqlConnectionManager readerConnectionManager = new MySqlConnectionManager(
                 "127.0.0.1",
                 5432,
                 sourceConfig.getAuthenticationConfig().getUsername(),

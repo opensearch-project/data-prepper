@@ -39,9 +39,9 @@ public class MySqlSchemaManager implements SchemaManager {
     static final String UPDATE_RULE = "UPDATE_RULE";
     static final String DELETE_RULE = "DELETE_RULE";
     static final String COLUMN_DEF = "COLUMN_DEF";
-    private final ConnectionManager connectionManager;
+    private final MySqlConnectionManager connectionManager;
 
-    public MySqlSchemaManager(ConnectionManager connectionManager) {
+    public MySqlSchemaManager(MySqlConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }
 
