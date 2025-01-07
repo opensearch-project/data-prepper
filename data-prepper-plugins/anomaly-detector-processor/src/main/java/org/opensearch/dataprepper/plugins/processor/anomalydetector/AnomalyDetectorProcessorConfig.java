@@ -23,16 +23,16 @@ import java.util.List;
 @JsonClassDescription("The anomaly detector processor takes structured data and runs anomaly detection algorithms " +
         "on fields that you can configure in that data.")
 public class AnomalyDetectorProcessorConfig {
+    @JsonPropertyDescription("A non-ordered List<String> that is used as input to the ML algorithm to detect anomalies in the values of the keys in the list. At least one key is required.")
+    @JsonProperty("keys")
+    @NotEmpty
+    private List<String> keys;
+
     @JsonPropertyDescription("The ML algorithm (or model) used to detect anomalies. You must provide a mode. See random_cut_forest mode.")
     @JsonProperty("mode")
     @NotNull
     @UsesDataPrepperPlugin(pluginType = AnomalyDetectorMode.class)
     private PluginModel detectorMode;
-
-    @JsonPropertyDescription("A non-ordered List<String> that is used as input to the ML algorithm to detect anomalies in the values of the keys in the list. At least one key is required.")
-    @JsonProperty("keys")
-    @NotEmpty
-    private List<String> keys;
 
     @JsonPropertyDescription("If provided, anomalies will be detected within each unique instance of these keys. For example, if you provide the ip field, anomalies will be detected separately for each unique IP address.")
     @JsonProperty("identification_keys")
