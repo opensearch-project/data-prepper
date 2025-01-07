@@ -260,6 +260,21 @@ public class OpenSearchSinkTest {
     }
 
     @Test
+    void test_routing_field_in_document() throws IOException {
+        String routingFieldKey = UUID.randomUUID().toString();
+        String routingKey = UUID.randomUUID().toString();
+        String routingFieldValue = UUID.randomUUID().toString();
+        when(indexConfiguration.getRoutingField()).thenReturn(routingFieldKey);
+        when(indexConfiguration.getRouting()).thenReturn(routingKey);
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Collections.singletonMap(routingFieldKey, routingFieldValue))
+                .build();
+        assertThat(objectUnderTest.getDocument(event).getRoutingField(), equalTo(Optional.of(routingFieldValue)));
+    }
+
+    @Test
     void test_routing_in_document() throws IOException {
         String routingValue = UUID.randomUUID().toString();
         String routingKey = UUID.randomUUID().toString();
