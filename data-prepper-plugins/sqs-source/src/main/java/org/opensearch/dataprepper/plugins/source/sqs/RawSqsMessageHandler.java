@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.source.sqs;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -33,9 +38,9 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
                     .withData(Collections.singletonMap("message", message.body()))
                     .build();
             final EventMetadata eventMetadata = event.getMetadata();
-            eventMetadata.setAttribute("url", url);
+            eventMetadata.setAttribute("queueUrl", url);
             final String sentTimestamp = systemAttributes.get(MessageSystemAttributeName.SENT_TIMESTAMP);
-            eventMetadata.setAttribute("SentTimestamp", sentTimestamp);
+            eventMetadata.setAttribute("sentTimestamp", sentTimestamp);
             for (Map.Entry<String, MessageAttributeValue> entry : customAttributes.entrySet()) {
                 eventMetadata.setAttribute(entry.getKey(), entry.getValue().stringValue());
             }
