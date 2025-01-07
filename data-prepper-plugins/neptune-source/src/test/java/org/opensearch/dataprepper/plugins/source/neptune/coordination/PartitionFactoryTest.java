@@ -2,8 +2,6 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-
-
 package org.opensearch.dataprepper.plugins.source.neptune.coordination;
 
 import org.junit.jupiter.api.Test;
