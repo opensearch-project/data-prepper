@@ -25,5 +25,9 @@ RUN mv /usr/share/$ARCHIVE_FILE_UNPACKED /usr/share/data-prepper
 COPY default-data-prepper-config.yaml $ENV_CONFIG_FILEPATH
 COPY default-keystore.p12 /usr/share/data-prepper/keystore.p12
 
+# Do not run as root, but as user "nobody" (uid 65534)
+RUN chown -R nobody:nobody $DATA_PREPPER_PATH /var/log/data-prepper
+USER nobody
+
 WORKDIR $DATA_PREPPER_PATH
 CMD ["bin/data-prepper"]
