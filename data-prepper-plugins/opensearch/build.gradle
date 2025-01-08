@@ -4,6 +4,8 @@
  */
 
 dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
     implementation project(':data-prepper-api')
     implementation libs.armeria.core
     testImplementation project(':data-prepper-api').sourceSets.test.output
