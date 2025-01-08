@@ -31,6 +31,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStr
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -176,14 +177,21 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             Buffer inputBuffer = entry.getKey();
             try {
                 InvokeResponse response = future.join();
+
+                // If this response has a failure is retryable, do a direct retry
+                if (!isSuccess(response) && LambdaRetryStrategy.isRetryable(response)){
+                    response = LambdaRetryStrategy.retryOrFail(
+                            lambdaAsyncClient,
+                            inputBuffer,
+                            lambdaProcessorConfig,
+                            response,
+                            LOG
+                    );
+                }
+
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
                 requestPayloadMetric.record(inputBuffer.getPayloadRequestSize());
-                if (!isSuccess(response)) {
-                    String errorMessage = String.format("Lambda invoke failed with status code %s error %s ",
-                            response.statusCode(), response.payload().asUtf8String());
-                    throw new RuntimeException(errorMessage);
-                }
 
                 resultRecords.addAll(convertLambdaResponseToEvent(inputBuffer, response));
                 numberOfRecordsSuccessCounter.increment(inputBuffer.getEventCount());
@@ -194,10 +202,24 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             } catch (Exception e) {
                 LOG.error(NOISY, e.getMessage(), e);
-                /* fall through */
-                numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
-                numberOfRequestsFailedCounter.increment();
-                resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                InvokeResponse response = null;
+                if (LambdaRetryStrategy.isRetryableException(e)){
+                    response = LambdaRetryStrategy.retryOrFail(
+                            lambdaAsyncClient,
+                            inputBuffer,
+                            lambdaProcessorConfig,
+                            null,
+                            LOG
+                    );
+                    String errorMessage = String.format("Lambda invoke failed with status code %s error %s. Will be Retrying the request ",
+                            response.statusCode(), response.payload().asUtf8String());
+                    LOG.error(NOISY, e.getMessage(), e);
+                }
+                if(response == null || !isSuccess(response)) {
+                    /* fall through */
+                    numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                    resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                }
             }
         }
         return resultRecords;
