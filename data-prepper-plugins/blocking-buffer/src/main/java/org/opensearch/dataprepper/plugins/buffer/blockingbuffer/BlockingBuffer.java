@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
@@ -31,20 +32,20 @@ import java.util.concurrent.TimeoutException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig.DEFAULT_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig.DEFAULT_BUFFER_CAPACITY;
 
 /**
  * A bounded BlockingBuffer is an implementation of {@link Buffer} using {@link LinkedBlockingQueue}, it is bounded
- * to the provided capacity {@link #ATTRIBUTE_BUFFER_CAPACITY} or {@link #DEFAULT_BUFFER_CAPACITY} (if attribute is
+ * to the provided capacity {@link #ATTRIBUTE_BUFFER_CAPACITY} or {@link #ATTRIBUTE_BUFFER_CAPACITY} (if attribute is
  * not provided); {@link #write(Record, int)} inserts specified non-null record into this buffer, waiting up to the
  * specified timeout in milliseconds if necessary for space to become available; and throws an exception if the
  * record is null. {@link #read(int)} retrieves and removes the batch of records from the head of the queue. The
  * batch size is defined/determined by the configuration attribute {@link #ATTRIBUTE_BATCH_SIZE} or the timeout parameter
  */
-@DataPrepperPlugin(name = "bounded_blocking", pluginType = Buffer.class)
+@DataPrepperPlugin(name = "bounded_blocking", pluginType = Buffer.class, pluginConfigurationType = BlockingBufferConfig.class)
 public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
-    private static final int DEFAULT_BUFFER_CAPACITY = 12_800;
-    private static final int DEFAULT_BATCH_SIZE = 200;
     private static final String PLUGIN_NAME = "bounded_blocking";
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
@@ -81,18 +82,17 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper runtime engine to construct an
-     * instance of {@link BlockingBuffer} using an instance of {@link PluginSetting} which has access to
-     * pluginSetting metadata from pipeline pluginSetting file. Buffer settings like `buffer-size`, `batch-size`,
-     * `batch-timeout` are optional and can be passed via {@link PluginSetting}, if not present default values will
+     * instance of {@link BlockingBuffer} using an instance of {@link BlockingBufferConfig}. Buffer settings like `buffer-size`, `batch-size`,
+     * `batch-timeout` are optional and can be passed via {@link BlockingBufferConfig}, if not present default values will
      * be used to create the buffer.
      *
-     * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
+     * @param blockingBufferConfig instance takes values from yaml
+     * @param pipelineDescription  instance with metadata information aout pipeline man
      */
-    public BlockingBuffer(final PluginSetting pluginSetting) {
-        this(checkNotNull(pluginSetting, "PluginSetting cannot be null")
-                        .getIntegerOrDefault(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
-                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE),
-                pluginSetting.getPipelineName());
+    public BlockingBuffer(final BlockingBufferConfig blockingBufferConfig, final PipelineDescription pipelineDescription) {
+        this(checkNotNull(blockingBufferConfig, "BlockingBufferConfig cannot be null").getBufferSize(),
+                blockingBufferConfig.getBatchSize(),
+                pipelineDescription.getPipelineName());
     }
 
     public BlockingBuffer(final String pipelineName) {

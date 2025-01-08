@@ -9,6 +9,8 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     testImplementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 
 jacocoTestCoverageVerification {
