@@ -19,8 +19,4 @@ COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${DATA_PREPPER_HOME}
 RUN tar -xzf "${DATA_PREPPER_HOME}/${TAR_FILE}" -C "${DATA_PREPPER_HOME}" --strip-components=1 \
     && rm -f "${DATA_PREPPER_HOME}/${TAR_FILE}"
 
-# Do not run as root, but as user "nobody" (uid 65534)
-RUN chown -R nobody:nobody $DATA_PREPPER_HOME
-USER nobody
-
 ENTRYPOINT "${DATA_PREPPER_HOME}/bin/data-prepper"
