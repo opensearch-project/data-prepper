@@ -37,13 +37,22 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
                     .withEventType("DOCUMENT")
                     .withData(Collections.singletonMap("message", message.body()))
                     .build();
+
             final EventMetadata eventMetadata = event.getMetadata();
             eventMetadata.setAttribute("queueUrl", url);
-            final String sentTimestamp = systemAttributes.get(MessageSystemAttributeName.SENT_TIMESTAMP);
-            eventMetadata.setAttribute("sentTimestamp", sentTimestamp);
-            for (Map.Entry<String, MessageAttributeValue> entry : customAttributes.entrySet()) {
-                eventMetadata.setAttribute(entry.getKey(), entry.getValue().stringValue());
+
+            for (Map.Entry<MessageSystemAttributeName, String> entry : systemAttributes.entrySet()) {
+                String originalKey = entry.getKey().toString();
+                String lowerCamelCaseKey = originalKey.substring(0, 1).toLowerCase() + originalKey.substring(1);
+                eventMetadata.setAttribute(lowerCamelCaseKey, entry.getValue());
             }
+
+            for (Map.Entry<String, MessageAttributeValue> entry : customAttributes.entrySet()) {
+                String originalKey = entry.getKey();
+                String lowerCamelCaseKey = originalKey.substring(0, 1).toLowerCase() + originalKey.substring(1);
+                eventMetadata.setAttribute(lowerCamelCaseKey, entry.getValue().stringValue());
+            }
+
             if (acknowledgementSet != null) {
                 acknowledgementSet.add(event);
             }

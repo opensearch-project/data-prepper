@@ -55,7 +55,6 @@ class SqsServiceTest {
         when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         when(queueConfig.getNumWorkers()).thenReturn(2);
         when(sqsSourceConfig.getQueues()).thenReturn(List.of(queueConfig));
-        when(sqsSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(100);
         SqsService sqsService = spy(new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, sqsEventProcessor, pluginMetrics, credentialsProvider));
         doReturn(sqsClient).when(sqsService).createSqsClient(credentialsProvider);
         sqsService.start(); // if no exception is thrown here, then workers have been started
@@ -67,7 +66,6 @@ class SqsServiceTest {
         when(queueConfig.getUrl()).thenReturn("MyQueue");
         when(queueConfig.getNumWorkers()).thenReturn(1);
         when(sqsSourceConfig.getQueues()).thenReturn(List.of(queueConfig));
-        when(sqsSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(100);
         SqsClient sqsClient = mock(SqsClient.class);
         SqsService sqsService = new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, sqsEventProcessor, pluginMetrics, credentialsProvider) {
             @Override

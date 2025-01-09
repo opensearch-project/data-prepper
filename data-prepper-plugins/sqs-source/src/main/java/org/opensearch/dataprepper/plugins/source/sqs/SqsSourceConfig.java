@@ -27,9 +27,6 @@ public class SqsSourceConfig {
     @JsonProperty("buffer_timeout")
     private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
 
-    @JsonProperty("records_to_accumulate")
-    private int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
-
     @JsonProperty("queues")
     @NotNull
     @Valid
@@ -37,10 +34,6 @@ public class SqsSourceConfig {
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
-    }
-
-    public int getNumberOfRecordsToAccumulate() {
-        return numberOfRecordsToAccumulate;
     }
 
     public boolean getAcknowledgements() {
