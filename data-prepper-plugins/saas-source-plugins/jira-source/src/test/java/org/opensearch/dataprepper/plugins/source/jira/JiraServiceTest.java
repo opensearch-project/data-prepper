@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -45,6 +55,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAS
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAME;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 
@@ -85,16 +96,45 @@ public class JiraServiceTest {
                                                            List<String> issueStatus,
                                                            List<String> projectKey) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String> connectorCredentialsMap = new HashMap<>();
-        connectorCredentialsMap.put("auth_type", auth_type);
+        Map<String, Object> authenticationMap = new HashMap<>();
+        Map<String, String> basicMap = new HashMap<>();
+        Map<String, String> oauth2Map = new HashMap<>();
+        if (auth_type.equals(BASIC)) {
+            basicMap.put("username", "test_username");
+            basicMap.put("password", "test_password");
+            authenticationMap.put("basic", basicMap);
+        } else if (auth_type.equals(OAUTH2))  {
+            oauth2Map.put("client_id", "test-client-id");
+            oauth2Map.put("client_secret", "test-client-secret");
+            oauth2Map.put("access_token", "test-access-token");
+            oauth2Map.put("refresh_token", "test-refresh-token");
+            authenticationMap.put("oauth2", oauth2Map);
+        }
 
         Map<String, Object> jiraSourceConfigMap = new HashMap<>();
-        jiraSourceConfigMap.put("account_url", ACCESSIBLE_RESOURCES);
-        jiraSourceConfigMap.put("connector_credentials", connectorCredentialsMap);
-        jiraSourceConfigMap.put("issue_types", issueType);
-        jiraSourceConfigMap.put("statuses", issueStatus);
-        jiraSourceConfigMap.put("projects", projectKey);
+        List<String> hosts = new ArrayList<>();
+        hosts.add(ACCESSIBLE_RESOURCES);
 
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> projectMap = new HashMap<>();
+        Map<String, Object> issueTypeMap = new HashMap<>();
+        Map<String, Object> statusMap = new HashMap<>();
+
+        issueTypeMap.put("include", issueType);
+        filterMap.put("issue_type", issueTypeMap);
+
+        statusMap.put("include", issueStatus);
+        filterMap.put("status", statusMap);
+
+        Map<String, Object> nameMap = new HashMap<>();
+        nameMap.put("include", projectKey);
+        projectMap.put("key", nameMap);
+        filterMap.put("project", projectMap);
+
+
+        jiraSourceConfigMap.put("hosts", hosts);
+        jiraSourceConfigMap.put("authentication", authenticationMap);
+        jiraSourceConfigMap.put("filter", filterMap);
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);

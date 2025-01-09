@@ -1,5 +1,16 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -38,7 +49,13 @@ public class JiraOauthConfigTest {
     @Mock
     RestTemplate restTemplateMock;
 
-    JiraSourceConfig jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+
+    JiraSourceConfig jiraSourceConfig;
+
+    @BeforeEach
+    void setUp() {
+        jiraSourceConfig = createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+    }
 
     @Test
     void testRenewToken() throws InterruptedException {
