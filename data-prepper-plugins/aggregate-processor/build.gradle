@@ -14,6 +14,7 @@ dependencies {
     implementation project(':data-prepper-expression')
     implementation project(':data-prepper-plugins:otel-proto-common')
     implementation project(':data-prepper-plugins:otel-metrics-raw-processor')
+    testImplementation project(':data-prepper-core')
     implementation libs.guava.core
     implementation libs.commons.lang3
     implementation libs.opentelemetry.proto

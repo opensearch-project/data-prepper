@@ -142,7 +142,7 @@ public class DateProcessorConfig {
     })
     private List<DateMatch> match;
 
-    @JsonProperty("destination")
+    @JsonProperty(value = "destination", defaultValue = DEFAULT_DESTINATION)
     @JsonPropertyDescription("The field used to store the timestamp parsed by the date processor. " +
             "Can be used with both <code>match</code> and <code>from_time_received</code>. Default is <code>@timestamp</code>.")
     private String destination = DEFAULT_DESTINATION;

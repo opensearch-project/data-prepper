@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira.rest;
 
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
@@ -17,8 +27,8 @@ public class BasicAuthInterceptor implements ClientHttpRequestInterceptor {
     private final String password;
 
     public BasicAuthInterceptor(JiraSourceConfig config) {
-        this.username = config.getJiraId();
-        this.password = config.getJiraCredential();
+        this.username = config.getAuthenticationConfig().getBasicConfig().getUsername();
+        this.password = config.getAuthenticationConfig().getBasicConfig().getPassword();;
     }
 
     @Override

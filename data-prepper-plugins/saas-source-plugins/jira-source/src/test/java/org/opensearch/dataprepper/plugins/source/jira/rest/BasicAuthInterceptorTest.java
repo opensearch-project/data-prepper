@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira.rest;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -6,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -37,14 +49,22 @@ public class BasicAuthInterceptorTest {
     private JiraSourceConfig mockConfig;
 
     @Mock
+    AuthenticationConfig authenticationConfig;
+
+    @Mock
+    BasicConfig basicConfig;
+
+    @Mock
     private HttpHeaders mockHeaders;
 
     private BasicAuthInterceptor interceptor;
 
     @BeforeEach
     void setUp() {
-        when(mockConfig.getJiraId()).thenReturn("testUser");
-        when(mockConfig.getJiraCredential()).thenReturn("testPassword");
+        when(mockConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
+        when(basicConfig.getUsername()).thenReturn("testUser");
+        when(basicConfig.getPassword()).thenReturn("testPassword");
         when(mockRequest.getHeaders()).thenReturn(mockHeaders);
         interceptor = new BasicAuthInterceptor(mockConfig);
     }

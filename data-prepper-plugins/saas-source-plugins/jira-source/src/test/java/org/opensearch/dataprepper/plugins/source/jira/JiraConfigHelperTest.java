@@ -1,9 +1,27 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.IssueTypeConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.NameConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.ProjectConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.StatusConfig;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 
 import java.util.List;
@@ -23,6 +41,30 @@ public class JiraConfigHelperTest {
     @Mock
     JiraSourceConfig jiraSourceConfig;
 
+    @Mock
+    FilterConfig filterConfig;
+
+    @Mock
+    StatusConfig statusConfig;
+
+    @Mock
+    IssueTypeConfig issueTypeConfig;
+
+    @Mock
+    ProjectConfig  projectConfig;
+
+    @Mock
+    NameConfig  nameConfig;
+
+    @Mock
+    AuthenticationConfig authenticationConfig;
+
+    @Mock
+    BasicConfig basicConfig;
+
+    @Mock
+    Oauth2Config  oauth2Config;
+
     @Test
     void testInitialization() {
         JiraConfigHelper jiraConfigHelper = new JiraConfigHelper();
@@ -31,27 +73,47 @@ public class JiraConfigHelperTest {
 
     @Test
     void testGetIssueStatusFilter() {
-        assertTrue(JiraConfigHelper.getIssueStatusFilter(jiraSourceConfig).isEmpty());
+        when(jiraSourceConfig.getFilterConfig()).thenReturn(filterConfig);
+        when(filterConfig.getStatusConfig()).thenReturn(statusConfig);
+        assertTrue(JiraConfigHelper.getIssueStatusIncludeFilter(jiraSourceConfig).isEmpty());
+        assertTrue(JiraConfigHelper.getIssueStatusExcludeFilter(jiraSourceConfig).isEmpty());
         List<String> issueStatusFilter = List.of("Done", "In Progress");
-        when(jiraSourceConfig.getProject()).thenReturn(issueStatusFilter);
-        assertEquals(issueStatusFilter, JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig));
+        List<String> issueStatusExcludeFilter = List.of("Done2", "In Progress2");
+        when(statusConfig.getInclude()).thenReturn(issueStatusFilter);
+        when(statusConfig.getExclude()).thenReturn(issueStatusExcludeFilter);
+        assertEquals(issueStatusFilter, JiraConfigHelper.getIssueStatusIncludeFilter(jiraSourceConfig));
+        assertEquals(issueStatusExcludeFilter, JiraConfigHelper.getIssueStatusExcludeFilter(jiraSourceConfig));
     }
 
     @Test
     void testGetIssueTypeFilter() {
-        assertTrue(JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig).isEmpty());
+        when(jiraSourceConfig.getFilterConfig()).thenReturn(filterConfig);
+        when(filterConfig.getIssueTypeConfig()).thenReturn(issueTypeConfig);
+        assertTrue(JiraConfigHelper.getIssueTypeIncludeFilter(jiraSourceConfig).isEmpty());
+        assertTrue(JiraConfigHelper.getIssueTypeExcludeFilter(jiraSourceConfig).isEmpty());
         List<String> issueTypeFilter = List.of("Bug", "Story");
-        when(jiraSourceConfig.getProject()).thenReturn(issueTypeFilter);
-        assertEquals(issueTypeFilter, JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig));
+        List<String> issueTypeExcludeFilter = List.of("Bug2", "Story2");
+        when(issueTypeConfig.getInclude()).thenReturn(issueTypeFilter);
+        when(issueTypeConfig.getExclude()).thenReturn(issueTypeExcludeFilter);
+        assertEquals(issueTypeFilter, JiraConfigHelper.getIssueTypeIncludeFilter(jiraSourceConfig));
+        assertEquals(issueTypeExcludeFilter, JiraConfigHelper.getIssueTypeExcludeFilter(jiraSourceConfig));
     }
 
     @Test
-    void testGetProjectKeyFilter() {
-        assertTrue(JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig).isEmpty());
-        List<String> projectKeyFilter = List.of("TEST", "TEST2");
-        when(jiraSourceConfig.getProject()).thenReturn(projectKeyFilter);
-        assertEquals(projectKeyFilter, JiraConfigHelper.getProjectKeyFilter(jiraSourceConfig));
+    void testGetProjectNameFilter() {
+        when(jiraSourceConfig.getFilterConfig()).thenReturn(filterConfig);
+        when(filterConfig.getProjectConfig()).thenReturn(projectConfig);
+        when(projectConfig.getNameConfig()).thenReturn(nameConfig);
+        assertTrue(JiraConfigHelper.getProjectNameIncludeFilter(jiraSourceConfig).isEmpty());
+        assertTrue(JiraConfigHelper.getProjectNameExcludeFilter(jiraSourceConfig).isEmpty());
+        List<String> projectNameFilter = List.of("TEST", "TEST2");
+        List<String> projectNameExcludeFilter = List.of("TEST3", "TEST4");
+        when(nameConfig.getInclude()).thenReturn(projectNameFilter);
+        when(nameConfig.getExclude()).thenReturn(projectNameExcludeFilter);
+        assertEquals(projectNameFilter, JiraConfigHelper.getProjectNameIncludeFilter(jiraSourceConfig));
+        assertEquals(projectNameExcludeFilter, JiraConfigHelper.getProjectNameExcludeFilter(jiraSourceConfig));
     }
+
 
     @Test
     void testValidateConfig() {
@@ -68,16 +130,18 @@ public class JiraConfigHelperTest {
     void testValidateConfigBasic() {
         when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
         when(jiraSourceConfig.getAuthType()).thenReturn(BASIC);
+        when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getBasicConfig()).thenReturn(basicConfig);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraId()).thenReturn("id");
+        when(basicConfig.getUsername()).thenReturn("id");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraCredential()).thenReturn("credential");
-        when(jiraSourceConfig.getJiraId()).thenReturn(null);
+        when(basicConfig.getPassword()).thenReturn("credential");
+        when(basicConfig.getUsername()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getJiraId()).thenReturn("id");
+        when(basicConfig.getUsername()).thenReturn("id");
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 
@@ -85,16 +149,18 @@ public class JiraConfigHelperTest {
     void testValidateConfigOauth2() {
         when(jiraSourceConfig.getAccountUrl()).thenReturn("https://test.com");
         when(jiraSourceConfig.getAuthType()).thenReturn(OAUTH2);
+        when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
+        when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn("id");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getRefreshToken()).thenReturn("credential");
-        when(jiraSourceConfig.getAccessToken()).thenReturn(null);
+        when(oauth2Config.getRefreshToken()).thenReturn("credential");
+        when(oauth2Config.getAccessToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(jiraSourceConfig.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn("id");
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 }

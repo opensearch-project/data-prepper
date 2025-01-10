@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisInputOutputRecord;
 import software.amazon.kinesis.retrieval.KinesisClientRecord;
 
 import java.io.ByteArrayInputStream;
@@ -32,13 +33,12 @@ public class KinesisRecordConverter {
         this.codec = codec;
     }
 
-    public List<Record<Event>> convert(final DecompressionEngine decompressionEngine,
-                                       List<KinesisClientRecord> kinesisClientRecords,
-                                       final String streamName) throws IOException {
-        List<Record<Event>> records = new ArrayList<>();
+    public List<KinesisInputOutputRecord> convert(final DecompressionEngine decompressionEngine,
+                                             List<KinesisClientRecord> kinesisClientRecords,
+                                             final String streamName) throws IOException {
+        List<KinesisInputOutputRecord> records = new ArrayList<>();
         for (KinesisClientRecord kinesisClientRecord : kinesisClientRecords) {
             processRecord(decompressionEngine, kinesisClientRecord, record -> {
-                records.add(record);
                 Event event = record.getData();
                 EventMetadata eventMetadata = event.getMetadata();
                 eventMetadata.setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE,
@@ -49,6 +49,9 @@ public class KinesisRecordConverter {
                 final Instant externalOriginationTime = kinesisClientRecord.approximateArrivalTimestamp();
                 event.getEventHandle().setExternalOriginationTime(externalOriginationTime);
                 event.getMetadata().setExternalOriginationTime(externalOriginationTime);
+                records.add(KinesisInputOutputRecord.builder()
+                        .withIncomingRecordSizeBytes(kinesisClientRecord.data().position())
+                        .withDataPrepperRecord(record).build());
             });
         }
         return records;
