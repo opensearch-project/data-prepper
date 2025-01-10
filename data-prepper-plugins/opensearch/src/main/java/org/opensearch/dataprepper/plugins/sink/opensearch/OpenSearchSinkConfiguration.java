@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -40,15 +40,15 @@ public class OpenSearchSinkConfiguration {
     this.retryConfiguration = retryConfiguration;
   }
 
-  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
-    return readESConfig(pluginSetting, null);
+  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
+    return readOSConfig(openSearchSinkConfig, null);
   }
 
-  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
+  public static OpenSearchSinkConfiguration readOSConfig(final OpenSearchSinkConfig openSearchSinkConfig, final ExpressionEvaluator expressionEvaluator) {
     final ConnectionConfiguration connectionConfiguration =
-            ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting, expressionEvaluator);
-    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
+            ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig, expressionEvaluator);
+    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(openSearchSinkConfig);
 
     return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
   }

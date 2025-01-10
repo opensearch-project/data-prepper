@@ -1,0 +1,121 @@
+valid-sink:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+invalid-action:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      action: "invalid"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+invalid-actions:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      actions:
+        - type: "invalid"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+invalid-action-with-expression:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      action: "${anInvalidFunction()}"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+invalid-actions-with-expression:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      actions:
+        - type: "${anInvalidFunction()}"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+create-action:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      action: "update"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+create-actions-with-expression:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      index: "no-more-plugin-setting"
+      index_type: "trace-analytics-raw"
+      actions:
+        - type: "create"
+          when: "${getMetadata(\"action\")}"
+      aws:
+        sts_role_arn: "arn:aws:iam::123456789012:role/test-role"
+        region: "us-east-2"
+        serverless: true
+invalid-max-retries:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      dlq: null
+      dlq_file: null
+      max_retries: -1
+no-dlq-file-path:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      dlq: null
+      dlq_file: null
+      max_retries: null
+dlq-file-path-10-retries:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      dlq: null
+      dlq_file: foo.txt
+      max_retries: 10
+with-dlq-plugin-10-retries:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      dlq:
+        s3:
+          bucket: "my-dlq-bucket"
+          key_path_prefix: "dlq-files/"
+      dlq_file: null
+      max_retries: 10
+dlq-file-and-dlq-plugin:
+  sink:
+    opensearch:
+      hosts: [ "http://localhost:9200" ]
+      dlq:
+        s3:
+          bucket: "my-dlq-bucket"
+          key_path_prefix: "dlq-files/"
+      dlq_file: foo.txt
+      max_retries: 10
