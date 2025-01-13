@@ -19,7 +19,7 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
     private final SecretsSupplier secretsSupplier;
     private final String secretId;
     private final String secretKey;
-    private final Object secretValue;
+    private Object secretValue;
 
     public AwsPluginConfigVariable(final SecretsSupplier secretsSupplier,
                                    final String secretId, final String secretKey, Object secretValue) {
@@ -31,11 +31,12 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
 
     @Override
     public Object getValue() {
-        return null;
+        return secretValue;
     }
 
     @Override
-    public void setValue(Object someValue) {
-        this.secretsSupplier.updateValue(secretId, secretKey, someValue);
+    public void setValue(Object newValue) {
+        this.secretsSupplier.updateValue(secretId, secretKey, newValue);
+        this.secretValue = newValue;
     }
 }

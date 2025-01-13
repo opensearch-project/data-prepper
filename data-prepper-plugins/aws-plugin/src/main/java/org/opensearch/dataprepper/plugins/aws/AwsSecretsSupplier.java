@@ -130,10 +130,10 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
-    public String updateValue(String secretId, String keyToUpdate, Object newValueToSet) {
+    public String updateValue(String secretId, String keyToUpdate, Object newValue) {
         AwsSecretManagerConfiguration awsSecretManagerConfiguration = awsSecretManagerConfigurationMap.get(secretId);
         PutSecretValueRequest putSecretValueRequest =
-                awsSecretManagerConfiguration.putSecretValueRequest(keyToUpdate, newValueToSet);
+                awsSecretManagerConfiguration.putSecretValueRequest(keyToUpdate, newValue);
         SecretsManagerClient secretsManagerClient = secretsManagerClientMap.get(secretId);
 
         try {

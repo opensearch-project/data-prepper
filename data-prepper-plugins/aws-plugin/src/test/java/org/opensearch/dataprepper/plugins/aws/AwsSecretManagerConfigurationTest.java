@@ -28,6 +28,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClientBuilder;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
 import java.io.IOException;
@@ -60,7 +61,13 @@ class AwsSecretManagerConfigurationTest {
     private GetSecretValueRequest.Builder getSecretValueRequestBuilder;
 
     @Mock
+    private PutSecretValueRequest.Builder putSecretValueRequestBuilder;
+
+    @Mock
     private GetSecretValueRequest getSecretValueRequest;
+
+    @Mock
+    private PutSecretValueRequest putSecretValueRequest;
 
     @Mock
     private SecretsManagerClientBuilder secretsManagerClientBuilder;
@@ -129,6 +136,24 @@ class AwsSecretManagerConfigurationTest {
             assertThat(awsSecretManagerConfiguration.createGetSecretValueRequest(), is(getSecretValueRequest));
         }
         verify(getSecretValueRequestBuilder).secretId("test-secret");
+    }
+
+    @Test
+    void testCreatePutSecretValueRequest() throws IOException {
+        when(putSecretValueRequestBuilder.secretId(anyString())).thenReturn(putSecretValueRequestBuilder);
+        when(putSecretValueRequestBuilder.secretString(anyString())).thenReturn(putSecretValueRequestBuilder);
+        when(putSecretValueRequestBuilder.build()).thenReturn(putSecretValueRequest);
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
+                "/test-aws-secret-manager-configuration-default.yaml");
+        final AwsSecretManagerConfiguration awsSecretManagerConfiguration = objectMapper.readValue(
+                inputStream, AwsSecretManagerConfiguration.class);
+        try (final MockedStatic<PutSecretValueRequest> putSecretValueRequestMockedStatic =
+                     mockStatic(PutSecretValueRequest.class)) {
+            putSecretValueRequestMockedStatic.when(PutSecretValueRequest::builder).thenReturn(
+                    putSecretValueRequestBuilder);
+            assertThat(awsSecretManagerConfiguration.putSecretValueRequest("keyToUpdate", "newValue"), is(putSecretValueRequest));
+        }
+        verify(putSecretValueRequestBuilder).secretId("test-secret");
     }
 
     @Test

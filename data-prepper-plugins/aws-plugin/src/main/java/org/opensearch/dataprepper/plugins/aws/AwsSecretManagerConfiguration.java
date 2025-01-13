@@ -79,8 +79,8 @@ public class AwsSecretManagerConfiguration {
                 .build();
     }
 
-    public PutSecretValueRequest putSecretValueRequest(String keyToUpdate, Object newValueToSet) {
-        String updatedSecretString = String.format("{\"%s\": \"%s\"}", keyToUpdate, newValueToSet);
+    public PutSecretValueRequest putSecretValueRequest(String keyToUpdate, Object newValue) {
+        String updatedSecretString = String.format("{\"%s\": \"%s\"}", keyToUpdate, newValue);
         return PutSecretValueRequest.builder()
                 .secretId(awsSecretId)
                 .secretString(updatedSecretString)
