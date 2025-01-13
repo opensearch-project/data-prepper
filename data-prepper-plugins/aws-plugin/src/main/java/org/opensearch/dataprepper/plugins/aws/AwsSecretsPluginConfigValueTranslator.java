@@ -46,7 +46,7 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
     }
 
     @Override
-    public PluginConfigVariable translateVariable(String value) {
+    public PluginConfigVariable translateToPluginConfigVariable(String value) {
         final Matcher matcher = SECRETS_REF_PATTERN.matcher(value);
         if (!matcher.matches()) {
             throw new IllegalArgumentException(String.format(

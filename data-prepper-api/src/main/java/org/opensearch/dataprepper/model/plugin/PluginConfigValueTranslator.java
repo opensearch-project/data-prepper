@@ -5,5 +5,5 @@ public interface PluginConfigValueTranslator {
 
     String getPrefix();
 
-    PluginConfigVariable translateVariable(final String value);
+    PluginConfigVariable translateToPluginConfigVariable(final String value);
 }

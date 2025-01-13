@@ -49,7 +49,7 @@ public class VariableExpander {
                     .map(entry -> {
                         final String valueReferenceKey = entry.getKey().group(VALUE_REFERENCE_KEY);
                         if (destinationType.equals(PluginConfigVariable.class)) {
-                            return (T) entry.getValue().translateVariable(valueReferenceKey);
+                            return (T) entry.getValue().translateToPluginConfigVariable(valueReferenceKey);
                         } else {
                             return objectMapper.convertValue(
                                     entry.getValue().translate(valueReferenceKey), destinationType);
