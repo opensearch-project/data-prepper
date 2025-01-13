@@ -118,7 +118,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 return;
             }
 
-            log.info("Renewing access-refresh token pair for Jira Connector.");
+            log.info("Renewing access token and refresh token pair for Jira Connector.");
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             String payloadTemplate = "{\"grant_type\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"refresh_token\": \"%s\"}";
@@ -132,6 +132,9 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+                // updating config object's PluginConfigVariable so that it updates the underlying Secret store
+                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken().setValue(this.refreshToken);
+                log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);
                 this.expiresInSeconds = 0;

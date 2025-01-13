@@ -138,6 +138,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
         try {
             final PutSecretValueResponse putSecretValueResponse = secretsManagerClient.putSecretValue(putSecretValueRequest);
+            LOG.info("Updated key: {} in the secret {}. New version of the store is {}",
+                    keyToUpdate, secretId, putSecretValueResponse.versionId());
             return putSecretValueResponse.versionId();
         } catch (Exception e) {
             throw new RuntimeException(
