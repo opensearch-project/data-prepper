@@ -14,6 +14,7 @@ import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -44,8 +45,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     public static final String EXPIRES_IN = "expires_in";
     public static final String REFRESH_TOKEN = "refresh_token";
     public static final String ACCESS_TOKEN = "access_token";
-    private static final Logger log =
-            org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
+    private static final Logger log = LoggerFactory.getLogger(JiraOauthConfig.class);
     private final String clientId;
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
@@ -66,7 +66,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
         this.accessToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken();
-        this.refreshToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken();
+        this.refreshToken = (String) jiraSourceConfig.getAuthenticationConfig()
+                .getOauth2Config().getRefreshToken().getValue();
         this.clientId = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
         this.clientSecret = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }

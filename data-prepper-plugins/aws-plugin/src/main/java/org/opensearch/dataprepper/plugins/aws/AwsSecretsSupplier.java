@@ -13,16 +13,17 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueResponse;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class AwsSecretsSupplier implements SecretsSupplier {
-    private static final Logger LOG = LoggerFactory.getLogger(AwsSecretsSupplier.class);
     static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
-
+    private static final Logger LOG = LoggerFactory.getLogger(AwsSecretsSupplier.class);
     private final SecretValueDecoder secretValueDecoder;
     private final ObjectMapper objectMapper;
     private final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap;
@@ -94,6 +95,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         }
     }
 
+
     @Override
     public void refresh(String secretConfigId) {
         LOG.info("Retrieving latest secrets in aws:secrets:{}.", secretConfigId);
@@ -124,6 +126,23 @@ public class AwsSecretsSupplier implements SecretsSupplier {
             return objectMapper.readValue(secretValueDecoder.decode(getSecretValueResponse), MAP_TYPE_REFERENCE);
         } catch (JsonProcessingException e) {
             return secretValueDecoder.decode(getSecretValueResponse);
+        }
+    }
+
+    @Override
+    public String updateValue(String secretId, String keyToUpdate, Object newValueToSet) {
+        AwsSecretManagerConfiguration awsSecretManagerConfiguration = awsSecretManagerConfigurationMap.get(secretId);
+        PutSecretValueRequest putSecretValueRequest =
+                awsSecretManagerConfiguration.putSecretValueRequest(keyToUpdate, newValueToSet);
+        SecretsManagerClient secretsManagerClient = secretsManagerClientMap.get(secretId);
+
+        try {
+            final PutSecretValueResponse putSecretValueResponse = secretsManagerClient.putSecretValue(putSecretValueRequest);
+            return putSecretValueResponse.versionId();
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    String.format("Unable to update secret: %s to put a new value for the key: %s",
+                            awsSecretManagerConfiguration.getAwsSecretId(), keyToUpdate), e);
         }
     }
 }

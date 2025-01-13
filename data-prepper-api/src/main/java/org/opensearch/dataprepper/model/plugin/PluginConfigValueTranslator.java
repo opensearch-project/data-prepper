@@ -4,4 +4,6 @@ public interface PluginConfigValueTranslator {
     Object translate(final String value);
 
     String getPrefix();
+
+    PluginConfigVariable translateVariable(final String value);
 }
