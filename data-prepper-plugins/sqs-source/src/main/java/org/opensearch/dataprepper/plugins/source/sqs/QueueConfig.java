@@ -15,6 +15,7 @@ import java.time.Duration;
 
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class QueueConfig {
 
@@ -62,6 +63,9 @@ public class QueueConfig {
     @DurationMax(seconds = 20)
     private Duration waitTime = DEFAULT_WAIT_TIME_SECONDS;
 
+    @JsonProperty("codec")
+    private PluginModel codec = null;
+
     public String getUrl() {
         return url;
     }
@@ -93,5 +97,10 @@ public class QueueConfig {
     public Duration getPollDelay() {
         return pollDelay;
     }
+
+    public PluginModel getCodec() {
+        return codec;
+    }
+
 }
 

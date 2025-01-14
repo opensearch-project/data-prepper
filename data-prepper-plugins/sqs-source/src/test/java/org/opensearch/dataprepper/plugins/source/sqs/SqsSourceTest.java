@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -27,6 +28,7 @@ class SqsSourceTest {
     private final String TEST_PIPELINE_NAME = "test_pipeline";
     private SqsSource sqsSource;
     private PluginMetrics pluginMetrics;
+    private PluginFactory pluginFactory;
     private SqsSourceConfig sqsSourceConfig;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AwsCredentialsSupplier awsCredentialsSupplier;
@@ -36,10 +38,11 @@ class SqsSourceTest {
     @BeforeEach
     void setUp() {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+        pluginFactory = mock(PluginFactory.class);
         sqsSourceConfig = mock(SqsSourceConfig.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        sqsSource = new SqsSource(pluginMetrics, sqsSourceConfig, acknowledgementSetManager, awsCredentialsSupplier);
+        sqsSource = new SqsSource(pluginMetrics, sqsSourceConfig, pluginFactory, acknowledgementSetManager, awsCredentialsSupplier);
         buffer = mock(Buffer.class);
     }
 

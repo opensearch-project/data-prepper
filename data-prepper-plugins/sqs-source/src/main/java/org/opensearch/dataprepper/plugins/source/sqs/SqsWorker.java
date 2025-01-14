@@ -68,21 +68,20 @@ public class SqsWorker implements Runnable {
     public SqsWorker(final Buffer<Record<Event>> buffer,
                      final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
-                     final SqsEventProcessor sqsEventProcessor,
                      final SqsSourceConfig sqsSourceConfig,
                      final QueueConfig queueConfig,
                      final PluginMetrics pluginMetrics,
+                     final SqsEventProcessor sqsEventProcessor,
                      final Backoff backoff) {
 
         this.sqsClient = sqsClient;
-        this.sqsEventProcessor = sqsEventProcessor;
         this.queueConfig = queueConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
         this.buffer = buffer;
         this.bufferTimeoutMillis = (int) sqsSourceConfig.getBufferTimeout().toMillis();
-
+        this.sqsEventProcessor = sqsEventProcessor;
         messageVisibilityTimesMap = new HashMap<>();
         failedAttemptCount = 0;
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
