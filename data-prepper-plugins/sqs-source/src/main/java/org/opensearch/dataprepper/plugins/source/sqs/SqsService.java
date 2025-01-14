@@ -80,9 +80,11 @@
                 final PluginModel codecConfiguration = queueConfig.getCodec();
                 final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
                 final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-                sqsEventProcessor = new SqsEventProcessor(new BulkSqsMessageHandler(codec));
+                MessageFieldStrategy bulkStrategy = new JsonBulkMessageFieldStrategy(codec);
+                sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(bulkStrategy));
             } else {
-                sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler());
+                MessageFieldStrategy standardStrategy = new StandardMessageFieldStrategy();
+                sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(standardStrategy));
             }
             ExecutorService executorService = Executors.newFixedThreadPool(
                     numWorkers, BackgroundThreadFactory.defaultExecutorThreadFactory("sqs-source" + queueName));
