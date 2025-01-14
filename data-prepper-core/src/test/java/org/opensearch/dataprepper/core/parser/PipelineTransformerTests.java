@@ -396,6 +396,7 @@ class PipelineTransformerTests {
         final Collection<PluginError> pluginErrorCollection = pluginErrorArgumentCaptor.getValue();
         assertThat(pluginErrorCollection, notNullValue());
         assertThat(pluginErrorCollection.size(), equalTo(1));
+        assertThat(pluginErrorCollector.getPluginErrors(), equalTo(pluginErrorCollection));
 
         final PluginError pluginError = pluginErrorCollection.stream().findAny().orElseThrow();
         final String expectedErrorMessage = String.format(CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT, "service", "/value == service");
