@@ -272,6 +272,41 @@ public class KafkaCustomConsumerTest {
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
+
+    @Test
+    public void testKafkaMetadata() {
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("plaintext", false);
+
+        try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
+        });
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 2L);
+
+        for (int offset = 0; offset < bufferedRecords.size(); offset++) {
+            Record<Event> record = bufferedRecords.get(offset);
+            Event event = record.getData();
+            Assertions.assertNotNull(event.getMetadata().getAttribute("kafka_timestamp"));
+            Assertions.assertNotNull(event.getMetadata().getAttribute("kafka_timestamp_type"));
+            Assertions.assertEquals(TOPIC_NAME, event.getMetadata().getAttribute("kafka_topic"));
+            Assertions.assertEquals(String.valueOf(testPartition), event.getMetadata().getAttribute("kafka_partition"));
+            Assertions.assertEquals(Long.valueOf(offset), event.getMetadata().getAttribute("kafka_offset"));
+        }
+    }
+
     @Test
     public void testPlainTextConsumeRecords() throws InterruptedException {
         String topic = topicConfig.getName();
