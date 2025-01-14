@@ -50,6 +50,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -396,6 +398,7 @@ class PipelineTransformerTests {
         final Collection<PluginError> pluginErrorCollection = pluginErrorArgumentCaptor.getValue();
         assertThat(pluginErrorCollection, notNullValue());
         assertThat(pluginErrorCollection.size(), equalTo(1));
+        assertThat(pluginErrorCollector.getPluginErrors(), equalTo(pluginErrorCollection));
 
         final PluginError pluginError = pluginErrorCollection.stream().findAny().orElseThrow();
         final String expectedErrorMessage = String.format(CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT, "service", "/value == service");
