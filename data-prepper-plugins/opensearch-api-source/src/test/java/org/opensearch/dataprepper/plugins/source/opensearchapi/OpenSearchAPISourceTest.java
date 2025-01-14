@@ -50,6 +50,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.opensearchapi.model.BulkAPIEventMetadataKeyAttributes;
 
@@ -108,6 +109,9 @@ class OpenSearchAPISourceTest {
     @Mock
     private CompletableFuture<Void> completableFuture;
 
+    @Mock
+    private PipelineDescription pipelineDescription;
+
     private BlockingBuffer<Record<Event>> testBuffer;
     private OpenSearchAPISource openSearchAPISource;
     private List<Measurement> requestsReceivedMeasurements;
@@ -122,15 +126,16 @@ class OpenSearchAPISourceTest {
     private OpenSearchAPISourceConfig sourceConfig;
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
-    private PipelineDescription pipelineDescription;
 
-    private BlockingBuffer<Record<Event>> getBuffer() {
+    private BlockingBuffer<Record<Event>> getBuffer() throws JsonProcessingException {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-        pluginSetting.setPipelineName(testPipelineName);
-        return new BlockingBuffer<>(pluginSetting);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(integerHashMap);
+        BlockingBufferConfig blockingBufferConfig = objectMapper.readValue(json, BlockingBufferConfig.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(testPipelineName);
+        return new BlockingBuffer<>(blockingBufferConfig, pipelineDescription);
     }
 
     /**
