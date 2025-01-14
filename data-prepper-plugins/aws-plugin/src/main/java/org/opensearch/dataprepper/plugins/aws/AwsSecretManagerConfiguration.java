@@ -79,11 +79,10 @@ public class AwsSecretManagerConfiguration {
                 .build();
     }
 
-    public PutSecretValueRequest putSecretValueRequest(String keyToUpdate, Object newValue) {
-        String updatedSecretString = String.format("{\"%s\": \"%s\"}", keyToUpdate, newValue);
+    public PutSecretValueRequest putSecretValueRequest(String secretKeyValueMapAsString) {
         return PutSecretValueRequest.builder()
                 .secretId(awsSecretId)
-                .secretString(updatedSecretString)
+                .secretString(secretKeyValueMapAsString)
                 .build();
     }
 

@@ -175,7 +175,7 @@ class AwsSecretsSupplierTest {
 
     @Test
     void testUpdateValue() {
-        when(awsSecretManagerConfiguration.putSecretValueRequest(any(), any())).thenReturn(putSecretValueRequest);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         final String testValue = "{\"key\":\"oldValue\"}";
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
@@ -188,7 +188,7 @@ class AwsSecretsSupplierTest {
 
     @Test
     void testUpdateValueFailed() {
-        when(awsSecretManagerConfiguration.putSecretValueRequest(any(), any())).thenReturn(putSecretValueRequest);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         final String testValue = "{\"key\":\"oldValue\"}";
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);

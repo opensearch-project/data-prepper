@@ -131,9 +131,12 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     @Override
     public String updateValue(String secretId, String keyToUpdate, Object newValue) {
+        final Map<String, Object> keyValuePairs = (Map<String, Object>) secretIdToValue.get(secretId);
+        keyValuePairs.put(keyToUpdate, newValue);
+        String secretKeyValueMapAsString = (String) retrieveValue(secretId);
         AwsSecretManagerConfiguration awsSecretManagerConfiguration = awsSecretManagerConfigurationMap.get(secretId);
         PutSecretValueRequest putSecretValueRequest =
-                awsSecretManagerConfiguration.putSecretValueRequest(keyToUpdate, newValue);
+                awsSecretManagerConfiguration.putSecretValueRequest(secretKeyValueMapAsString);
         SecretsManagerClient secretsManagerClient = secretsManagerClientMap.get(secretId);
 
         try {

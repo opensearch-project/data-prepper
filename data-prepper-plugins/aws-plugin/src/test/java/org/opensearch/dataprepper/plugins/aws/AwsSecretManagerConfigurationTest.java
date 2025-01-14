@@ -151,7 +151,7 @@ class AwsSecretManagerConfigurationTest {
                      mockStatic(PutSecretValueRequest.class)) {
             putSecretValueRequestMockedStatic.when(PutSecretValueRequest::builder).thenReturn(
                     putSecretValueRequestBuilder);
-            assertThat(awsSecretManagerConfiguration.putSecretValueRequest("keyToUpdate", "newValue"), is(putSecretValueRequest));
+            assertThat(awsSecretManagerConfiguration.putSecretValueRequest("{\"keyToUpdate\", \"newValue\"}"), is(putSecretValueRequest));
         }
         verify(putSecretValueRequestBuilder).secretId("test-secret");
     }
