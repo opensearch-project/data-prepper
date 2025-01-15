@@ -22,4 +22,14 @@ public interface SecretsSupplier {
      * @return The version id of the secret after the update
      */
     String updateValue(String secretId, String keyToUpdate, Object newValueToSet);
+
+    /**
+     * Update the value of secret store (which is not a key value secret store) and responds
+     * with the version id of the secret after the update.
+     *
+     * @param secretId      The id of the secret to be updated
+     * @param newValueToSet The value of the secret to be updated
+     * @return The version id of the secret after the update
+     */
+    String updateValue(String secretId, Object newValueToSet);
 }

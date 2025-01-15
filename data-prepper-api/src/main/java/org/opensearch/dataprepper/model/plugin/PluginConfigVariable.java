@@ -13,17 +13,21 @@ package org.opensearch.dataprepper.model.plugin;
  * Interface for a Extension Plugin configuration variable.
  * It gives access to the details of a defined extension variable.
  *
- * @since 1.2
+ * @since 2.11
  */
 public interface PluginConfigVariable {
 
     /**
      * Returns the value of this variable.
+     *
+     * @return the value of this variable
      */
     Object getValue();
 
     /**
      * If this variable is updatable, this method helps to set a new value for this variable
+     *
+     * @param updatedValue the new value to set
      */
-    void setValue(Object someValue);
+    void setValue(Object updatedValue);
 }

@@ -1,6 +1,12 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -138,8 +144,10 @@ class AwsSecretManagerConfigurationTest {
         verify(getSecretValueRequestBuilder).secretId("test-secret");
     }
 
-    @Test
-    void testCreatePutSecretValueRequest() throws IOException {
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "    ", "secretValue", "{\"keyToUpdate\", \"newValue\"}"})
+    void testPutSecretValueRequest_construct_put_request(String secretValueToStore) throws IOException {
         when(putSecretValueRequestBuilder.secretId(anyString())).thenReturn(putSecretValueRequestBuilder);
         when(putSecretValueRequestBuilder.secretString(anyString())).thenReturn(putSecretValueRequestBuilder);
         when(putSecretValueRequestBuilder.build()).thenReturn(putSecretValueRequest);
@@ -151,7 +159,8 @@ class AwsSecretManagerConfigurationTest {
                      mockStatic(PutSecretValueRequest.class)) {
             putSecretValueRequestMockedStatic.when(PutSecretValueRequest::builder).thenReturn(
                     putSecretValueRequestBuilder);
-            assertThat(awsSecretManagerConfiguration.putSecretValueRequest("{\"keyToUpdate\", \"newValue\"}"), is(putSecretValueRequest));
+            assertThat(awsSecretManagerConfiguration.putSecretValueRequest(secretValueToStore),
+                    is(putSecretValueRequest));
         }
         verify(putSecretValueRequestBuilder).secretId("test-secret");
     }

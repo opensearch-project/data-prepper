@@ -1,6 +1,12 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -27,6 +33,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -173,17 +180,43 @@ class AwsSecretsSupplierTest {
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(newTestValue));
     }
 
-    @Test
-    void testUpdateValue() {
+    @ParameterizedTest
+    @ValueSource(strings = {"", "  ", "newValue", "{\"key\":\"oldValue\"}", "{\"a\":\"b\"}"})
+    void testUpdateValue(String valueToSet) {
         when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
-        final String testValue = "{\"key\":\"oldValue\"}";
-        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
         String newVersionId = UUID.randomUUID().toString();
         when(putSecretValueResponse.versionId()).thenReturn(newVersionId);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
-        assertThat(objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", "newValue"),
+        assertThat(objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", valueToSet),
                 equalTo(newVersionId));
+    }
+
+    @Test
+    void testUpdateValue_null_key_throws_exception() {
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+        assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, null, "newValue"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "  ", "newValue"})
+    void testUpdateValue_null_key_doesnot_throws_exception_when_value_is_not_key_value_pair(String secretValueToSet) {
+        when(awsSecretManagerConfiguration.createGetSecretValueRequest()).thenReturn(getSecretValueRequest);
+        when(awsSecretPluginConfig.getAwsSecretManagerConfigurationMap()).thenReturn(
+                Map.of(TEST_AWS_SECRET_CONFIGURATION_NAME, awsSecretManagerConfiguration)
+        );
+        when(awsSecretManagerConfiguration.createSecretManagerClient()).thenReturn(secretsManagerClient);
+        when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(TEST_VALUE);
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
+        when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
+        String versionId = UUID.randomUUID().toString();
+        when(putSecretValueResponse.versionId()).thenReturn(versionId);
+        objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
+        String newValue = objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, secretValueToSet);
+        assertEquals(versionId, newValue);
     }
 
     @Test

@@ -1,6 +1,12 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.aws;
@@ -130,9 +136,26 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
+    public String updateValue(String secretId, Object newValue) {
+        return updateValue(secretId, null, newValue);
+    }
+
+    @Override
     public String updateValue(String secretId, String keyToUpdate, Object newValue) {
-        final Map<String, Object> keyValuePairs = (Map<String, Object>) secretIdToValue.get(secretId);
-        keyValuePairs.put(keyToUpdate, newValue);
+        Object currentSecretStore = secretIdToValue.get(secretId);
+        if (currentSecretStore instanceof Map) {
+            if (keyToUpdate == null) {
+                throw new IllegalArgumentException(
+                        String.format("Key to update cannot be null for a key value based secret. secretId: %s", secretId));
+            }
+            final Map<String, Object> keyValuePairs = (Map<String, Object>) currentSecretStore;
+            keyValuePairs.put(keyToUpdate, newValue);
+        } else {
+            //This store is not a key value pair store. It is just a value store.
+            //If we are here, either KeyToUpdate passed is null or we simply ignore it and just put value in the store
+            secretIdToValue.put(secretId, newValue);
+        }
+        // assuming all the secrets are string based (not binary)
         String secretKeyValueMapAsString = (String) retrieveValue(secretId);
         AwsSecretManagerConfiguration awsSecretManagerConfiguration = awsSecretManagerConfigurationMap.get(secretId);
         PutSecretValueRequest putSecretValueRequest =
