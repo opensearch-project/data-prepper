@@ -10,9 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.source.jira;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
+import org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,18 +30,19 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.base.Craw
 
 public class JiraSourceConfigTest {
     private final String accessToken = "access token test";
-    private final String refreshToken = "refresh token test";
+    private final PluginConfigVariable refreshToken = new MockPluginConfigVariableImpl("refresh token test");
     private final String clientId = "client id test";
     private final String clientSecret = "client secret test";
     private final String password = "test Jira Credential";
     private final String username = "test Jira Id";
     private final String accountUrl = "https://example.atlassian.net";
-    private List<String> projectList = new ArrayList<>();
-    private List<String> issueTypeList = new ArrayList<>();
-    private List<String> statusList = new ArrayList<>();
+    private final List<String> projectList = new ArrayList<>();
+    private final List<String> issueTypeList = new ArrayList<>();
+    private final List<String> statusList = new ArrayList<>();
     private JiraSourceConfig jiraSourceConfig;
 
-    private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws JsonProcessingException {
+    private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws Exception {
+        PluginConfigVariable pcv = null;
         Map<String, Object> configMap = new HashMap<>();
         List<String> hosts = new ArrayList<>();
         hosts.add(accountUrl);
@@ -48,7 +51,7 @@ public class JiraSourceConfigTest {
 
         Map<String, Object> authenticationMap = new HashMap<>();
         Map<String, String> basicMap = new HashMap<>();
-        Map<String, String> oauth2Map = new HashMap<>();
+        Map<String, Object> oauth2Map = new HashMap<>();
         if (authtype.equals(BASIC)) {
             basicMap.put("username", username);
             basicMap.put("password", password);
@@ -56,10 +59,9 @@ public class JiraSourceConfigTest {
         } else if (authtype.equals(OAUTH2)) {
             if (hasToken) {
                 oauth2Map.put("access_token", accessToken);
-                oauth2Map.put("refresh_token", refreshToken);
+                pcv = refreshToken;
             } else {
                 oauth2Map.put("access_token", null);
-                oauth2Map.put("refresh_token", null);
             }
             oauth2Map.put("client_id", clientId);
             oauth2Map.put("client_secret", clientSecret);
@@ -98,11 +100,14 @@ public class JiraSourceConfigTest {
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonConfig = objectMapper.writeValueAsString(configMap);
         JiraSourceConfig config = objectMapper.readValue(jsonConfig, JiraSourceConfig.class);
+        if (config.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
+            TestUtilForPrivateFields.setPrivateField(config.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
+        }
         return config;
     }
 
     @Test
-    void testGetters() throws JsonProcessingException {
+    void testGetters() throws Exception {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
         assertEquals(jiraSourceConfig.getFilterConfig().getIssueTypeConfig().getInclude(), issueTypeList);
         assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
@@ -115,18 +120,17 @@ public class JiraSourceConfigTest {
     }
 
     @Test
-    void testFetchGivenOauthAttributeWrongAuthType() throws JsonProcessingException {
+    void testFetchGivenOauthAttributeWrongAuthType() throws Exception {
         jiraSourceConfig = createJiraSourceConfig(BASIC, true);
         assertThrows(RuntimeException.class, () -> jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken());
     }
 
     @Test
-    void testFetchGivenOauthAtrribute() throws JsonProcessingException {
+    void testFetchGivenOauthAtrribute() throws Exception {
         jiraSourceConfig = createJiraSourceConfig(OAUTH2, true);
         assertEquals(accessToken, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken());
         assertEquals(refreshToken, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken());
         assertEquals(clientId, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId());
         assertEquals(clientSecret, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret());
     }
-
 }

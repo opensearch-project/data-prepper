@@ -110,7 +110,7 @@ public class JiraRestClient {
         return invokeRestApi(uri, String.class).getBody();
     }
 
-    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException{
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException {
         AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
         while (retryCount < RETRY_ATTEMPT) {
@@ -119,7 +119,7 @@ public class JiraRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage(), ex);
+                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
@@ -136,7 +136,7 @@ public class JiraRestClient {
             }
             retryCount++;
         }
-        String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
+        String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri);
         log.error(errorMessage);
         throw new RuntimeException(errorMessage);
     }

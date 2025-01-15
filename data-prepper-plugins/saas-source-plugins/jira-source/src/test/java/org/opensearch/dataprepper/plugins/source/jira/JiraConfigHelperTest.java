@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
@@ -51,10 +52,10 @@ public class JiraConfigHelperTest {
     IssueTypeConfig issueTypeConfig;
 
     @Mock
-    ProjectConfig  projectConfig;
+    ProjectConfig projectConfig;
 
     @Mock
-    NameConfig  nameConfig;
+    NameConfig nameConfig;
 
     @Mock
     AuthenticationConfig authenticationConfig;
@@ -63,7 +64,10 @@ public class JiraConfigHelperTest {
     BasicConfig basicConfig;
 
     @Mock
-    Oauth2Config  oauth2Config;
+    Oauth2Config oauth2Config;
+
+    @Mock
+    PluginConfigVariable pluginConfigVariable;
 
     @Test
     void testInitialization() {
@@ -156,7 +160,7 @@ public class JiraConfigHelperTest {
         when(oauth2Config.getAccessToken()).thenReturn("id");
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(oauth2Config.getRefreshToken()).thenReturn("credential");
+        when(authenticationConfig.getOauth2Config().getRefreshToken()).thenReturn(pluginConfigVariable);
         when(oauth2Config.getAccessToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 

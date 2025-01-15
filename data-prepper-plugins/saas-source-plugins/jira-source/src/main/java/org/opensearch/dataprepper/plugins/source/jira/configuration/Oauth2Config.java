@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.jira.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 @Getter
 public class Oauth2Config {
@@ -26,7 +27,7 @@ public class Oauth2Config {
     private String accessToken;
 
     @JsonProperty("refresh_token")
-    private String refreshToken;
+    private PluginConfigVariable refreshToken;
 
     @AssertTrue(message = "Client ID, Client Secret, Access Token, and Refresh Token are both required for Oauth2")
     private boolean isOauth2ConfigValid() {

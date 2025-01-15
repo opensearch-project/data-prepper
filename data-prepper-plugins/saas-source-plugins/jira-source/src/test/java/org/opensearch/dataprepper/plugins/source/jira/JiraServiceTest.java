@@ -18,10 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
+import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
+import org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
@@ -58,6 +62,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAM
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields.setPrivateField;
 
 
 /**
@@ -84,9 +89,16 @@ public class JiraServiceTest {
     public static JiraSourceConfig createJiraConfigurationFromYaml(String fileName) {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         try (InputStream inputStream = getResourceAsStream(fileName)) {
-            return objectMapper.readValue(inputStream, JiraSourceConfig.class);
+            JiraSourceConfig jiraSourceConfig = objectMapper.readValue(inputStream, JiraSourceConfig.class);
+            Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
+            if (oauth2Config != null) {
+                setPrivateField(oauth2Config, "refreshToken", new MockPluginConfigVariableImpl("mockRefreshToken"));
+            }
+            return jiraSourceConfig;
         } catch (IOException ex) {
             log.error("Failed to parse pipeline Yaml", ex);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         return null;
     }
@@ -95,6 +107,7 @@ public class JiraServiceTest {
                                                            List<String> issueType,
                                                            List<String> issueStatus,
                                                            List<String> projectKey) throws JsonProcessingException {
+        PluginConfigVariable pcv = null;
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> authenticationMap = new HashMap<>();
         Map<String, String> basicMap = new HashMap<>();
@@ -103,11 +116,11 @@ public class JiraServiceTest {
             basicMap.put("username", "test_username");
             basicMap.put("password", "test_password");
             authenticationMap.put("basic", basicMap);
-        } else if (auth_type.equals(OAUTH2))  {
+        } else if (auth_type.equals(OAUTH2)) {
             oauth2Map.put("client_id", "test-client-id");
             oauth2Map.put("client_secret", "test-client-secret");
             oauth2Map.put("access_token", "test-access-token");
-            oauth2Map.put("refresh_token", "test-refresh-token");
+            pcv = new MockPluginConfigVariableImpl("test-refresh-token");
             authenticationMap.put("oauth2", oauth2Map);
         }
 
@@ -137,7 +150,16 @@ public class JiraServiceTest {
         jiraSourceConfigMap.put("filter", filterMap);
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
-        return objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
+        JiraSourceConfig jiraSourceConfig = objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
+        if (jiraSourceConfig.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
+            try {
+                TestUtilForPrivateFields.setPrivateField(
+                        jiraSourceConfig.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return jiraSourceConfig;
     }
 
     @AfterEach

@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
@@ -49,10 +50,13 @@ class CustomRestTemplateConfigTest {
     private JiraAuthConfig mockAuthConfig;
 
     @Mock
-    private BasicConfig  mockBasicConfig;
+    private BasicConfig mockBasicConfig;
 
     @Mock
     private Oauth2Config mockOauth2Config;
+
+    @Mock
+    private PluginConfigVariable pluginConfigVariable;
 
     @Mock
     private AuthenticationConfig mockAuthenticationConfig;
@@ -78,7 +82,8 @@ class CustomRestTemplateConfigTest {
         lenient().when(mockSourceConfig.getAuthenticationConfig()).thenReturn(mockAuthenticationConfig);
         lenient().when(mockAuthenticationConfig.getOauth2Config()).thenReturn(mockOauth2Config);
         lenient().when(mockOauth2Config.getAccessToken()).thenReturn("accessToken");
-        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn("refreshToken");
+        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn(pluginConfigVariable);
+        lenient().when(pluginConfigVariable.getValue()).thenReturn("refreshToken");
         lenient().when(mockOauth2Config.getClientId()).thenReturn("clientId");
         lenient().when(mockOauth2Config.getClientSecret()).thenReturn("clientSecret");
         lenient().when(mockAuthenticationConfig.getBasicConfig()).thenReturn(mockBasicConfig);

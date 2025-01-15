@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
@@ -31,10 +32,13 @@ public class JiraAuthFactoryTest {
     private JiraSourceConfig sourceConfig;
 
     @Mock
-    private AuthenticationConfig  authenticationConfig;
+    private AuthenticationConfig authenticationConfig;
 
     @Mock
     private Oauth2Config oauth2Config;
+
+    @Mock
+    private PluginConfigVariable pluginConfigVariable;
 
     private JiraAuthFactory jiraAuthFactory;
 
@@ -48,6 +52,8 @@ public class JiraAuthFactoryTest {
         when(sourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
+        when(oauth2Config.getRefreshToken()).thenReturn(pluginConfigVariable);
+        when(pluginConfigVariable.getValue()).thenReturn("mockRefreshToken");
         assertInstanceOf(JiraOauthConfig.class, jiraAuthFactory.getObject());
     }
 
