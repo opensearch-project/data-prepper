@@ -14,6 +14,7 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.model.plugin.FailedToUpdateSecretException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -168,8 +169,8 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     keyToUpdate, secretId, putSecretValueResponse.versionId());
             return putSecretValueResponse.versionId();
         } catch (Exception e) {
-            throw new RuntimeException(
-                    String.format("Unable to update secret: %s to put a new value for the key: %s",
+            throw new FailedToUpdateSecretException(
+                    String.format("Failed to update the secret: %s to put a new value for the key: %s",
                             awsSecretManagerConfiguration.getAwsSecretId(), keyToUpdate), e);
         }
     }

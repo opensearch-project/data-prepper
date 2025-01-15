@@ -30,4 +30,11 @@ public interface PluginConfigVariable {
      * @param updatedValue the new value to set
      */
     void setValue(Object updatedValue);
+
+    /**
+     * Returns if the variable is updatable.
+     *
+     * @return true if this variable is updatable, false otherwise
+     */
+    boolean isUpdatable();
 }

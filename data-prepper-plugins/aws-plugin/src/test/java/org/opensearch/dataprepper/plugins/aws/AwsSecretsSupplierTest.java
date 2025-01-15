@@ -182,7 +182,7 @@ class AwsSecretsSupplierTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "  ", "newValue", "{\"key\":\"oldValue\"}", "{\"a\":\"b\"}"})
-    void testUpdateValue(String valueToSet) {
+    void testUpdateValue_successfully_updated(String valueToSet) {
         when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         String newVersionId = UUID.randomUUID().toString();
@@ -220,7 +220,7 @@ class AwsSecretsSupplierTest {
     }
 
     @Test
-    void testUpdateValueFailed() {
+    void testUpdateValue_failed_to_update() {
         when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         final String testValue = "{\"key\":\"oldValue\"}";
