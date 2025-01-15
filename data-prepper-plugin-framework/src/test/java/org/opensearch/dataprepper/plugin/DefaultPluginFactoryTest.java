@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -38,6 +39,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -64,6 +66,7 @@ class DefaultPluginFactoryTest {
     private PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private PluginConfigObservable pluginConfigObservable;
     private ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
+    private List<Consumer<DefinedPlugin<?>>> definedPluginConsumers;
 
     @BeforeEach
     void setUp() {
@@ -92,6 +95,8 @@ class DefaultPluginFactoryTest {
         )).willReturn(pluginConfigObservable);
 
         applicationContextToTypedSuppliers = mock(ApplicationContextToTypedSuppliers.class);
+
+        definedPluginConsumers = List.of(mock(Consumer.class), mock(Consumer.class));
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
@@ -99,7 +104,8 @@ class DefaultPluginFactoryTest {
                 pluginProviderLoader, pluginCreator, pluginConfigurationConverter,
                 beanFactoryProvider,
                 pluginConfigurationObservableFactory,
-                applicationContextToTypedSuppliers);
+                applicationContextToTypedSuppliers,
+                definedPluginConsumers);
     }
 
     @Test
@@ -231,6 +237,22 @@ class DefaultPluginFactoryTest {
         }
 
         @Test
+        void loadPlugin_should_call_all_definedPluginConsumers() {
+            createObjectUnderTest().loadPlugin(baseClass, pluginSetting);
+
+            assertThat("This test is not valid if there are no defined plugin consumers.",
+                    definedPluginConsumers.size(), greaterThanOrEqualTo(2));
+            for (final Consumer<DefinedPlugin<?>> definedPluginConsumer : definedPluginConsumers) {
+                final ArgumentCaptor<DefinedPlugin<?>> definedPluginArgumentCaptor = ArgumentCaptor.forClass(DefinedPlugin.class);
+                verify(definedPluginConsumer).accept(definedPluginArgumentCaptor.capture());
+
+                final DefinedPlugin<?> actualDefinedPlugin = definedPluginArgumentCaptor.getValue();
+                assertThat(actualDefinedPlugin.getPluginClass(), equalTo(expectedPluginClass));
+                assertThat(actualDefinedPlugin.getPluginName(), equalTo(pluginName));
+            }
+        }
+
+        @Test
         void loadPlugins_should_throw_for_null_number_of_instances() {
 
             final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
@@ -320,6 +342,23 @@ class DefaultPluginFactoryTest {
             assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             assertThat(plugin, notNullValue());
             assertThat(plugin, equalTo(expectedInstance));
+        }
+
+        @Test
+        void loadPlugin_with_varargs_should_call_all_definedPluginConsumers() {
+            final Object vararg1 = new Object();
+            createObjectUnderTest().loadPlugin(baseClass, pluginSetting, vararg1);
+
+            assertThat("This test is not valid if there are no defined plugin consumers.",
+                    definedPluginConsumers.size(), greaterThanOrEqualTo(2));
+            for (final Consumer<DefinedPlugin<?>> definedPluginConsumer : definedPluginConsumers) {
+                final ArgumentCaptor<DefinedPlugin<?>> definedPluginArgumentCaptor = ArgumentCaptor.forClass(DefinedPlugin.class);
+                verify(definedPluginConsumer).accept(definedPluginArgumentCaptor.capture());
+
+                final DefinedPlugin<?> actualDefinedPlugin = definedPluginArgumentCaptor.getValue();
+                assertThat(actualDefinedPlugin.getPluginClass(), equalTo(expectedPluginClass));
+                assertThat(actualDefinedPlugin.getPluginName(), equalTo(pluginName));
+            }
         }
 
         @Test

@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
+import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
 import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
@@ -27,6 +28,7 @@ import org.opensearch.dataprepper.plugins.test.TestDISource;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +40,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 /**
  * Integration test of the plugin framework. These tests should not mock any portion
@@ -49,6 +52,8 @@ class DefaultPluginFactoryIT {
     private PipelinesDataFlowModel pipelinesDataFlowModel;
     @Mock
     private ExtensionsConfiguration extensionsConfiguration;
+    @Mock
+    private ExperimentalConfigurationContainer experimentalConfigurationContainer;
     private String pluginName;
     private String objectPluginName;
     private String pipelineName;
@@ -67,6 +72,8 @@ class DefaultPluginFactoryIT {
         final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
 
+        when(experimentalConfigurationContainer.getExperimental()).thenReturn(ExperimentalConfiguration.defaultConfiguration());
+
         coreContext.scan(EventFactoryApplicationContextMarker.class.getPackage().getName());
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
@@ -75,6 +82,7 @@ class DefaultPluginFactoryIT {
         coreContext.registerBean(PluginErrorsHandler.class, LoggingPluginErrorsHandler::new);
         coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
+        coreContext.registerBean(ExperimentalConfigurationContainer.class, () -> experimentalConfigurationContainer);
         coreContext.refresh();
 
         return coreContext.getBean(DefaultPluginFactory.class);
@@ -186,6 +194,20 @@ class DefaultPluginFactoryIT {
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), equalTo("Plugin test_plugin in pipeline " + pipelineName + " is configured incorrectly: requiredString must not be null"));
+    }
+
+    @Test
+    void loadPlugin_should_throw_when_a_plugin_is_experimental_by_default() {
+        pluginName = "test_experimental_plugin";
+        final PluginSetting pluginSetting = createPluginSettings(Collections.emptyMap());
+
+        final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
+
+        final NoPluginFoundException actualException = assertThrows(NoPluginFoundException.class,
+                () -> objectUnderTest.loadPlugin(TestPluggableInterface.class, pluginSetting));
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), equalTo("Unable to create experimental plugin test_experimental_plugin. You must enable experimental plugins in data-prepper-config.yaml in order to use them."));
     }
 
     private PluginSetting createPluginSettings(final Map<String, Object> pluginSettingMap) {
