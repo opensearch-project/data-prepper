@@ -20,16 +20,16 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.FALSE_VALUE;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.PASSWORD_KEY;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.REQUIRE_SSL_KEY;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.TINY_INT_ONE_IS_BIT_KEY;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.TRUE_VALUE;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.USERNAME_KEY;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager.USE_SSL_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.FALSE_VALUE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.PASSWORD_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.REQUIRE_SSL_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.TINY_INT_ONE_IS_BIT_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.TRUE_VALUE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.USERNAME_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager.USE_SSL_KEY;
 
 
-class ConnectionManagerTest {
+class MySqlConnectionManagerTest {
 
     private String hostName;
     private int port;
@@ -49,14 +49,14 @@ class ConnectionManagerTest {
     @Test
     void test_getConnection_when_requireSSL_is_true() throws SQLException {
         requireSSL = true;
-        final ConnectionManager connectionManager = spy(createObjectUnderTest());
+        final MySqlConnectionManager connectionManager = spy(createObjectUnderTest());
         final ArgumentCaptor<String> jdbcUrlArgumentCaptor = ArgumentCaptor.forClass(String.class);
         final ArgumentCaptor<Properties> propertiesArgumentCaptor = ArgumentCaptor.forClass(Properties.class);
         doReturn(mock(Connection.class)).when(connectionManager).doGetConnection(jdbcUrlArgumentCaptor.capture(), propertiesArgumentCaptor.capture());
 
         connectionManager.getConnection();
 
-        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(ConnectionManager.JDBC_URL_FORMAT, hostName, port)));
+        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(MySqlConnectionManager.JDBC_URL_FORMAT, hostName, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
         assertThat(properties.getProperty(USERNAME_KEY), is(username));
         assertThat(properties.getProperty(PASSWORD_KEY), is(password));
@@ -68,14 +68,14 @@ class ConnectionManagerTest {
     @Test
     void test_getConnection_when_requireSSL_is_false() throws SQLException {
         requireSSL = false;
-        final ConnectionManager connectionManager = spy(createObjectUnderTest());
+        final MySqlConnectionManager connectionManager = spy(createObjectUnderTest());
         final ArgumentCaptor<String> jdbcUrlArgumentCaptor = ArgumentCaptor.forClass(String.class);
         final ArgumentCaptor<Properties> propertiesArgumentCaptor = ArgumentCaptor.forClass(Properties.class);
         doReturn(mock(Connection.class)).when(connectionManager).doGetConnection(jdbcUrlArgumentCaptor.capture(), propertiesArgumentCaptor.capture());
 
         connectionManager.getConnection();
 
-        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(ConnectionManager.JDBC_URL_FORMAT, hostName, port)));
+        assertThat(jdbcUrlArgumentCaptor.getValue(), is(String.format(MySqlConnectionManager.JDBC_URL_FORMAT, hostName, port)));
         final Properties properties = propertiesArgumentCaptor.getValue();
         assertThat(properties.getProperty(USERNAME_KEY), is(username));
         assertThat(properties.getProperty(PASSWORD_KEY), is(password));
@@ -83,7 +83,7 @@ class ConnectionManagerTest {
         assertThat(properties.getProperty(TINY_INT_ONE_IS_BIT_KEY), is(FALSE_VALUE));
     }
 
-    private ConnectionManager createObjectUnderTest() {
-        return new ConnectionManager(hostName, port, username, password, requireSSL);
+    private MySqlConnectionManager createObjectUnderTest() {
+        return new MySqlConnectionManager(hostName, port, username, password, requireSSL);
     }
 }

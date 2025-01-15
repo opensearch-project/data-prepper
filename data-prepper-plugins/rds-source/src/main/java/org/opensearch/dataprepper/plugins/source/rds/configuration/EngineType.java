@@ -13,7 +13,8 @@ import java.util.stream.Collectors;
 
 public enum EngineType {
 
-    MYSQL("mysql");
+    MYSQL("mysql"),
+    POSTGRES("postgres");
 
     private static final Map<String, EngineType> ENGINE_TYPE_MAP = Arrays.stream(EngineType.values())
             .collect(Collectors.toMap(

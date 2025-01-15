@@ -33,6 +33,9 @@ class StreamWorkerTest {
     private EnhancedSourceCoordinator sourceCoordinator;
 
     @Mock
+    private BinlogClientWrapper binlogClientWrapper;
+
+    @Mock
     private BinaryLogClient binaryLogClient;
 
     @Mock
@@ -56,12 +59,13 @@ class StreamWorkerTest {
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         when(streamProgressState.getCurrentPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
+        when(binlogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
 
         streamWorker.processStream(streamPartition);
 
         verify(binaryLogClient).setBinlogFilename(binlogFilename);
         verify(binaryLogClient).setBinlogPosition(binlogPosition);
-        verify(binaryLogClient).connect();
+        verify(binlogClientWrapper).connect();
     }
 
     @Test
@@ -69,7 +73,7 @@ class StreamWorkerTest {
         StreamProgressState streamProgressState = mock(StreamProgressState.class);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         final String binlogFilename = "binlog-001";
-        final Long binlogPosition = 100L;
+        final long binlogPosition = 100L;
         when(streamProgressState.getCurrentPosition()).thenReturn(null);
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
@@ -77,10 +81,10 @@ class StreamWorkerTest {
 
         verify(binaryLogClient, never()).setBinlogFilename(binlogFilename);
         verify(binaryLogClient, never()).setBinlogPosition(binlogPosition);
-        verify(binaryLogClient).connect();
+        verify(binlogClientWrapper).connect();
     }
 
     private StreamWorker createObjectUnderTest() {
-        return new StreamWorker(sourceCoordinator, binaryLogClient, pluginMetrics);
+        return new StreamWorker(sourceCoordinator, binlogClientWrapper, pluginMetrics);
     }
 }

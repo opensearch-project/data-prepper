@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Glob
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -49,7 +49,7 @@ class LeaderSchedulerTest {
     private RdsSourceConfig sourceConfig;
 
     @Mock
-    private SchemaManager schemaManager;
+    private MySqlSchemaManager schemaManager;
 
     @Mock
     private DbTableMetadata dbTableMetadata;

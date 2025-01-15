@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds.leader;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
@@ -17,7 +18,9 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderPr
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +28,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.source.rds.RdsService.S3_PATH_DELIMITER;
@@ -152,22 +156,39 @@ public class LeaderScheduler implements Runnable {
         return sourceConfig.getTableNames().stream()
                 .collect(Collectors.toMap(
                         fullTableName -> fullTableName,
-                        fullTableName -> schemaManager.getPrimaryKeys(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
+                        fullTableName -> ((MySqlSchemaManager)schemaManager).getPrimaryKeys(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
                 ));
     }
 
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
-        getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
-        progressState.setForeignKeyRelations(schemaManager.getForeignKeyRelations(sourceConfig.getTableNames()));
+        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+            getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
+            progressState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));
+        } else {
+            // Postgres
+            // Create replication slot, which will mark the starting point for stream
+            final String publicationName = generatePublicationName();
+            final String slotName = generateReplicationSlotName();
+            ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(sourceConfig.getTableNames(), publicationName, slotName);
+            progressState.setReplicationSlotName(slotName);
+        }
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
     }
 
     private Optional<BinlogCoordinate> getCurrentBinlogPosition() {
-        Optional<BinlogCoordinate> binlogCoordinate = schemaManager.getCurrentBinaryLogPosition();
+        Optional<BinlogCoordinate> binlogCoordinate = ((MySqlSchemaManager)schemaManager).getCurrentBinaryLogPosition();
         LOG.debug("Current binlog position: {}", binlogCoordinate.orElse(null));
         return binlogCoordinate;
+    }
+
+    private String generatePublicationName() {
+        return "data_prepper_publication_" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    private String generateReplicationSlotName() {
+        return "data_prepper_slot_" + UUID.randomUUID().toString().substring(0, 8);
     }
 }
