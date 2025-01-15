@@ -459,6 +459,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         eventMetadata.setAttribute("kafka_timestamp_type", consumerRecord.timestampType().toString());
         eventMetadata.setAttribute("kafka_topic", topicName);
         eventMetadata.setAttribute("kafka_partition", String.valueOf(partition));
+        eventMetadata.setAttribute("kafka_offset", consumerRecord.offset());
         eventMetadata.setExternalOriginationTime(Instant.ofEpochMilli(receivedTimeStamp));
         event.getEventHandle().setExternalOriginationTime(Instant.ofEpochMilli(receivedTimeStamp));
 
