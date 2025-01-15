@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -67,6 +68,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -700,7 +702,10 @@ class SqsWorkerTest {
         objectUnderTest.stop();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+
+        final InOrder inOrder = inOrder(s3Service, sqsMessageDelayTimer);
+        inOrder.verify(sqsMessageDelayTimer).record(any(Duration.class));
+        inOrder.verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
 
         ArgumentCaptor<Consumer<ProgressCheck>> progressConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -711,7 +716,17 @@ class SqsWorkerTest {
 
         verify(sqsClient, never()).changeMessageVisibility(any(ChangeMessageVisibilityRequest.class));
         verify(sqsMessagesReceivedCounter).increment(1);
-        verify(sqsMessageDelayTimer).record(any(Duration.class));
+    }
+
+    @Test
+    void processSqsMessages_should_record_zero_message_delay_when_no_messages_are_found_on_poll() {
+        final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+        when(receiveMessageResponse.messages()).thenReturn(Collections.emptyList());
+
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+        final int messagesProcessed = createObjectUnderTest().processSqsMessages();
+        assertThat(messagesProcessed, equalTo(0));
+        verify(sqsMessageDelayTimer).record(Duration.ZERO);
     }
 
     private static String createPutNotification(final Instant startTime) {
