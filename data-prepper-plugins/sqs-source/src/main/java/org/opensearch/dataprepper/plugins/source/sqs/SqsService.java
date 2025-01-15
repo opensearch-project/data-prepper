@@ -81,16 +81,17 @@
             String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
             int numWorkers = queueConfig.getNumWorkers();
             SqsEventProcessor sqsEventProcessor;
+            MessageFieldStrategy strategy;
             if (queueConfig.getCodec() != null) {
                 final PluginModel codecConfiguration = queueConfig.getCodec();
                 final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
                 final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-                MessageFieldStrategy bulkStrategy = new JsonBulkMessageFieldStrategy(codec);
-                sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(bulkStrategy));
+                strategy = new CodecBulkMessageFieldStrategy(codec);
             } else {
-                MessageFieldStrategy standardStrategy = new StandardMessageFieldStrategy();
-                sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(standardStrategy));
+                strategy = new StandardMessageFieldStrategy();
             }
+
+            sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(strategy));
             ExecutorService executorService = Executors.newFixedThreadPool(
                     numWorkers, BackgroundThreadFactory.defaultExecutorThreadFactory("sqs-source" + queueName));
             allSqsUrlExecutorServices.add(executorService);

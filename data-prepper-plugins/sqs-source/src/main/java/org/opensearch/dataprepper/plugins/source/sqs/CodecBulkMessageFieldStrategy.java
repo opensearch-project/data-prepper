@@ -19,11 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class JsonBulkMessageFieldStrategy implements MessageFieldStrategy {
+public class CodecBulkMessageFieldStrategy implements MessageFieldStrategy {
 
     private final InputCodec codec;
 
-    public JsonBulkMessageFieldStrategy(final InputCodec codec) {
+    public CodecBulkMessageFieldStrategy(final InputCodec codec) {
         this.codec = codec;
     }
 

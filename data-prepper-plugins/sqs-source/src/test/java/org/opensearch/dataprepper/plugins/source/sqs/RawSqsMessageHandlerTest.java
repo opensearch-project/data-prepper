@@ -79,7 +79,7 @@ class RawSqsMessageHandlerTest {
             eventConsumer.accept(new Record<>(event2));
             return null;
         }).when(mockCodec).parse(any(InputStream.class), any());
-        MessageFieldStrategy bulkStrategy = new JsonBulkMessageFieldStrategy(mockCodec);
+        MessageFieldStrategy bulkStrategy = new CodecBulkMessageFieldStrategy(mockCodec);
         RawSqsMessageHandler handler = new RawSqsMessageHandler(bulkStrategy);
         String messageBody = "{\"events\":[{\"foo\":\"bar1\"},{\"foo\":\"bar2\"}]}";
         Message message = Message.builder()
