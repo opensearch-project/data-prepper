@@ -123,7 +123,6 @@ public class JacksonEvent implements Event {
     }
 
     private JsonNode getInitialJsonNode(final Object data) {
-
         if (data == null) {
             return mapper.valueToTree(new HashMap<>());
         } else if (data instanceof String) {
@@ -349,13 +348,29 @@ public class JacksonEvent implements Event {
     }
 
     @Override
+    public void merge(final Event other) {
+        if(!(other instanceof JacksonEvent))
+            throw new IllegalArgumentException("Unable to merge the Event. The input Event must be a JacksonEvent.");
+        final JacksonEvent otherJacksonEvent = (JacksonEvent) other;
+        if(!(otherJacksonEvent.jsonNode instanceof ObjectNode)) {
+            throw new IllegalArgumentException("Unable to merge the Event. The input Event must be a JacksonEvent with object data.");
+        }
+        final ObjectNode otherObjectNode = (ObjectNode) otherJacksonEvent.jsonNode;
+
+        if(!(jsonNode instanceof ObjectNode)) {
+            throw new UnsupportedOperationException("Unable to merge the Event. The current Event must have object data.");
+        }
+
+        ((ObjectNode) jsonNode).setAll(otherObjectNode);
+    }
+
+    @Override
     public String toJsonString() {
         return jsonNode.toString();
     }
 
     @Override
     public String getAsJsonString(EventKey key) {
-
         JacksonEventKey jacksonEventKey = asJacksonEventKey(key);
         final JsonNode node = getNode(jacksonEventKey);
         if (node.isMissingNode()) {

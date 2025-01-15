@@ -187,12 +187,13 @@ class DataFileSchedulerTest {
     }
 
     @Test
-    void test_shutdown() {
+    void test_shutdown() throws InterruptedException {
         DataFileScheduler objectUnderTest = createObjectUnderTest();
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(objectUnderTest);
 
         objectUnderTest.shutdown();
+        Thread.sleep(100);
 
         verifyNoMoreInteractions(sourceCoordinator);
         executorService.shutdownNow();
