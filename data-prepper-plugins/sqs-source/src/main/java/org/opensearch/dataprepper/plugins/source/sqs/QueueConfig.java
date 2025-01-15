@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.sqs;
@@ -15,6 +20,7 @@ import java.time.Duration;
 
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class QueueConfig {
 
@@ -62,6 +68,9 @@ public class QueueConfig {
     @DurationMax(seconds = 20)
     private Duration waitTime = DEFAULT_WAIT_TIME_SECONDS;
 
+    @JsonProperty("codec")
+    private PluginModel codec = null;
+
     public String getUrl() {
         return url;
     }
@@ -93,5 +102,10 @@ public class QueueConfig {
     public Duration getPollDelay() {
         return pollDelay;
     }
+
+    public PluginModel getCodec() {
+        return codec;
+    }
+
 }
 
