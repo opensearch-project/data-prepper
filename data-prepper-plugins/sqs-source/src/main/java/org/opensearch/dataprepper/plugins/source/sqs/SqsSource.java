@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.sqs;
@@ -12,6 +17,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -21,6 +27,7 @@ import java.util.Objects;
 public class SqsSource implements Source<Record<Event>> {
 
     private final PluginMetrics pluginMetrics;
+    private final PluginFactory pluginFactory;
     private final SqsSourceConfig sqsSourceConfig;
     private SqsService sqsService; 
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -31,10 +38,12 @@ public class SqsSource implements Source<Record<Event>> {
     @DataPrepperPluginConstructor
     public SqsSource(final PluginMetrics pluginMetrics,
                      final SqsSourceConfig sqsSourceConfig,
+                     final PluginFactory pluginFactory,
                      final AcknowledgementSetManager acknowledgementSetManager,
                      final AwsCredentialsSupplier awsCredentialsSupplier) {
                         
         this.pluginMetrics = pluginMetrics;
+        this.pluginFactory = pluginFactory;
         this.sqsSourceConfig = sqsSourceConfig;
         this.acknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -49,9 +58,7 @@ public class SqsSource implements Source<Record<Event>> {
         }
         final AwsAuthenticationAdapter awsAuthenticationAdapter = new AwsAuthenticationAdapter(awsCredentialsSupplier, sqsSourceConfig);
         final AwsCredentialsProvider credentialsProvider = awsAuthenticationAdapter.getCredentialsProvider();
-        final SqsMessageHandler rawSqsMessageHandler = new RawSqsMessageHandler();
-        final SqsEventProcessor sqsEventProcessor = new SqsEventProcessor(rawSqsMessageHandler);
-        sqsService = new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, sqsEventProcessor, pluginMetrics, credentialsProvider);
+        sqsService = new SqsService(buffer, acknowledgementSetManager, sqsSourceConfig, pluginMetrics, pluginFactory, credentialsProvider);
         sqsService.start();
     }
 

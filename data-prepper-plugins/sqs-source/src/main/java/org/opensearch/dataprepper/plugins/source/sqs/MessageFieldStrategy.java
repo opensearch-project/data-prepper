@@ -10,14 +10,12 @@
 
 package org.opensearch.dataprepper.plugins.source.sqs;
 
-/**
- * This exception is thrown when SQS retries are exhausted
- *
- * @since 2.1
- */
-public class SqsRetriesExhaustedException extends RuntimeException {
+import org.opensearch.dataprepper.model.event.Event;
+import java.util.List;
 
-    public SqsRetriesExhaustedException(final String errorMessage) {
-        super(errorMessage);
-    }
+public interface MessageFieldStrategy {
+  /**
+   * Converts the SQS message body into one or more events.
+   */
+    List<Event> parseEvents(String messageBody);
 }

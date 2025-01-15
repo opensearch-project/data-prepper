@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
  package org.opensearch.dataprepper.plugins.source.sqs;
@@ -9,6 +14,10 @@
  import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
  import org.opensearch.dataprepper.metrics.PluginMetrics;
  import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+ import org.opensearch.dataprepper.model.codec.InputCodec;
+ import org.opensearch.dataprepper.model.configuration.PluginModel;
+ import org.opensearch.dataprepper.model.configuration.PluginSetting;
+ import org.opensearch.dataprepper.model.plugin.PluginFactory;
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
  import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -35,9 +44,9 @@
      static final double JITTER_RATE = 0.20;
     
      private final SqsSourceConfig sqsSourceConfig;
-     private final SqsEventProcessor sqsEventProcessor;
      private final SqsClient sqsClient;
      private final PluginMetrics pluginMetrics;
+     private final PluginFactory pluginFactory;
      private final AcknowledgementSetManager acknowledgementSetManager;
      private final List<ExecutorService> allSqsUrlExecutorServices;
      private final List<SqsWorker> sqsWorkers;
@@ -46,13 +55,13 @@
      public SqsService(final Buffer<Record<Event>> buffer,
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final SqsSourceConfig sqsSourceConfig,
-                       final SqsEventProcessor sqsEventProcessor,
                        final PluginMetrics pluginMetrics,
+                       final PluginFactory pluginFactory,
                        final AwsCredentialsProvider credentialsProvider) {
                         
         this.sqsSourceConfig = sqsSourceConfig;
-        this.sqsEventProcessor = sqsEventProcessor;
         this.pluginMetrics = pluginMetrics;
+        this.pluginFactory = pluginFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.allSqsUrlExecutorServices = new ArrayList<>();
         this.sqsWorkers = new ArrayList<>();
@@ -70,8 +79,19 @@
         sqsSourceConfig.getQueues().forEach(queueConfig -> {
             String queueUrl = queueConfig.getUrl();
             String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
-
             int numWorkers = queueConfig.getNumWorkers();
+            SqsEventProcessor sqsEventProcessor;
+            MessageFieldStrategy strategy;
+            if (queueConfig.getCodec() != null) {
+                final PluginModel codecConfiguration = queueConfig.getCodec();
+                final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+                final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+                strategy = new CodecBulkMessageFieldStrategy(codec);
+            } else {
+                strategy = new StandardMessageFieldStrategy();
+            }
+
+            sqsEventProcessor = new SqsEventProcessor(new RawSqsMessageHandler(strategy));
             ExecutorService executorService = Executors.newFixedThreadPool(
                     numWorkers, BackgroundThreadFactory.defaultExecutorThreadFactory("sqs-source" + queueName));
             allSqsUrlExecutorServices.add(executorService);
@@ -80,10 +100,10 @@
                             buffer,
                             acknowledgementSetManager,
                             sqsClient,
-                            sqsEventProcessor,
                             sqsSourceConfig,
                             queueConfig,
                             pluginMetrics,
+                            sqsEventProcessor,
                             backoff))
                     .collect(Collectors.toList());
 
