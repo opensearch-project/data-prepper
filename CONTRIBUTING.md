@@ -106,7 +106,7 @@ If you are modifying existing files with license headers, or including new files
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
  *
-*/
+ */
 ```
 
 ### Shell, Python
