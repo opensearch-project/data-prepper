@@ -446,6 +446,52 @@ public class JacksonEventTest {
         assertThat(event.toMap().size(), equalTo(0));
     }
 
+    @Test
+    void merge_with_non_JacksonEvent_throws() {
+        final Event otherEvent = mock(Event.class);
+        assertThrows(IllegalArgumentException.class, () -> event.merge(otherEvent));
+    }
+
+    @Test
+    void merge_with_array_JsonNode_throws() {
+        final JacksonEvent otherEvent = (JacksonEvent) event;
+        event = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(List.of(UUID.randomUUID().toString())).build();
+        assertThrows(UnsupportedOperationException.class, () -> event.merge(otherEvent));
+    }
+
+    @Test
+    void merge_with_array_JsonNode_in_other_throws() {
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(List.of(UUID.randomUUID().toString())).build();
+        assertThrows(IllegalArgumentException.class, () -> event.merge(otherEvent));
+    }
+
+    @Test
+    void merge_sets_all_values() {
+        final String jsonString = "{\"a\": \"alpha\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event.put("b", "original");
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent);
+
+        assertThat(event.get("b", Object.class), equalTo("original"));
+        assertThat(event.get("a", Object.class), equalTo("alpha"));
+        assertThat(event.containsKey("info"), equalTo(true));
+        assertThat(event.get("info/ids/id", String.class), equalTo("idx"));
+    }
+
+    @Test
+    void merge_overrides_existing_values() {
+        final String jsonString = "{\"a\": \"alpha\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event.put("a", "original");
+        event.put("b", "original");
+        Event otherEvent = JacksonEvent.builder().withEventType(EventType.DOCUMENT.toString()).withData(jsonString).build();
+        event.merge(otherEvent);
+
+        assertThat(event.get("b", Object.class), equalTo("original"));
+        assertThat(event.get("a", Object.class), equalTo("alpha"));
+        assertThat(event.containsKey("info"), equalTo(true));
+        assertThat(event.get("info/ids/id", String.class), equalTo("idx"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/", "foo", "/foo", "/foo/bar", "foo/bar", "foo/bar/", "/foo/bar/leaf/key"})
     public void testDelete_withNonexistentKey(final String key) {
