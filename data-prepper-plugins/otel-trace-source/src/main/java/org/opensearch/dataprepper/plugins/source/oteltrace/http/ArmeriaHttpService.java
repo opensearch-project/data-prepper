@@ -1,22 +1,13 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
+package org.opensearch.dataprepper.plugins.source.oteltrace.http;
 
-package org.opensearch.dataprepper.plugins.source.oteltrace;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.linecorp.armeria.server.ServiceRequestContext;
-import io.grpc.Context;
-import io.grpc.stub.StreamObserver;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
-import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
-import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -26,14 +17,18 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import com.linecorp.armeria.server.ServiceRequestContext;
+import com.linecorp.armeria.server.annotation.Consumes;
+import com.linecorp.armeria.server.annotation.Post;
 
-public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
-    private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGrpcService.class);
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+
+public class ArmeriaHttpService {
+    private static final Logger LOG = LoggerFactory.getLogger(ArmeriaHttpService.class);
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
@@ -44,23 +39,20 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
-    private final int bufferWriteTimeoutInMillis;
     private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
     private final Buffer<Record<Object>> buffer;
+
+    private final int bufferWriteTimeoutInMillis;
 
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
-
-    public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
-                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                                final Buffer<Record<Object>> buffer,
-                                final PluginMetrics pluginMetrics) {
-        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
+    public ArmeriaHttpService(Buffer<Record<Object>> buffer, final PluginMetrics pluginMetrics, final int bufferWriteTimeoutInMillis) {
         this.buffer = buffer;
-        this.oTelProtoDecoder = oTelProtoDecoder;
+        this.oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
@@ -68,24 +60,22 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
+    // todo tlongo healthcheck?
 
-    @Override
-    public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {
+    // todo tlongo make path configurable
+    @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+    @Consumes(value = "application/json")
+    public ExportTraceServiceResponse exportTrace(ExportTraceServiceRequest request) {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
-        if (ServiceRequestContext.current().isTimedOut()) {
-            return;
-        }
+        requestProcessDuration.record(() -> processRequest(request));
 
-        if (Context.current().isCancelled()) {
-            throw new RequestCancelledException("Cancelled by client");
-        }
-
-        requestProcessDuration.record(() -> processRequest(request, responseObserver));
+        return ExportTraceServiceResponse.newBuilder().build();
     }
 
-    private void processRequest(final ExportTraceServiceRequest request, final StreamObserver<ExportTraceServiceResponse> responseObserver) {
+    // todo tlongo exract in order to be used by http and grpc?
+    private void processRequest(final ExportTraceServiceRequest request) {
         final Collection<Span> spans;
 
         try {
@@ -121,7 +111,9 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         }
 
         successRequestsCounter.increment();
-        responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
-        responseObserver.onCompleted();
+
+        // todo tlongo what is the responseObserver used for?
+//        responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
+//        responseObserver.onCompleted();
     }
 }

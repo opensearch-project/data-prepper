@@ -47,10 +47,8 @@ import io.grpc.StatusRuntimeException;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.Gauge;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
@@ -158,18 +156,10 @@ class OTelMetricsSource_RetryInfoTest {
                 .setUnit("seconds")
                 .setName("name")
                 .setDescription("description");
-        InstrumentationLibraryMetrics isntLib = InstrumentationLibraryMetrics.newBuilder()
-                .addMetrics(metric)
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
-                        .setName("ilname")
-                        .setVersion("ilversion")
-                        .build())
-                .build();
 
 
         final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(isntLib)
                 .build();
 
         return ExportMetricsServiceRequest.newBuilder()
