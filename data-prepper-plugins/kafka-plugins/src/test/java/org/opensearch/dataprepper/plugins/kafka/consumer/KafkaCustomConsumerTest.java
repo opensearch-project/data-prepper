@@ -274,16 +274,13 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
-    public void testKafkaMetadata() {
+    public void testKafkaMetadata() throws Exception {
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic, 0L);
         when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("plaintext", false);
-
-        try {
-            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
-            consumer.consumeRecords();
-        } catch (Exception e){}
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
