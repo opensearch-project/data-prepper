@@ -17,7 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.plugin.FailedToUpdateSecretException;
+import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
 
 import java.util.UUID;
 
@@ -56,7 +56,7 @@ class AwsPluginConfigVariableTest {
                 secretId, secretKey,
                 secretValue, false
         );
-        assertThrows(FailedToUpdateSecretException.class, () -> objectUnderTest.setValue("new-secret-to-set", "randomSecretId"));
+        assertThrows(FailedToUpdatePluginConfigValueException.class, () -> objectUnderTest.setValue("new-secret-to-set", "randomSecretId"));
     }
 
     @ParameterizedTest

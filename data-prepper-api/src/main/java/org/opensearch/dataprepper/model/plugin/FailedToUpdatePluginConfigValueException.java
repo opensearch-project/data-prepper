@@ -14,13 +14,13 @@ package org.opensearch.dataprepper.model.plugin;
  *
  * @since 2.11
  */
-public class FailedToUpdateSecretException extends RuntimeException {
+public class FailedToUpdatePluginConfigValueException extends RuntimeException {
 
-    public FailedToUpdateSecretException(final String message) {
+    public FailedToUpdatePluginConfigValueException(final String message) {
         super(message);
     }
 
-    public FailedToUpdateSecretException(final String message, Throwable e) {
+    public FailedToUpdatePluginConfigValueException(final String message, Throwable e) {
         super(message, e);
     }
 }

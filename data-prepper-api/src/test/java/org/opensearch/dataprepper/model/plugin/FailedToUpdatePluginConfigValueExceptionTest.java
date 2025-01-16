@@ -18,7 +18,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class FailedToUpdateSecretExceptionTest extends RuntimeException {
+public class FailedToUpdatePluginConfigValueExceptionTest extends RuntimeException {
     private String message;
 
     @BeforeEach
@@ -28,14 +28,14 @@ public class FailedToUpdateSecretExceptionTest extends RuntimeException {
 
     @Test
     void testGetMessage_should_return_correct_message() {
-        FailedToUpdateSecretException failedToUpdateSecretException = new FailedToUpdateSecretException(message);
+        FailedToUpdatePluginConfigValueException failedToUpdateSecretException = new FailedToUpdatePluginConfigValueException(message);
         assertThat(failedToUpdateSecretException.getMessage(), equalTo(message));
     }
 
     @Test
     void testGetMessage_should_return_correct_message_with_throwable() {
         RuntimeException cause = new RuntimeException("testException");
-        FailedToUpdateSecretException failedToUpdateSecretException = new FailedToUpdateSecretException(message, cause);
+        FailedToUpdatePluginConfigValueException failedToUpdateSecretException = new FailedToUpdatePluginConfigValueException(message, cause);
         assertThat(failedToUpdateSecretException.getMessage(), equalTo(message));
         assertThat(failedToUpdateSecretException.getCause(), equalTo(cause));
     }

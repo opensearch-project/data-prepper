@@ -9,7 +9,7 @@
  */
 package org.opensearch.dataprepper.plugins.aws;
 
-import org.opensearch.dataprepper.model.plugin.FailedToUpdateSecretException;
+import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 /**
@@ -41,7 +41,7 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
     @Override
     public void setValue(Object newValue, String secretVersionIdToSet) {
         if (!isUpdatable()) {
-            throw new FailedToUpdateSecretException(
+            throw new FailedToUpdatePluginConfigValueException(
                     String.format("Trying to update a secrets that is not updatable. SecretId: %s SecretKey: %s", this.secretId, this.secretKey));
         }
         this.secretsSupplier.updateValue(secretId, secretKey, newValue, secretVersionIdToSet);
