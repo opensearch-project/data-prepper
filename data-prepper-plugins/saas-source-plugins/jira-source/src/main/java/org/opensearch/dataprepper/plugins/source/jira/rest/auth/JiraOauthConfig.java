@@ -65,9 +65,9 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
-        this.accessToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken();
-        this.refreshToken = (String) jiraSourceConfig.getAuthenticationConfig()
-                .getOauth2Config().getRefreshToken().getValue();
+        this.accessToken = (String) jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().getValue();
+        this.refreshToken = jiraSourceConfig.getAuthenticationConfig()
+                .getOauth2Config().getRefreshToken();
         this.clientId = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
         this.clientSecret = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
@@ -133,7 +133,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
                 // updating config object's PluginConfigVariable so that it updates the underlying Secret store
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken().setValue(this.refreshToken);
+                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().setValue(this.accessToken);
                 log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);

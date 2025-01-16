@@ -30,8 +30,8 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAU
 import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS;
 
 public class JiraSourceConfigTest {
-    private final String accessToken = "access token test";
-    private final PluginConfigVariable refreshToken = new MockPluginConfigVariableImpl("refresh token test");
+    private final String refreshToken = "refresh token test";
+    private final PluginConfigVariable accessToken = new MockPluginConfigVariableImpl("access token test");
     private final String clientId = "client id test";
     private final String clientSecret = "client secret test";
     private final String password = "test Jira Credential";
@@ -59,10 +59,10 @@ public class JiraSourceConfigTest {
             authenticationMap.put("basic", basicMap);
         } else if (authtype.equals(OAUTH2)) {
             if (hasToken) {
-                oauth2Map.put("access_token", accessToken);
-                pcv = refreshToken;
+                oauth2Map.put("refresh_token", refreshToken);
+                pcv = accessToken;
             } else {
-                oauth2Map.put("access_token", null);
+                oauth2Map.put("refresh_token", null);
             }
             oauth2Map.put("client_id", clientId);
             oauth2Map.put("client_secret", clientSecret);
@@ -103,7 +103,7 @@ public class JiraSourceConfigTest {
         JiraSourceConfig config = objectMapper.readValue(jsonConfig, JiraSourceConfig.class);
         if (config.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
             ReflectivelySetField.setField(Oauth2Config.class,
-                    config.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
+                    config.getAuthenticationConfig().getOauth2Config(), "accessToken", pcv);
         }
         return config;
     }

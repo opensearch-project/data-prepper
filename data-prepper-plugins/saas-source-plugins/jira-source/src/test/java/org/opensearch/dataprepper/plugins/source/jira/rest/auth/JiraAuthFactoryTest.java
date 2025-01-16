@@ -52,7 +52,8 @@ public class JiraAuthFactoryTest {
         when(sourceConfig.getAuthType()).thenReturn(OAUTH2);
         when(sourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
-        when(oauth2Config.getRefreshToken()).thenReturn(pluginConfigVariable);
+        when(oauth2Config.getRefreshToken()).thenReturn("refreshToken");
+        when(oauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
         when(pluginConfigVariable.getValue()).thenReturn("mockRefreshToken");
         assertInstanceOf(JiraOauthConfig.class, jiraAuthFactory.getObject());
     }

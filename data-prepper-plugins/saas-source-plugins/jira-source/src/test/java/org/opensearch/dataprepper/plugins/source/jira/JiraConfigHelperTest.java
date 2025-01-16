@@ -157,14 +157,14 @@ public class JiraConfigHelperTest {
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(oauth2Config.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(authenticationConfig.getOauth2Config().getRefreshToken()).thenReturn(pluginConfigVariable);
+        when(authenticationConfig.getOauth2Config().getRefreshToken()).thenReturn("refreshToken");
         when(oauth2Config.getAccessToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(oauth2Config.getAccessToken()).thenReturn("id");
+        when(oauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 }

@@ -81,9 +81,9 @@ class CustomRestTemplateConfigTest {
         when(mockSourceConfig.getAuthType()).thenReturn(authType);
         lenient().when(mockSourceConfig.getAuthenticationConfig()).thenReturn(mockAuthenticationConfig);
         lenient().when(mockAuthenticationConfig.getOauth2Config()).thenReturn(mockOauth2Config);
-        lenient().when(mockOauth2Config.getAccessToken()).thenReturn("accessToken");
-        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn(pluginConfigVariable);
-        lenient().when(pluginConfigVariable.getValue()).thenReturn("refreshToken");
+        lenient().when(mockOauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
+        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn("refreshToken");
+        lenient().when(pluginConfigVariable.getValue()).thenReturn("accessToken");
         lenient().when(mockOauth2Config.getClientId()).thenReturn("clientId");
         lenient().when(mockOauth2Config.getClientSecret()).thenReturn("clientSecret");
         lenient().when(mockAuthenticationConfig.getBasicConfig()).thenReturn(mockBasicConfig);
