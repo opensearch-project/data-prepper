@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
@@ -28,6 +38,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
         this.replicationSlotName = replicationSlotName;
     }
 
+    @Override
     public void connect() {
         PGReplicationStream stream;
         try (Connection conn = connectionManager.getConnection()) {
@@ -76,6 +87,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
         }
     }
 
+    @Override
     public void disconnect() {
         disconnectRequested = true;
     }

@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
@@ -9,7 +19,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnType;
+import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,17 +71,17 @@ public class LogicalReplicationEventProcessor {
         // If it's INSERT/UPDATE/DELETE, prepare events
         // If it's a COMMIT, convert all prepared events and send to buffer
         char messageType = (char) msg.get();
-        if (messageType == 'B') {
+        if (messageType == MessageType.BEGIN.getValue()) {
             processBeginMessage(msg);
-        } else if (messageType == 'R') {
+        } else if (messageType == MessageType.RELATION.getValue()) {
             processRelationMessage(msg);
-        } else if (messageType == 'I') {
+        } else if (messageType == MessageType.INSERT.getValue()) {
             processInsertMessage(msg);
-        } else if (messageType == 'U') {
+        } else if (messageType == MessageType.UPDATE.getValue()) {
             processUpdateMessage(msg);
-        } else if (messageType == 'D') {
+        } else if (messageType == MessageType.DELETE.getValue()) {
             processDeleteMessage(msg);
-        } else if (messageType == 'C') {
+        } else if (messageType == MessageType.COMMIT.getValue()) {
             processCommitMessage(msg);
         } else {
             throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
@@ -110,9 +122,9 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        // TODO: get primary keys in advance
+        final List<String> primaryKeys = getPrimaryKeys(schemaName + "." + tableName);
         final TableMetadata tableMetadata = new TableMetadata(
-                tableName, schemaName, columnNames, List.of("id"));
+                tableName, schemaName, columnNames, primaryKeys);
 
         tableMetadataMap.put((long) tableId, tableMetadata);
 
@@ -127,9 +139,8 @@ public class LogicalReplicationEventProcessor {
 
         if (currentLsn != commitLsn) {
             // This shouldn't happen
-            LOG.warn("Commit LSN does not match current LSN, skipping");
             pipelineEvents.clear();
-            return;
+            throw new RuntimeException("Commit LSN does not match current LSN, skipping");
         }
 
         writeToBuffer(bufferAccumulator);
@@ -150,28 +161,49 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processUpdateMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
-        char typeId = (char) msg.get();
+        final int tableId = msg.getInt();
 
         final TableMetadata tableMetadata = tableMetadataMap.get((long)tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
 
+        char typeId = (char) msg.get();
         if (typeId == 'N') {
-
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
             LOG.debug("Processed an UPDATE message with table id: {}", tableId);
         } else if (typeId == 'K') {
-            // TODO
+            // Primary keys were changed
+            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
+            msg.get();  // should be a char 'N'
+            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
+            LOG.debug("Processed an UPDATE message with table id: {} and primary key(s) were changed", tableId);
+
         } else if (typeId == 'O') {
-            // TODO
+            // Replica Identity is set to full, containing both old and new row data
+            Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames);
+            msg.get();  // should be a char 'N'
+            Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames);
+
+            if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
+                createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
+            }
+            createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
         }
+    }
+
+    private boolean isPrimaryKeyChanged(Map<String, Object> oldRowDataMap, Map<String, Object> newRowDataMap, List<String> primaryKeys) {
+        for (String primaryKey : primaryKeys) {
+            if (!oldRowDataMap.get(primaryKey).equals(newRowDataMap.get(primaryKey))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void processDeleteMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
-        char typeId = (char) msg.get();
+        char n_char = (char) msg.get();  // Skip the 'N' character
 
         final TableMetadata tableMetadata = tableMetadataMap.get((long)tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
@@ -184,6 +216,12 @@ public class LogicalReplicationEventProcessor {
 
     private void doProcess(ByteBuffer msg, List<String> columnNames, TableMetadata tableMetadata,
                            List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
+        Map<String, Object> rowDataMap = getRowDataMap(msg, columnNames);
+
+        createPipelineEvent(rowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, bulkAction);
+    }
+
+    private Map<String, Object> getRowDataMap(ByteBuffer msg, List<String> columnNames) {
         Map<String, Object> rowDataMap = new HashMap<>();
         short numberOfColumns = msg.getShort();
         for (int i = 0; i < numberOfColumns; i++) {
@@ -199,7 +237,10 @@ public class LogicalReplicationEventProcessor {
                 LOG.warn("Unknown column type: {}", type);
             }
         }
+        return rowDataMap;
+    }
 
+    private void createPipelineEvent(Map<String, Object> rowDataMap, TableMetadata tableMetadata, List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
         final Event dataPrepperEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(rowDataMap)
@@ -258,5 +299,11 @@ public class LogicalReplicationEventProcessor {
             sb.append((char) b);
         }
         return sb.toString();
+    }
+
+    private List<String> getPrimaryKeys(String fullTableName) {
+        StreamProgressState progressState = streamPartition.getProgressState().get();
+
+        return progressState.getPrimaryKeyMap().get(fullTableName);
     }
 }

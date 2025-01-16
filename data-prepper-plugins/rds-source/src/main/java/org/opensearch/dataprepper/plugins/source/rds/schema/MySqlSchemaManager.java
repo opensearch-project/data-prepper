@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.rds.schema;
@@ -39,13 +44,16 @@ public class MySqlSchemaManager implements SchemaManager {
     static final String UPDATE_RULE = "UPDATE_RULE";
     static final String DELETE_RULE = "DELETE_RULE";
     static final String COLUMN_DEF = "COLUMN_DEF";
-    private final MySqlConnectionManager connectionManager;
+    private final ConnectionManager connectionManager;
 
-    public MySqlSchemaManager(MySqlConnectionManager connectionManager) {
+    public MySqlSchemaManager(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }
 
-    public List<String> getPrimaryKeys(final String database, final String table) {
+    @Override
+    public List<String> getPrimaryKeys(final String fullTableName) {
+        final String database = fullTableName.split("\\.")[0];
+        final String table = fullTableName.split("\\.")[1];
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             final List<String> primaryKeys = new ArrayList<>();

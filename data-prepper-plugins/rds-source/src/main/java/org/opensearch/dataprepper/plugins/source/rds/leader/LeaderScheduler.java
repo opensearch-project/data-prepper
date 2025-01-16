@@ -19,8 +19,8 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamPr
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,13 +156,15 @@ public class LeaderScheduler implements Runnable {
         return sourceConfig.getTableNames().stream()
                 .collect(Collectors.toMap(
                         fullTableName -> fullTableName,
-                        fullTableName -> ((MySqlSchemaManager)schemaManager).getPrimaryKeys(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
+                        fullTableName -> schemaManager.getPrimaryKeys(fullTableName)
                 ));
     }
 
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
+        progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
+        progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
             getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
             progressState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));

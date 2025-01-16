@@ -81,7 +81,7 @@ class MySqlSchemaManagerTest {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getString(COLUMN_NAME)).thenReturn(primaryKey);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName, tableName);
+        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
 
         assertThat(primaryKeys, contains(primaryKey));
     }
@@ -92,7 +92,7 @@ class MySqlSchemaManagerTest {
         final String tableName = UUID.randomUUID().toString();
         when(connectionManager.getConnection()).thenThrow(SQLException.class);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName, tableName);
+        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
 
         assertThat(primaryKeys, empty());
     }

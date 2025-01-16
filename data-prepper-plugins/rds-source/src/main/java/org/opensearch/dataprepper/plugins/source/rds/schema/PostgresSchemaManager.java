@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
 import org.postgresql.PGConnection;
@@ -7,13 +17,19 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresSchemaManager implements SchemaManager {
     private static final Logger LOG = LoggerFactory.getLogger(PostgresSchemaManager.class);
-    private final PostgresConnectionManager connectionManager;
+    private final ConnectionManager connectionManager;
 
-    public PostgresSchemaManager(PostgresConnectionManager connectionManager) {
+    static final int NUM_OF_RETRIES = 3;
+    static final int BACKOFF_IN_MILLIS = 500;
+    static final String COLUMN_NAME = "COLUMN_NAME";
+
+    public PostgresSchemaManager(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }
 
@@ -54,6 +70,38 @@ public class PostgresSchemaManager implements SchemaManager {
             }
         } catch (Exception e) {
             LOG.error("Exception when creating replication slot. ", e);
+        }
+    }
+
+    @Override
+    public List<String> getPrimaryKeys(final String fullTableName) {
+        final String schema = fullTableName.split("\\.")[0];
+        final String table = fullTableName.split("\\.")[1];
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            final List<String> primaryKeys = new ArrayList<>();
+            try (final Connection connection = connectionManager.getConnection()) {
+                try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(null, schema, table)) {
+                    while (rs.next()) {
+                        primaryKeys.add(rs.getString(COLUMN_NAME));
+                    }
+                    return primaryKeys;
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to get primary keys for table {}, retrying", table, e);
+            }
+            applyBackoff();
+            retry++;
+        }
+        LOG.warn("Failed to get primary keys for table {}", table);
+        return List.of();
+    }
+
+    private void applyBackoff() {
+        try {
+            Thread.sleep(BACKOFF_IN_MILLIS);
+        } catch (final InterruptedException e){
+            Thread.currentThread().interrupt();
         }
     }
 }

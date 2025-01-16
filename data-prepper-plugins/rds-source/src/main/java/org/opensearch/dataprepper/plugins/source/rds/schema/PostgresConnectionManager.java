@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
 import org.postgresql.PGProperty;
@@ -9,7 +19,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-public class PostgresConnectionManager {
+public class PostgresConnectionManager implements ConnectionManager {
     private static final Logger LOG = LoggerFactory.getLogger(PostgresConnectionManager.class);
 
     public static final String JDBC_URL_FORMAT = "jdbc:postgresql://%s:%d/%s";
@@ -36,6 +46,7 @@ public class PostgresConnectionManager {
         this.database = database;
     }
 
+    @Override
     public Connection getConnection() throws SQLException {
         final Properties props = new Properties();
         PGProperty.USER.set(props, username);

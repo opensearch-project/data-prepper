@@ -26,12 +26,13 @@ import org.opensearch.dataprepper.plugins.source.rds.leader.RdsApiStrategy;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
 import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManagerFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.ReplicationLogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
@@ -178,29 +179,8 @@ public class RdsService {
     }
 
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
-        // For MySQL
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final MySqlConnectionManager connectionManager = new MySqlConnectionManager(
-                    dbMetadata.getEndpoint(),
-                    dbMetadata.getPort(),
-                    sourceConfig.getAuthenticationConfig().getUsername(),
-                    sourceConfig.getAuthenticationConfig().getPassword(),
-                    sourceConfig.isTlsEnabled());
-            return new MySqlSchemaManager(connectionManager);
-        }
-        // For Postgres
-        final PostgresConnectionManager connectionManager = new PostgresConnectionManager(
-                dbMetadata.getEndpoint(),
-                dbMetadata.getPort(),
-                sourceConfig.getAuthenticationConfig().getUsername(),
-                sourceConfig.getAuthenticationConfig().getPassword(),
-                sourceConfig.isTlsEnabled(),
-                getDatabaseName(sourceConfig.getTableNames()));
-        return new PostgresSchemaManager(connectionManager);
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split("\\.")[0];
+        final ConnectionManager connectionManager = new ConnectionManagerFactory(sourceConfig, dbMetadata).getConnectionManager();
+        return new SchemaManagerFactory(connectionManager).getSchemaManager();
     }
 
     private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {

@@ -10,7 +10,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-public class MySqlConnectionManager {
+public class MySqlConnectionManager implements ConnectionManager {
     static final String JDBC_URL_FORMAT = "jdbc:mysql://%s:%d";
     static final String USERNAME_KEY = "user";
     static final String PASSWORD_KEY = "password";
@@ -33,6 +33,7 @@ public class MySqlConnectionManager {
         this.requireSSL = requireSSL;
     }
 
+    @Override
     public Connection getConnection() throws SQLException {
         final Properties props = new Properties();
         props.setProperty(USERNAME_KEY, username);
