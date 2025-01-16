@@ -18,6 +18,8 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
 import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugin.ExperimentalConfiguration;
+import org.opensearch.dataprepper.plugin.ExperimentalConfigurationContainer;
 import org.opensearch.dataprepper.plugin.ExtensionsConfiguration;
 
 import java.time.Duration;
@@ -31,7 +33,7 @@ import java.util.Objects;
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
-public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer {
+public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer, ExperimentalConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
@@ -55,6 +57,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
+    private ExperimentalConfiguration experimental;
     private PipelineExtensions pipelineExtensions;
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
@@ -96,6 +99,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
             @JsonProperty("event") final EventConfiguration eventConfiguration,
+            @JsonProperty("experimental") final ExperimentalConfiguration experimental,
             @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
@@ -126,6 +130,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
         if (this.sinkShutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
         }
+        this.experimental = experimental != null ? experimental : ExperimentalConfiguration.defaultConfiguration();
+
         this.pipelineExtensions = pipelineExtensions;
     }
 
@@ -238,5 +244,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     @Override
     public PipelineExtensions getPipelineExtensions() {
         return pipelineExtensions;
+    }
+
+    @Override
+    public ExperimentalConfiguration getExperimental() {
+        return experimental;
     }
 }

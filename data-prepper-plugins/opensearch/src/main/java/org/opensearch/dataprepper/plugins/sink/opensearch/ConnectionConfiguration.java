@@ -244,12 +244,13 @@ public class ConnectionConfiguration {
 
     final String certPath = openSearchSinkConfig.getCertPath();
     final boolean insecure = openSearchSinkConfig.isInsecure();
-    if (certPath != null) {
-      builder = builder.withCert(certPath);
-    } else {
-      //We will set insecure flag only if certPath is null
-      builder = builder.withInsecure(insecure);
+    // Insecure == true will override configured certPath
+    if (insecure) {
+      builder.withInsecure(insecure);
+    } else if (certPath != null) {
+      builder.withCert(certPath);
     }
+    
     final String proxy = openSearchSinkConfig.getProxy();
     if (proxy != null) {
       builder = builder.withProxy(proxy);

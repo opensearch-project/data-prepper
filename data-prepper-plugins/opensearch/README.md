@@ -105,7 +105,7 @@ pipeline:
 
 - `hosts`: A list of IP addresses of OpenSearch nodes.
 
-- `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using.
+- `cert`(optional): CA certificate that is pem encoded. Accepts both `.pem` or `.crt`. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using. This setting has no effect if `insecure` is set to `true`.
 Default is null.
 
 - `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon OpenSearch Service. See [security](security.md) for details. Default to `false`.
@@ -118,7 +118,7 @@ Default is null.
 
 - `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
 
-- `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
+- `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Setting this will override any `cert` configured. Default to `false`.
 
 - `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. SigV4 is enabled by default when this option is used. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
 
@@ -674,10 +674,10 @@ and then every hour after the first time the index is processed.
 
 ### <a name="connection_configuration">Connection Configuration</a>
 
-* `insecure` (Optional): A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to false.
+* `insecure` (Optional): A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Setting this will override any `cert` configured. Default to false.
 
 
-* `cert` (Optional) : CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using. Default is null.
+* `cert` (Optional) : CA certificate that is pem encoded. Accepts both `.pem` or `.crt`. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using. This setting has no effect if `insecure` is set to `true`. Default is null.
 
 
 * `socket_timeout` (Optional) : A String that indicates the timeout duration for waiting for data. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). If this timeout value not set, the underlying Apache HttpClient would rely on operating system settings for managing socket timeouts.

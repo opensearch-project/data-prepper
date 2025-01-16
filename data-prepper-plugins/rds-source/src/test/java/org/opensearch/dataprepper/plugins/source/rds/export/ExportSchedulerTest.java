@@ -262,12 +262,13 @@ class ExportSchedulerTest {
     }
 
     @Test
-    void test_shutDown() {
+    void test_shutDown() throws InterruptedException {
         lenient().when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(exportScheduler);
         exportScheduler.shutdown();
+        Thread.sleep(100);
         verifyNoMoreInteractions(sourceCoordinator, snapshotManager, exportTaskManager, s3Client,
                 exportJobSuccessCounter, exportJobFailureCounter, exportS3ObjectsTotalCounter);
         executorService.shutdownNow();

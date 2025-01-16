@@ -22,7 +22,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.io
     implementation libs.commons.compress
-    implementation 'joda-time:joda-time:2.12.7'
+    implementation 'joda-time:joda-time:2.13.0'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
@@ -31,7 +31,7 @@ dependencies {
     implementation 'dev.failsafe:failsafe:3.3.2'
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     testImplementation libs.commons.lang3
-    testImplementation 'org.wiremock:wiremock:3.8.0'
+    testImplementation 'org.wiremock:wiremock:3.10.0'
     testImplementation 'org.eclipse.jetty:jetty-bom:11.0.20'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage

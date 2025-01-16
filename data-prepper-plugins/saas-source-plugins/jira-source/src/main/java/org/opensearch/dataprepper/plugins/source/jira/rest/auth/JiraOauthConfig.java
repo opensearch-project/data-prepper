@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
 import lombok.Getter;
@@ -55,10 +65,10 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
-        this.accessToken = jiraSourceConfig.getAccessToken();
-        this.refreshToken = jiraSourceConfig.getRefreshToken();
-        this.clientId = jiraSourceConfig.getClientId();
-        this.clientSecret = jiraSourceConfig.getClientSecret();
+        this.accessToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken();
+        this.refreshToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken();
+        this.clientId = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
+        this.clientSecret = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
 
     public String getJiraAccountCloudId() {

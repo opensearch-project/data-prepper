@@ -350,7 +350,8 @@ coreProjects.each { coreProject ->
     def assembleTasks = collectTasksRecursively(coreProject, 'assemble')
     def publishTasks = collectTasksRecursively(coreProject, 'publish')
 
-    // Add these tasks as dependencies of the release task
-    release.dependsOn assembleTasks
-    release.dependsOn publishTasks
+    // Explicitly declare release task for better gradle compatibility
+    def releaseTask = tasks.named('release').get()
+    releaseTask.dependsOn assembleTasks
+    releaseTask.dependsOn publishTasks
 }

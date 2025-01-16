@@ -176,10 +176,6 @@ public class PipelineTransformer {
                     .map(this::buildRoutedSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
-                    .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
-                    .collect(Collectors.toList());
-
             final List<PluginError> invalidRouteExpressions = pipelineConfiguration.getRoutes()
                     .stream().filter(route -> !expressionEvaluator.isValidExpressionStatement(route.getCondition()))
                     .map(route -> PluginError.builder()
@@ -190,8 +186,12 @@ public class PipelineTransformer {
                             .build())
                     .collect(Collectors.toList());
 
-            if (!subPipelinePluginErrors.isEmpty() || !invalidRouteExpressions.isEmpty()) {
-                subPipelinePluginErrors.addAll(invalidRouteExpressions);
+            invalidRouteExpressions.forEach(pluginErrorCollector::collectPluginError);
+            final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
+                    .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
+                    .collect(Collectors.toList());
+
+            if (!subPipelinePluginErrors.isEmpty()) {
                 pluginErrorsHandler.handleErrors(subPipelinePluginErrors);
                 throw new InvalidPluginConfigurationException(
                         String.format("One or more plugins are not configured correctly in the pipeline: %s.\n",
