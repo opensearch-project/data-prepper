@@ -9,6 +9,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Souvik Bose          | [sb2k16](https://github.com/sb2k16)               | Amazon      |
 | Qi Chen              | [chenqi0805](https://github.com/chenqi0805)               | Amazon      |
 | Chase Engelbrecht    | [engechas](https://github.com/engechas)                   | Amazon      |
+| Santhosh Gandhe      | [san81](https://github.com/san81)             | Amazon      |
 | Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)             | Amazon      |
 | Dinu John            | [dinujoh](https://github.com/dinujoh)                     | Amazon      |
 | Krishna Kondaka      | [kkondaka](https://github.com/kkondaka)                   | Amazon      |
