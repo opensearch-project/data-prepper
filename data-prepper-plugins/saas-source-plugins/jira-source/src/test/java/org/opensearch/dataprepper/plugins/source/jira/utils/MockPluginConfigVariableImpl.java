@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 public class MockPluginConfigVariableImpl implements PluginConfigVariable {
 
     private Object defaultValue;
-    
+
     public MockPluginConfigVariableImpl(Object defaultValue) {
         this.defaultValue = defaultValue;
     }
@@ -31,5 +31,10 @@ public class MockPluginConfigVariableImpl implements PluginConfigVariable {
     @Override
     public void setValue(Object someValue) {
         this.defaultValue = someValue;
+    }
+
+    @Override
+    public boolean isUpdatable() {
+        return true;
     }
 }

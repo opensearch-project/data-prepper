@@ -13,8 +13,9 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
-import org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -101,7 +102,8 @@ public class JiraSourceConfigTest {
         String jsonConfig = objectMapper.writeValueAsString(configMap);
         JiraSourceConfig config = objectMapper.readValue(jsonConfig, JiraSourceConfig.class);
         if (config.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
-            TestUtilForPrivateFields.setPrivateField(config.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
+            ReflectivelySetField.setField(Oauth2Config.class,
+                    config.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
         }
         return config;
     }

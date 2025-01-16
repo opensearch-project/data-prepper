@@ -25,9 +25,9 @@ import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
 import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
-import org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +62,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.NAM
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PROJECT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.TestUtilForPrivateFields.setPrivateField;
 
 
 /**
@@ -92,7 +91,8 @@ public class JiraServiceTest {
             JiraSourceConfig jiraSourceConfig = objectMapper.readValue(inputStream, JiraSourceConfig.class);
             Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
             if (oauth2Config != null) {
-                setPrivateField(oauth2Config, "refreshToken", new MockPluginConfigVariableImpl("mockRefreshToken"));
+                ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "refreshToken",
+                        new MockPluginConfigVariableImpl("mockRefreshToken"));
             }
             return jiraSourceConfig;
         } catch (IOException ex) {
@@ -153,7 +153,7 @@ public class JiraServiceTest {
         JiraSourceConfig jiraSourceConfig = objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
         if (jiraSourceConfig.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
             try {
-                TestUtilForPrivateFields.setPrivateField(
+                ReflectivelySetField.setField(Oauth2Config.class,
                         jiraSourceConfig.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcv);
             } catch (Exception e) {
                 throw new RuntimeException(e);
