@@ -153,7 +153,7 @@ class VariableExpanderTest {
             }
 
             @Override
-            public void setValue(Object updatedValue) {
+            public void setValue(Object updatedValue, String secretIdToSet) {
                 this.secretValue = updatedValue.toString();
             }
 

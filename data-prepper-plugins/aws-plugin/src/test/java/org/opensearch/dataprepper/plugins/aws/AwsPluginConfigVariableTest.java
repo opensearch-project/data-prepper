@@ -56,7 +56,7 @@ class AwsPluginConfigVariableTest {
                 secretId, secretKey,
                 secretValue, false
         );
-        assertThrows(FailedToUpdateSecretException.class, () -> objectUnderTest.setValue("new-secret-to-set"));
+        assertThrows(FailedToUpdateSecretException.class, () -> objectUnderTest.setValue("new-secret-to-set", "randomSecretId"));
     }
 
     @ParameterizedTest
@@ -66,7 +66,7 @@ class AwsPluginConfigVariableTest {
     })
     void testSetValueFailure(final String input) {
         when(secretsSupplier.updateValue(secretId, secretKey, input)).thenThrow(RuntimeException.class);
-        assertThrows(RuntimeException.class, () -> objectUnderTest.setValue(input));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.setValue(input, UUID.randomUUID().toString()));
     }
 
     @ParameterizedTest
@@ -75,8 +75,9 @@ class AwsPluginConfigVariableTest {
             "new-secret-to-set"
     })
     void testSetValueSuccess(final String input) {
-        when(secretsSupplier.updateValue(secretId, secretKey, input)).thenReturn("new-version-id");
-        objectUnderTest.setValue(input);
+        String newVersionIdToSet = UUID.randomUUID().toString();
+        when(secretsSupplier.updateValue(secretId, secretKey, input, newVersionIdToSet)).thenReturn(newVersionIdToSet);
+        objectUnderTest.setValue(input, newVersionIdToSet);
         assertThat(objectUnderTest.getValue(), equalTo(input));
     }
 

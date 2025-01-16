@@ -27,9 +27,10 @@ public interface PluginConfigVariable {
     /**
      * If this variable is updatable, this method helps to set a new value for this variable
      *
-     * @param updatedValue the new value to set
+     * @param updatedValue         the new value to set
+     * @param secretVersionIdToSet new version id to set for the secret in AWS. This helps with idempotency
      */
-    void setValue(Object updatedValue);
+    void setValue(Object updatedValue, String secretVersionIdToSet);
 
     /**
      * Returns if the variable is updatable.

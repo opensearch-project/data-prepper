@@ -93,6 +93,8 @@ public class JiraServiceTest {
             if (oauth2Config != null) {
                 ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken",
                         new MockPluginConfigVariableImpl("mockAccessToken"));
+                ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "refreshToken",
+                        new MockPluginConfigVariableImpl("mockRefreshToken"));
             }
             return jiraSourceConfig;
         } catch (IOException ex) {
@@ -107,7 +109,8 @@ public class JiraServiceTest {
                                                            List<String> issueType,
                                                            List<String> issueStatus,
                                                            List<String> projectKey) throws JsonProcessingException {
-        PluginConfigVariable pcv = null;
+        PluginConfigVariable pcvAccessToken = null;
+        PluginConfigVariable pcvRefreshToken = null;
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> authenticationMap = new HashMap<>();
         Map<String, String> basicMap = new HashMap<>();
@@ -119,8 +122,8 @@ public class JiraServiceTest {
         } else if (auth_type.equals(OAUTH2)) {
             oauth2Map.put("client_id", "test-client-id");
             oauth2Map.put("client_secret", "test-client-secret");
-            oauth2Map.put("refresh_token", "test-refresh-token");
-            pcv = new MockPluginConfigVariableImpl("test-access-token");
+            pcvAccessToken = new MockPluginConfigVariableImpl("test-access-token");
+            pcvRefreshToken = new MockPluginConfigVariableImpl("test-refresh-token");
             authenticationMap.put("oauth2", oauth2Map);
         }
 
@@ -151,10 +154,12 @@ public class JiraServiceTest {
 
         String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
         JiraSourceConfig jiraSourceConfig = objectMapper.readValue(jiraSourceConfigJsonString, JiraSourceConfig.class);
-        if (jiraSourceConfig.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
+        if (jiraSourceConfig.getAuthenticationConfig().getOauth2Config() != null && pcvAccessToken != null) {
             try {
                 ReflectivelySetField.setField(Oauth2Config.class,
-                        jiraSourceConfig.getAuthenticationConfig().getOauth2Config(), "accessToken", pcv);
+                        jiraSourceConfig.getAuthenticationConfig().getOauth2Config(), "accessToken", pcvAccessToken);
+                ReflectivelySetField.setField(Oauth2Config.class,
+                        jiraSourceConfig.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcvRefreshToken);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

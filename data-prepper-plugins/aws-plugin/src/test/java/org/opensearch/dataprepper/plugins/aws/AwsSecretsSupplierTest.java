@@ -183,12 +183,12 @@ class AwsSecretsSupplierTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "  ", "newValue", "{\"key\":\"oldValue\"}", "{\"a\":\"b\"}"})
     void testUpdateValue_successfully_updated(String valueToSet) {
-        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any(), any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         String newVersionId = UUID.randomUUID().toString();
         when(putSecretValueResponse.versionId()).thenReturn(newVersionId);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
-        assertThat(objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", valueToSet),
+        assertThat(objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", valueToSet, newVersionId),
                 equalTo(newVersionId));
     }
 
@@ -197,7 +197,7 @@ class AwsSecretsSupplierTest {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         assertThrows(IllegalArgumentException.class,
-                () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, null, "newValue"));
+                () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, null, "newValue", "newSecretVersionId"));
     }
 
     @ParameterizedTest
@@ -210,24 +210,25 @@ class AwsSecretsSupplierTest {
         when(awsSecretManagerConfiguration.createSecretManagerClient()).thenReturn(secretsManagerClient);
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(TEST_VALUE);
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
-        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any(), any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         String versionId = UUID.randomUUID().toString();
         when(putSecretValueResponse.versionId()).thenReturn(versionId);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
-        String newValue = objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, secretValueToSet);
+        String secretVersionIdToSet = UUID.randomUUID().toString();
+        String newValue = objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, secretValueToSet, secretVersionIdToSet);
         assertEquals(versionId, newValue);
     }
 
     @Test
     void testUpdateValue_failed_to_update() {
-        when(awsSecretManagerConfiguration.putSecretValueRequest(any())).thenReturn(putSecretValueRequest);
+        when(awsSecretManagerConfiguration.putSecretValueRequest(any(), any())).thenReturn(putSecretValueRequest);
         when(secretsManagerClient.putSecretValue(eq(putSecretValueRequest))).thenReturn(putSecretValueResponse);
         final String testValue = "{\"key\":\"oldValue\"}";
         when(secretValueDecoder.decode(eq(getSecretValueResponse))).thenReturn(testValue);
         when(putSecretValueResponse.versionId()).thenThrow(RuntimeException.class);
         objectUnderTest = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
         assertThrows(RuntimeException.class,
-                () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", "newValue"));
+                () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", "newValue", "newSecretVersionId"));
     }
 }

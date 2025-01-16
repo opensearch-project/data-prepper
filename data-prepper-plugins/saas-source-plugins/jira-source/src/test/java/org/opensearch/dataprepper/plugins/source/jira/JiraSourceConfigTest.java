@@ -30,8 +30,8 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAU
 import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS;
 
 public class JiraSourceConfigTest {
-    private final String refreshToken = "refresh token test";
     private final PluginConfigVariable accessToken = new MockPluginConfigVariableImpl("access token test");
+    private final PluginConfigVariable refreshToken = new MockPluginConfigVariableImpl("refresh token test");
     private final String clientId = "client id test";
     private final String clientSecret = "client secret test";
     private final String password = "test Jira Credential";
@@ -43,7 +43,8 @@ public class JiraSourceConfigTest {
     private JiraSourceConfig jiraSourceConfig;
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws Exception {
-        PluginConfigVariable pcv = null;
+        PluginConfigVariable pcvAccessToken = null;
+        PluginConfigVariable pcvRefreshToken = null;
         Map<String, Object> configMap = new HashMap<>();
         List<String> hosts = new ArrayList<>();
         hosts.add(accountUrl);
@@ -59,8 +60,8 @@ public class JiraSourceConfigTest {
             authenticationMap.put("basic", basicMap);
         } else if (authtype.equals(OAUTH2)) {
             if (hasToken) {
-                oauth2Map.put("refresh_token", refreshToken);
-                pcv = accessToken;
+                pcvRefreshToken = refreshToken;
+                pcvAccessToken = accessToken;
             } else {
                 oauth2Map.put("refresh_token", null);
             }
@@ -101,9 +102,11 @@ public class JiraSourceConfigTest {
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonConfig = objectMapper.writeValueAsString(configMap);
         JiraSourceConfig config = objectMapper.readValue(jsonConfig, JiraSourceConfig.class);
-        if (config.getAuthenticationConfig().getOauth2Config() != null && pcv != null) {
+        if (config.getAuthenticationConfig().getOauth2Config() != null && pcvAccessToken != null) {
             ReflectivelySetField.setField(Oauth2Config.class,
-                    config.getAuthenticationConfig().getOauth2Config(), "accessToken", pcv);
+                    config.getAuthenticationConfig().getOauth2Config(), "accessToken", pcvAccessToken);
+            ReflectivelySetField.setField(Oauth2Config.class,
+                    config.getAuthenticationConfig().getOauth2Config(), "refreshToken", pcvRefreshToken);
         }
         return config;
     }

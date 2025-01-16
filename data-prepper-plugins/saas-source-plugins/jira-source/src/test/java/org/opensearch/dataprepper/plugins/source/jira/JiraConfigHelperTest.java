@@ -67,7 +67,10 @@ public class JiraConfigHelperTest {
     Oauth2Config oauth2Config;
 
     @Mock
-    PluginConfigVariable pluginConfigVariable;
+    PluginConfigVariable accessTokenPluginConfigVariable;
+
+    @Mock
+    PluginConfigVariable refreshTokenPluginConfigVariable;
 
     @Test
     void testInitialization() {
@@ -157,14 +160,14 @@ public class JiraConfigHelperTest {
         when(authenticationConfig.getOauth2Config()).thenReturn(oauth2Config);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(oauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
+        when(oauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(authenticationConfig.getOauth2Config().getRefreshToken()).thenReturn("refreshToken");
+        when(authenticationConfig.getOauth2Config().getRefreshToken()).thenReturn(refreshTokenPluginConfigVariable);
         when(oauth2Config.getAccessToken()).thenReturn(null);
         assertThrows(RuntimeException.class, () -> JiraConfigHelper.validateConfig(jiraSourceConfig));
 
-        when(oauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
+        when(oauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
         assertDoesNotThrow(() -> JiraConfigHelper.validateConfig(jiraSourceConfig));
     }
 }

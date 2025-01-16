@@ -27,7 +27,7 @@ public class Oauth2Config {
     private PluginConfigVariable accessToken;
 
     @JsonProperty("refresh_token")
-    private String refreshToken;
+    private PluginConfigVariable refreshToken;
 
     @AssertTrue(message = "Client ID, Client Secret, Access Token, and Refresh Token are both required for Oauth2")
     private boolean isOauth2ConfigValid() {

@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -150,6 +151,7 @@ class AwsSecretManagerConfigurationTest {
     void testPutSecretValueRequest_construct_put_request(String secretValueToStore) throws IOException {
         when(putSecretValueRequestBuilder.secretId(anyString())).thenReturn(putSecretValueRequestBuilder);
         when(putSecretValueRequestBuilder.secretString(anyString())).thenReturn(putSecretValueRequestBuilder);
+        when(putSecretValueRequestBuilder.clientRequestToken(anyString())).thenReturn(putSecretValueRequestBuilder);
         when(putSecretValueRequestBuilder.build()).thenReturn(putSecretValueRequest);
         final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
                 "/test-aws-secret-manager-configuration-default.yaml");
@@ -159,7 +161,7 @@ class AwsSecretManagerConfigurationTest {
                      mockStatic(PutSecretValueRequest.class)) {
             putSecretValueRequestMockedStatic.when(PutSecretValueRequest::builder).thenReturn(
                     putSecretValueRequestBuilder);
-            assertThat(awsSecretManagerConfiguration.putSecretValueRequest(secretValueToStore),
+            assertThat(awsSecretManagerConfiguration.putSecretValueRequest(secretValueToStore, UUID.randomUUID().toString()),
                     is(putSecretValueRequest));
         }
         verify(putSecretValueRequestBuilder).secretId("test-secret");

@@ -56,7 +56,10 @@ class CustomRestTemplateConfigTest {
     private Oauth2Config mockOauth2Config;
 
     @Mock
-    private PluginConfigVariable pluginConfigVariable;
+    private PluginConfigVariable accessTokenPluginConfigVariable;
+
+    @Mock
+    private PluginConfigVariable refreshTokenPluginConfigVariable;
 
     @Mock
     private AuthenticationConfig mockAuthenticationConfig;
@@ -81,9 +84,9 @@ class CustomRestTemplateConfigTest {
         when(mockSourceConfig.getAuthType()).thenReturn(authType);
         lenient().when(mockSourceConfig.getAuthenticationConfig()).thenReturn(mockAuthenticationConfig);
         lenient().when(mockAuthenticationConfig.getOauth2Config()).thenReturn(mockOauth2Config);
-        lenient().when(mockOauth2Config.getAccessToken()).thenReturn(pluginConfigVariable);
-        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn("refreshToken");
-        lenient().when(pluginConfigVariable.getValue()).thenReturn("accessToken");
+        lenient().when(mockOauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
+        lenient().when(mockOauth2Config.getRefreshToken()).thenReturn(refreshTokenPluginConfigVariable);
+        lenient().when(accessTokenPluginConfigVariable.getValue()).thenReturn("accessToken");
         lenient().when(mockOauth2Config.getClientId()).thenReturn("clientId");
         lenient().when(mockOauth2Config.getClientSecret()).thenReturn("clientSecret");
         lenient().when(mockAuthenticationConfig.getBasicConfig()).thenReturn(mockBasicConfig);
