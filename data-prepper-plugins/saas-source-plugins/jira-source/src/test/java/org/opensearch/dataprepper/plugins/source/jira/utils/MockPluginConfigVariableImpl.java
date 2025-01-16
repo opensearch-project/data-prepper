@@ -29,7 +29,7 @@ public class MockPluginConfigVariableImpl implements PluginConfigVariable {
     }
 
     @Override
-    public void setValue(Object someValue, String secretVersionIdToSet) {
+    public void setValue(Object someValue) {
         this.defaultValue = someValue;
     }
 

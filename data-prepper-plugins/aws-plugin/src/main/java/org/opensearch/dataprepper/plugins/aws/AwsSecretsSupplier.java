@@ -137,12 +137,12 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
-    public String updateValue(String secretId, Object newValue, String secretVersionIdToSet) {
-        return updateValue(secretId, null, newValue, secretVersionIdToSet);
+    public String updateValue(String secretId, Object newValue) {
+        return updateValue(secretId, null, newValue);
     }
 
     @Override
-    public String updateValue(String secretId, String keyToUpdate, Object newValue, String secretVersionIdToSet) {
+    public String updateValue(String secretId, String keyToUpdate, Object newValue) {
         Object currentSecretStore = secretIdToValue.get(secretId);
         if (currentSecretStore instanceof Map) {
             if (keyToUpdate == null) {
@@ -160,7 +160,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         String secretKeyValueMapAsString = (String) retrieveValue(secretId);
         AwsSecretManagerConfiguration awsSecretManagerConfiguration = awsSecretManagerConfigurationMap.get(secretId);
         PutSecretValueRequest putSecretValueRequest =
-                awsSecretManagerConfiguration.putSecretValueRequest(secretKeyValueMapAsString, secretVersionIdToSet);
+                awsSecretManagerConfiguration.putSecretValueRequest(secretKeyValueMapAsString);
         SecretsManagerClient secretsManagerClient = secretsManagerClientMap.get(secretId);
 
         try {

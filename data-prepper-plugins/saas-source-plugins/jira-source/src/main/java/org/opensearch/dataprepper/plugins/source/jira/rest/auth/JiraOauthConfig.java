@@ -28,7 +28,6 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.SLASH;
@@ -135,11 +134,10 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
                 // updating config object's PluginConfigVariable so that it updates the underlying Secret store
-                String secretVersionIdToSet = UUID.randomUUID().toString();
                 jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken()
-                        .setValue(this.accessToken, secretVersionIdToSet);
+                        .setValue(this.accessToken);
                 jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken()
-                        .setValue(this.refreshToken, secretVersionIdToSet);
+                        .setValue(this.refreshToken);
                 log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);

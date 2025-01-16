@@ -79,10 +79,9 @@ public class AwsSecretManagerConfiguration {
                 .build();
     }
 
-    public PutSecretValueRequest putSecretValueRequest(String secretKeyValueMapAsString, String secretVersionIdToSet) {
+    public PutSecretValueRequest putSecretValueRequest(String secretKeyValueMapAsString) {
         return PutSecretValueRequest.builder()
                 .secretId(awsSecretId)
-                .clientRequestToken(secretVersionIdToSet)
                 .secretString(secretKeyValueMapAsString)
                 .build();
     }
