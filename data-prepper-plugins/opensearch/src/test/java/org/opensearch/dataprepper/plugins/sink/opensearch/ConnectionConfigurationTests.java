@@ -258,10 +258,10 @@ class ConnectionConfigurationTests {
   @Test
   void testCreateClientWithInsecureAndCertPath() throws IOException {
     // Insecure should take precedence over cert path when both are set
-    final PluginSetting pluginSetting = generatePluginSetting(
+      final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
         TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, true);
     final ConnectionConfiguration connectionConfiguration =
-        ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
     assertNull(connectionConfiguration.getCertPath());
     final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
     assertNotNull(client);
