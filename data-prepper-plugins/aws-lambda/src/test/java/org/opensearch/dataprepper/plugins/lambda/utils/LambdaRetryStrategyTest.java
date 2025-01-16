@@ -13,9 +13,12 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.slf4j.Logger;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.model.ServiceException;
+import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -55,21 +58,6 @@ public class LambdaRetryStrategyTest {
         when(config.getClientOptions().getBaseDelay()).thenReturn(Duration.ofMillis(100));
         when(config.getFunctionName()).thenReturn("testFunction");
         when(config.getInvocationType()).thenReturn(InvocationType.REQUEST_RESPONSE);
-    }
-
-//    @Test
-//    void testIsRetryableException() {
-//        assertTrue(LambdaRetryStrategy.isRetryableException(new TooManyRequestsException(null)));
-//        assertTrue(LambdaRetryStrategy.isRetryableException(new ServiceException(null)));
-//        assertTrue(LambdaRetryStrategy.isRetryableException(new SdkClientException(null)));
-//        assertFalse(LambdaRetryStrategy.isRetryableException(new RuntimeException()));
-//    }
-
-    @Test
-    void testIsRetryableResponse() {
-        assertTrue(LambdaRetryStrategy.isRetryableResponse(InvokeResponse.builder().statusCode(429).build()));
-        assertTrue(LambdaRetryStrategy.isRetryableResponse(InvokeResponse.builder().statusCode(500).build()));
-        assertFalse(LambdaRetryStrategy.isRetryableResponse(InvokeResponse.builder().statusCode(200).build()));
     }
 
     @Test

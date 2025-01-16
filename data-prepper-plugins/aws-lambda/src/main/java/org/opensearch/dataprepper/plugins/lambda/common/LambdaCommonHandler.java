@@ -68,12 +68,14 @@ public class LambdaCommonHandler {
             if (ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes,
                     maxCollectionDuration)) {
                 batchedBuffers.add(currentBufferPerBatch);
+                currentBufferPerBatch.completeCodec();
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
         }
 
         if (currentBufferPerBatch.getEventCount() > 0) {
             batchedBuffers.add(currentBufferPerBatch);
+            currentBufferPerBatch.completeCodec();
         }
         return batchedBuffers;
     }

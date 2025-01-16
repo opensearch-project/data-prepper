@@ -188,6 +188,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                             LOG
                     );
                 }
+                if(response == null || !isSuccess(response)) {
+                    numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
+                    resultRecords.addAll(addFailureTags(inputBuffer.getRecords()));
+                    return resultRecords;
+                }
 
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);

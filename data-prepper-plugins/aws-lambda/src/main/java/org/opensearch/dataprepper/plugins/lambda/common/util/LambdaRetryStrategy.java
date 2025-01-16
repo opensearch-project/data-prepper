@@ -27,44 +27,8 @@ public final class LambdaRetryStrategy {
     private LambdaRetryStrategy() {
     }
 
-    public static boolean isRetryableException(final Throwable t) {
-        if (t instanceof TooManyRequestsException) {
-            // Throttling => often can retry with backoff
-            return true;
-        }
-        if (t instanceof ServiceException) {
-            // Usually indicates a 5xx => can retry
-            return true;
-        }
-        if (t instanceof SdkClientException) {
-            // Possibly network/connection error => can retry
-            return true;
-        }
-        return false;
-    }
-
-    public static boolean isRetryableResponse(final InvokeResponse response) {
-        int statusCode = response.statusCode();
-        // Throttling or internal error then retry
-        return (statusCode == 429) || (statusCode >= 500 && statusCode < 600);
-    }
-
-    /**
-     * Set of status codes that should generally NOT be retried
-     * because they indicate client-side or permanent errors.
-     */
-    private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
-            Arrays.asList(
-                    400, // ExpiredTokenException
-                    403, // IncompleteSignature, AccessDeniedException, AccessDeniedException
-                    404, // Not Found
-                    409  // Conflict
-            )
-    );
-
     /**
      * Possibly a set of “bad request” style errors which might fall
-     * under the NON_RETRY_STATUS or be handled differently if you prefer.
      */
     private static final Set<Integer> BAD_REQUEST_ERRORS = new HashSet<>(
             Arrays.asList(
@@ -95,7 +59,6 @@ public final class LambdaRetryStrategy {
                     413, // Payload Too Large
                     414, // URI Too Long
                     416  // Range Not Satisfiable
-                    // ...
             )
     );
 
@@ -115,8 +78,26 @@ public final class LambdaRetryStrategy {
     public static boolean isRetryable(final InvokeResponse response) {
         if(response == null) return false;
         int statusCode = response.statusCode();
-        // Example logic: 429 (Too Many Requests) or 5xx => retry
-        return statusCode == 429 || (statusCode >= 500 && statusCode < 600);
+        return TIMEOUT_ERRORS.contains(statusCode) || (statusCode >= 500 && statusCode < 600);
+    }
+
+    /*
+     * Note:isRetryable and isRetryableException should match
+     */
+    public static boolean isRetryableException(final Throwable t) {
+        if (t instanceof TooManyRequestsException) {
+            // Throttling => often can retry with backoff
+            return true;
+        }
+        if (t instanceof ServiceException) {
+            // Usually indicates a 5xx => can retry
+            return true;
+        }
+        if (t instanceof SdkClientException) {
+            // Possibly network/connection error => can retry
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -126,8 +107,7 @@ public final class LambdaRetryStrategy {
         if(response == null) return false;
 
         int statusCode = response.statusCode();
-        return NON_RETRY_STATUS.contains(statusCode)
-                || BAD_REQUEST_ERRORS.contains(statusCode)
+        return BAD_REQUEST_ERRORS.contains(statusCode)
                 || NOT_ALLOWED_ERRORS.contains(statusCode)
                 || INVALID_INPUT_ERRORS.contains(statusCode);
     }

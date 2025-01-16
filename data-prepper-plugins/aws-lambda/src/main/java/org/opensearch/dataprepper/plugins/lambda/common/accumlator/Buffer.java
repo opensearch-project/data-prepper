@@ -36,5 +36,7 @@ public interface Buffer {
   Long getPayloadRequestSize();
 
   Duration stopLatencyWatch();
+
+  void completeCodec();
   
 }
