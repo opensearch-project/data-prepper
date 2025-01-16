@@ -156,6 +156,11 @@ class VariableExpanderTest {
             public void setValue(Object updatedValue) {
                 this.secretValue = updatedValue.toString();
             }
+
+            @Override
+            public boolean isUpdatable() {
+                return true;
+            }
         };
         when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
         when(pluginConfigValueTranslator.translateToPluginConfigVariable(eq(testSecretKey)))
