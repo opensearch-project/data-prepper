@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.UUID;
 
@@ -40,7 +41,7 @@ class AwsPluginConfigVariableTest {
         objectUnderTest = new AwsPluginConfigVariable(
                 secretsSupplier,
                 secretId, secretKey,
-                secretValue, true
+                secretValue
         );
     }
 
@@ -50,12 +51,13 @@ class AwsPluginConfigVariableTest {
     }
 
     @Test
-    void testSetValueFailure_when_secret_is_not_updatable() {
+    void testSetValueFailure_when_secret_is_not_updatable() throws NoSuchFieldException, IllegalAccessException {
         objectUnderTest = new AwsPluginConfigVariable(
                 secretsSupplier,
                 secretId, secretKey,
-                secretValue, false
+                secretValue
         );
+        ReflectivelySetField.setField(AwsPluginConfigVariable.class, objectUnderTest, "isUpdatable", false);
         assertThrows(FailedToUpdatePluginConfigValueException.class, () -> objectUnderTest.setValue("new-secret-to-set"));
     }
 

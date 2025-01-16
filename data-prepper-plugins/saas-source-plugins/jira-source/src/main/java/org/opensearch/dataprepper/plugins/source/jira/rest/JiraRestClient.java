@@ -93,11 +93,7 @@ public class JiraRestClient {
                 .queryParam(JQL_FIELD, jql)
                 .queryParam(EXPAND_FIELD, EXPAND_VALUE)
                 .buildAndExpand().toUri();
-        // Issues pagination is only handled by the leader node in source coordinator
-        // We will only let leader node renew Token in the case of Tokens expire
-        // This avoids the concurrent secret update issues.
-        // Nodes that are only fetching the tickets, have to wait for the secrets refresh cycle to kick in
-        return invokeRestApi(uri, SearchResults.class, true).getBody();
+        return invokeRestApi(uri, SearchResults.class).getBody();
     }
 
     /**
@@ -111,10 +107,10 @@ public class JiraRestClient {
         issuesRequestedCounter.increment();
         String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
         URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
-        return invokeRestApi(uri, String.class, false).getBody();
+        return invokeRestApi(uri, String.class).getBody();
     }
 
-    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType, boolean renewTokenIncaseOfExpiry) throws BadRequestException {
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException {
         AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
         while (retryCount < RETRY_ATTEMPT) {
@@ -127,12 +123,8 @@ public class JiraRestClient {
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
-                    if (renewTokenIncaseOfExpiry) {
-                        log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
-                        authConfig.renewCredentials();
-                    } else {
-                        log.error(NOISY, "Token expired. We will wait for secrets refresh", ex);
-                    }
+                    log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
+                    authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
                     log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
                 }

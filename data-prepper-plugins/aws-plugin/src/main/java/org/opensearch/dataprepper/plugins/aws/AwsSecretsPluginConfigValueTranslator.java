@@ -57,6 +57,6 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
         final String secretKey = matcher.group(SECRET_KEY_GROUP);
         final Object secretValue = secretKey != null ? secretsSupplier.retrieveValue(secretId, secretKey) :
                 secretsSupplier.retrieveValue(secretId);
-        return new AwsPluginConfigVariable(secretsSupplier, secretId, secretKey, secretValue, true);
+        return new AwsPluginConfigVariable(secretsSupplier, secretId, secretKey, secretValue);
     }
 }

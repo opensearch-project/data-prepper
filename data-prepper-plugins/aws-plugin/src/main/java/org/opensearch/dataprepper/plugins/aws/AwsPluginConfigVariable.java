@@ -24,13 +24,12 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
     private Object secretValue;
 
     public AwsPluginConfigVariable(final SecretsSupplier secretsSupplier,
-                                   final String secretId, final String secretKey, Object secretValue,
-                                   final boolean isUpdatable) {
+                                   final String secretId, final String secretKey, Object secretValue) {
         this.secretsSupplier = secretsSupplier;
         this.secretId = secretId;
         this.secretKey = secretKey;
         this.secretValue = secretValue;
-        this.isUpdatable = isUpdatable;
+        this.isUpdatable = true;
     }
 
     @Override
@@ -44,7 +43,7 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
             throw new FailedToUpdatePluginConfigValueException(
                     String.format("Trying to update a secrets that is not updatable. SecretId: %s SecretKey: %s", this.secretId, this.secretKey));
         }
-        this.secretsSupplier.updateValue(secretId, secretKey);
+        this.secretsSupplier.updateValue(secretId, secretKey, newValue);
         this.secretValue = newValue;
     }
 
