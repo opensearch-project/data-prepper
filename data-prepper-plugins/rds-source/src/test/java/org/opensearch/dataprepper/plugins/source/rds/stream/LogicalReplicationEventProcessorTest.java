@@ -76,7 +76,8 @@ class LogicalReplicationEventProcessorTest {
         when(message.get()).thenReturn((byte) 'R');
         final StreamProgressState progressState = mock(StreamProgressState.class);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(progressState));
-        when(progressState.getPrimaryKeyMap()).thenReturn(Map.of(".", List.of("key1", "key2")));
+        when(sourceConfig.getTableNames()).thenReturn(List.of("database.schema.table1"));
+        when(progressState.getPrimaryKeyMap()).thenReturn(Map.of("database.schema.table1", List.of("key1", "key2")));
 
         objectUnderTest.process(message);
 

@@ -75,7 +75,7 @@ class ReplicationLogClientFactoryTest {
         final List<String> tableNames = List.of("table1", "table2");
 
         when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
-        when(sourceConfig.getTlsConfig().isInsecure()).thenReturn(false);
+        when(sourceConfig.isTlsEnabled()).thenReturn(true);
         when(sourceConfig.getTableNames()).thenReturn(tableNames);
         when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
         when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);

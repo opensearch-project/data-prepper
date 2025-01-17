@@ -17,7 +17,8 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 
 import java.util.List;
@@ -70,13 +71,8 @@ public class ReplicationLogClientFactory {
         if (replicationSlotName == null) {
             throw new NoSuchElementException("Replication slot name is not found in progress state.");
         }
-        final PostgresConnectionManager connectionManager = new PostgresConnectionManager(
-                dbMetadata.getEndpoint(),
-                dbMetadata.getPort(),
-                username,
-                password,
-                !sourceConfig.getTlsConfig().isInsecure(),
-                getDatabaseName(sourceConfig.getTableNames()));
+        final ConnectionManagerFactory connectionManagerFactory = new ConnectionManagerFactory(sourceConfig, dbMetadata);
+        final ConnectionManager connectionManager = connectionManagerFactory.getConnectionManager();
         return new LogicalReplicationClient(connectionManager, replicationSlotName);
     }
 

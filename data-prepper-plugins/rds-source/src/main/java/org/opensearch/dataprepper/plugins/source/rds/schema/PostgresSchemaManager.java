@@ -75,13 +75,15 @@ public class PostgresSchemaManager implements SchemaManager {
 
     @Override
     public List<String> getPrimaryKeys(final String fullTableName) {
-        final String schema = fullTableName.split("\\.")[0];
-        final String table = fullTableName.split("\\.")[1];
+        final String[] splits = fullTableName.split("\\.");
+        final String database = splits[0];
+        final String schema = splits[1];
+        final String table = splits[2];
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             final List<String> primaryKeys = new ArrayList<>();
             try (final Connection connection = connectionManager.getConnection()) {
-                try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(null, schema, table)) {
+                try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, schema, table)) {
                     while (rs.next()) {
                         primaryKeys.add(rs.getString(COLUMN_NAME));
                     }

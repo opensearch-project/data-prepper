@@ -10,7 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
-import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -25,14 +25,14 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationClient.class);
 
-    private final PostgresConnectionManager connectionManager;
+    private final ConnectionManager connectionManager;
     private final String replicationSlotName;
     private LogSequenceNumber startLsn;
     private LogicalReplicationEventProcessor eventProcessor;
 
     private volatile boolean disconnectRequested = false;
 
-    public LogicalReplicationClient(final PostgresConnectionManager connectionManager,
+    public LogicalReplicationClient(final ConnectionManager connectionManager,
                                     final String replicationSlotName) {
         this.connectionManager = connectionManager;
         this.replicationSlotName = replicationSlotName;

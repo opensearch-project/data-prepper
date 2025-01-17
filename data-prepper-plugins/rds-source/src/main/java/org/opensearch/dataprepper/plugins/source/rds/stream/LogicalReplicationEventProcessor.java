@@ -41,6 +41,7 @@ public class LogicalReplicationEventProcessor {
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
 
     private final StreamPartition streamPartition;
+    private final RdsSourceConfig sourceConfig;
     private final StreamRecordConverter recordConverter;
     private final Buffer<Record<Event>> buffer;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
@@ -56,6 +57,7 @@ public class LogicalReplicationEventProcessor {
                                             final Buffer<Record<Event>> buffer,
                                             final String s3Prefix) {
         this.streamPartition = streamPartition;
+        this.sourceConfig = sourceConfig;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.buffer = buffer;
         bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
@@ -122,7 +124,7 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        final List<String> primaryKeys = getPrimaryKeys(schemaName + "." + tableName);
+        final List<String> primaryKeys = getPrimaryKeys(schemaName, tableName);
         final TableMetadata tableMetadata = new TableMetadata(
                 tableName, schemaName, columnNames, primaryKeys);
 
@@ -301,9 +303,10 @@ public class LogicalReplicationEventProcessor {
         return sb.toString();
     }
 
-    private List<String> getPrimaryKeys(String fullTableName) {
+    private List<String> getPrimaryKeys(String schemaName, String tableName) {
+        final String databaseName = sourceConfig.getTableNames().get(0).split("\\.")[0];
         StreamProgressState progressState = streamPartition.getProgressState().get();
 
-        return progressState.getPrimaryKeyMap().get(fullTableName);
+        return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
     }
 }
