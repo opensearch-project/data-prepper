@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -30,6 +31,8 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +45,32 @@ class VariableExpanderTest {
     private PluginConfigValueTranslator pluginConfigValueTranslator;
 
     private VariableExpander objectUnderTest;
+
+    private static Stream<Arguments> getNonStringTypeArguments() {
+        return Stream.of(Arguments.of(Boolean.class, "true", true),
+                Arguments.of(Short.class, "2", (short) 2),
+                Arguments.of(Integer.class, "10", 10),
+                Arguments.of(Long.class, "200", 200L),
+                Arguments.of(Double.class, "1.23", 1.23d),
+                Arguments.of(Float.class, "2.15", 2.15f),
+                Arguments.of(BigDecimal.class, "2.15", BigDecimal.valueOf(2.15)),
+                Arguments.of(Map.class, "{}", Collections.emptyMap()));
+    }
+
+    private static Stream<Arguments> getStringTypeArguments() {
+        final String testRandomValue = "non-secret-prefix-" + RandomStringUtils.randomAlphabetic(5);
+        return Stream.of(Arguments.of(String.class, String.format("\"%s\"", testRandomValue),
+                        testRandomValue),
+                Arguments.of(Duration.class, "\"PT15M\"", Duration.parse("PT15M")),
+                Arguments.of(Boolean.class, "\"true\"", true),
+                Arguments.of(Short.class, "\"2\"", (short) 2),
+                Arguments.of(Integer.class, "\"10\"", 10),
+                Arguments.of(Long.class, "\"200\"", 200L),
+                Arguments.of(Double.class, "\"1.23\"", 1.23d),
+                Arguments.of(Float.class, "\"2.15\"", 2.15f),
+                Arguments.of(BigDecimal.class, "\"2.15\"", BigDecimal.valueOf(2.15)),
+                Arguments.of(Character.class, "\"c\"", 'c'));
+    }
 
     @BeforeEach
     void setUp() {
@@ -107,29 +136,53 @@ class VariableExpanderTest {
         assertThat(actualResult, equalTo(expectedResult));
     }
 
-    private static Stream<Arguments> getNonStringTypeArguments() {
-        return Stream.of(Arguments.of(Boolean.class, "true", true),
-                Arguments.of(Short.class, "2", (short) 2),
-                Arguments.of(Integer.class, "10", 10),
-                Arguments.of(Long.class, "200", 200L),
-                Arguments.of(Double.class, "1.23", 1.23d),
-                Arguments.of(Float.class, "2.15", 2.15f),
-                Arguments.of(BigDecimal.class, "2.15", BigDecimal.valueOf(2.15)),
-                Arguments.of(Map.class, "{}", Collections.emptyMap()));
+    @Test
+    void testTranslateJsonParserWithSPluginConfigVariableValue_translate_success() throws IOException {
+        final String testSecretKey = "testSecretKey";
+        final String testTranslatorKey = "test_prefix";
+        final String testSecretReference = String.format("${{%s:%s}}", testTranslatorKey, testSecretKey);
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        PluginConfigVariable mockPluginConfigVariable = new PluginConfigVariable() {
+
+            String secretValue = "samplePluginConfigValue";
+
+            @Override
+            public Object getValue() {
+                return secretValue;
+            }
+
+            @Override
+            public void setValue(Object updatedValue) {
+                this.secretValue = updatedValue.toString();
+            }
+
+            @Override
+            public boolean isUpdatable() {
+                return true;
+            }
+        };
+        when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
+        when(pluginConfigValueTranslator.translateToPluginConfigVariable(eq(testSecretKey)))
+                .thenReturn(mockPluginConfigVariable);
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        final Object actualResult = objectUnderTest.translate(jsonParser, PluginConfigVariable.class);
+        assertNotNull(actualResult);
+        assertThat(actualResult, equalTo(mockPluginConfigVariable));
     }
 
-    private static Stream<Arguments> getStringTypeArguments() {
-        final String testRandomValue = "non-secret-prefix-" + RandomStringUtils.randomAlphabetic(5);
-        return Stream.of(Arguments.of(String.class, String.format("\"%s\"", testRandomValue),
-                        testRandomValue),
-                Arguments.of(Duration.class, "\"PT15M\"", Duration.parse("PT15M")),
-                Arguments.of(Boolean.class, "\"true\"", true),
-                Arguments.of(Short.class, "\"2\"", (short) 2),
-                Arguments.of(Integer.class, "\"10\"", 10),
-                Arguments.of(Long.class, "\"200\"", 200L),
-                Arguments.of(Double.class, "\"1.23\"", 1.23d),
-                Arguments.of(Float.class, "\"2.15\"", 2.15f),
-                Arguments.of(BigDecimal.class, "\"2.15\"", BigDecimal.valueOf(2.15)),
-                Arguments.of(Character.class, "\"c\"", 'c'));
+    @Test
+    void testTranslateJsonParserWithSPluginConfigVariableValue_translate_failure() throws IOException {
+        final String testSecretKey = "testSecretKey";
+        final String testTranslatorKey = "test_prefix";
+        final String testSecretReference = String.format("${{%s:%s}}", testTranslatorKey, testSecretKey);
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
+        when(pluginConfigValueTranslator.translateToPluginConfigVariable(eq(testSecretKey)))
+                .thenThrow(IllegalArgumentException.class);
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.translate(jsonParser, PluginConfigVariable.class));
     }
 }

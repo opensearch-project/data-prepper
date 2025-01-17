@@ -14,6 +14,7 @@ import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -44,8 +45,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
     public static final String EXPIRES_IN = "expires_in";
     public static final String REFRESH_TOKEN = "refresh_token";
     public static final String ACCESS_TOKEN = "access_token";
-    private static final Logger log =
-            org.slf4j.LoggerFactory.getLogger(JiraOauthConfig.class);
+    private static final Logger log = LoggerFactory.getLogger(JiraOauthConfig.class);
     private final String clientId;
     private final String clientSecret;
     private final JiraSourceConfig jiraSourceConfig;
@@ -65,8 +65,10 @@ public class JiraOauthConfig implements JiraAuthConfig {
 
     public JiraOauthConfig(JiraSourceConfig jiraSourceConfig) {
         this.jiraSourceConfig = jiraSourceConfig;
-        this.accessToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken();
-        this.refreshToken = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken();
+        this.accessToken = (String) jiraSourceConfig.getAuthenticationConfig().getOauth2Config()
+                .getAccessToken().getValue();
+        this.refreshToken = (String) jiraSourceConfig.getAuthenticationConfig()
+                .getOauth2Config().getRefreshToken().getValue();
         this.clientId = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
         this.clientSecret = jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
@@ -117,7 +119,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 return;
             }
 
-            log.info("Renewing access-refresh token pair for Jira Connector.");
+            log.info("Renewing access token and refresh token pair for Jira Connector.");
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             String payloadTemplate = "{\"grant_type\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"refresh_token\": \"%s\"}";
@@ -131,6 +133,12 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
                 this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+                // updating config object's PluginConfigVariable so that it updates the underlying Secret store
+                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken()
+                        .setValue(this.accessToken);
+                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken()
+                        .setValue(this.refreshToken);
+                log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);
                 this.expiresInSeconds = 0;

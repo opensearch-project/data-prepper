@@ -1,8 +1,6 @@
-hosts: ["https://jira.com/"]
+hosts: [ "https://jira.com/" ]
 authentication:
   oauth2:
     client_id: "client_id"
     client_secret: "client_secret"
-    access_token: "access_token"
-    refresh_token: "refresh_token"
 
