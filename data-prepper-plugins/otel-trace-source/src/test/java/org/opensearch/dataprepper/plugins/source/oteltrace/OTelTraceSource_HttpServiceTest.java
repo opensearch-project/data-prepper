@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import static com.jayway.jsonpath.matchers.JsonPathMatchers.hasJsonPath;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -84,7 +85,6 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
-import static com.jayway.jsonpath.matchers.JsonPathMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSource_HttpServiceTest {
