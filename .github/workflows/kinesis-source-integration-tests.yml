@@ -59,7 +59,7 @@ jobs:
             -Dtests.kinesis.source.aws.region=us-east-1 --tests KinesisSourceIT
       - name: Upload Unit Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: data-prepper-kinesis-source-integration-tests-java-${{ matrix.java }}
           path: '**/test-results/**/*.xml'
@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: test-results
 

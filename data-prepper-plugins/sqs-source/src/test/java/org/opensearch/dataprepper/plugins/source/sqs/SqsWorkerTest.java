@@ -1,6 +1,11 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
  */
 
 package org.opensearch.dataprepper.plugins.source.sqs;
@@ -19,6 +24,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
@@ -72,6 +78,8 @@ class SqsWorkerTest {
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
+    private PluginFactory pluginFactory;
+    @Mock
     private Backoff backoff;
     @Mock
     private Counter sqsMessagesReceivedCounter;
@@ -87,17 +95,17 @@ class SqsWorkerTest {
     private Counter sqsVisibilityTimeoutChangedCount;
     @Mock
     private Counter sqsVisibilityTimeoutChangeFailedCount;
-    private int mockBufferTimeoutMillis = 10000;
+    private final int mockBufferTimeoutMillis = 10000;
 
     private SqsWorker createObjectUnderTest() {
         return new SqsWorker(
                 buffer,
                 acknowledgementSetManager,
                 sqsClient,
-                sqsEventProcessor,
                 sqsSourceConfig,
                 queueConfig,
                 pluginMetrics,
+                sqsEventProcessor,
                 backoff);
     }
 
@@ -216,7 +224,7 @@ class SqsWorkerTest {
         when(sqsSourceConfig.getAcknowledgements()).thenReturn(true);
         when(queueConfig.getVisibilityDuplicateProtection()).thenReturn(true);
 
-        SqsWorker worker = new SqsWorker(buffer, acknowledgementSetManager, sqsClient, sqsEventProcessor, sqsSourceConfig, queueConfig, pluginMetrics, backoff);
+        SqsWorker worker = new SqsWorker(buffer, acknowledgementSetManager, sqsClient, sqsSourceConfig, queueConfig, pluginMetrics, sqsEventProcessor, backoff);
         Message message = Message.builder().messageId("msg-dup").receiptHandle("handle-dup").build();
         ReceiveMessageResponse response = ReceiveMessageResponse.builder().messages(message).build();
         when(sqsClient.receiveMessage((ReceiveMessageRequest) any())).thenReturn(response);

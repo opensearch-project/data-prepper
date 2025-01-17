@@ -156,6 +156,9 @@ public class SqsWorker implements Runnable {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
             final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
             failedAttemptCount = 0;
+            if (messages.isEmpty()) {
+                sqsMessageDelayTimer.record(Duration.ZERO);
+            }
             return messages;
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
@@ -228,6 +231,10 @@ public class SqsWorker implements Runnable {
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
         
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            sqsMessageDelayTimer.record(Duration.between(
+                    Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
+                    Instant.now()
+            ));
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
             final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
@@ -318,10 +325,6 @@ public class SqsWorker implements Runnable {
         // SQS messages won't be deleted if we are unable to process S3Objects because of an exception
         try {
             s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
-            sqsMessageDelayTimer.record(Duration.between(
-                    Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
-                    Instant.now()
-            ));
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
         } catch (final Exception e) {
             LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());
