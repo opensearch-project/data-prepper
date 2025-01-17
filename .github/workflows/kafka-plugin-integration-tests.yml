@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload Unit Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: data-prepper-kafka-integration-tests-kafka-${{ matrix.kafka }}-java-${{ matrix.java }}
           path: '**/test-results/**/*.xml'
@@ -83,7 +83,7 @@ jobs:
 
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: test-results
 

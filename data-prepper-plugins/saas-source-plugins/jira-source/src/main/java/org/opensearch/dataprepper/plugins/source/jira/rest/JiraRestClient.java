@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira.rest;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -34,17 +44,20 @@ public class JiraRestClient {
 
     public static final String REST_API_SEARCH = "rest/api/3/search";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
+    public static final String REST_API_PROJECTS = "/rest/api/3/project/search";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String MAX_RESULT = "maxResults";
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
+    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
+    private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
     private int sleepTimeMultiplier = 1000;
@@ -55,6 +68,8 @@ public class JiraRestClient {
 
         ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
+        projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
+
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
     }
 
@@ -95,7 +110,7 @@ public class JiraRestClient {
         return invokeRestApi(uri, String.class).getBody();
     }
 
-    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException{
+    private <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException {
         AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
         while (retryCount < RETRY_ATTEMPT) {
@@ -104,7 +119,7 @@ public class JiraRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage(), ex);
+                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
@@ -121,7 +136,7 @@ public class JiraRestClient {
             }
             retryCount++;
         }
-        String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri.toString());
+        String errorMessage = String.format("Exceeded max retry attempts. Failed to execute the Rest API call %s", uri);
         log.error(errorMessage);
         throw new RuntimeException(errorMessage);
     }

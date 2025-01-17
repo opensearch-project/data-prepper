@@ -50,17 +50,21 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
     private final FolderPartitioningOptions folderPartitioningOptions;
 
+    private final boolean deleteS3ObjectsOnRead;
+
     public S3ScanPartitionCreationSupplier(final S3Client s3Client,
                                            final BucketOwnerProvider bucketOwnerProvider,
                                            final List<ScanOptions> scanOptionsList,
                                            final S3ScanSchedulingOptions schedulingOptions,
-                                           final FolderPartitioningOptions folderPartitioningOptions) {
+                                           final FolderPartitioningOptions folderPartitioningOptions,
+                                           final boolean deleteS3ObjectsOnRead) {
 
         this.s3Client = s3Client;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.scanOptionsList = scanOptionsList;
         this.schedulingOptions = schedulingOptions;
         this.folderPartitioningOptions = folderPartitioningOptions;
+        this.deleteS3ObjectsOnRead = deleteS3ObjectsOnRead;
     }
 
     @Override
@@ -120,7 +124,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
         do {
             listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request.fetchOwner(true).continuationToken(Objects.nonNull(listObjectsV2Response) ? listObjectsV2Response.nextContinuationToken() : null).build());
             allPartitionIdentifiers.addAll(listObjectsV2Response.contents().stream()
-                    .filter(s3Object -> isLastModifiedTimeAfterMostRecentScanForBucket(previousScanTime, s3Object))
+                    .filter(s3Object -> deleteS3ObjectsOnRead || isLastModifiedTimeAfterMostRecentScanForBucket(previousScanTime, s3Object))
                     .map(s3Object -> Pair.of(s3Object.key(), instantToLocalDateTime(s3Object.lastModified())))
                     .filter(keyTimestampPair -> !keyTimestampPair.left().endsWith("/"))
                     .filter(keyTimestampPair -> excludeKeyPaths.stream()

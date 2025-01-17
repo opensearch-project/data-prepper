@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -41,6 +42,7 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
+    private final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers;
 
     @Inject
     DefaultPluginFactory(
@@ -49,8 +51,10 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
-            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers) {
+            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers,
+            final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers) {
         this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
+        this.definedPluginConsumers = definedPluginConsumers;
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -140,15 +144,13 @@ public class DefaultPluginFactory implements PluginFactory {
                 .orElseThrow(() -> new NoPluginFoundException(
                         "Unable to find a plugin named '" + pluginName + "'. Please ensure that plugin is annotated with appropriate values."));
 
-        logDeprecatedPluginsNames(pluginClass, pluginName);
+        handleDefinedPlugins(pluginClass, pluginName);
         return pluginClass;
     }
 
-    private <T> void logDeprecatedPluginsNames(final Class<? extends T> pluginClass, final String pluginName) {
-        final String deprecatedName = pluginClass.getAnnotation(DataPrepperPlugin.class).deprecatedName();
-        final String name = pluginClass.getAnnotation(DataPrepperPlugin.class).name();
-        if (deprecatedName.equals(pluginName)) {
-            LOG.warn("Plugin name '{}' is deprecated and will be removed in the next major release. Consider using the updated plugin name '{}'.", deprecatedName, name);
-        }
+    private <T> void handleDefinedPlugins(final Class<? extends T> pluginClass, final String pluginName) {
+        final DefinedPlugin<? extends T> definedPlugin = new DefinedPlugin<>(pluginClass, pluginName);
+
+        definedPluginConsumers.forEach(definedPluginConsumer -> definedPluginConsumer.accept(definedPlugin));
     }
 }

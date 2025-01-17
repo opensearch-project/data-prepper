@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
@@ -28,7 +29,7 @@ import java.util.Set;
 public class ObjectMapperConfiguration {
     static final Set<Class> TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES = Set.of(
             String.class, Number.class, Long.class, Short.class, Integer.class, Double.class, Float.class,
-            Boolean.class, Character.class);
+            Boolean.class, Character.class, PluginConfigVariable.class);
 
     @Bean(name = "extensionPluginConfigObjectMapper")
     ObjectMapper extensionPluginConfigObjectMapper() {

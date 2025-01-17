@@ -15,6 +15,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -75,6 +76,13 @@ public class AwsSecretManagerConfiguration {
     public GetSecretValueRequest createGetSecretValueRequest() {
         return GetSecretValueRequest.builder()
                 .secretId(awsSecretId)
+                .build();
+    }
+
+    public PutSecretValueRequest putSecretValueRequest(String secretKeyValueMapAsString) {
+        return PutSecretValueRequest.builder()
+                .secretId(awsSecretId)
+                .secretString(secretKeyValueMapAsString)
                 .build();
     }
 

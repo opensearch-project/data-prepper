@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import io.micrometer.core.instrument.Counter;
@@ -14,8 +24,10 @@ import org.springframework.util.CollectionUtils;
 import javax.inject.Named;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -25,9 +37,12 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PROJECT_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PROJECT_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.STATUS_IN;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.STATUS_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.SUFFIX;
 
 
@@ -117,26 +132,41 @@ public class JiraService {
     private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration)) ) {
             validateProjectFilters(configuration);
         }
         StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectKeyFilter(configuration))) {
-            jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectKeyFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration))) {
+            jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeFilter(configuration))) {
-            jiraQl.append(ISSUE_TYPE_IN).append(JiraConfigHelper.getIssueTypeFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
+            jiraQl.append(PROJECT_NOT_IN).append(JiraConfigHelper.getProjectNameExcludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusFilter(configuration))) {
-            jiraQl.append(STATUS_IN).append(JiraConfigHelper.getIssueStatusFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeIncludeFilter(configuration))) {
+            jiraQl.append(ISSUE_TYPE_IN).append(JiraConfigHelper.getIssueTypeIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        log.trace("Created issue filter criteria JiraQl query: {}", jiraQl);
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueTypeExcludeFilter(configuration))) {
+            jiraQl.append(ISSUE_TYPE_NOT_IN).append(JiraConfigHelper.getIssueTypeExcludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusIncludeFilter(configuration))) {
+            jiraQl.append(STATUS_IN).append(JiraConfigHelper.getIssueStatusIncludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getIssueStatusExcludeFilter(configuration))) {
+            jiraQl.append(STATUS_NOT_IN).append(JiraConfigHelper.getIssueStatusExcludeFilter(configuration).stream()
+                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
+                    .append(CLOSING_ROUND_BRACKET);
+        }
+        log.error("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
 
@@ -148,9 +178,21 @@ public class JiraService {
     private void validateProjectFilters(JiraSourceConfig configuration) {
         log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
+        Set<String> includedProjects = new HashSet<>();
+        List<String> includedAndExcludedProjects = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
-        JiraConfigHelper.getProjectKeyFilter(configuration).forEach(projectFilter -> {
+        JiraConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
+            includedProjects.add(projectFilter);
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+                badFilters.add(projectFilter);
+            }
+        });
+        JiraConfigHelper.getProjectNameExcludeFilter(configuration).forEach(projectFilter -> {
+            Matcher matcher = regex.matcher(projectFilter);
+            if (includedProjects.contains(projectFilter)) {
+                includedAndExcludedProjects.add(projectFilter);
+            }
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);
             }
@@ -162,6 +204,14 @@ public class JiraService {
                     "Invalid project key found in filter configuration for "
                     + filters);
         }
+        if (!includedAndExcludedProjects.isEmpty()) {
+            String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
+            log.error("One or more project keys found in both include and exclude: {}", includedAndExcludedProjects);
+            throw new BadRequestException("Bad request exception occurred " +
+                    "Project filters is invalid because the following projects are listed in both include and exclude"
+                    + filters);
+        }
+
     }
 
 }

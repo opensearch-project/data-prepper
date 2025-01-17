@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class RandomCutForestModeConfig {
+    public static final String DEFAULT_TYPE = "metrics";
     public static final int DEFAULT_SHINGLE_SIZE = 4;
     private static final int MIN_SHINGLE_SIZE = 1;
     public static final int MAX_SHINGLE_SIZE = 60;
@@ -27,31 +28,31 @@ public class RandomCutForestModeConfig {
     public static final String VERSION_1_0 = "1.0";
 
     @JsonPropertyDescription("The algorithm version number. Default is 1.0.")
-    @JsonProperty("version")
+    @JsonProperty(value = "version", defaultValue = VERSION_1_0)
     private String version = VERSION_1_0;
     
     public static final Set<String> validVersions = new HashSet<>(Set.of(VERSION_1_0));
 
     @JsonPropertyDescription("The type of data sent to the algorithm. Default is metrics type")
-    @JsonProperty("type")
+    @JsonProperty(value = "type", defaultValue = DEFAULT_TYPE)
     private String type = RandomCutForestType.METRICS.toString();
 
     public static final Set<String> validTypes = new HashSet<>(Set.of(RandomCutForestType.METRICS.toString()));
 
-    @JsonPropertyDescription("The shingle size used in the ML algorithm. Default is 60.")
-    @JsonProperty("shingle_size")
+    @JsonPropertyDescription("The shingle size used in the ML algorithm. Default is 4.")
+    @JsonProperty(value = "shingle_size", defaultValue = "" + DEFAULT_SHINGLE_SIZE)
     private int shingleSize = DEFAULT_SHINGLE_SIZE;
 
     @JsonPropertyDescription("The sample size used in the ML algorithm. Default is 256.")
-    @JsonProperty("sample_size")
+    @JsonProperty(value = "sample_size", defaultValue = "" + DEFAULT_SAMPLE_SIZE)
     private int sampleSize = DEFAULT_SAMPLE_SIZE;
 
     @JsonPropertyDescription("The time decay value used in the ML algorithm. Used as the mathematical expression timeDecay divided by SampleSize in the ML algorithm. Default is 0.1")
-    @JsonProperty("time_decay")
+    @JsonProperty(value = "time_decay", defaultValue = "" + DEFAULT_TIME_DECAY)
     private double timeDecay = DEFAULT_TIME_DECAY;
 
-    @JsonPropertyDescription("Output after indicates the number of events to consume before outputting anamolies. Default is 32.")
-    @JsonProperty("output_after")
+    @JsonPropertyDescription("Output after indicates the number of events to consume before outputting anomalies. Default is 32.")
+    @JsonProperty(value = "output_after", defaultValue = "" + DEFAULT_OUTPUT_AFTER)
     private int outputAfter = DEFAULT_OUTPUT_AFTER;
 
     @AssertTrue(message = "Value of output_after must be less than or equal to the value of sample_size")
