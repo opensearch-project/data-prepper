@@ -51,6 +51,7 @@ import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.Gauge;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 
 @ExtendWith(MockitoExtension.class)
@@ -160,6 +161,7 @@ class OTelMetricsSource_RetryInfoTest {
 
         final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
+                .addScopeMetrics(ScopeMetrics.newBuilder().addMetrics(metric))
                 .build();
 
         return ExportMetricsServiceRequest.newBuilder()
