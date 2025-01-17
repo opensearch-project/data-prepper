@@ -110,72 +110,12 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     pluginMetrics
             );
 
-            final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor();
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, "otel_metrics_source");
+            CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
 
-            final GrpcServiceBuilder grpcServiceBuilder = GrpcService
-                    .builder()
-                    .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true)
-                    .exceptionHandler(createGrpExceptionHandler());
+            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
 
-            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
-            final String oTelLogsSourcePath = oTelLogsSourceConfig.getPath();
-            if (oTelLogsSourcePath != null) {
-                final String transformedOTelLogsSourcePath = oTelLogsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
-                grpcServiceBuilder.addService(transformedOTelLogsSourcePath,
-                        ServerInterceptors.intercept(oTelLogsGrpcService, serverInterceptors), methodDescriptor);
-            } else {
-                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelLogsGrpcService, serverInterceptors));
-            }
-
-            if (oTelLogsSourceConfig.hasHealthCheck()) {
-                LOG.info("Health check is enabled");
-                grpcServiceBuilder.addService(new HealthGrpcService());
-            }
-
-            if (oTelLogsSourceConfig.hasProtoReflectionService()) {
-                LOG.info("Proto reflection service is enabled");
-                grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
-            }
-
-            grpcServiceBuilder.enableUnframedRequests(oTelLogsSourceConfig.enableUnframedRequests());
-
-            final ServerBuilder sb = Server.builder();
-            sb.disableServerHeader();
-            if (CompressionOption.NONE.equals(oTelLogsSourceConfig.getCompression())) {
-                sb.service(grpcServiceBuilder.build());
-            } else {
-                sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
-            }
-
-            if (oTelLogsSourceConfig.getAuthentication() != null) {
-                final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
-                        authenticationProvider.getHttpAuthenticationService();
-                optionalHttpAuthenticationService.ifPresent(sb::decorator);
-            }
-
-            sb.requestTimeoutMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis());
-            if(oTelLogsSourceConfig.getMaxRequestLength() != null) {
-                sb.maxRequestLength(oTelLogsSourceConfig.getMaxRequestLength().getBytes());
-            }
-
-            // ACM Cert for SSL takes preference
-            if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
-                LOG.info("SSL/TLS is enabled.");
-                final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
-                final Certificate certificate = certificateProvider.getCertificate();
-                sb.https(oTelLogsSourceConfig.getPort()).tls(
-                        new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-                        new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
-                        )
-                );
-            } else {
-                LOG.warn("Creating otel_logs_source without SSL/TLS. This is not secure.");
-                LOG.warn("In order to set up TLS for the otel_logs_source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-logs-source#ssl");
-                sb.http(oTelLogsSourceConfig.getPort());
-            }
-
-            sb.maxNumConnections(oTelLogsSourceConfig.getMaxConnectionCount());
             sb.blockingTaskExecutor(
                     Executors.newScheduledThreadPool(oTelLogsSourceConfig.getThreadCount()),
                     true);
@@ -216,22 +156,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
             }
         }
         LOG.info("Stopped otel_logs_source.");
-    }
-
-    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = oTelLogsSourceConfig.getRetryInfo() != null
-                ? oTelLogsSourceConfig.getRetryInfo()
-                : DEFAULT_RETRY_INFO;
-
-        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
-    }
-
-    private List<ServerInterceptor> getAuthenticationInterceptor() {
-        final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
-        if (authenticationInterceptor == null) {
-            return Collections.emptyList();
-        }
-        return Collections.singletonList(authenticationInterceptor);
     }
 
     private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {

@@ -110,82 +110,12 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     pluginMetrics
             );
 
-            final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor();
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, "otel_metrics_source");
+            CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
 
-            final GrpcServiceBuilder grpcServiceBuilder = GrpcService
-                    .builder()
-                    .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true)
-                    .exceptionHandler(createGrpExceptionHandler());
+            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
 
-            final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
-            final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();
-            if (oTelTraceSourcePath != null) {
-                final String transformedOTelTraceSourcePath = oTelTraceSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
-                grpcServiceBuilder.addService(transformedOTelTraceSourcePath,
-                        ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors), methodDescriptor);
-            } else {
-                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors));
-            }
-
-            if (oTelTraceSourceConfig.hasHealthCheck()) {
-                LOG.info("Health check is enabled");
-                grpcServiceBuilder.addService(new HealthGrpcService());
-            }
-
-            if (oTelTraceSourceConfig.hasProtoReflectionService()) {
-                LOG.info("Proto reflection service is enabled");
-                grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
-            }
-
-            grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
-
-            final ServerBuilder sb = Server.builder();
-            sb.disableServerHeader();
-            if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
-                sb.service(grpcServiceBuilder.build());
-            } else {
-                sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
-            }
-
-            if (oTelTraceSourceConfig.enableHttpHealthCheck()) {
-                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
-            }
-
-            if (oTelTraceSourceConfig.getAuthentication() != null) {
-                final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
-                        authenticationProvider.getHttpAuthenticationService();
-
-                if (oTelTraceSourceConfig.isUnauthenticatedHealthCheck()) {
-                    optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
-                            sb.decorator(REGEX_HEALTH, httpAuthenticationService));
-                } else {
-                    optionalHttpAuthenticationService.ifPresent(sb::decorator);
-                }
-            }
-
-            sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
-            if(oTelTraceSourceConfig.getMaxRequestLength() != null) {
-                sb.maxRequestLength(oTelTraceSourceConfig.getMaxRequestLength().getBytes());
-            }
-
-            // ACM Cert for SSL takes preference
-            if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
-                LOG.info("SSL/TLS is enabled.");
-                final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
-                final Certificate certificate = certificateProvider.getCertificate();
-                sb.https(oTelTraceSourceConfig.getPort()).tls(
-                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
-                    )
-                );
-            } else {
-                LOG.warn("Creating otel_trace_source without SSL/TLS. This is not secure.");
-                LOG.warn("In order to set up TLS for the otel_trace_source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#ssl");
-                sb.http(oTelTraceSourceConfig.getPort());
-            }
-
-            sb.maxNumConnections(oTelTraceSourceConfig.getMaxConnectionCount());
             final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
                     .numThreads(oTelTraceSourceConfig.getThreadCount())
                     .threadNamePrefix(pipelineName + "-otel_trace")
@@ -211,14 +141,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
         LOG.info("Started otel_trace_source on port " + oTelTraceSourceConfig.getPort() + "...");
     }
 
-    private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = oTelTraceSourceConfig.getRetryInfo() != null
-                ? oTelTraceSourceConfig.getRetryInfo()
-                : DEFAULT_RETRY_INFO;
-
-        return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
-    }
-
     @Override
     public void stop() {
         if (server != null) {
@@ -236,14 +158,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
             }
         }
         LOG.info("Stopped otel_trace_source.");
-    }
-
-    private List<ServerInterceptor> getAuthenticationInterceptor() {
-        final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
-        if (authenticationInterceptor == null) {
-            return Collections.emptyList();
-        }
-        return Collections.singletonList(authenticationInterceptor);
     }
 
     private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
