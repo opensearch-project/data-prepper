@@ -180,8 +180,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.versionType = openSearchSinkConfig.getIndexConfiguration().getVersionType();
     this.versionExpression = openSearchSinkConfig.getIndexConfiguration().getVersionExpression();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
-    this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME,
-        PLUGIN_NAME);
+    this.failedBulkOperationConverter = new FailedBulkOperationConverter(pipeline, PLUGIN_NAME);
     this.initialized = false;
     this.lock = new ReentrantLock(true);
     this.bulkRequestMap = new ConcurrentHashMap<>();
