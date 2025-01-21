@@ -7,14 +7,18 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpcore:4.4.16'
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:armeria-common')
     implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-core')
+    implementation project(':data-prepper-plugins')
     implementation libs.opentelemetry.proto
     implementation libs.armeria.core
     implementation libs.armeria.grpc
     implementation libs.grpc.inprocess
     implementation libs.protobuf.util
     testImplementation testLibs.bundles.junit
+
 }
 
 jacocoTestCoverageVerification {
