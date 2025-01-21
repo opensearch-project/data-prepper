@@ -50,12 +50,7 @@ public class CreateServerBuilder {
     private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
 
-
-
-    // Default RetryInfo with minimum 100ms and maximum 2s
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
-
-    //creating common class to start server pulling from start() of http source and otel sources
 
     public CreateServerBuilder(final ServerConfiguration serverConfiguration, Logger LOG, PluginMetrics pluginMetrics, String sourceName, String pipelineName) {
         this.serverConfiguration = serverConfiguration;
@@ -144,7 +139,8 @@ public class CreateServerBuilder {
     }
 
     public ServerBuilder createHTTPServerBuilder() {
-
+        final ServerBuilder sb = Server.builder();
+        return sb;
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {

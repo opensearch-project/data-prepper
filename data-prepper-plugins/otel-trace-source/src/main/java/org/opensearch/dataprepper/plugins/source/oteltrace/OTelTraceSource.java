@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.server.CreateServerBuilder;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,11 +91,11 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     pluginMetrics
             );
 
-            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelTraceSourceConfig);
             CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_trace_source", pipelineName);
             CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
 
-            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
+            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelTraceGrpcService, certificateProvider);
 
             final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
                     .numThreads(oTelTraceSourceConfig.getThreadCount())

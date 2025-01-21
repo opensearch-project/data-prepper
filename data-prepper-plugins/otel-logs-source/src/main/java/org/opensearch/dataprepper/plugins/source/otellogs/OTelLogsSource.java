@@ -90,11 +90,11 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     pluginMetrics
             );
 
-            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
             CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_logs_source", pipelineName);
             CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
 
-            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
+            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider);
 
             sb.blockingTaskExecutor(
                     Executors.newScheduledThreadPool(oTelLogsSourceConfig.getThreadCount()),
