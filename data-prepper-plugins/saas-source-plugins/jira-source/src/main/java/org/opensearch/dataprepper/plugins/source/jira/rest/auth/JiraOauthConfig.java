@@ -142,12 +142,16 @@ public class JiraOauthConfig implements JiraAuthConfig {
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);
                 this.expiresInSeconds = 0;
-                // Try refreshing the secrets and see if that helps
-                // Refreshing one of the secret refreshes the entire store so we are good to trigger refresh on just one
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().refresh();
+                HttpStatus statusCode = ex.getStatusCode();
                 log.error("Failed to renew access token. Status code: {}, Error Message: {}",
-                        ex.getRawStatusCode(), ex.getMessage());
-                throw new RuntimeException("Failed to renew access token" + ex.getMessage(), ex);
+                        statusCode, ex.getMessage());
+                if (statusCode == HttpStatus.FORBIDDEN || statusCode == HttpStatus.UNAUTHORIZED) {
+                    log.info("Trying to refresh the secrets");
+                    // Try refreshing the secrets and see if that helps
+                    // Refreshing one of the secret refreshes the entire store so we are good to trigger refresh on just one
+                    jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().refresh();
+                }
+                throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }
         }
     }
