@@ -5,56 +5,34 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
-import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
-import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
-import com.linecorp.armeria.server.encoding.DecodingService;
-import com.linecorp.armeria.server.grpc.GrpcService;
-import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
-import com.linecorp.armeria.server.healthcheck.HealthCheckService;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServerInterceptor;
-import io.grpc.ServerInterceptors;
-import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
-import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
-import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.server.CreateServerBuilder;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<? extends Metric>> {
@@ -113,7 +91,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             );
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
-            CreateServer createServer = new CreateServer(serverConfiguration, LOG, "otel_metrics_source");
+            CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_metrics_source", pipelineName);
             CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
 
             ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);

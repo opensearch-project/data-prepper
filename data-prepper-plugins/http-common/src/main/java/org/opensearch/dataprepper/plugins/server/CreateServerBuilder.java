@@ -28,7 +28,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
