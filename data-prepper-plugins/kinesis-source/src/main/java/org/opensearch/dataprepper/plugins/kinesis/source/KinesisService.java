@@ -41,6 +41,7 @@ import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.exceptions.KinesisClientLibDependencyException;
 import software.amazon.kinesis.exceptions.ThrottlingException;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
+import software.amazon.kinesis.retrieval.RetrievalConfig;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
 import java.time.Duration;
@@ -185,9 +186,10 @@ public class KinesisService {
                 .tableName(tableName)
                 .namespace(kclMetricsNamespaceName);
 
+        RetrievalConfig retrievalConfig = configsBuilder.retrievalConfig();
         ConsumerStrategy consumerStrategy = kinesisSourceConfig.getConsumerStrategy();
         if (consumerStrategy == ConsumerStrategy.POLLING) {
-            configsBuilder.retrievalConfig().retrievalSpecificConfig(
+            retrievalConfig = configsBuilder.retrievalConfig().retrievalSpecificConfig(
                 new PollingConfig(kinesisClient)
                     .maxRecords(kinesisSourceConfig.getPollingConfig().getMaxPollingRecords())
                     .idleTimeBetweenReadsInMillis(
@@ -203,7 +205,7 @@ public class KinesisService {
                 configsBuilder.lifecycleConfig(),
                 configsBuilder.metricsConfig(),
                 configsBuilder.processorConfig(),
-                configsBuilder.retrievalConfig()
+                retrievalConfig
         );
     }
 }
