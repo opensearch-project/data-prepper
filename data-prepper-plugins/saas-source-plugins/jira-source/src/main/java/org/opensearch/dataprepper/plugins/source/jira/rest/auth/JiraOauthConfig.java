@@ -150,6 +150,10 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     // Try refreshing the secrets and see if that helps
                     // Refreshing one of the secret refreshes the entire store so we are good to trigger refresh on just one
                     jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().refresh();
+                    this.accessToken = (String) jiraSourceConfig.getAuthenticationConfig().getOauth2Config()
+                            .getAccessToken().getValue();
+                    this.refreshToken = (String) jiraSourceConfig.getAuthenticationConfig()
+                            .getOauth2Config().getRefreshToken().getValue();
                 }
                 throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }
