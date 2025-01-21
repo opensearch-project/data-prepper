@@ -25,6 +25,8 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,6 +81,13 @@ class AwsPluginConfigVariableTest {
     void testSetValueSuccess(final String input) {
         objectUnderTest.setValue(input);
         assertThat(objectUnderTest.getValue(), equalTo(input));
+    }
+
+
+    @Test
+    void testRefreshSecretsWithKey() {
+        objectUnderTest.refresh();
+        verify(secretsSupplier, times(1)).refresh(secretId);
     }
 
 }

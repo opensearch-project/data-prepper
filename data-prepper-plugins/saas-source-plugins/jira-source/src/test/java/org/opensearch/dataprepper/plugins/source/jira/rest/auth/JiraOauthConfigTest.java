@@ -15,8 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -51,6 +54,9 @@ public class JiraOauthConfigTest {
 
 
     JiraSourceConfig jiraSourceConfig;
+
+    @Mock
+    PluginConfigVariable accessTokenVariable;
 
     @BeforeEach
     void setUp() {
@@ -89,12 +95,31 @@ public class JiraOauthConfigTest {
     }
 
     @Test
-    void testFailedToRenewAccessToken() {
+    void testFailedToRenewAccessToken() throws NoSuchFieldException, IllegalAccessException {
         JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", accessTokenVariable);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
                 .thenThrow(HttpClientErrorException.class);
         jiraOauthConfig.restTemplate = restTemplateMock;
         assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
+        verify(oauth2Config.getAccessToken(), times(0))
+                .refresh();
+    }
+
+    @Test
+    void testFailedToRenewAccessToken_with_unauthorized_and_trigger_secrets_refresh()
+            throws NoSuchFieldException, IllegalAccessException {
+        JiraOauthConfig jiraOauthConfig = new JiraOauthConfig(jiraSourceConfig);
+        Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
+        ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", accessTokenVariable);
+        HttpClientErrorException unAuthorizedException = new HttpClientErrorException(HttpStatus.UNAUTHORIZED);
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
+                .thenThrow(unAuthorizedException);
+        jiraOauthConfig.restTemplate = restTemplateMock;
+        assertThrows(RuntimeException.class, jiraOauthConfig::renewCredentials);
+        verify(oauth2Config.getAccessToken(), times(1))
+                .refresh();
     }
 
 
