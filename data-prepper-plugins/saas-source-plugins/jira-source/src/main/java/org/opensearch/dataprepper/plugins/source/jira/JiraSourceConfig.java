@@ -52,19 +52,6 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     private FilterConfig filterConfig;
 
 
-    /**
-     * Number of worker threads to spawn to parallel source fetching
-     */
-    @JsonProperty("workers")
-    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
-
-    /**
-     * Default time to wait (with exponential backOff) in the case of
-     * waiting for the source service to respond
-     */
-    @JsonProperty("backoff_time")
-    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
-
     public String getAccountUrl() {
         return this.getHosts().get(0);
     }

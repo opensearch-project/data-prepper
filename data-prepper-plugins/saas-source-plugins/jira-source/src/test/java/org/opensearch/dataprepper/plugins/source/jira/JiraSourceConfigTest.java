@@ -115,11 +115,9 @@ public class JiraSourceConfigTest {
     void testGetters() throws Exception {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
         assertEquals(jiraSourceConfig.getFilterConfig().getIssueTypeConfig().getInclude(), issueTypeList);
-        assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
         assertEquals(jiraSourceConfig.getFilterConfig().getProjectConfig().getNameConfig().getInclude(), projectList);
         assertEquals(jiraSourceConfig.getFilterConfig().getStatusConfig().getInclude(), statusList);
         assertEquals(jiraSourceConfig.getAccountUrl(), accountUrl);
-        assertNotNull(jiraSourceConfig.getBackOff());
         assertEquals(jiraSourceConfig.getAuthenticationConfig().getBasicConfig().getPassword(), password);
         assertEquals(jiraSourceConfig.getAuthenticationConfig().getBasicConfig().getUsername(), username);
     }
