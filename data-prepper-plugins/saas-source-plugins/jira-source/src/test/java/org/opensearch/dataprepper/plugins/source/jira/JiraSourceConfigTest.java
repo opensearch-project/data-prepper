@@ -23,11 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS;
 
 public class JiraSourceConfigTest {
     private final PluginConfigVariable accessToken = new MockPluginConfigVariableImpl("access token test");

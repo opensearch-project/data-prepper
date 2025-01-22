@@ -132,7 +132,7 @@ public class CrawlerSourcePluginTest {
                                        final AcknowledgementSetManager acknowledgementSetManager,
                                        final Crawler crawler,
                                        final PluginExecutorServiceProvider executorServiceProvider) {
-            super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, batchSize);
+            super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         }
     }
 

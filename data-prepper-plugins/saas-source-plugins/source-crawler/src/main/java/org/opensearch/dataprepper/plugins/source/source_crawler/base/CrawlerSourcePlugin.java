@@ -53,15 +53,14 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
                                final PluginFactory pluginFactory,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final Crawler crawler,
-                               final PluginExecutorServiceProvider executorServiceProvider,
-                               final int batchSize) {
+                               final PluginExecutorServiceProvider executorServiceProvider) {
         log.debug("Creating {} Source Plugin", sourcePluginName);
         this.sourcePluginName = sourcePluginName;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.crawler = crawler;
-        this.batchSize = batchSize;
+        this.batchSize = sourceConfig.getBatchSize();
 
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.executorService = executorServiceProvider.get();
