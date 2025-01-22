@@ -75,6 +75,7 @@ public class WorkerSchedulerTest {
         String state = "{\"keyAttributes\":{\"project\":\"project-1\"},\"totalItems\":0,\"loadedItems\":20,\"exportStartTime\":1729391235717,\"itemIds\":[\"GTMS-25\",\"GTMS-24\"]}";
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
         when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
         PartitionFactory factory = new PartitionFactory();
         EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
