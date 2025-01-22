@@ -66,7 +66,7 @@ public class AddEntryProcessorConfig {
     public static class Entry {
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
-                "use the value of field <code>key1</code> as the key. Either one of <code>key</code> or <code>metadata_key</code> is required.")
+                "use the value of field <code>key1</code> as the key. At least one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=METADATA_KEY_KEY, allowedValues = {"null"})
         })
@@ -79,7 +79,8 @@ public class AddEntryProcessorConfig {
 
         @JsonProperty(METADATA_KEY_KEY)
         @JsonPropertyDescription("The key for the new metadata attribute. The argument must be a literal string key " +
-                "and not a JSON Pointer. Either one of <code>key</code> or <code>metadata_key</code> is required.")
+                "and not a JSON Pointer. Adds an attribute to the Events that will not be sent to the sinks, but can be used for condition expressions and routing with the getMetadata function. " +
+                "At least one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="key", allowedValues = {"null"})
         })
@@ -103,7 +104,7 @@ public class AddEntryProcessorConfig {
         private Object value;
 
         @JsonPropertyDescription("A format string to use as the value of the new entry, for example, " +
-                "<code>${key1}-${key2}</code>, where <code>key1</code> and <code>key2</code> are existing keys in the event. Required if neither" +
+                "<code>${key1}-${key2}</code>, where <code>key1</code> and <code>key2</code> are existing keys in the event. Required if neither " +
                 "<code>value</code> nor <code>value_expression</code> is specified.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="value", allowedValues = {"null"}),
@@ -132,7 +133,7 @@ public class AddEntryProcessorConfig {
 
         @JsonProperty(OVERWRITE_IF_KEY_EXISTS_KEY)
         @JsonPropertyDescription("When set to <code>true</code>, the existing value is overwritten if <code>key</code> already exists " +
-                "in the event. The default value is <code>false</code>.")
+                "in the event. Only one of <code>overwrite_if_key_exists</code> or <code>append_if_key_exists</code> can be <code>true</code>. The default value is <code>false</code>.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=APPEND_IF_KEY_EXISTS_KEY, allowedValues = {"false"})
         })

@@ -7,9 +7,9 @@ package org.opensearch.dataprepper.plugins.processor.flatten;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>flatten</code> processor transforms nested objects inside of events into flattened structures.")
+@JsonClassDescription("The <code>flatten</code>  processor transforms nested objects inside of events into flattened structures.")
 public class FlattenProcessorConfig {
     static final String REMOVE_LIST_INDICES_KEY = "remove_list_indices";
 
@@ -44,12 +44,14 @@ public class FlattenProcessorConfig {
     })
     private String target;
 
-    @JsonProperty("remove_processed_fields")
+    @JsonProperty("remove_source_keys")
+    @JsonAlias("remove_processed_fields")
     @JsonPropertyDescription("When <code>true</code>, the processor removes all processed fields from the source. " +
             "The default is <code>false</code> which leaves the source fields.")
     private boolean removeProcessedFields = false;
 
-    @JsonProperty(REMOVE_LIST_INDICES_KEY)
+    @JsonProperty("remove_list_items")
+    @JsonAlias(REMOVE_LIST_INDICES_KEY)
     @JsonPropertyDescription("When <code>true</code>, the processor converts the fields from the source map into lists and " +
             "puts the lists into the target field. Default is <code>false</code>.")
     private boolean removeListIndices = false;
