@@ -62,10 +62,9 @@ public class LambdaRetryStrategyTest {
 
     @Test
     void testIsRetryable() {
-        assertTrue(LambdaRetryStrategy.isRetryable(InvokeResponse.builder().statusCode(429).build()));
-        assertTrue(LambdaRetryStrategy.isRetryable(InvokeResponse.builder().statusCode(500).build()));
-        assertFalse(LambdaRetryStrategy.isRetryable(InvokeResponse.builder().statusCode(200).build()));
-        assertFalse(LambdaRetryStrategy.isRetryable(null));
+        assertTrue(LambdaRetryStrategy.isRetryable(429));
+        assertTrue(LambdaRetryStrategy.isRetryable(500));
+        assertFalse(LambdaRetryStrategy.isRetryable(200));
     }
 
     @Test
@@ -81,61 +80,6 @@ public class LambdaRetryStrategyTest {
         assertTrue(LambdaRetryStrategy.isTimeoutError(InvokeResponse.builder().statusCode(408).build()));
         assertTrue(LambdaRetryStrategy.isTimeoutError(InvokeResponse.builder().statusCode(429).build()));
         assertFalse(LambdaRetryStrategy.isTimeoutError(InvokeResponse.builder().statusCode(200).build()));
-    }
-
-    @Test
-    void testRetryOrFail_SuccessAfterRetry() throws Exception {
-        when(config.getClientOptions().getMaxConnectionRetries()).thenReturn(3);
-        when(config.getClientOptions().getBaseDelay()).thenReturn(Duration.ofMillis(100));
-        when(config.getFunctionName()).thenReturn("testFunction");
-
-        InvokeRequest mockRequest = mock(InvokeRequest.class);
-        when(buffer.getRequestPayload(anyString(), anyString())).thenReturn(mockRequest);
-
-        InvokeResponse failedResponse = InvokeResponse.builder().statusCode(500).build();
-        InvokeResponse successResponse = InvokeResponse.builder().statusCode(200).build();
-
-        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(failedResponse))
-                .thenReturn(CompletableFuture.completedFuture(successResponse));
-
-        InvokeResponse result = LambdaRetryStrategy.retryOrFail(lambdaAsyncClient, buffer, config, failedResponse, logger);
-
-        assertEquals(200, result.statusCode());
-        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
-    }
-
-    @Test
-    void testRetryOrFailExhaustedRetries() throws Exception {
-        when(config.getClientOptions().getMaxConnectionRetries()).thenReturn(3);
-        when(config.getClientOptions().getBaseDelay()).thenReturn(Duration.ofMillis(100));
-        when(config.getFunctionName()).thenReturn("testFunction");
-
-        InvokeRequest mockRequest = mock(InvokeRequest.class);
-        when(buffer.getRequestPayload(anyString(), anyString())).thenReturn(mockRequest);
-
-        InvokeResponse failedResponse = InvokeResponse.builder().statusCode(500).build();
-
-        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(failedResponse));
-
-        InvokeResponse result = LambdaRetryStrategy.retryOrFail(lambdaAsyncClient, buffer, config, failedResponse, logger);
-
-        assertEquals(500, result.statusCode());
-        verify(lambdaAsyncClient, times(3)).invoke(any(InvokeRequest.class));
-    }
-
-    @Test
-    void testRetryOrFail_NonRetryableResponse() {
-        InvokeResponse nonRetryableResponse = InvokeResponse.builder().statusCode(400).build();
-        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-                .thenReturn(CompletableFuture.completedFuture(nonRetryableResponse));
-        when(buffer.getRequestPayload(anyString(), anyString())).thenReturn(mock(InvokeRequest.class));
-
-        assertThrows(RuntimeException.class, ()->
-                LambdaRetryStrategy.retryOrFail(lambdaAsyncClient, buffer, config, nonRetryableResponse, logger));
-
-        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
     }
 
 }

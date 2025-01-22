@@ -74,10 +74,7 @@ public final class LambdaRetryStrategy {
             )
     );
 
-
-    public static boolean isRetryable(final InvokeResponse response) {
-        if(response == null) return false;
-        int statusCode = response.statusCode();
+    public static boolean isRetryable(final int statusCode) {
         return TIMEOUT_ERRORS.contains(statusCode) || (statusCode >= 500 && statusCode < 600);
     }
 
@@ -118,52 +115,6 @@ public final class LambdaRetryStrategy {
      */
     public static boolean isTimeoutError(final InvokeResponse response) {
         return TIMEOUT_ERRORS.contains(response.statusCode());
-    }
-
-    public static InvokeResponse retryOrFail(
-            final LambdaAsyncClient lambdaAsyncClient,
-            final Buffer buffer,
-            final LambdaCommonConfig config,
-            final InvokeResponse previousResponse,
-            final Logger LOG
-    ) {
-        int maxRetries = config.getClientOptions().getMaxConnectionRetries();
-        Duration backoff = config.getClientOptions().getBaseDelay();
-
-        int attempt = 1;
-        InvokeResponse response = previousResponse;
-
-        do{
-            LOG.warn("Retrying Lambda invocation attempt {} of {} after {} ms backoff",
-                    attempt, maxRetries, backoff);
-            try {
-                // Sleep for backoff
-                Thread.sleep(backoff.toMillis());
-
-                // Re-invoke Lambda with the same payload
-                InvokeRequest requestPayload = buffer.getRequestPayload(
-                        config.getFunctionName(),
-                        config.getInvocationType().getAwsLambdaValue()
-                );
-                // Do a synchronous call.
-                response = lambdaAsyncClient.invoke(requestPayload).join();
-
-                if (isSuccess(response)) {
-                    LOG.info("Retry attempt {} succeeded with status code {}", attempt, response.statusCode());
-                    return response;
-                } else{
-                    throw new RuntimeException();
-                }
-            } catch (Exception e) {
-                LOG.error("Failed to invoke failed with exception {} in attempt {}", e.getMessage(), attempt);
-                if(!isRetryable(response)){
-                    throw new RuntimeException("Failed to invoke failed",e);
-                }
-            }
-            attempt++;
-        } while(attempt <= maxRetries && isRetryable(response));
-
-        return response;
     }
 
 }

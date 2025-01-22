@@ -46,17 +46,28 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthentication
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.util.CustomLambdaRetryCondition;
+import org.opensearch.dataprepper.plugins.lambda.utils.CountingHttpClient;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -94,9 +105,12 @@ public class LambdaProcessorIT {
 
     @BeforeEach
     public void setup() {
-        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-        functionName = System.getProperty("tests.lambda.processor.functionName");
-        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+//        functionName = System.getProperty("tests.lambda.processor.functionName");
+//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+        lambdaRegion = "us-west-2";
+        functionName = "lambdaNoReturn";
+        role = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
 
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
@@ -372,5 +386,82 @@ public class LambdaProcessorIT {
             records.add(new Record<>(event));
         }
         return records;
+    }
+
+    /*
+    * For this test, set concurrency limit to 1
+     */
+    @Test
+    void testTooManyRequestsExceptionWithCustomRetryCondition() {
+        //Note lambda function for this test looks like this:
+        /*def lambda_handler(event, context):
+            # Simulate a slow operation so that
+            # if concurrency = 1, multiple parallel invocations
+            # will result in TooManyRequestsException for the second+ invocation.
+            time.sleep(10)
+            # Return a simple success response
+            return {
+                "statusCode": 200,
+                "body": "Hello from concurrency-limited Lambda!"
+            }
+        */
+
+        // Wrap the default HTTP client to count requests
+        CountingHttpClient countingHttpClient = new CountingHttpClient(
+                NettyNioAsyncHttpClient.builder().build()
+        );
+
+        // Configure a custom retry policy with 3 retries and your custom condition
+        RetryPolicy retryPolicy = RetryPolicy.builder()
+                .numRetries(3)
+                .retryCondition(new CustomLambdaRetryCondition())
+                .build();
+
+        // Build the real Lambda client
+        LambdaAsyncClient client = LambdaAsyncClient.builder()
+                .overrideConfiguration(
+                        ClientOverrideConfiguration.builder()
+                                .retryPolicy(retryPolicy)
+                                .build()
+                )
+                .region(Region.of(lambdaRegion))
+                .httpClient(countingHttpClient)
+                .build();
+
+        // Parallel invocations to force concurrency=1 to throw TooManyRequestsException
+        int parallelInvocations = 10;
+        CompletableFuture<?>[] futures = new CompletableFuture[parallelInvocations];
+        for (int i = 0; i < parallelInvocations; i++) {
+            InvokeRequest request = InvokeRequest.builder()
+                    .functionName(functionName)
+                    .build();
+
+            futures[i] = client.invoke(request);
+        }
+
+        // 5) Wait for all to complete
+        CompletableFuture.allOf(futures).join();
+
+        // 6) Check how many had TooManyRequestsException
+        long tooManyRequestsCount = Arrays.stream(futures)
+                .filter(f -> {
+                    try {
+                        f.join();
+                        return false; // no error => no TMR
+                    } catch (CompletionException e) {
+                        return e.getCause() instanceof TooManyRequestsException;
+                    }
+                })
+                .count();
+
+        // 7) Observe how many total network requests occurred (including SDK retries)
+        int totalRequests = countingHttpClient.getRequestCount();
+        System.out.println("Total network requests (including retries): " + totalRequests);
+
+        // Optionally: If you want to confirm the EXACT number,
+        // this might vary depending on how many parallel calls and how your TMR throttles them.
+        // For example, if all 5 calls are blocked, you might see 5*(numRetries + 1) in worst case.
+        assertTrue(totalRequests >= parallelInvocations,
+                "Should be at least one request per initial invocation, plus retries.");
     }
 }
