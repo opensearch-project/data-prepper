@@ -131,9 +131,13 @@ public class JiraClient implements CrawlerClient {
                 .collect(Collectors.toList());
 
         try {
-            recordsToWrite.forEach(eventRecord -> acknowledgementSet.add(eventRecord.getData()));
-            buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
-            acknowledgementSet.complete();
+            if (configuration.isAcknowledgments()) {
+                recordsToWrite.forEach(eventRecord -> acknowledgementSet.add(eventRecord.getData()));
+                buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
+                acknowledgementSet.complete();
+            } else {
+                buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -59,6 +59,13 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @JsonProperty("backoff_time")
     private Duration backOff = DEFAULT_BACKOFF_MILLIS;
 
+    /**
+     * Boolean property indicating end to end acknowledgments state
+     */
+    @JsonProperty("acknowledgments")
+    @Getter
+    private boolean acknowledgments = false;
+
     public String getAccountUrl() {
         return this.getHosts().get(0);
     }

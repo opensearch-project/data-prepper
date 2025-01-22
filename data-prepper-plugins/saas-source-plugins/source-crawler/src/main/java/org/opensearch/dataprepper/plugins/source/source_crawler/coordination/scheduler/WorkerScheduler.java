@@ -101,7 +101,10 @@ public class WorkerScheduler implements Runnable {
         // Update the partition state or commit the partition as needed
         // Commit the partition to mark it as processed
         if (partition.getProgressState().isPresent()) {
-            AcknowledgementSet acknowledgementSet = createAcknowledgementSet(partition);
+            AcknowledgementSet acknowledgementSet = null;
+            if (sourceConfig.isAcknowledgments()) {
+                acknowledgementSet = createAcknowledgementSet(partition);
+            }
             crawler.executePartition((SaasWorkerProgressState) partition.getProgressState().get(), buffer, acknowledgementSet);
         }
         sourceCoordinator.completePartition(partition);
