@@ -38,13 +38,7 @@ import java.util.concurrent.Executors;
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<? extends Metric>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
-    private static final String HTTP_HEALTH_CHECK_PATH = "/health";
-    private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
-    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     static final String SERVER_CONNECTIONS = "serverConnections";
-
-    // Default RetryInfo with minimum 100ms and maximum 2s
-    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
     private final String pipelineName;

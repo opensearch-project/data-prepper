@@ -37,11 +37,7 @@ import java.util.concurrent.Executors;
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
 public class OTelLogsSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
-    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     static final String SERVER_CONNECTIONS = "serverConnections";
-
-    // Default RetryInfo with minimum 100ms and maximum 2s
-    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private final String pipelineName;

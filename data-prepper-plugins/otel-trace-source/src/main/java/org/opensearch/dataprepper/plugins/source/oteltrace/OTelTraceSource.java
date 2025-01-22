@@ -37,13 +37,7 @@ import java.util.concurrent.ExecutionException;
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
-    private static final String HTTP_HEALTH_CHECK_PATH = "/health";
-    public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     static final String SERVER_CONNECTIONS = "serverConnections";
-    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
-
-    // Default RetryInfo with minimum 100ms and maximum 2s
-    private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private final PluginMetrics pluginMetrics;
