@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Lead
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -166,15 +167,16 @@ public class LeaderScheduler implements Runnable {
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
-            progressState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));
+            final MySqlStreamState mySqlStreamState = progressState.getMySqlStreamState();
+            getCurrentBinlogPosition().ifPresent(mySqlStreamState::setCurrentPosition);
+            mySqlStreamState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));
         } else {
             // Postgres
             // Create replication slot, which will mark the starting point for stream
             final String publicationName = generatePublicationName();
             final String slotName = generateReplicationSlotName();
             ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(sourceConfig.getTableNames(), publicationName, slotName);
-            progressState.setReplicationSlotName(slotName);
+            progressState.getPostgresStreamState().setReplicationSlotName(slotName);
         }
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);

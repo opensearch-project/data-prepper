@@ -67,7 +67,7 @@ public class ReplicationLogClientFactory {
     }
 
     private LogicalReplicationClient createLogicalReplicationClient(StreamPartition streamPartition) {
-        final String replicationSlotName = streamPartition.getProgressState().get().getReplicationSlotName();
+        final String replicationSlotName = streamPartition.getProgressState().get().getPostgresStreamState().getReplicationSlotName();
         if (replicationSlotName == null) {
             throw new NoSuchElementException("Replication slot name is not found in progress state.");
         }

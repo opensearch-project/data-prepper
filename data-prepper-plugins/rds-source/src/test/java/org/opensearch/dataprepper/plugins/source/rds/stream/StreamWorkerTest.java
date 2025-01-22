@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 
@@ -54,10 +55,12 @@ class StreamWorkerTest {
     @Test
     void test_processStream_with_given_binlog_coordinates() throws IOException {
         final StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final MySqlStreamState mySqlStreamState = mock(MySqlStreamState.class);
         final String binlogFilename = UUID.randomUUID().toString();
         final long binlogPosition = 100L;
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamProgressState.getCurrentPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
+        when(streamProgressState.getMySqlStreamState()).thenReturn(mySqlStreamState);
+        when(mySqlStreamState.getCurrentPosition()).thenReturn(new BinlogCoordinate(binlogFilename, binlogPosition));
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
         when(binlogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
 
@@ -70,11 +73,13 @@ class StreamWorkerTest {
 
     @Test
     void test_processStream_without_current_binlog_coordinates() throws IOException {
-        StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final MySqlStreamState mySqlStreamState = mock(MySqlStreamState.class);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
         final String binlogFilename = "binlog-001";
         final long binlogPosition = 100L;
-        when(streamProgressState.getCurrentPosition()).thenReturn(null);
+        when(streamProgressState.getMySqlStreamState()).thenReturn(mySqlStreamState);
+        when(mySqlStreamState.getCurrentPosition()).thenReturn(null);
         when(streamProgressState.shouldWaitForExport()).thenReturn(false);
 
         streamWorker.processStream(streamPartition);

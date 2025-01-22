@@ -88,7 +88,7 @@ public class StreamWorker {
     }
 
     private void setStartBinlogPosition(final StreamPartition streamPartition) {
-        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getCurrentPosition();
+        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getMySqlStreamState().getCurrentPosition();
 
         // set start of binlog stream to current position if exists
         if (startBinlogPosition != null) {
@@ -102,7 +102,7 @@ public class StreamWorker {
     }
 
     private void setStartLsn(final StreamPartition streamPartition) {
-        final String startLsn = streamPartition.getProgressState().get().getCurrentLsn();
+        final String startLsn = streamPartition.getProgressState().get().getPostgresStreamState().getCurrentLsn();
 
         if (startLsn != null) {
             LOG.debug("Will start logical replication from LSN {}", startLsn);

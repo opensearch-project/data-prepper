@@ -6,16 +6,12 @@
 package org.opensearch.dataprepper.plugins.source.rds.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
-import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
 
 import java.util.List;
 import java.util.Map;
 
 public class StreamProgressState {
 
-    // TODO: separate MySQL and Postgres properties into different progress state classes
-    // Common
     @JsonProperty("engineType")
     private String engineType;
 
@@ -28,19 +24,11 @@ public class StreamProgressState {
     @JsonProperty("primaryKeyMap")
     private Map<String, List<String>> primaryKeyMap;
 
-    // For MySQL
-    @JsonProperty("currentPosition")
-    private BinlogCoordinate currentPosition;
+    @JsonProperty("mySqlStreamState")
+    private MySqlStreamState mySqlStreamState;
 
-    @JsonProperty("foreignKeyRelations")
-    private List<ForeignKeyRelation> foreignKeyRelations;
-
-    // For Postgres
-    @JsonProperty("currentLsn")
-    private String currentLsn;
-
-    @JsonProperty("replicationSlotName")
-    private String replicationSlotName;
+    @JsonProperty("postgresStreamState")
+    private PostgresStreamState postgresStreamState;
 
     public String getEngineType() {
         return engineType;
@@ -48,14 +36,6 @@ public class StreamProgressState {
 
     public void setEngineType(String engineType) {
         this.engineType = engineType;
-    }
-
-    public BinlogCoordinate getCurrentPosition() {
-        return currentPosition;
-    }
-
-    public String getCurrentLsn() {
-        return currentLsn;
     }
 
     public Map<String, List<String>> getPrimaryKeyMap() {
@@ -66,18 +46,6 @@ public class StreamProgressState {
         this.primaryKeyMap = primaryKeyMap;
     }
 
-    public String getReplicationSlotName() {
-        return replicationSlotName;
-    }
-
-    public void setCurrentPosition(BinlogCoordinate currentPosition) {
-        this.currentPosition = currentPosition;
-    }
-
-    public void setReplicationSlotName(String replicationSlotName) {
-        this.replicationSlotName = replicationSlotName;
-    }
-
     public boolean shouldWaitForExport() {
         return waitForExport;
     }
@@ -86,11 +54,19 @@ public class StreamProgressState {
         this.waitForExport = waitForExport;
     }
 
-    public List<ForeignKeyRelation> getForeignKeyRelations() {
-        return foreignKeyRelations;
+    public MySqlStreamState getMySqlStreamState() {
+        return mySqlStreamState;
     }
 
-    public void setForeignKeyRelations(List<ForeignKeyRelation> foreignKeyRelations) {
-        this.foreignKeyRelations = foreignKeyRelations;
+    public void setMySqlStreamState(MySqlStreamState mySqlStreamState) {
+        this.mySqlStreamState = mySqlStreamState;
+    }
+
+    public PostgresStreamState getPostgresStreamState() {
+        return postgresStreamState;
+    }
+
+    public void setPostgresStreamState(PostgresStreamState postgresStreamState) {
+        this.postgresStreamState = postgresStreamState;
     }
 }

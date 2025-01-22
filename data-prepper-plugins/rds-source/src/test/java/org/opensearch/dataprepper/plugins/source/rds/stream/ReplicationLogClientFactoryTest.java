@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -71,6 +72,7 @@ class ReplicationLogClientFactoryTest {
         final String username = UUID.randomUUID().toString();
         final String password = UUID.randomUUID().toString();
         final StreamProgressState streamProgressState = mock(StreamProgressState.class);
+        final PostgresStreamState postgresStreamState = mock(PostgresStreamState.class);
         final String slotName = UUID.randomUUID().toString();
         final List<String> tableNames = List.of("table1", "table2");
 
@@ -80,7 +82,8 @@ class ReplicationLogClientFactoryTest {
         when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
         when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-        when(streamProgressState.getReplicationSlotName()).thenReturn(slotName);
+        when(streamProgressState.getPostgresStreamState()).thenReturn(postgresStreamState);
+        when(postgresStreamState.getReplicationSlotName()).thenReturn(slotName);
 
         replicationLogClientFactory = createObjectUnderTest();
         ReplicationLogClient replicationLogClient = replicationLogClientFactory.create(streamPartition);
