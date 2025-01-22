@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @Named
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
-    private static final int maxItemsPerPage = 50;
+    private static final int maxItemsPerPage = 100;
     private final Timer crawlingTimer;
     private final PluginMetrics pluginMetrics =
             PluginMetrics.fromNames("sourceCrawler", "crawler");
