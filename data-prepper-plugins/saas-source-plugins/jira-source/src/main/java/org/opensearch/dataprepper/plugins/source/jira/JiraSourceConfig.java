@@ -63,7 +63,6 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * Boolean property indicating end to end acknowledgments state
      */
     @JsonProperty("acknowledgments")
-    @Getter
     private boolean acknowledgments = false;
 
     public String getAccountUrl() {
