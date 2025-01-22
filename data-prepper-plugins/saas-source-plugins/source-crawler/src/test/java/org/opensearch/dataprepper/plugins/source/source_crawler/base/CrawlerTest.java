@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
