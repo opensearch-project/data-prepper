@@ -55,7 +55,7 @@ public class JiraSource extends CrawlerSourcePlugin {
                       final AcknowledgementSetManager acknowledgementSetManager,
                       Crawler crawler,
                       PluginExecutorServiceProvider executorServiceProvider) {
-        super(PLUGIN_NAME, pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        super(PLUGIN_NAME, pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, jiraSourceConfig.getBatchSize());
         log.info("Creating Jira Source Plugin");
         this.jiraSourceConfig = jiraSourceConfig;
         this.jiraOauthConfig = jiraOauthConfig;

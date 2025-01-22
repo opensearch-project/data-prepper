@@ -62,6 +62,8 @@ public class CrawlerSourcePluginTest {
 
     private testCrawlerSourcePlugin saasSourcePlugin;
 
+    private final int batchSize = 50;
+
     @BeforeEach
     void setUp() {
         when(executorServiceProvider.get()).thenReturn(executorService);
@@ -130,7 +132,7 @@ public class CrawlerSourcePluginTest {
                                        final AcknowledgementSetManager acknowledgementSetManager,
                                        final Crawler crawler,
                                        final PluginExecutorServiceProvider executorServiceProvider) {
-            super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+            super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, batchSize);
         }
     }
 

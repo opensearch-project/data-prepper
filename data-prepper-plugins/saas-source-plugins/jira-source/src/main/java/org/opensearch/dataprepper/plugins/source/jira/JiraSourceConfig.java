@@ -38,6 +38,12 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @Valid
     private AuthenticationConfig authenticationConfig;
 
+    /**
+     * Batch size for fetching tickets
+     */
+    @JsonProperty("batch_size")
+    private int batchSize = 50;
+
 
     /**
      * Filter Config to filter what tickets get ingested

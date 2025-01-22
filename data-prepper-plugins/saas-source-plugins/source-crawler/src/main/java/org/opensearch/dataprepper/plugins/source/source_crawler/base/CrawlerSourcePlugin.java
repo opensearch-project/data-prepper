@@ -42,6 +42,7 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final String sourcePluginName;
+    private final int batchSize;
     private EnhancedSourceCoordinator coordinator;
     private Buffer<Record<Event>> buffer;
 
@@ -52,13 +53,15 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
                                final PluginFactory pluginFactory,
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final Crawler crawler,
-                               final PluginExecutorServiceProvider executorServiceProvider) {
+                               final PluginExecutorServiceProvider executorServiceProvider,
+                               final int batchSize) {
         log.debug("Creating {} Source Plugin", sourcePluginName);
         this.sourcePluginName = sourcePluginName;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.crawler = crawler;
+        this.batchSize = batchSize;
 
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.executorService = executorServiceProvider.get();
@@ -74,7 +77,7 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
         log.debug("Leader partition creation status: {}", isPartitionCreated);
 
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, this, crawler);
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, this, crawler, batchSize);
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
         for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {

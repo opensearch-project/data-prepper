@@ -34,14 +34,17 @@ public class LeaderScheduler implements Runnable {
     @Setter
     private Duration leaseInterval;
     private LeaderPartition leaderPartition;
+    private final int batchSize;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator,
                            CrawlerSourcePlugin sourcePlugin,
-                           Crawler crawler) {
+                           Crawler crawler,
+                           int batchSize) {
         this.coordinator = coordinator;
         this.leaseInterval = DEFAULT_LEASE_INTERVAL;
         this.sourcePlugin = sourcePlugin;
         this.crawler = crawler;
+        this.batchSize = batchSize;
     }
 
     @Override
@@ -65,7 +68,7 @@ public class LeaderScheduler implements Runnable {
                     Instant lastPollTime = leaderProgressState.getLastPollTime();
 
                     //Start crawling and create child partitions
-                    Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
+                    Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, batchSize);
                     leaderProgressState.setLastPollTime(updatedPollTime);
                     leaderPartition.setLeaderProgressState(leaderProgressState);
                     coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
