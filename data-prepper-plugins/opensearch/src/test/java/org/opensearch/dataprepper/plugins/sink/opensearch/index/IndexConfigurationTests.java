@@ -53,6 +53,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConf
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_VERSION_EXPRESSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ROUTING;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ROUTING_FIELD;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -489,6 +490,17 @@ public class IndexConfigurationTests {
         final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfig(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig);
         assertEquals(expectedRoutingValue, indexConfiguration.getRouting());
+    }
+
+    @Test
+    public void testReadIndexConfig_routingField() throws JsonProcessingException {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null, null);
+        final String expectedRoutingFieldValue = UUID.randomUUID().toString();
+        metadata.put(ROUTING_FIELD, expectedRoutingFieldValue);
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfig(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(openSearchSinkConfig);
+        assertEquals(expectedRoutingFieldValue, indexConfiguration.getRoutingField());
     }
 
     @ParameterizedTest
