@@ -52,6 +52,12 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     private FilterConfig filterConfig;
 
 
+    /**
+     * Boolean property indicating end to end acknowledgments state
+     */
+    @JsonProperty("acknowledgments")
+    private boolean acknowledgments = false;
+
     public String getAccountUrl() {
         return this.getHosts().get(0);
     }

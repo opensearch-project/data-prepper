@@ -80,7 +80,8 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
         for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
-            WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+            WorkerScheduler workerScheduler = new WorkerScheduler(sourcePluginName, buffer, coordinator,
+                    sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
             this.executorService.submit(new Thread(workerScheduler));
         }
     }

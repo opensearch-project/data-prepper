@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -60,8 +61,8 @@ public class Crawler {
         return Instant.ofEpochMilli(startTime);
     }
 
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig) {
-        client.executePartition(state, buffer, sourceConfig);
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
+        client.executePartition(state, buffer, acknowledgementSet);
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {

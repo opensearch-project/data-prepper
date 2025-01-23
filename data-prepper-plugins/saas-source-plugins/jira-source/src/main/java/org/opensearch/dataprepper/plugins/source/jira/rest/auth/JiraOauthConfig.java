@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,18 +127,17 @@ public class JiraOauthConfig implements JiraAuthConfig {
             String payload = String.format(payloadTemplate, "refresh_token", clientId, clientSecret, refreshToken);
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
+            Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
             try {
                 ResponseEntity<Map> responseEntity = restTemplate.postForEntity(TOKEN_LOCATION, entity, Map.class);
                 Map<String, Object> oauthClientResponse = responseEntity.getBody();
                 this.accessToken = (String) oauthClientResponse.get(ACCESS_TOKEN);
                 this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
-                this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+                this.expireTime = Instant.now().plusSeconds(expiresInSeconds);
                 // updating config object's PluginConfigVariable so that it updates the underlying Secret store
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken()
-                        .setValue(this.accessToken);
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken()
-                        .setValue(this.refreshToken);
+                oauth2Config.getAccessToken().setValue(this.accessToken);
+                oauth2Config.getRefreshToken().setValue(this.refreshToken);
                 log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);
@@ -147,9 +147,12 @@ public class JiraOauthConfig implements JiraAuthConfig {
                         statusCode, ex.getMessage());
                 if (statusCode == HttpStatus.FORBIDDEN || statusCode == HttpStatus.UNAUTHORIZED) {
                     log.info("Trying to refresh the secrets");
-                    // Try refreshing the secrets and see if that helps
-                    // Refreshing one of the secret refreshes the entire store so we are good to trigger refresh on just one
-                    jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken().refresh();
+                    // Refreshing the secrets. It should help if someone already renewed the tokens.
+                    // Refreshing one of the secret refreshes the entire store so triggering refresh on just one
+                    oauth2Config.getAccessToken().refresh();
+                    this.accessToken = (String) oauth2Config.getAccessToken().getValue();
+                    this.refreshToken = (String) oauth2Config.getRefreshToken().getValue();
+                    this.expireTime = Instant.now().plusSeconds(10);
                 }
                 throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }

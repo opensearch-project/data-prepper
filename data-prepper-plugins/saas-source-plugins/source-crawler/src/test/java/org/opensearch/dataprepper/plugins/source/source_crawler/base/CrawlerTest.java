@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -31,7 +32,7 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 @ExtendWith(MockitoExtension.class)
 public class CrawlerTest {
     @Mock
-    private CrawlerSourceConfig sourceConfig;
+    private AcknowledgementSet acknowledgementSet;
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -59,8 +60,8 @@ public class CrawlerTest {
 
     @Test
     public void executePartitionTest() {
-        crawler.executePartition(state, buffer, sourceConfig);
-        verify(client).executePartition(state, buffer, sourceConfig);
+        crawler.executePartition(state, buffer, acknowledgementSet);
+        verify(client).executePartition(state, buffer, acknowledgementSet);
     }
 
     @Test
