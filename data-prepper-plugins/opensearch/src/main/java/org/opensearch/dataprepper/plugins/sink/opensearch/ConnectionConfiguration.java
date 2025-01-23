@@ -32,8 +32,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJson
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ServerlessOptions;
-
-import org.opensearch.dataprepper.plugins.source.opensearch.AuthConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -100,7 +98,6 @@ public class ConnectionConfiguration {
   private final String serverlessCollectionName;
   private final String serverlessVpceId;
   private final boolean requestCompressionEnabled;
-  private final AuthConfig authConfig;
 
   List<String> getHosts() {
     return hosts;
@@ -162,10 +159,6 @@ public class ConnectionConfiguration {
     return requestCompressionEnabled;
   }
 
-  public AuthConfig getAuthConfig() {
-    return authConfig;
-  }
-
   private ConnectionConfiguration(final Builder builder) {
     this.hosts = builder.hosts;
     this.username = builder.username;
@@ -185,7 +178,6 @@ public class ConnectionConfiguration {
     this.serverlessCollectionName = builder.serverlessCollectionName;
     this.serverlessVpceId = builder.serverlessVpceId;
     this.requestCompressionEnabled = builder.requestCompressionEnabled;
-    this.authConfig = builder.authConfig;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final OpenSearchSinkConfig openSearchSinkConfig){
@@ -322,18 +314,10 @@ public class ConnectionConfiguration {
 
   private void attachUserCredentials(final RestClientBuilder restClientBuilder) {
     final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    if (authConfig != null) {
-      if (authConfig.getUsername() != null) {
-        LOG.info("Using the authentication provided in the config.");
-        credentialsProvider.setCredentials(
-                AuthScope.ANY, new UsernamePasswordCredentials(authConfig.getUsername(), authConfig.getPassword()));
-      }
-    } else {
-      if (username != null) {
-        LOG.info("Using the username provided in the config.");
-        credentialsProvider.setCredentials(
-                AuthScope.ANY, new UsernamePasswordCredentials(username, password));
-      }
+    if (username != null) {
+      LOG.info("Using the username provided in the config.");
+      credentialsProvider.setCredentials(
+              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
     }
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> {
@@ -497,7 +481,6 @@ public class ConnectionConfiguration {
     private String serverlessCollectionName;
     private String serverlessVpceId;
     private boolean requestCompressionEnabled;
-    private AuthConfig authConfig;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
       final Arn arn = getArn(awsStsRoleArn);
@@ -619,11 +602,6 @@ public class ConnectionConfiguration {
 
     public Builder withRequestCompressionEnabled(final boolean requestCompressionEnabled) {
       this.requestCompressionEnabled = requestCompressionEnabled;
-      return this;
-    }
-
-    public Builder withAuthConfig(final AuthConfig authConfig) {
-      this.authConfig = authConfig;
       return this;
     }
 

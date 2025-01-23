@@ -74,23 +74,13 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     private boolean basicAuthChanged(final ConnectionConfiguration newConfig) {
         final String existingUsername;
         final String existingPassword;
-        if (currentConfig.getAuthConfig() != null) {
-            existingUsername = currentConfig.getAuthConfig().getUsername();
-            existingPassword = currentConfig.getAuthConfig().getPassword();
-        } else {
-            existingUsername = currentConfig.getUsername();
-            existingPassword = currentConfig.getPassword();
-        }
+        existingUsername = currentConfig.getUsername();
+        existingPassword = currentConfig.getPassword();
 
         final String newUsername;
         final String newPassword;
-        if (newConfig.getAuthConfig() != null) {
-            newUsername = newConfig.getAuthConfig().getUsername();
-            newPassword = newConfig.getAuthConfig().getPassword();
-        } else {
-            newUsername = newConfig.getUsername();
-            newPassword = newConfig.getPassword();
-        }
+        newUsername = newConfig.getUsername();
+        newPassword = newConfig.getPassword();
 
         return !Objects.equals(existingUsername, newUsername) ||
                 !Objects.equals(existingPassword, newPassword);
