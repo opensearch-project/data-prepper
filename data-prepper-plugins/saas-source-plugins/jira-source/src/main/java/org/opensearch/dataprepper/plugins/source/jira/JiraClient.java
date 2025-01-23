@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
@@ -87,7 +88,7 @@ public class JiraClient implements CrawlerClient {
     @Override
     public void executePartition(SaasWorkerProgressState state,
                                  Buffer<Record<Event>> buffer,
-                                 CrawlerSourceConfig configuration) {
+                                 AcknowledgementSet acknowledgementSet) {
         log.trace("Executing the partition: {} with {} ticket(s)",
                 state.getKeyAttributes(), state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
@@ -130,7 +131,13 @@ public class JiraClient implements CrawlerClient {
                 .collect(Collectors.toList());
 
         try {
-            buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
+            if (configuration.isAcknowledgments()) {
+                recordsToWrite.forEach(eventRecord -> acknowledgementSet.add(eventRecord.getData()));
+                buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
+                acknowledgementSet.complete();
+            } else {
+                buffer.writeAll(recordsToWrite, (int) Duration.ofSeconds(bufferWriteTimeoutInSeconds).toMillis());
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
