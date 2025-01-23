@@ -15,6 +15,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -27,10 +29,6 @@ import java.util.stream.IntStream;
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
     static final long SHUTDOWN_TIMEOUT = 30L;
-    static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
-    static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
-    static final double JITTER_RATE = 0.20;
-
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
     private final SqsClient sqsClient;
@@ -38,6 +36,7 @@ public class SqsService {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final ExecutorService executorService;
     private final List<SqsWorker> sqsWorkers;
+    private final Backoff backoff;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
@@ -48,11 +47,9 @@ public class SqsService {
         this.s3Accessor = s3Accessor;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.sqsClient = createSqsClient(credentialsProvider);
+        this.sqsClient = SqsClientFactory.createSqsClient(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion(), credentialsProvider);
         executorService = Executors.newFixedThreadPool(s3SourceConfig.getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("s3-source-sqs"));
-
-        final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
-                .withMaxAttempts(Integer.MAX_VALUE);
+        backoff = SqsBackoff.createExponentialBackoff();
         sqsWorkers = IntStream.range(0, s3SourceConfig.getNumWorkers())
                 .mapToObj(i -> new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff))
                 .collect(Collectors.toList());
@@ -60,17 +57,6 @@ public class SqsService {
 
     public void start() {
         sqsWorkers.forEach(executorService::submit);
-    }
-
-    SqsClient createSqsClient(final AwsCredentialsProvider credentialsProvider) {
-        LOG.debug("Creating SQS client");
-        return SqsClient.builder()
-                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
-                .credentialsProvider(credentialsProvider)
-                .overrideConfiguration(ClientOverrideConfiguration.builder()
-                        .retryPolicy(RetryPolicy.builder().numRetries(5).build())
-                        .build())
-                .build();
     }
 
     public void stop() {
