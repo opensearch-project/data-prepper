@@ -48,6 +48,8 @@ public class CrawlerTest {
 
     private Crawler crawler;
 
+    private static final int DEFAULT_BATCH_SIZE = 50;
+
     @BeforeEach
     public void setup() {
         crawler = new Crawler(client);
@@ -68,35 +70,32 @@ public class CrawlerTest {
     void testCrawlWithEmptyList() {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         when(client.listItems()).thenReturn(Collections.emptyIterator());
-        int maxItemsPerPage = 50;
-        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, never()).createPartition(any(SaasSourcePartition.class));
     }
 
     @Test
-    void testCrawlWithNonEmptyList() throws NoSuchFieldException, IllegalAccessException {
+    void testCrawlWithNonEmptyList(){
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = 50;
-        for (int i = 0; i < maxItemsPerPage; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE; i++) {
             itemInfoList.add(new TestItemInfo("itemId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
 
     }
 
     @Test
-    void testCrawlWithMultiplePartitions() throws NoSuchFieldException, IllegalAccessException {
+    void testCrawlWithMultiplePartitions(){
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = 50;
-        for (int i = 0; i < maxItemsPerPage + 1; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE + 1; i++) {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(2)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -128,13 +127,12 @@ public class CrawlerTest {
     void testCrawlWithNullItemsInList() throws NoSuchFieldException, IllegalAccessException {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = 50;
         itemInfoList.add(null);
-        for (int i = 0; i < maxItemsPerPage - 1; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE - 1; i++) {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -145,8 +143,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        int maxItemsPerPage = 50;
-        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         assertNotEquals(Instant.ofEpochMilli(0), updatedPollTime);
     }
 
@@ -157,8 +154,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        int maxItemsPerPage = 50;
-        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         assertNotEquals(lastPollTime, updatedPollTime);
     }
 

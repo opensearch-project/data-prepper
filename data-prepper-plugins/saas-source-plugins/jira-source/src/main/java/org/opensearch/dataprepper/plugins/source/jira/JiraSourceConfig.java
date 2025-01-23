@@ -17,13 +17,12 @@ import org.opensearch.dataprepper.plugins.source.jira.configuration.Authenticati
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
-import java.time.Duration;
 import java.util.List;
 
 @Getter
 public class JiraSourceConfig implements CrawlerSourceConfig {
 
-    private static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMinutes(2);
+    private static final int DEFAULT_BATCH_SIZE = 50;
 
     /**
      * Jira account url
@@ -42,7 +41,7 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      * Batch size for fetching tickets
      */
     @JsonProperty("batch_size")
-    private int batchSize = 50;
+    private int batchSize = DEFAULT_BATCH_SIZE;
 
 
     /**
