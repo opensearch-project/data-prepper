@@ -134,7 +134,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                 this.accessToken = (String) oauthClientResponse.get(ACCESS_TOKEN);
                 this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
-                this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+                this.expireTime = Instant.now().plusSeconds(expiresInSeconds);
                 // updating config object's PluginConfigVariable so that it updates the underlying Secret store
                 oauth2Config.getAccessToken().setValue(this.accessToken);
                 oauth2Config.getRefreshToken().setValue(this.refreshToken);
@@ -152,7 +152,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     oauth2Config.getAccessToken().refresh();
                     this.accessToken = (String) oauth2Config.getAccessToken().getValue();
                     this.refreshToken = (String) oauth2Config.getRefreshToken().getValue();
-                    this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 100L));
+                    this.expireTime = Instant.now().plusSeconds(10);
                 }
                 throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }
