@@ -29,7 +29,6 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 @Named
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
-    private static final int maxItemsPerPage = 100;
     private final Timer crawlingTimer;
     private final PluginMetrics pluginMetrics =
             PluginMetrics.fromNames("sourceCrawler", "crawler");
@@ -42,7 +41,7 @@ public class Crawler {
     }
 
     public Instant crawl(LeaderPartition leaderPartition,
-                         EnhancedSourceCoordinator coordinator) {
+                         EnhancedSourceCoordinator coordinator, int batchSize) {
         long startTime = System.currentTimeMillis();
         Instant lastLeaderSavedInstant = Instant.now();
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
@@ -53,7 +52,7 @@ public class Crawler {
         log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
-            for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
+            for (int i = 0; i < batchSize && itemInfoIterator.hasNext(); i++) {
                 ItemInfo nextItem = itemInfoIterator.next();
                 if (nextItem == null) {
                     //we don't expect null items, but just in case, we'll skip them

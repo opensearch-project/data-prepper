@@ -30,14 +30,17 @@ public class LeaderScheduler implements Runnable {
     @Setter
     private Duration leaseInterval;
     private LeaderPartition leaderPartition;
+    private final int batchSize;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator,
                            CrawlerSourcePlugin sourcePlugin,
-                           Crawler crawler) {
+                           Crawler crawler,
+                           int batchSize) {
         this.coordinator = coordinator;
         this.leaseInterval = DEFAULT_LEASE_INTERVAL;
         this.sourcePlugin = sourcePlugin;
         this.crawler = crawler;
+        this.batchSize = batchSize;
     }
 
     @Override
@@ -58,7 +61,7 @@ public class LeaderScheduler implements Runnable {
                 // May want to quit this scheduler if we don't want to monitor future changes
                 if (leaderPartition != null) {
                     //Start crawling, create child partitions and also continue to update leader partition state
-                    crawler.crawl(leaderPartition, coordinator);
+                    crawler.crawl(leaderPartition, coordinator, batchSize);
                 }
 
             } catch (Exception e) {
