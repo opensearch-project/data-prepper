@@ -6,4 +6,11 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 public interface CrawlerSourceConfig {
 
     int DEFAULT_NUMBER_OF_WORKERS = 1;
+
+    /**
+     * Boolean to indicate if acknowledgments enabled for this source
+     *
+     * @return boolean indicating acknowledgement state
+     */
+    boolean isAcknowledgments();
 }

@@ -18,10 +18,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 
@@ -46,25 +46,20 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class JiraClientTest {
 
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
     @Mock
     private Buffer<Record<Event>> buffer;
-
     @Mock
     private SaasWorkerProgressState saasWorkerProgressState;
 
     @Mock
-    private CrawlerSourceConfig crawlerSourceConfig;
-
+    private AcknowledgementSet acknowledgementSet;
     @Mock
     private JiraSourceConfig jiraSourceConfig;
-
     @Mock
     private JiraService jiraService;
-
     @Mock
     private JiraIterator jiraIterator;
-
-    private PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @Test
     void testConstructor() {
@@ -98,7 +93,7 @@ public class JiraClientTest {
 
         ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
-        jiraClient.executePartition(saasWorkerProgressState, buffer, crawlerSourceConfig);
+        jiraClient.executePartition(saasWorkerProgressState, buffer, acknowledgementSet);
 
         verify(buffer).writeAll(recordsCaptor.capture(), anyInt());
         Collection<Record<Event>> capturedRecords = recordsCaptor.getValue();
@@ -121,14 +116,13 @@ public class JiraClientTest {
 
         when(jiraService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
 
-        ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
         when(mockObjectMapper.readValue(any(String.class), any(TypeReference.class))).thenThrow(new JsonProcessingException("test") {
         });
         jiraClient.injectObjectMapper(mockObjectMapper);
 
-        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, crawlerSourceConfig));
+        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, acknowledgementSet));
     }
 
     @Test
@@ -147,6 +141,6 @@ public class JiraClientTest {
         ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
         doThrow(new RuntimeException()).when(buffer).writeAll(recordsCaptor.capture(), anyInt());
-        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, crawlerSourceConfig));
+        assertThrows(RuntimeException.class, () -> jiraClient.executePartition(saasWorkerProgressState, buffer, acknowledgementSet));
     }
 }
