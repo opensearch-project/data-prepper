@@ -66,7 +66,7 @@ public class AddEntryProcessorConfig {
     public static class Entry {
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
-                "use the value of field <code>key1</code> as the key. At least one of <code>key</code> or <code>metadata_key</code> is required.")
+                "use the value of field <code>key1</code> as the key. Exactly one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name=METADATA_KEY_KEY, allowedValues = {"null"})
         })
@@ -80,7 +80,7 @@ public class AddEntryProcessorConfig {
         @JsonProperty(METADATA_KEY_KEY)
         @JsonPropertyDescription("The key for the new metadata attribute. The argument must be a literal string key " +
                 "and not a JSON Pointer. Adds an attribute to the Events that will not be sent to the sinks, but can be used for condition expressions and routing with the getMetadata function. " +
-                "At least one of <code>key</code> or <code>metadata_key</code> is required.")
+                "Exactly one of <code>key</code> or <code>metadata_key</code> is required.")
         @AlsoRequired(values = {
                 @AlsoRequired.Required(name="key", allowedValues = {"null"})
         })

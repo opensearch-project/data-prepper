@@ -50,7 +50,7 @@ public class FlattenProcessorConfig {
             "The default is <code>false</code> which leaves the source fields.")
     private boolean removeProcessedFields = false;
 
-    @JsonProperty("remove_list_items")
+    @JsonProperty("remove_list_elements")
     @JsonAlias(REMOVE_LIST_INDICES_KEY)
     @JsonPropertyDescription("When <code>true</code>, the processor converts the fields from the source map into lists and " +
             "puts the lists into the target field. Default is <code>false</code>.")

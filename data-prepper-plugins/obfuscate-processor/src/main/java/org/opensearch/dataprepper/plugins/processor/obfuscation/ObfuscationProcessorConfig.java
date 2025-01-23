@@ -27,7 +27,7 @@ import java.util.List;
 public class ObfuscationProcessorConfig {
 
     @JsonProperty("source")
-    @JsonPropertyDescription("The source key to obfuscate. Default action is to mask ith <code>*</code>.")
+    @JsonPropertyDescription("The source key to obfuscate. Default action is to mask with <code>*</code>.")
     @NotEmpty
     @NotNull
     @ExampleValues({

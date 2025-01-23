@@ -30,13 +30,13 @@ public class CopyValueProcessorConfig {
         @NotEmpty
         @NotNull
         @JsonProperty("from_key")
-        @JsonPropertyDescription("The key of the entry to be copied.")
+        @JsonPropertyDescription("The key of the entry to be copied. This must be configured.")
         private String fromKey;
 
         @NotEmpty
         @NotNull
         @JsonProperty("to_key")
-        @JsonPropertyDescription("The key of the new entry to be added.")
+        @JsonPropertyDescription("The key of the new entry to be added. This must be configured.")
         private String toKey;
 
         @JsonProperty("overwrite_if_to_key_exists")
@@ -87,7 +87,7 @@ public class CopyValueProcessorConfig {
 
     @JsonProperty(FROM_LIST_KEY)
     @JsonPropertyDescription("The key of the list of objects to be copied. " +
-            "Both <code>from_key</code> and <code>to_key</code> will be applied on the corresponding list.")
+            "Both <code>from_key</code> and <code>to_key</code> must be configured and will be applied on the corresponding list.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = TO_LIST_KEY)
     })
@@ -95,7 +95,7 @@ public class CopyValueProcessorConfig {
 
     @JsonProperty(TO_LIST_KEY)
     @JsonPropertyDescription("The key of the new list to be added. " +
-            "Both <code>from_key</code> and <code>to_key</code> will be applied on the corresponding list.")
+            "Both <code>from_key</code> and <code>to_key</code> must be configured and will be applied on the corresponding list.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FROM_LIST_KEY)
     })
