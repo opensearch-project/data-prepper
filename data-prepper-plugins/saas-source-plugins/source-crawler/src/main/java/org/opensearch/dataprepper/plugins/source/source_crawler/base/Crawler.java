@@ -7,19 +7,24 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
 @Named
 public class Crawler {
@@ -36,11 +41,15 @@ public class Crawler {
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
     }
 
-    public Instant crawl(Instant lastPollTime,
+    public Instant crawl(LeaderPartition leaderPartition,
                          EnhancedSourceCoordinator coordinator) {
         long startTime = System.currentTimeMillis();
+        Instant lastLeaderSavedInstant = Instant.now();
+        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
+        Instant lastPollTime = leaderProgressState.getLastPollTime();
         client.setLastPollTime(lastPollTime);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
+        Instant latestModifiedTime = Instant.from(lastPollTime);
         log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
@@ -52,18 +61,38 @@ public class Crawler {
                     continue;
                 }
                 itemInfoList.add(nextItem);
+                if (nextItem.getLastModifiedAt().isAfter(latestModifiedTime)) {
+                    latestModifiedTime = nextItem.getLastModifiedAt();
+                }
             }
             createPartition(itemInfoList, coordinator);
-            // intermediate updates to master partition state is required here
+
+            // Check point leader progress state at every minute interval.
+            Instant currentTimeInstance = Instant.now();
+            if (Duration.between(lastLeaderSavedInstant, currentTimeInstance).toMinutes() >= 1) {
+                // intermediate updates to master partition state
+                updateLeaderProgressState(leaderPartition, latestModifiedTime, coordinator);
+                lastLeaderSavedInstant = currentTimeInstance;
+            }
+
         } while (itemInfoIterator.hasNext());
+        Instant startTimeInstant = Instant.ofEpochMilli(startTime);
+        updateLeaderProgressState(leaderPartition, startTimeInstant, coordinator);
         long crawlTimeMillis = System.currentTimeMillis() - startTime;
         log.debug("Crawling completed in {} ms", crawlTimeMillis);
         crawlingTimer.record(crawlTimeMillis, TimeUnit.MILLISECONDS);
-        return Instant.ofEpochMilli(startTime);
+        return startTimeInstant;
     }
 
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
         client.executePartition(state, buffer, acknowledgementSet);
+    }
+
+    private void updateLeaderProgressState(LeaderPartition leaderPartition, Instant updatedPollTime, EnhancedSourceCoordinator coordinator) {
+        LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
+        leaderProgressState.setLastPollTime(updatedPollTime);
+        leaderPartition.setLeaderProgressState(leaderProgressState);
+        coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {
