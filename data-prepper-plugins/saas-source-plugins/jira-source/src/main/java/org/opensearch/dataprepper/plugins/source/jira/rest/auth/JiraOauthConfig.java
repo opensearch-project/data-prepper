@@ -100,7 +100,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     if (e.getRawStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
                         renewCredentials();
                     }
-                    log.error("Error occurred while accessing resources: ", e);
+                    log.error("Error occurred while accessing resources.  Status code: {}.  Error message: {}", e.getStatusCode(), e.getMessage());
                 }
             }
             throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));

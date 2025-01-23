@@ -119,19 +119,19 @@ public class JiraRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
+                log.error("An exception has occurred while getting response from Jira search API with statusCode {} and error message {}.", statusCode, statusMessage);
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
-                    log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
+                    log.error(NOISY, "Token expired. We will try to renew the tokens now.");
                     authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
+                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.");
                 }
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted.");
                 }
             }
             retryCount++;

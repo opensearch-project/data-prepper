@@ -75,7 +75,7 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
         try {
             return objectMapper.readValue(serializedPartitionProgressState, LeaderProgressState.class);
         } catch (final JsonProcessingException e) {
-            LOG.error("Unable to convert string to partition progress state class ", e);
+            LOG.error("Unable to convert string to partition progress state class due to {}", e.getMessage());
             return null;
         }
     }
