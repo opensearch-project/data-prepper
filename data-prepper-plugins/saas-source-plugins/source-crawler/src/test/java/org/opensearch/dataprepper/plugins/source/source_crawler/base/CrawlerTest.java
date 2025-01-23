@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +48,8 @@ public class CrawlerTest {
 
     private Crawler crawler;
 
+    private static final int DEFAULT_BATCH_SIZE = 50;
+
     @BeforeEach
     public void setup() {
         crawler = new Crawler(client);
@@ -69,49 +70,69 @@ public class CrawlerTest {
     void testCrawlWithEmptyList() {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         when(client.listItems()).thenReturn(Collections.emptyIterator());
-        crawler.crawl(lastPollTime, coordinator);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, never()).createPartition(any(SaasSourcePartition.class));
     }
 
     @Test
-    void testCrawlWithNonEmptyList() throws NoSuchFieldException, IllegalAccessException {
+    void testCrawlWithNonEmptyList(){
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = getMaxItemsPerPage();
-        for (int i = 0; i < maxItemsPerPage; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE; i++) {
             itemInfoList.add(new TestItemInfo("itemId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
 
     }
 
     @Test
-    void testCrawlWithMultiplePartitions() throws NoSuchFieldException, IllegalAccessException {
+    void testCrawlWithMultiplePartitions(){
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = getMaxItemsPerPage();
-        for (int i = 0; i < maxItemsPerPage + 1; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE + 1; i++) {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(2)).createPartition(any(SaasSourcePartition.class));
+    }
 
+    @Test
+    void testBatchSize() {
+        Instant lastPollTime = Instant.ofEpochMilli(0);
+        List<ItemInfo> itemInfoList = new ArrayList<>();
+        int maxItemsPerPage = 50;
+        for (int i = 0; i < maxItemsPerPage; i++) {
+            itemInfoList.add(new TestItemInfo("testId"));
+        }
+        when(client.listItems()).thenReturn(itemInfoList.iterator());
+        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage);
+        int expectedNumberOfInvocations = 1;
+        verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
+
+        List<ItemInfo> itemInfoList2 = new ArrayList<>();
+        int maxItemsPerPage2 = 25;
+        for (int i = 0; i < maxItemsPerPage; i++) {
+            itemInfoList2.add(new TestItemInfo("testId"));
+        }
+        when(client.listItems()).thenReturn(itemInfoList.iterator());
+        crawler.crawl(lastPollTime, coordinator, maxItemsPerPage2);
+        expectedNumberOfInvocations += 2;
+        verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
     }
 
     @Test
     void testCrawlWithNullItemsInList() throws NoSuchFieldException, IllegalAccessException {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = getMaxItemsPerPage();
         itemInfoList.add(null);
-        for (int i = 0; i < maxItemsPerPage - 1; i++) {
+        for (int i = 0; i < DEFAULT_BATCH_SIZE - 1; i++) {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(lastPollTime, coordinator);
+        crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -122,7 +143,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
+        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         assertNotEquals(Instant.ofEpochMilli(0), updatedPollTime);
     }
 
@@ -133,15 +154,8 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
+        Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator, DEFAULT_BATCH_SIZE);
         assertNotEquals(lastPollTime, updatedPollTime);
-    }
-
-
-    private int getMaxItemsPerPage() throws NoSuchFieldException, IllegalAccessException {
-        Field maxItemsPerPageField = Crawler.class.getDeclaredField("maxItemsPerPage");
-        maxItemsPerPageField.setAccessible(true);
-        return (int) maxItemsPerPageField.get(null);
     }
 
     private ItemInfo createTestItemInfo(String id) {
