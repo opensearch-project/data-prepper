@@ -40,7 +40,7 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
 
   @JsonPropertyDescription("Defines a condition for event to use this processor.")
   @ExampleValues({
-          @Example(value = "/some_key == null", description = "The processor will only run when on events where this condition evaluates to true.")
+          @Example(value = "/some_key == null", description = "The processor will only run on events where this condition evaluates to true.")
   })
   @JsonProperty("lambda_when")
   private String whenCondition;
