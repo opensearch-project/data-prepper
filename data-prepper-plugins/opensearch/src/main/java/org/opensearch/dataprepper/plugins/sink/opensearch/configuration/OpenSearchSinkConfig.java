@@ -33,6 +33,15 @@ public class OpenSearchSinkConfig {
     private String username = null;
 
     @Getter
+    @JsonProperty("authentication")
+    private AuthConfig authConfig;
+
+    @AssertTrue(message = "username and password should not be set when authentication is configured.")
+    public boolean isAuthConfigValid() {
+        return authConfig == null || (username == null && password == null);
+    }
+
+    @Getter
     @JsonProperty("password")
     private String password = null;
 

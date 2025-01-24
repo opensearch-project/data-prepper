@@ -181,6 +181,34 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testReadConnectionConfigurationWithBasicCredentialsAndNoCert() throws JsonProcessingException {
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
+        assertEquals(TEST_HOSTS, connectionConfiguration.getHosts());
+        assertNull(connectionConfiguration.getUsername());
+        assertNull(connectionConfiguration.getPassword());
+        assertNotNull(connectionConfiguration.getAuthConfig());
+        assertEquals(TEST_USERNAME, connectionConfiguration.getAuthConfig().getUsername());
+        assertEquals(TEST_PASSWORD, connectionConfiguration.getAuthConfig().getPassword());
+        assertEquals(TEST_CONNECT_TIMEOUT, connectionConfiguration.getConnectTimeout());
+        assertEquals(TEST_SOCKET_TIMEOUT, connectionConfiguration.getSocketTimeout());
+        assertFalse(connectionConfiguration.isAwsSigv4());
+    }
+
+    @Test
+    void testReadConnectionConfigurationWithBothDeprecatedBasicCredentialsAndAuthConfigShouldThrow() throws JsonProcessingException {
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, TEST_USERNAME, null, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        configurationMetadata.put("authentication", Map.of("username", TEST_USERNAME, "password", TEST_PASSWORD));
+        final OpenSearchSinkConfig openSearchSinkConfig = getOpenSearchSinkConfigByConfigMetadata(configurationMetadata);
+        assertFalse(openSearchSinkConfig.isAuthConfigValid());
+    }
+
+    @Test
     void testCreateClientWithDeprecatedBasicCredentialsAndNoCert() throws IOException {
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfig(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);

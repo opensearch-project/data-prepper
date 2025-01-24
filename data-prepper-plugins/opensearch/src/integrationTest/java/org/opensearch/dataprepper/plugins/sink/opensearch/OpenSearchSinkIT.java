@@ -1670,8 +1670,7 @@ public class OpenSearchSinkIT {
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {
-            metadata.put(USERNAME, user);
-            metadata.put(PASSWORD, password);
+            metadata.put(AUTHENTICATION, Map.of(USERNAME, user, PASSWORD, password));
         }
         final String distributionVersion = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
                 OpenSearchIntegrationHelper.getVersion()) >= 0 ?
