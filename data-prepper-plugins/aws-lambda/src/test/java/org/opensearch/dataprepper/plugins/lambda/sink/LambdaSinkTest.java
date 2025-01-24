@@ -20,7 +20,11 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
-import org.opensearch.dataprepper.plugins.lambda.common.config.*;
+import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
@@ -30,12 +34,26 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleRecord;
 
 class LambdaSinkTest {
