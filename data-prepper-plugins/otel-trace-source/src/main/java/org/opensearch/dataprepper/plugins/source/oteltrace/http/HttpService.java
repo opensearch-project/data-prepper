@@ -76,6 +76,7 @@ public class HttpService {
         //   - it becomes testable
         // cons:
         //   - currently tied to one impl by using 'new'.
+        // todo tlongo clarify if simplifying config handling is something worth considering in this PR
         return new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig(pluginSettings.get("username").toString(), pluginSettings.get("password").toString()));
     }
 }

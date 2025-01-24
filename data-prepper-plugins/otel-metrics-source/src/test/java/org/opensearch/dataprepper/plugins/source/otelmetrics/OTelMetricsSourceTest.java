@@ -350,7 +350,6 @@ class OTelMetricsSourceTest {
                 .join();
     }
 
-
     @Test
     void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
