@@ -350,7 +350,6 @@ class OTelMetricsSourceTest {
                 .join();
     }
 
- 
     @Test
     void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
@@ -420,7 +419,7 @@ class OTelMetricsSourceTest {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
         when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
         final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
-    
+
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(grpcAuthenticationProvider);
         when(oTelMetricsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
@@ -430,17 +429,17 @@ class OTelMetricsSourceTest {
                 )));
         when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
         when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
-    
+
         configureObjectUnderTest();
         SOURCE.start(buffer);
-    
+
         final String invalidUsername = "wrong_user";
         final String invalidPassword = "wrong_password";
         final String invalidCredentials = Base64.getEncoder()
                 .encodeToString(String.format("%s:%s", invalidUsername, invalidPassword).getBytes(StandardCharsets.UTF_8));
-    
+
         final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/metrics";
-    
+
         WebClient.of().prepare()
                 .post("http://127.0.0.1:21891" + transformedPath)
                 .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportMetricsRequest()).getBytes())
@@ -450,7 +449,7 @@ class OTelMetricsSourceTest {
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
                 .join();
     }
-    
+
     @Test
     void testGrpcRequestWithInvalidCredentials_with_unsuccessful_response() throws Exception {
         when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
@@ -489,10 +488,10 @@ class OTelMetricsSourceTest {
         when(oTelMetricsSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
         configureObjectUnderTest();
         SOURCE.start(buffer);
-    
+
         WebClient client = WebClient.builder("http://127.0.0.1:21891")
                 .build();
-    
+
         CompletionException exception = assertThrows(CompletionException.class, () -> client.execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21891")
@@ -503,10 +502,10 @@ class OTelMetricsSourceTest {
                 HttpData.copyOf(JsonFormat.printer().print(createExportMetricsRequest()).getBytes()))
                 .aggregate()
                 .join());
-    
+
         assertThat(exception.getCause(), instanceOf(ClosedSessionException.class));
     }
-    
+
     @Test
     void testGrpcFailsIfSslIsEnabledAndNoTls() {
         when(oTelMetricsSourceConfig.isSsl()).thenReturn(true);
@@ -514,17 +513,17 @@ class OTelMetricsSourceTest {
         when(oTelMetricsSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
         configureObjectUnderTest();
         SOURCE.start(buffer);
-    
+
         MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
                 .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
-    
+
         StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
-  
+
         assertThat(actualException.getStatus(), notNullValue());
         assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.UNKNOWN));
     }
-    
-    
+
+
     @Test
     void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
