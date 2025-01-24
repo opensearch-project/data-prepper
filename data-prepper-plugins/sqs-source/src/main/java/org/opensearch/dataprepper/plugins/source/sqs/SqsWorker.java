@@ -1,13 +1,3 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
- */
-
 package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.linecorp.armeria.client.retry.Backoff;
@@ -26,11 +16,7 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);

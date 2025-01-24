@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.sqs.common;
 
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
@@ -17,12 +18,14 @@ import java.util.List;
 
 public class SqsWorkerCommon {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorkerCommon.class);
+    public static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
     public static final String SQS_MESSAGES_RECEIVED_METRIC_NAME = "sqsMessagesReceived";
     public static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     public static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
     public static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
+
     private final SqsClient sqsClient;
     private final Backoff standardBackoff;
     private final PluginMetrics pluginMetrics;
@@ -33,6 +36,7 @@ public class SqsWorkerCommon {
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
     private final Counter sqsMessagesDeleteFailedCounter;
+    private final Counter acknowledgementSetCallbackCounter;
     private final Counter sqsVisibilityTimeoutChangedCount;
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
 
@@ -52,6 +56,7 @@ public class SqsWorkerCommon {
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
         sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
+        acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         sqsVisibilityTimeoutChangedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME);
         sqsVisibilityTimeoutChangeFailedCount = pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME);
     }
@@ -76,7 +81,6 @@ public class SqsWorkerCommon {
         }
     }
 
-
     private ReceiveMessageRequest createReceiveMessageRequest(String queueUrl, Integer maxNumberOfMessages, Duration waitTime, Duration visibilityTimeout) {
         ReceiveMessageRequest.Builder requestBuilder = ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl)
@@ -89,7 +93,7 @@ public class SqsWorkerCommon {
         if (maxNumberOfMessages != null) {
             requestBuilder.maxNumberOfMessages(maxNumberOfMessages);
         }
-        if (visibilityTimeout!= null) {
+        if (visibilityTimeout != null) {
             requestBuilder.visibilityTimeout((int) visibilityTimeout.getSeconds());
         }
         return requestBuilder.build();
@@ -178,15 +182,15 @@ public class SqsWorkerCommon {
                 .build();
     }
 
-    public void stop() {
-        isStopped = true;
-    }
-
-    public boolean isStopped() {
-        return isStopped;
+    public Timer createTimer(final String timerName) {
+        return pluginMetrics.timer(timerName);
     }
 
     public Counter getSqsMessagesFailedCounter() {
         return sqsMessagesFailedCounter;
+    }
+
+    public void stop() {
+        isStopped = true;
     }
 }
