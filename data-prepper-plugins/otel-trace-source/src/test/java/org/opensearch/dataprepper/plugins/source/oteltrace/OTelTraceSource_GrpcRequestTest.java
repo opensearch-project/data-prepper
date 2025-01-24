@@ -270,7 +270,7 @@ class OTelTraceSource_GrpcRequestTest {
 
         final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportTraceRequest()));
         assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
+        assertThat(actualException.getMessage(), actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
     }
 
     @ParameterizedTest
@@ -291,7 +291,7 @@ class OTelTraceSource_GrpcRequestTest {
         final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
 
         assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
+        assertThat(actualException.getMessage(), actualException.getStatus().getCode(), equalTo(expectedStatusCode));
     }
 
     @Test
@@ -306,7 +306,7 @@ class OTelTraceSource_GrpcRequestTest {
         final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
 
         assertThat(actualException.getStatus(), notNullValue());
-        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
+        assertThat(actualException.getMessage(), actualException.getStatus().getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
 
         verifyNoInteractions(buffer);
     }
