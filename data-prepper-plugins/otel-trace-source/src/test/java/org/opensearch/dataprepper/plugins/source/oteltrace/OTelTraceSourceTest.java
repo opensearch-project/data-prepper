@@ -40,6 +40,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -601,10 +602,15 @@ class OTelTraceSourceTest {
     }
 
     @Test
-    void testOptionalHttpAuthServiceInPlace() {
+    @Disabled
+    void testOptionalHttpAuthServiOceInPlace() {
         final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
 
         final Map<String, Object> settingsMap = new HashMap<>();
+        // todo tlongo: Providing this pipeline config to data prepper let's it refuse to boot right away. Why is this test green, then?
+        //              Because the it's the plugin factory that stumbles over the missing plugin settings. But, the plugin factory is
+        //              mocked in this whole test class, always returning a GrpcBasicAuthenticationProvider. IMO this test does not
+        //              service its purpose
         settingsMap.put("authentication", new PluginModel("test", null));
         settingsMap.put("unauthenticated_health_check", true);
 
@@ -628,6 +634,7 @@ class OTelTraceSourceTest {
     }
 
     @Test
+    @Disabled // todo tlongo see testOptionalHttpAuthServiOceInPlace on why I disabled this test
     void testOptionalHttpAuthServiceInPlaceWithUnauthenticatedDisabled() {
         final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
 
