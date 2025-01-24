@@ -56,6 +56,9 @@ public enum ColumnType {
     }
 
     public static ColumnType getByTypeId(int typeId) {
+        if (!TYPE_ID_MAP.containsKey(typeId)) {
+            throw new IllegalArgumentException("Unsupported column type id: " + typeId);
+        }
         return TYPE_ID_MAP.get(typeId);
     }
 

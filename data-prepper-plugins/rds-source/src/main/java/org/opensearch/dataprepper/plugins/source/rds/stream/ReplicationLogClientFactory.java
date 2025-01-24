@@ -16,6 +16,7 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
@@ -67,13 +68,15 @@ public class ReplicationLogClientFactory {
     }
 
     private LogicalReplicationClient createLogicalReplicationClient(StreamPartition streamPartition) {
-        final String replicationSlotName = streamPartition.getProgressState().get().getPostgresStreamState().getReplicationSlotName();
+        final PostgresStreamState postgresStreamState = streamPartition.getProgressState().get().getPostgresStreamState();
+        final String publicationName = postgresStreamState.getPublicationName();
+        final String replicationSlotName = postgresStreamState.getReplicationSlotName();
         if (replicationSlotName == null) {
             throw new NoSuchElementException("Replication slot name is not found in progress state.");
         }
         final ConnectionManagerFactory connectionManagerFactory = new ConnectionManagerFactory(sourceConfig, dbMetadata);
         final ConnectionManager connectionManager = connectionManagerFactory.getConnectionManager();
-        return new LogicalReplicationClient(connectionManager, replicationSlotName);
+        return new LogicalReplicationClient(connectionManager, publicationName, replicationSlotName);
     }
 
     public void setSSLMode(SSLMode sslMode) {

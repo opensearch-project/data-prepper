@@ -16,6 +16,9 @@ public class PostgresStreamState {
     @JsonProperty("currentLsn")
     private String currentLsn;
 
+    @JsonProperty("publicationName")
+    private String publicationName;
+
     @JsonProperty("replicationSlotName")
     private String replicationSlotName;
 
@@ -25,6 +28,14 @@ public class PostgresStreamState {
 
     public void setCurrentLsn(String currentLsn) {
         this.currentLsn = currentLsn;
+    }
+
+    public String getPublicationName() {
+        return publicationName;
+    }
+
+    public void setPublicationName(String publicationName) {
+        this.publicationName = publicationName;
     }
 
     public String getReplicationSlotName() {

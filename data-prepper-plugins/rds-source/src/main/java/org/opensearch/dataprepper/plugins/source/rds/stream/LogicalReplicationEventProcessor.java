@@ -34,6 +34,30 @@ import java.util.List;
 import java.util.Map;
 
 public class LogicalReplicationEventProcessor {
+    enum TupleDataType {
+        NEW('N'),
+        KEY('K'),
+        OLD('O');
+
+        private final char value;
+
+        TupleDataType(char value) {
+            this.value = value;
+        }
+
+        public char getValue() {
+            return value;
+        }
+
+        public static TupleDataType fromValue(char value) {
+            for (TupleDataType type : TupleDataType.values()) {
+                if (type.getValue() == value) {
+                    return type;
+                }
+            }
+            throw new IllegalArgumentException("Invalid TupleDataType value: " + value);
+        }
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationEventProcessor.class);
 
@@ -170,18 +194,18 @@ public class LogicalReplicationEventProcessor {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
 
-        char typeId = (char) msg.get();
-        if (typeId == 'N') {
+        TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
+        if (tupleDataType == TupleDataType.NEW) {
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
             LOG.debug("Processed an UPDATE message with table id: {}", tableId);
-        } else if (typeId == 'K') {
+        } else if (tupleDataType == TupleDataType.KEY) {
             // Primary keys were changed
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
             msg.get();  // should be a char 'N'
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
             LOG.debug("Processed an UPDATE message with table id: {} and primary key(s) were changed", tableId);
 
-        } else if (typeId == 'O') {
+        } else if (tupleDataType == TupleDataType.OLD) {
             // Replica Identity is set to full, containing both old and new row data
             Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames);
             msg.get();  // should be a char 'N'

@@ -176,6 +176,7 @@ public class LeaderScheduler implements Runnable {
             final String publicationName = generatePublicationName();
             final String slotName = generateReplicationSlotName();
             ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(sourceConfig.getTableNames(), publicationName, slotName);
+            progressState.getPostgresStreamState().setPublicationName(publicationName);
             progressState.getPostgresStreamState().setReplicationSlotName(slotName);
         }
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);

@@ -25,7 +25,10 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationClient.class);
 
+    static final String PUBLICATION_NAMES_KEY = "publication_names";
+
     private final ConnectionManager connectionManager;
+    private final String publicationName;
     private final String replicationSlotName;
     private LogSequenceNumber startLsn;
     private LogicalReplicationEventProcessor eventProcessor;
@@ -33,7 +36,9 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     private volatile boolean disconnectRequested = false;
 
     public LogicalReplicationClient(final ConnectionManager connectionManager,
-                                    final String replicationSlotName) {
+                                    final String replicationSlotName,
+                                    final String publicationName) {
+        this.publicationName = publicationName;
         this.connectionManager = connectionManager;
         this.replicationSlotName = replicationSlotName;
     }
@@ -49,8 +54,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                     .replicationStream()
                     .logical()
                     .withSlotName(replicationSlotName)
-                    .withSlotOption("proto_version", "1")
-                    .withSlotOption("publication_names", "my_publication");
+                    .withSlotOption(PUBLICATION_NAMES_KEY, publicationName);
             if (startLsn != null) {
                 logicalStreamBuilder.withStartPosition(startLsn);
             }

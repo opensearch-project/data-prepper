@@ -45,11 +45,13 @@ class LogicalReplicationClientTest {
     @Mock
     private LogicalReplicationEventProcessor eventProcessor;
 
+    private String publicationName;
     private String replicationSlotName;
     private LogicalReplicationClient logicalReplicationClient;
 
     @BeforeEach
     void setUp() {
+        publicationName = UUID.randomUUID().toString();
         replicationSlotName = UUID.randomUUID().toString();
         logicalReplicationClient = createObjectUnderTest();
         logicalReplicationClient.setEventProcessor(eventProcessor);
@@ -86,6 +88,6 @@ class LogicalReplicationClientTest {
     }
 
     private LogicalReplicationClient createObjectUnderTest() {
-         return new LogicalReplicationClient(connectionManager, replicationSlotName);
+         return new LogicalReplicationClient(connectionManager, replicationSlotName, publicationName);
     }
 }
