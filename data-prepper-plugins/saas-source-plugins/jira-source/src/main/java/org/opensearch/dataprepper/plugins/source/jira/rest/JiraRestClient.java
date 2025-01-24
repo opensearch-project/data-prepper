@@ -127,14 +127,20 @@ public class JiraRestClient {
                     authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
                     log.error("Hitting API rate limit. Backing off with sleep timer.");
+                } else if (statusCode == HttpStatus.SERVICE_UNAVAILABLE) {
+                    log.error("Service unavailable.  Will retry after backing off with sleep timer.");
+                } else if (statusCode == HttpStatus.GATEWAY_TIMEOUT) {
+                    log.error("Gateway timeout.  Will retry after backing off with sleep timer.");
                 } else {
-                    log.error(NOISY, "Exception: ", ex);
+                    log.error(NOISY, "Received an unexpected status code {} response from Jira.", statusCode, ex);
                 }
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
                 } catch (InterruptedException e) {
                     throw new RuntimeException("Sleep in the retry attempt got interrupted.");
                 }
+            } catch (Exception ex) {
+                log.error(NOISY, "An exception has occurred while getting a response from the Jira search API", ex);
             }
             retryCount++;
         }

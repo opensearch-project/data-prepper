@@ -38,7 +38,7 @@ public class AddressValidation {
         try {
             return InetAddress.getByName(new URL(url).getHost());
         } catch (UnknownHostException | MalformedURLException e) {
-            log.error(INVALID_URL + " : {}", url);
+            log.error("{}: {}", INVALID_URL, url);
             throw new BadRequestException(e.getMessage(), e);
         }
     }
