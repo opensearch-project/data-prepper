@@ -22,15 +22,11 @@ import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.lambda.common.config.*;
 import org.opensearch.dataprepper.plugins.lambda.sink.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.plugins.lambda.sink.dlq.LambdaSinkFailedDlqData;
-import org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
