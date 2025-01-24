@@ -58,6 +58,7 @@ public class InMemoryBuffer implements Buffer {
     this.outputCodecContext = outputCodecContext;
   }
 
+  @Override
   public void addRecord(Record<Event> record) {
     records.add(record);
     Event event = record.getData();
@@ -72,6 +73,7 @@ public class InMemoryBuffer implements Buffer {
     eventCount++;
   }
 
+  @Override
   public List<Record<Event>> getRecords() {
     return records;
   }
