@@ -13,25 +13,14 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.util.LambdaRetryStrategy;
 import org.slf4j.Logger;
-import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
-import software.amazon.awssdk.services.lambda.model.ServiceException;
-import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,9 +51,9 @@ public class LambdaRetryStrategyTest {
 
     @Test
     void testIsRetryable() {
-        assertTrue(LambdaRetryStrategy.isRetryable(429));
-        assertTrue(LambdaRetryStrategy.isRetryable(500));
-        assertFalse(LambdaRetryStrategy.isRetryable(200));
+        assertTrue(LambdaRetryStrategy.isRetryableStatusCode(429));
+        assertTrue(LambdaRetryStrategy.isRetryableStatusCode(500));
+        assertFalse(LambdaRetryStrategy.isRetryableStatusCode(200));
     }
 
     @Test

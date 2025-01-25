@@ -2,7 +2,6 @@ package org.opensearch.dataprepper.plugins.lambda.utils;
 
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.async.AsyncExecuteRequest;
-import software.amazon.awssdk.utils.CompletableFutureUtils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;

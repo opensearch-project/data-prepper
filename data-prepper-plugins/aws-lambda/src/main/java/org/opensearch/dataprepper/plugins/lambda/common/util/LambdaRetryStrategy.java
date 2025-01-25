@@ -1,21 +1,14 @@
 package org.opensearch.dataprepper.plugins.lambda.common.util;
 
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.TooManyRequestsException;
 import software.amazon.awssdk.services.lambda.model.ServiceException;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.slf4j.Logger;
 
-import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 
 /**
  * Similar to BulkRetryStrategy in the OpenSearch sink.
@@ -74,7 +67,7 @@ public final class LambdaRetryStrategy {
             )
     );
 
-    public static boolean isRetryable(final int statusCode) {
+    public static boolean isRetryableStatusCode(final int statusCode) {
         return TIMEOUT_ERRORS.contains(statusCode) || (statusCode >= 500 && statusCode < 600);
     }
 
