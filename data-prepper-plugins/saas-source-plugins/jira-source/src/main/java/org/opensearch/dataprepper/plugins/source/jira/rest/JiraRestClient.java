@@ -51,13 +51,11 @@ public class JiraRestClient {
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
-    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
-    private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
     private int sleepTimeMultiplier = 1000;
@@ -68,8 +66,6 @@ public class JiraRestClient {
 
         ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
-
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
     }
 
