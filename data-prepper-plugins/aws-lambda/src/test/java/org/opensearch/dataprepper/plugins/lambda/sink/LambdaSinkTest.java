@@ -43,7 +43,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -177,13 +176,14 @@ class LambdaSinkTest {
                 new Record<>(mock(Event.class))
         );
 
-        // We mock the static method, expecting zero calls
+        // We expect no call to invokeLambdaAndGetFutureMap(...) since threshold not hit
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
+
             lambdaSink.doOutput(records);
 
-            // Because threshold=2 and we only provided 1 event, no flush => 0 calls to sendRecords
+            // Because threshold=2 and we only provided 1 event, no flush => 0 calls
             mockedHandler.verify(
-                    () -> LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any()),
+                    () -> LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList()),
                     never()
             );
         }
@@ -203,44 +203,46 @@ class LambdaSinkTest {
                 new Record<>(mock(Event.class))
         );
 
-        // Mock the static call to 'sendRecords(...)' to return a completed future
+        // Mock static calls
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
-            // For any invocation of isSuccess(int), call the real method:
+            // We'll let isSuccess(...) call real method so it checks statusCode
             mockedHandler.when(() -> LambdaCommonHandler.isSuccess(any()))
                     .thenCallRealMethod();
+
             final InvokeResponse mockResponse = mock(InvokeResponse.class);
             when(mockResponse.statusCode()).thenReturn(200);  // success
             when(mockResponse.payload()).thenReturn(SdkBytes.fromUtf8String("{\"msg\":\"OK\"}"));
 
+            // Future that returns mockResponse
             CompletableFuture<InvokeResponse> completedFuture = mock(CompletableFuture.class);
             when(completedFuture.join()).thenReturn(mockResponse);
 
-            // We can return a single mock Buffer -> future
+            // One buffer => future mapping
             final Buffer mockBuffer = mock(Buffer.class);
             when(mockBuffer.getRecords()).thenReturn(records);
             when(mockBuffer.getEventCount()).thenReturn(2);
 
-            Map<Buffer, CompletableFuture<InvokeResponse>> resultMap =
+            final Map<Buffer, CompletableFuture<InvokeResponse>> resultMap =
                     Map.of(mockBuffer, completedFuture);
 
+            // Now, because flushBuffers(...) calls invokeLambdaAndGetFutureMap(...),
+            // we mock that:
             mockedHandler.when(() ->
-                    LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any())
+                    LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenReturn(resultMap);
 
             // ACT
             lambdaSink.doOutput(records);
 
-            // VERIFY
-            // Because threshold=2 => flush => we should see exactly 1 call to sendRecords
+            // Since threshold=2 => flush => exactly 1 call to invokeLambdaAndGetFutureMap
             mockedHandler.verify(() ->
-                            LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any()),
+                            LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList()),
                     times(1)
             );
 
-            // The code should treat it as success => increment success counters
+            // We expect success
             verify(numberOfRecordsSuccessCounter).increment(2.0); // 2 events
             verify(numberOfRequestsSuccessCounter).increment();
-            // No failures
             verify(numberOfRecordsFailedCounter, never()).increment(anyDouble());
             verify(numberOfRequestsFailedCounter, never()).increment();
         }
@@ -256,19 +258,20 @@ class LambdaSinkTest {
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
             mockedHandler.when(() -> LambdaCommonHandler.isSuccess(any()))
                     .thenCallRealMethod();
-            // 1) doOutput => partial => no flush
+            // partial => no flush
             lambdaSink.doOutput(records);
-            mockedHandler.verify(
-                    () -> LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any()),
+
+            mockedHandler.verify(() ->
+                            LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList()),
                     never()
             );
 
-            // 2) Now shutdown => flush leftover
+            // Now shutdown => leftover partial => flush once
             final InvokeResponse mockResponse = mock(InvokeResponse.class);
             when(mockResponse.statusCode()).thenReturn(200);
             when(mockResponse.payload()).thenReturn(SdkBytes.fromUtf8String("{\"msg\":\"OK\"}"));
 
-            final CompletableFuture<InvokeResponse> completedFuture =
+            CompletableFuture<InvokeResponse> completedFuture =
                     CompletableFuture.completedFuture(mockResponse);
 
             final Buffer mockBuffer = mock(Buffer.class);
@@ -276,24 +279,26 @@ class LambdaSinkTest {
             when(mockBuffer.getEventCount()).thenReturn(1);
 
             mockedHandler.when(() ->
-                    LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any())
+                    LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenReturn(Map.of(mockBuffer, completedFuture));
 
+            // Trigger shutdown
             lambdaSink.shutdown();
 
-            // Now we expect 1 call on shutdown
+            // We now expect exactly 1 call
             mockedHandler.verify(() ->
-                            LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any()),
+                            LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList()),
                     times(1)
             );
 
+            // success counters
             verify(numberOfRecordsSuccessCounter).increment(1.0);
             verify(numberOfRequestsSuccessCounter).increment();
         }
     }
 
     @Test
-    void testFailureDuringSendRecords() {
+    void testFailureDuringInvokeLambdaAndGetFutureMap() {
         // pass 2 => threshold => flush => but an exception is thrown
         final List<Record<Event>> records = List.of(
                 new Record<>(mock(Event.class)),
@@ -303,15 +308,14 @@ class LambdaSinkTest {
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
             // cause the method to throw an exception
             mockedHandler.when(() ->
-                    LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any())
+                    LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenThrow(new RuntimeException("Test flush error"));
 
             lambdaSink.doOutput(records);
 
-            // We expect the sink to handle that failure => increment fail counters
+            // We expect fail counters
             verify(numberOfRecordsFailedCounter).increment(2.0);
             verify(numberOfRequestsFailedCounter).increment();
-            // No success increments
             verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
         }
     }
@@ -336,7 +340,7 @@ class LambdaSinkTest {
                     Map.of(bufferMock, failingFuture);
 
             mockedHandler.when(() ->
-                    LambdaCommonHandler.sendRecords(anyCollection(), any(), any(), any())
+                    LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenReturn(mapResult);
 
             lambdaSink.doOutput(records);
@@ -347,7 +351,6 @@ class LambdaSinkTest {
             verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
         }
     }
-
 
     @Test
     public void testHandleFailure_WithDlq() throws Exception {
