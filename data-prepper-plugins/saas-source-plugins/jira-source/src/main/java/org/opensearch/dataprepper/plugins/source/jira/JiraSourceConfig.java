@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
@@ -30,6 +31,11 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      */
     @JsonProperty("hosts")
     private List<String> hosts;
+
+    @AssertTrue(message = "Jira hosts must be a list of length 1")
+    boolean isValidHosts() {
+        return hosts != null && hosts.size() == 1;
+    }
 
     /**
      * Authentication Config to Access Jira
