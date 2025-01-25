@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferSynchronized;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
@@ -152,7 +152,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
     private void doInitializeInternal() {
         // Initialize the partial buffer
-        statefulBuffer = new InMemoryBuffer(
+        statefulBuffer = new InMemoryBufferSynchronized(
                 lambdaSinkConfig.getBatchOptions().getKeyName(),
                 outputCodecContext
         );
@@ -164,7 +164,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
      * do a time-based flush.
      */
     @Override
-    public synchronized void shutdown() {
+    public void shutdown() {
         // Flush the partial buffer if any leftover
         if (statefulBuffer.getEventCount() > 0) {
             flushBuffers(Collections.singletonList(statefulBuffer));
@@ -172,7 +172,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     }
 
     @Override
-    public synchronized void doOutput(final Collection<Record<Event>> records) {
+    public void doOutput(final Collection<Record<Event>> records) {
         if (!sinkInitialized) {
             LOG.warn("LambdaSink doOutput called before initialization");
             return;
@@ -193,7 +193,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
                 // This buffer is full
                 fullBuffers.add(statefulBuffer);
                 // Create new partial buffer
-                statefulBuffer = new InMemoryBuffer(
+                statefulBuffer = new InMemoryBufferSynchronized(
                         lambdaSinkConfig.getBatchOptions().getKeyName(),
                         outputCodecContext
                 );
@@ -225,7 +225,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             .build();
   }
 
-  synchronized void handleFailure(Collection<Record<Event>> failedRecords, Throwable throwable, int statusCode) {
+  void handleFailure(Collection<Record<Event>> failedRecords, Throwable throwable, int statusCode) {
     if (failedRecords.isEmpty()) {
         return;
     }
@@ -265,7 +265,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         }
     }
 
-    private synchronized void flushBuffers(final List<Buffer> buffersToFlush) {
+    private void flushBuffers(final List<Buffer> buffersToFlush) {
         // Combine all their records for a single call to sendRecords
         List<Record<Event>> combinedRecords = new ArrayList<>();
         for (Buffer buf : buffersToFlush) {
@@ -274,11 +274,10 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap;
         try {
-            bufferToFutureMap = LambdaCommonHandler.sendRecords(
-                    combinedRecords,
+            bufferToFutureMap = LambdaCommonHandler.invokeLambdaAndGetFutureMap(
                     lambdaSinkConfig,
                     lambdaAsyncClient,
-                    outputCodecContext
+                    buffersToFlush
             );
         } catch (Exception e) {
             LOG.error(NOISY, "Error sending buffers to Lambda", e);
