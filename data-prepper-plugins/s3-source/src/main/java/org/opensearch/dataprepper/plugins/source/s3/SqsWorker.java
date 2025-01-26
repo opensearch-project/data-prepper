@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.source.s3.parser.SqsMessageParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -197,6 +198,7 @@ public class SqsWorker implements Runnable {
         final List<ParsedMessage> parsedMessagesToRead = new ArrayList<>();
         final Map<ParsedMessage, AcknowledgementSet> messageAcknowledgementSetMap = new HashMap<>();
         final Map<ParsedMessage, List<DeleteMessageBatchRequestEntry>> messageWaitingForAcknowledgementsMap = new HashMap<>();
+        final Map<ParsedMessage, List<S3ObjectReference>> messagesWaitingForS3ObjectDeletion = new HashMap<>();
 
         for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
             if (parsedMessage.isFailedParsing()) {
@@ -236,6 +238,7 @@ public class SqsWorker implements Runnable {
                     Instant.now()
             ));
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
+            List<S3ObjectReference> s3ObjectDeletionWaitingForAcknowledgments = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
             final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
             final int maxVisibilityTimeout = (int)sqsOptions.getVisibilityDuplicateProtectionTimeout().getSeconds();
@@ -254,7 +257,10 @@ public class SqsWorker implements Runnable {
                             parsedMessageVisibilityTimesMap.remove(parsedMessage);
                         }
                         if (result == true) {
-                            deleteSqsMessages(waitingForAcknowledgements);
+                            final boolean successfullyDeletedAllMessages = deleteSqsMessages(waitingForAcknowledgements);
+                            if (successfullyDeletedAllMessages && s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                                deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                            }
                         }
                     },
                     Duration.ofSeconds(expiryTimeout));
@@ -273,6 +279,7 @@ public class SqsWorker implements Runnable {
                 }
                 messageAcknowledgementSetMap.put(parsedMessage, acknowledgementSet);
                 messageWaitingForAcknowledgementsMap.put(parsedMessage, waitingForAcknowledgements);
+                messagesWaitingForS3ObjectDeletion.put(parsedMessage, s3ObjectDeletionWaitingForAcknowledgments);
             }
         }
         
@@ -284,10 +291,14 @@ public class SqsWorker implements Runnable {
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(parsedMessage);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(parsedMessage);
+            final List<S3ObjectReference> s3ObjectDeletionsWaitingForAcknowledgments = messagesWaitingForS3ObjectDeletion.get(parsedMessage);
             final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.getBucketName(), parsedMessage.getObjectKey());
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
+                if (s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                    s3ObjectDeletionsWaitingForAcknowledgments.add(s3ObjectReference);
+                }
                 acknowledgementSet.complete();
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
@@ -333,11 +344,11 @@ public class SqsWorker implements Runnable {
         }
     }
 
-    private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+    private boolean deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
         if(isStopped)
-            return;
+            return false;
         if (deleteMessageBatchRequestEntryCollection.size() == 0) {
-            return;
+            return false;
         }
         final DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
         try {
@@ -361,6 +372,7 @@ public class SqsWorker implements Runnable {
                             .map(failed -> failed.toString())
                             .collect(Collectors.joining(", "));
                     LOG.error("Failed to delete {} messages from SQS with errors: [{}].", failedDeleteCount, failedMessages);
+                    return false;
                 }
             }
 
@@ -370,6 +382,21 @@ public class SqsWorker implements Runnable {
             LOG.error("Failed to delete {} messages from SQS due to {}.", failedMessageCount, e.getMessage());
             if(e instanceof StsException) {
                 applyBackoff();
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private void deleteS3Objects(final List<S3ObjectReference> objectsToDelete) {
+        for (final S3ObjectReference s3ObjectReference : objectsToDelete) {
+            try {
+                s3Service.deleteS3Object(s3ObjectReference);
+            } catch (final Exception e) {
+                LOG.error("Received an exception while attempting to delete object {} from bucket {}: {}",
+                        s3ObjectReference.getKey(), s3ObjectReference.getBucketName(), e.getMessage());
             }
         }
     }

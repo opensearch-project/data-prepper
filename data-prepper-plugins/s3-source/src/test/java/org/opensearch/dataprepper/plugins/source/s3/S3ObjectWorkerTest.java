@@ -31,6 +31,8 @@ import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -50,6 +52,7 @@ import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -149,11 +152,11 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getKey()).thenReturn(key);
 
         s3ObjectPluginMetrics = mock(S3ObjectPluginMetrics.class);
-        when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(s3ObjectReadTimer);
+        lenient().when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(s3ObjectReadTimer);
         objectSize = random.nextInt(100_000) + 10_000;
 
         exceptionThrownByCallable = null;
-        when(s3ObjectReadTimer.recordCallable(any(Callable.class)))
+        lenient().when(s3ObjectReadTimer.recordCallable(any(Callable.class)))
                 .thenAnswer(a -> {
                     try {
                         a.getArgument(0, Callable.class).call();
@@ -492,6 +495,27 @@ class S3ObjectWorkerTest {
         createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
 
         verify(s3ObjectSizeProcessedSummary).record(inputStringLength);
+    }
+
+    @Test
+    void deleteS3Object_calls_delete_object_with_expected_request() {
+        final ArgumentCaptor<DeleteObjectRequest> deleteObjectRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        final String accountOwner = UUID.randomUUID().toString();
+
+        when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(accountOwner));
+
+        when(s3Client.deleteObject(deleteObjectRequestArgumentCaptor.capture())).thenReturn(mock(DeleteObjectResponse.class));
+
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
+
+        objectUnderTest.deleteS3Object(s3ObjectReference);
+
+        final DeleteObjectRequest deleteObjectRequest = deleteObjectRequestArgumentCaptor.getValue();
+        assertThat(deleteObjectRequest, notNullValue());
+        assertThat(deleteObjectRequest.bucket(), equalTo(bucketName));
+        assertThat(deleteObjectRequest.key(), equalTo(key));
+        assertThat(deleteObjectRequest.expectedBucketOwner(), equalTo(accountOwner));
     }
 
 }

@@ -17,10 +17,12 @@ import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvide
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -77,6 +79,18 @@ class S3ObjectWorker implements S3ObjectHandler {
             throw new RuntimeException(e);
         }
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
+    }
+
+    @Override
+    public void deleteS3Object(final S3ObjectReference s3ObjectReference) {
+        final DeleteObjectRequest.Builder deleteRequestBuilder = DeleteObjectRequest.builder()
+                        .bucket(s3ObjectReference.getBucketName())
+                        .key(s3ObjectReference.getKey());
+
+        final Optional<String> bucketOwner = bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName());
+        bucketOwner.ifPresent(deleteRequestBuilder::expectedBucketOwner);
+
+        s3Client.deleteObject(deleteRequestBuilder.build());
     }
 
     private void doParseObject(final AcknowledgementSet acknowledgementSet,
