@@ -12,7 +12,6 @@ import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.logs.v1.LogRecord;
@@ -20,11 +19,9 @@ import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
@@ -92,6 +89,7 @@ public class OTelProtoCodec {
     static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
     static final String STATUS_CODE = "status.code";
     static final String STATUS_MESSAGE = "status.message";
+    static final String ATTRIBUTES_KEY = "attributes";
 
 
     /**
@@ -198,17 +196,6 @@ public class OTelProtoCodec {
             final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
             final String schemaUrl = rs.getSchemaUrl();
 
-            Stream<OpenTelemetryLog> mappedInstrumentationLibraryLogs = rs.getInstrumentationLibraryLogsList()
-                    .stream()
-                    .map(ils ->
-                            processLogsList(ils.getLogRecordsList(),
-                                    serviceName,
-                                    OTelProtoCodec.getInstrumentationLibraryAttributes(ils.getInstrumentationLibrary()),
-                                    resourceAttributes,
-                                    schemaUrl,
-                                    timeReceived))
-                    .flatMap(Collection::stream);
-
             Stream<OpenTelemetryLog> mappedScopeListLogs = rs.getScopeLogsList()
                     .stream()
                     .map(sls ->
@@ -220,7 +207,7 @@ public class OTelProtoCodec {
                                     timeReceived))
                     .flatMap(Collection::stream);
 
-            return Stream.concat(mappedInstrumentationLibraryLogs, mappedScopeListLogs).collect(Collectors.toList());
+            return mappedScopeListLogs.collect(Collectors.toList());
         }
 
         protected Map<String, ResourceSpans> splitResourceSpansByTraceId(final ResourceSpans resourceSpans) {
@@ -239,22 +226,6 @@ public class OTelProtoCodec {
                 }
             }
 
-            if (resourceSpans.getInstrumentationLibrarySpansList().size() > 0) {
-                for (Map.Entry<String, List<InstrumentationLibrarySpans>> entry: splitInstrumentationLibrarySpansByTraceId(resourceSpans.getInstrumentationLibrarySpansList()).entrySet()) {
-                    ResourceSpans.Builder resourceSpansBuilder;
-                    String traceId = entry.getKey();
-                    if (resultBuilderMap.containsKey(traceId)) {
-                        resourceSpansBuilder = resultBuilderMap.get(traceId);
-                    } else {
-                        resourceSpansBuilder = ResourceSpans.newBuilder();
-                        if (hasResource) {
-                            resourceSpansBuilder.setResource(resource);
-                        }
-                        resultBuilderMap.put(traceId, resourceSpansBuilder);
-                    }
-                    resourceSpansBuilder.addAllInstrumentationLibrarySpans(entry.getValue());
-                }
-            }
             for (Map.Entry<String, ResourceSpans.Builder> entry: resultBuilderMap.entrySet()) {
                 result.put(entry.getKey(), entry.getValue().build());
             }
@@ -268,10 +239,6 @@ public class OTelProtoCodec {
 
             if (resourceSpans.getScopeSpansList().size() > 0) {
                 return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived);
-            }
-
-            if (resourceSpans.getInstrumentationLibrarySpansList().size() > 0) {
-                return parseInstrumentationLibrarySpans(resourceSpans.getInstrumentationLibrarySpansList(), serviceName, resourceAttributes, timeReceived);
             }
 
             LOG.debug("No spans found to parse from ResourceSpans object: {}", resourceSpans);
@@ -305,39 +272,6 @@ public class OTelProtoCodec {
             }
             return result;
         }
-
-        private List<Span> parseInstrumentationLibrarySpans(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList,
-                                                            final String serviceName, final Map<String, Object> resourceAttributes,
-                                                            final Instant timeReceived) {
-            return instrumentationLibrarySpansList.stream()
-                    .map(instrumentationLibrarySpans -> parseSpans(instrumentationLibrarySpans.getSpansList(),
-                            instrumentationLibrarySpans.getInstrumentationLibrary(), this::getInstrumentationLibraryAttributes,
-                            serviceName, resourceAttributes, timeReceived))
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toList());
-        }
-
-        private Map<String, List<InstrumentationLibrarySpans>> splitInstrumentationLibrarySpansByTraceId(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList) {
-            Map<String, List<InstrumentationLibrarySpans>> result = new HashMap<>();
-            for (InstrumentationLibrarySpans is: instrumentationLibrarySpansList) {
-                final boolean hasInstrumentationLibrary = is.hasInstrumentationLibrary();
-                final io.opentelemetry.proto.common.v1.InstrumentationLibrary instrumentationLibrary = is.getInstrumentationLibrary();
-                for (Map.Entry<String, List<io.opentelemetry.proto.trace.v1.Span>> entry: splitSpansByTraceId(is.getSpansList()).entrySet()) {
-                    String traceId = entry.getKey();
-                    InstrumentationLibrarySpans.Builder ilSpansBuilder = InstrumentationLibrarySpans.newBuilder().setSchemaUrl(is.getSchemaUrl()).addAllSpans(entry.getValue());
-                    if (hasInstrumentationLibrary) {
-                        ilSpansBuilder.setInstrumentationLibrary(instrumentationLibrary);
-                    }
-                    
-                    if (!result.containsKey(traceId)) {
-                        result.put(traceId, new ArrayList<>());
-                    }
-                    result.get(traceId).add(ilSpansBuilder.build());
-                }
-            }
-            return result;
-        }
-
 
         private Map<String, List<io.opentelemetry.proto.trace.v1.Span>> splitSpansByTraceId(final List<io.opentelemetry.proto.trace.v1.Span> spans) {
             Map<String, List<io.opentelemetry.proto.trace.v1.Span>> result = new HashMap<>();
@@ -547,17 +481,6 @@ public class OTelProtoCodec {
             return traceGroupFieldsBuilder.build();
         }
 
-        protected Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
-            final Map<String, Object> instrumentationAttr = new HashMap<>();
-            if (!instrumentationLibrary.getName().isEmpty()) {
-                instrumentationAttr.put(INSTRUMENTATION_SCOPE_NAME, instrumentationLibrary.getName());
-            }
-            if (!instrumentationLibrary.getVersion().isEmpty()) {
-                instrumentationAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationLibrary.getVersion());
-            }
-            return instrumentationAttr;
-        }
-
         protected Map<String, Object> getSpanStatusAttributes(final Status status) {
             final Map<String, Object> statusAttr = new HashMap<>();
             statusAttr.put(STATUS_CODE, status.getCodeValue());
@@ -599,11 +522,6 @@ public class OTelProtoCodec {
                 final String schemaUrl = rs.getSchemaUrl();
                 final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
                 final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
-
-                for (InstrumentationLibraryMetrics is : rs.getInstrumentationLibraryMetricsList()) {
-                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
-                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
-                }
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
                     final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
@@ -1172,23 +1090,6 @@ public class OTelProtoCodec {
     }
 
     /**
-     * Extracts the name and version of the used instrumentation library used
-     *
-     * @param instrumentationLibrary the instrumentation library
-     * @return A map, containing information about the instrumentation library
-     */
-    public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
-        final Map<String, Object> instrumentationAttr = new HashMap<>();
-        if (!instrumentationLibrary.getName().isEmpty()) {
-            instrumentationAttr.put(INSTRUMENTATION_LIBRARY_NAME, instrumentationLibrary.getName());
-        }
-        if (!instrumentationLibrary.getVersion().isEmpty()) {
-            instrumentationAttr.put(INSTRUMENTATION_LIBRARY_VERSION, instrumentationLibrary.getVersion());
-        }
-        return instrumentationAttr;
-    }
-
-    /**
      * Extracts the name and version of the used instrumentation scope used
      *
      * @param  instrumentationScope the instrumentation scope
@@ -1201,6 +1102,9 @@ public class OTelProtoCodec {
         }
         if (!instrumentationScope.getVersion().isEmpty()) {
             instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationScope.getVersion());
+        }
+        if (!instrumentationScope.getAttributesList().isEmpty()) {
+            instrumentationScopeAttr.put(ATTRIBUTES_KEY, OTelProtoCodec.unpackKeyValueListLog(instrumentationScope.getAttributesList()));
         }
         return instrumentationScopeAttr;
     }
