@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -23,7 +24,6 @@ import java.util.stream.Collectors;
 @Named
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
-    private static final int maxItemsPerPage = 50;
     private final Timer crawlingTimer;
     private final PluginMetrics pluginMetrics =
             PluginMetrics.fromNames("sourceCrawler", "crawler");
@@ -36,14 +36,14 @@ public class Crawler {
     }
 
     public Instant crawl(Instant lastPollTime,
-                         EnhancedSourceCoordinator coordinator) {
+                         EnhancedSourceCoordinator coordinator, int batchSize) {
         long startTime = System.currentTimeMillis();
         client.setLastPollTime(lastPollTime);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
         log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
-            for (int i = 0; i < maxItemsPerPage && itemInfoIterator.hasNext(); i++) {
+            for (int i = 0; i < batchSize && itemInfoIterator.hasNext(); i++) {
                 ItemInfo nextItem = itemInfoIterator.next();
                 if (nextItem == null) {
                     //we don't expect null items, but just in case, we'll skip them
@@ -61,8 +61,8 @@ public class Crawler {
         return Instant.ofEpochMilli(startTime);
     }
 
-    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig) {
-        client.executePartition(state, buffer, sourceConfig);
+    public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
+        client.executePartition(state, buffer, acknowledgementSet);
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {

@@ -589,6 +589,55 @@ class SqsWorkerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
+    void processSqsMessages_should_call_s3Service_to_delete_objects_if_deleteS3ObjectsOnRead_is_enabled_on_acknowledgment_callback(final String eventName) throws IOException {
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(true);
+        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+        final Message message = mock(Message.class);
+        when(message.body()).thenReturn(createEventNotification(eventName, startTime));
+        final String testReceiptHandle = UUID.randomUUID().toString();
+        when(message.messageId()).thenReturn(testReceiptHandle);
+        when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+        final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+        when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+        final ArgumentCaptor<Consumer> ackCallbackArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
+                .thenReturn(acknowledgementSet);
+
+        final int messagesProcessed = createObjectUnderTest().processSqsMessages();
+        final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+
+        final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
+        verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
+        Duration actualDelay = durationArgumentCaptor.getValue();
+
+        assertThat(messagesProcessed, equalTo(1));
+        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+
+        verify(acknowledgementSetManager).create(ackCallbackArgumentCaptor.capture(), any(Duration.class));
+
+        final DeleteMessageBatchResponse deleteMessageBatchResponse = mock(DeleteMessageBatchResponse.class);
+        when(deleteMessageBatchResponse.hasSuccessful()).thenReturn(true);
+        when(deleteMessageBatchResponse.successful()).thenReturn(Collections.singletonList(mock(DeleteMessageBatchResultEntry.class)));
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenReturn(deleteMessageBatchResponse);
+
+        final Consumer<Boolean> acknowledgmentCallback = ackCallbackArgumentCaptor.getValue();
+        acknowledgmentCallback.accept(true);
+
+        verify(s3Service).deleteS3Object(any(S3ObjectReference.class));
+
+        verify(sqsMessagesReceivedCounter).increment(1);
+        verify(sqsMessagesDeletedCounter).increment(1);
+        verify(s3Service).deleteS3Object(any(S3ObjectReference.class));
+        assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+        assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
     void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements_and_progress_check(final String eventName) throws IOException {
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));

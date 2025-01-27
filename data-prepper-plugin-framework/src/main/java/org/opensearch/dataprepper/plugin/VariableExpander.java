@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -29,8 +30,7 @@ public class VariableExpander {
 
     @Inject
     public VariableExpander(
-            @Named("extensionPluginConfigObjectMapper")
-            final ObjectMapper objectMapper,
+            @Named("extensionPluginConfigObjectMapper") final ObjectMapper objectMapper,
             final Set<PluginConfigValueTranslator> pluginConfigValueTranslators) {
         this.objectMapper = objectMapper;
         patternPluginConfigValueTranslatorMap = pluginConfigValueTranslators.stream().collect(Collectors.toMap(
@@ -48,8 +48,13 @@ public class VariableExpander {
                     .filter(entry -> entry.getKey().matches())
                     .map(entry -> {
                         final String valueReferenceKey = entry.getKey().group(VALUE_REFERENCE_KEY);
-                        return objectMapper.convertValue(
-                                entry.getValue().translate(valueReferenceKey), destinationType);
+                        if (destinationType.equals(PluginConfigVariable.class)) {
+                            return (T) entry.getValue().translateToPluginConfigVariable(valueReferenceKey);
+                        } else {
+                            return objectMapper.convertValue(
+                                    entry.getValue().translate(valueReferenceKey), destinationType);
+                        }
+
                     })
                     .findFirst()
                     .orElseGet(() -> objectMapper.convertValue(rawValue, destinationType));

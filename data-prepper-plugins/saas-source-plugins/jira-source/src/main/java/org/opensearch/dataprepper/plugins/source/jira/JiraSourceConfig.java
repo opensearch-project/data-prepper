@@ -17,13 +17,12 @@ import org.opensearch.dataprepper.plugins.source.jira.configuration.Authenticati
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
-import java.time.Duration;
 import java.util.List;
 
 @Getter
 public class JiraSourceConfig implements CrawlerSourceConfig {
 
-    private static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMinutes(2);
+    private static final int DEFAULT_BATCH_SIZE = 50;
 
     /**
      * Jira account url
@@ -38,6 +37,12 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
     @Valid
     private AuthenticationConfig authenticationConfig;
 
+    /**
+     * Batch size for fetching tickets
+     */
+    @JsonProperty("batch_size")
+    private int batchSize = DEFAULT_BATCH_SIZE;
+
 
     /**
      * Filter Config to filter what tickets get ingested
@@ -47,17 +52,10 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
 
 
     /**
-     * Number of worker threads to spawn to parallel source fetching
+     * Boolean property indicating end to end acknowledgments state
      */
-    @JsonProperty("workers")
-    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
-
-    /**
-     * Default time to wait (with exponential backOff) in the case of
-     * waiting for the source service to respond
-     */
-    @JsonProperty("backoff_time")
-    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
+    @JsonProperty("acknowledgments")
+    private boolean acknowledgments = false;
 
     public String getAccountUrl() {
         return this.getHosts().get(0);
