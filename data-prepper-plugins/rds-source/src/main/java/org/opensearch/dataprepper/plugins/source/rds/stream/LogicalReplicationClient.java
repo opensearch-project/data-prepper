@@ -1,0 +1,106 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
+package org.opensearch.dataprepper.plugins.source.rds.stream;
+
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.postgresql.PGConnection;
+import org.postgresql.replication.LogSequenceNumber;
+import org.postgresql.replication.PGReplicationStream;
+import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.sql.Connection;
+
+public class LogicalReplicationClient implements ReplicationLogClient {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationClient.class);
+
+    static final String PUBLICATION_NAMES_KEY = "publication_names";
+
+    private final ConnectionManager connectionManager;
+    private final String publicationName;
+    private final String replicationSlotName;
+    private LogSequenceNumber startLsn;
+    private LogicalReplicationEventProcessor eventProcessor;
+
+    private volatile boolean disconnectRequested = false;
+
+    public LogicalReplicationClient(final ConnectionManager connectionManager,
+                                    final String replicationSlotName,
+                                    final String publicationName) {
+        this.publicationName = publicationName;
+        this.connectionManager = connectionManager;
+        this.replicationSlotName = replicationSlotName;
+    }
+
+    @Override
+    public void connect() {
+        PGReplicationStream stream;
+        try (Connection conn = connectionManager.getConnection()) {
+            PGConnection pgConnection = conn.unwrap(PGConnection.class);
+
+            // Create a replication stream
+            ChainedLogicalStreamBuilder logicalStreamBuilder = pgConnection.getReplicationAPI()
+                    .replicationStream()
+                    .logical()
+                    .withSlotName(replicationSlotName)
+                    .withSlotOption(PUBLICATION_NAMES_KEY, publicationName);
+            if (startLsn != null) {
+                logicalStreamBuilder.withStartPosition(startLsn);
+            }
+            stream = logicalStreamBuilder.start();
+
+            if (eventProcessor != null) {
+                while (!disconnectRequested) {
+                    try {
+                        // Read changes
+                        ByteBuffer msg = stream.readPending();
+
+                        if (msg == null) {
+                            Thread.sleep(10);
+                            continue;
+                        }
+
+                        // decode and convert events to Data Prepper events
+                        eventProcessor.process(msg);
+
+                        // Acknowledge receiving the message
+                        LogSequenceNumber lsn = stream.getLastReceiveLSN();
+                        stream.setFlushedLSN(lsn);
+                        stream.setAppliedLSN(lsn);
+                    } catch (Exception e) {
+                        LOG.error("Exception while processing Postgres replication stream. ", e);
+                    }
+                }
+            }
+
+            stream.close();
+            LOG.info("Replication stream closed successfully.");
+        } catch (Exception e) {
+            LOG.error("Exception while creating Postgres replication stream. ", e);
+        }
+    }
+
+    @Override
+    public void disconnect() {
+        disconnectRequested = true;
+    }
+
+    public void setEventProcessor(LogicalReplicationEventProcessor eventProcessor) {
+        this.eventProcessor = eventProcessor;
+    }
+
+    public void setStartLsn(LogSequenceNumber startLsn) {
+        this.startLsn = startLsn;
+    }
+}

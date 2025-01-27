@@ -50,7 +50,7 @@ public class CascadingActionDetector {
             return parentTableMap;
         }
 
-        List<ForeignKeyRelation> foreignKeyRelations = streamPartition.getProgressState().get().getForeignKeyRelations();;
+        List<ForeignKeyRelation> foreignKeyRelations = streamPartition.getProgressState().get().getMySqlStreamState().getForeignKeyRelations();;
 
         for (ForeignKeyRelation foreignKeyRelation : foreignKeyRelations) {
             if (!ForeignKeyRelation.containsCascadingAction(foreignKeyRelation)) {

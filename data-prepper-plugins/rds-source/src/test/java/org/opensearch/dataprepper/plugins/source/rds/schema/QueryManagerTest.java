@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 class QueryManagerTest {
 
     @Mock
-    private ConnectionManager connectionManager;
+    private MySqlConnectionManager connectionManager;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Connection connection;
