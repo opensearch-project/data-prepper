@@ -19,4 +19,8 @@ public class S3Service {
         s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
     }
 
+    void deleteS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
+        s3ObjectHandler.deleteS3Object(s3ObjectReference);
+    }
+
 }
