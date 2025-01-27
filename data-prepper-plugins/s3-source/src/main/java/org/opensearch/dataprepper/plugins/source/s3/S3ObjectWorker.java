@@ -36,6 +36,9 @@ class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
     private static final long DEFAULT_CHECKPOINT_INTERVAL_MILLS = 5 * 60_000;
 
+    private static final int MAX_RETRIES_DELETE_OBJECT = 3;
+    private static final long DELETE_OBJECT_RETRY_DELAY_MS = 1000;
+
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
 
@@ -90,7 +93,35 @@ class S3ObjectWorker implements S3ObjectHandler {
         final Optional<String> bucketOwner = bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName());
         bucketOwner.ifPresent(deleteRequestBuilder::expectedBucketOwner);
 
-        s3Client.deleteObject(deleteRequestBuilder.build());
+        final DeleteObjectRequest deleteObjectRequest = deleteRequestBuilder.build();
+
+        boolean deleteSuccessFul = false;
+        int retryCount = 0;
+        
+        while (!deleteSuccessFul && retryCount < MAX_RETRIES_DELETE_OBJECT) {
+            try {
+                s3Client.deleteObject(deleteObjectRequest);
+                deleteSuccessFul = true;
+                LOG.debug("Successfully deleted object {} from bucket {} on attempt {}",
+                        s3ObjectReference.getKey(), s3ObjectReference.getBucketName(), retryCount);
+            } catch (final Exception e) {
+                retryCount++;
+                if (retryCount == MAX_RETRIES_DELETE_OBJECT) {
+                    LOG.error("Failed to delete object {} from bucket {} after {} attempts: {}",
+                            s3ObjectReference.getKey(), s3ObjectReference.getBucketName(), MAX_RETRIES_DELETE_OBJECT, e.getMessage());
+                    s3ObjectPluginMetrics.getS3ObjectsDeleteFailed().increment();
+                } else {
+                    LOG.warn("Failed to delete object {} from bucket {} on attempt {}, will retry: {}",
+                            s3ObjectReference.getKey(), s3ObjectReference.getBucketName(), retryCount, e.getMessage());
+                    try {
+                        Thread.sleep(DELETE_OBJECT_RETRY_DELAY_MS);
+                    } catch (final InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     private void doParseObject(final AcknowledgementSet acknowledgementSet,

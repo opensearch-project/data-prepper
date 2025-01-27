@@ -498,7 +498,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void deleteS3Object_calls_delete_object_with_expected_request() {
+    void deleteS3Object_calls_delete_object_with_expected_request_success() {
         final ArgumentCaptor<DeleteObjectRequest> deleteObjectRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
         final String accountOwner = UUID.randomUUID().toString();
 
@@ -516,6 +516,26 @@ class S3ObjectWorkerTest {
         assertThat(deleteObjectRequest.bucket(), equalTo(bucketName));
         assertThat(deleteObjectRequest.key(), equalTo(key));
         assertThat(deleteObjectRequest.expectedBucketOwner(), equalTo(accountOwner));
+    }
+
+    @Test
+    void deleteS3Object_increments_failed_deletion_metric_after_max_retries() {
+        final ArgumentCaptor<DeleteObjectRequest> deleteObjectRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        final String accountOwner = UUID.randomUUID().toString();
+
+        when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(accountOwner));
+
+        when(s3Client.deleteObject(deleteObjectRequestArgumentCaptor.capture())).thenThrow(RuntimeException.class);
+
+        final Counter s3ObjectDeteleFailedCounter = mock(Counter.class);
+        when(s3ObjectPluginMetrics.getS3ObjectsDeleteFailed()).thenReturn(s3ObjectDeteleFailedCounter);
+
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
+
+        objectUnderTest.deleteS3Object(s3ObjectReference);
+
+        verify(s3ObjectDeteleFailedCounter).increment();
     }
 
 }
