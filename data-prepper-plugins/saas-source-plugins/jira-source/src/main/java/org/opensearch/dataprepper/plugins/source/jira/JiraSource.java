@@ -16,10 +16,12 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
 import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
@@ -54,9 +56,17 @@ public class JiraSource extends CrawlerSourcePlugin {
                       final PluginFactory pluginFactory,
                       final AcknowledgementSetManager acknowledgementSetManager,
                       Crawler crawler,
-                      PluginExecutorServiceProvider executorServiceProvider) {
+                      PluginExecutorServiceProvider executorServiceProvider,
+                      final PipelineDescription pipelineDescription,
+                      final JiraService jiraService,
+                      final JiraRestClient jiraRestClient) {
         super(PLUGIN_NAME, pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Jira Source Plugin");
+        jiraSourceConfig.setPipelineName(pipelineDescription.getPipelineName());
+        jiraService.setPluginMetrics(pluginMetrics);
+        crawler.setPluginMetrics(pluginMetrics);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
+
         this.jiraSourceConfig = jiraSourceConfig;
         this.jiraOauthConfig = jiraOauthConfig;
     }

@@ -13,12 +13,15 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.time.Duration;
 import java.util.List;
+
+import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PLUGIN_NAME;
 
 @Getter
 public class JiraSourceConfig implements CrawlerSourceConfig {
@@ -64,6 +67,16 @@ public class JiraSourceConfig implements CrawlerSourceConfig {
      */
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
+
+    /**
+     * Pipeline name to be used for pipeline metrics
+     */
+    @Setter
+    @Getter
+    private String pipelineName;
+
+    @Getter
+    final private String pluginName = PLUGIN_NAME;
 
     public String getAccountUrl() {
         return this.getHosts().get(0);

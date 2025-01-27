@@ -25,14 +25,16 @@ import java.util.stream.Collectors;
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private static final int maxItemsPerPage = 100;
-    private final Timer crawlingTimer;
-    private final PluginMetrics pluginMetrics =
-            PluginMetrics.fromNames("sourceCrawler", "crawler");
-
+    private Timer crawlingTimer;
+    private PluginMetrics pluginMetrics;
     private final CrawlerClient client;
 
     public Crawler(CrawlerClient client) {
         this.client = client;
+    }
+
+    public void setPluginMetrics(PluginMetrics pluginMetrics){
+        this.pluginMetrics = pluginMetrics;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
     }
 

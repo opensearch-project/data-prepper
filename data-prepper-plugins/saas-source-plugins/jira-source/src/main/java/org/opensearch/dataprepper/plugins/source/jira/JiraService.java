@@ -60,13 +60,16 @@ public class JiraService {
 
     private final JiraSourceConfig jiraSourceConfig;
     private final JiraRestClient jiraRestClient;
-    private final Counter searchResultsFoundCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
-
+    private Counter searchResultsFoundCounter;
+    private PluginMetrics jiraPluginMetrics;
 
     public JiraService(JiraSourceConfig jiraSourceConfig, JiraRestClient jiraRestClient) {
         this.jiraSourceConfig = jiraSourceConfig;
         this.jiraRestClient = jiraRestClient;
+    }
+
+    public void setPluginMetrics(PluginMetrics pluginMetrics){
+        this.jiraPluginMetrics = pluginMetrics;
         this.searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
     }
 

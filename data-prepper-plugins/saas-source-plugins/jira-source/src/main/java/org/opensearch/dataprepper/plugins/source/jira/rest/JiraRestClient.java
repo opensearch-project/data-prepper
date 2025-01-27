@@ -55,17 +55,20 @@ public class JiraRestClient {
     private static final String ISSUES_REQUESTED = "issuesRequested";
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
-    private final Timer ticketFetchLatencyTimer;
-    private final Timer searchCallLatencyTimer;
-    private final Timer projectFetchLatencyTimer;
-    private final Counter issuesRequestedCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
+    private Timer ticketFetchLatencyTimer;
+    private Timer searchCallLatencyTimer;
+    private Timer projectFetchLatencyTimer;
+    private Counter issuesRequestedCounter;
+    private PluginMetrics jiraPluginMetrics;
     private int sleepTimeMultiplier = 1000;
 
     public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
+    }
 
+    public void setPluginMetrics(PluginMetrics pluginMetrics){
+        this.jiraPluginMetrics = pluginMetrics;
         ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
         projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
