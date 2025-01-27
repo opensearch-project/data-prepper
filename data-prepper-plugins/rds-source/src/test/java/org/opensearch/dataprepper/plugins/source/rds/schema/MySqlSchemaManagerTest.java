@@ -37,23 +37,23 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_FILE;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_POSITION;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.BINLOG_STATUS_QUERY;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.COLUMN_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.TYPE_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.DELETE_RULE;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.FKCOLUMN_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.FKTABLE_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.PKCOLUMN_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.PKTABLE_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager.UPDATE_RULE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_FILE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_POSITION;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_STATUS_QUERY;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.DELETE_RULE;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.FKCOLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.FKTABLE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.PKCOLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.PKTABLE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.UPDATE_RULE;
 
 @ExtendWith(MockitoExtension.class)
-class SchemaManagerTest {
+class MySqlSchemaManagerTest {
 
     @Mock
-    private ConnectionManager connectionManager;
+    private MySqlConnectionManager connectionManager;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Connection connection;
@@ -64,7 +64,7 @@ class SchemaManagerTest {
     @Mock
     private ResultSet resultSet;
 
-    private SchemaManager schemaManager;
+    private MySqlSchemaManager schemaManager;
 
     @BeforeEach
     void setUp() {
@@ -81,7 +81,7 @@ class SchemaManagerTest {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getString(COLUMN_NAME)).thenReturn(primaryKey);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName, tableName);
+        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
 
         assertThat(primaryKeys, contains(primaryKey));
     }
@@ -92,7 +92,7 @@ class SchemaManagerTest {
         final String tableName = UUID.randomUUID().toString();
         when(connectionManager.getConnection()).thenThrow(SQLException.class);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName, tableName);
+        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
 
         assertThat(primaryKeys, empty());
     }
@@ -217,7 +217,7 @@ class SchemaManagerTest {
         assertThat(foreignKeyRelation.getDeleteAction(), is(ForeignKeyAction.SET_NULL));
     }
 
-    private SchemaManager createObjectUnderTest() {
-        return new SchemaManager(connectionManager);
+    private MySqlSchemaManager createObjectUnderTest() {
+        return new MySqlSchemaManager(connectionManager);
     }
 }

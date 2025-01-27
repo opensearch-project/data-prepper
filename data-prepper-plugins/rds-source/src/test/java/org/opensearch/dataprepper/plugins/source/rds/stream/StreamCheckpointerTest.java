@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 
@@ -36,6 +37,9 @@ class StreamCheckpointerTest {
     private StreamPartition streamPartition;
 
     @Mock
+    private MySqlStreamState mySqlStreamState;
+
+    @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
@@ -55,10 +59,11 @@ class StreamCheckpointerTest {
         final BinlogCoordinate binlogCoordinate = mock(BinlogCoordinate.class);
         final StreamProgressState streamProgressState = mock(StreamProgressState.class);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+        when(streamProgressState.getMySqlStreamState()).thenReturn(mySqlStreamState);
 
         streamCheckpointer.checkpoint(binlogCoordinate);
 
-        verify(streamProgressState).setCurrentPosition(binlogCoordinate);
+        verify(mySqlStreamState).setCurrentPosition(binlogCoordinate);
         verify(sourceCoordinator).saveProgressStateForPartition(streamPartition, CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE);
         verify(checkpointCounter).increment();
     }
