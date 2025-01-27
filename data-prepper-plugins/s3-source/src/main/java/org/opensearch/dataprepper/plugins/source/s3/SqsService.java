@@ -12,13 +12,10 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
