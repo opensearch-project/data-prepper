@@ -17,15 +17,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
+import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 
@@ -80,9 +79,6 @@ public class JiraSourceTest {
     BasicConfig basicConfig;
 
     @Mock
-    private PipelineDescription pipelineDescription;
-
-    @Mock
     private JiraService jiraService;
 
     @Mock
@@ -91,14 +87,14 @@ public class JiraSourceTest {
     @Test
     void initialization() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, pipelineDescription, jiraService, jiraRestClient);
+        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, jiraService, jiraRestClient);
         assertNotNull(source);
     }
 
     @Test
     void testStart() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, pipelineDescription, jiraService, jiraRestClient);
+        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, jiraService, jiraRestClient);
         when(jiraSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(jiraSourceConfig.getAuthType()).thenReturn(BASIC);
         when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
@@ -114,7 +110,7 @@ public class JiraSourceTest {
     @Test
     void testStop() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, pipelineDescription, jiraService, jiraRestClient);
+        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, jiraService, jiraRestClient);
         when(jiraSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(jiraSourceConfig.getAuthType()).thenReturn(BASIC);
         when(jiraSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
@@ -131,7 +127,7 @@ public class JiraSourceTest {
     @Test
     void testStop_WhenNotStarted() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, pipelineDescription, jiraService, jiraRestClient);
+        JiraSource source = new JiraSource(pluginMetrics, jiraSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, jiraService, jiraRestClient);
 
         source.stop();
 

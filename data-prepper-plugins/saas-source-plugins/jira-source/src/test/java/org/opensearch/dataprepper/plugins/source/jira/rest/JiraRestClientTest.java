@@ -11,6 +11,8 @@
 package org.opensearch.dataprepper.plugins.source.jira.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,6 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.JiraServiceTest;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
@@ -40,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -58,6 +62,15 @@ public class JiraRestClientTest {
     @Mock
     private JiraAuthConfig authConfig;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Timer timer;
+
+    @Mock
+    private Counter counter;
+
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
                 Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
@@ -75,6 +88,9 @@ public class JiraRestClientTest {
         JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfigurationFromYaml(configFileName);
         JiraAuthConfig authConfig = new JiraAuthFactory(jiraSourceConfig).getObject();
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         String ticketDetails = jiraRestClient.getIssue("key");
         assertEquals(exampleTicketResponse, ticketDetails);
     }
@@ -86,6 +102,9 @@ public class JiraRestClientTest {
         jiraRestClient.setSleepTimeMultiplier(1);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
         when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(statusCode));
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         assertThrows(expectedExceptionType, () -> jiraRestClient.getIssue("key"));
     }
 
@@ -94,6 +113,9 @@ public class JiraRestClientTest {
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
         when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         jiraRestClient.setSleepTimeMultiplier(100000);
 
         Thread testThread = new Thread(() -> {
@@ -121,6 +143,9 @@ public class JiraRestClientTest {
         SearchResults mockSearchResults = mock(SearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
     }
@@ -136,6 +161,9 @@ public class JiraRestClientTest {
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
         assertNotNull(results);
     }
@@ -144,6 +172,9 @@ public class JiraRestClientTest {
     public void testRestApiAddressValidation() throws JsonProcessingException {
         when(authConfig.getUrl()).thenReturn("https://224.0.0.1/");
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig);
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        jiraRestClient.setPluginMetrics(pluginMetrics);
         assertThrows(BadRequestException.class, () -> jiraRestClient.getIssue("TEST-1"));
     }
 

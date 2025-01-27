@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -57,12 +56,10 @@ public class JiraSource extends CrawlerSourcePlugin {
                       final AcknowledgementSetManager acknowledgementSetManager,
                       Crawler crawler,
                       PluginExecutorServiceProvider executorServiceProvider,
-                      final PipelineDescription pipelineDescription,
                       final JiraService jiraService,
                       final JiraRestClient jiraRestClient) {
         super(PLUGIN_NAME, pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Jira Source Plugin");
-        jiraSourceConfig.setPipelineName(pipelineDescription.getPipelineName());
         jiraService.setPluginMetrics(pluginMetrics);
         crawler.setPluginMetrics(pluginMetrics);
         jiraRestClient.setPluginMetrics(pluginMetrics);

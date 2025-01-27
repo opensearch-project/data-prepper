@@ -1,10 +1,12 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -24,6 +26,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,6 +44,12 @@ public class CrawlerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Timer timer;
+
+    @Mock
     private CrawlerClient client;
 
     @Mock
@@ -53,6 +62,8 @@ public class CrawlerTest {
     @BeforeEach
     public void setup() {
         crawler = new Crawler(client);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        crawler.setPluginMetrics(pluginMetrics);
     }
 
     @Test

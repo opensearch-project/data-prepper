@@ -13,11 +13,13 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
@@ -75,6 +77,12 @@ public class JiraServiceTest {
 
     @Mock
     private JiraRestClient jiraRestClient;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter counter;
 
 
     private static InputStream getResourceAsStream(String resourceName) {
@@ -210,6 +218,9 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        jiraService.setPluginMetrics(pluginMetrics);
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
         assertEquals(mockIssues.size(), itemInfoQueue.size());
     }
@@ -236,6 +247,8 @@ public class JiraServiceTest {
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        jiraService.setPluginMetrics(pluginMetrics);
         jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue);
         assertTrue(itemInfoQueue.size() >= 100);
     }

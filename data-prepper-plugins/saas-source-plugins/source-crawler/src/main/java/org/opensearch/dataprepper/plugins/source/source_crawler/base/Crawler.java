@@ -26,8 +26,6 @@ public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private Timer crawlingTimer;
     private PluginMetrics pluginMetrics;
-
-
     private final CrawlerClient client;
 
     public Crawler(CrawlerClient client) {
