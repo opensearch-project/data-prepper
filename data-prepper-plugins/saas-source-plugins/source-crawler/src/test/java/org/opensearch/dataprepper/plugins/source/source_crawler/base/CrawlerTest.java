@@ -36,7 +36,6 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 @ExtendWith(MockitoExtension.class)
 public class CrawlerTest {
     private static final int DEFAULT_BATCH_SIZE = 50;
-    Instant lastPollTime = Instant.ofEpochMilli(0);
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock
@@ -50,6 +49,7 @@ public class CrawlerTest {
     @Mock
     private LeaderPartition leaderPartition;
     private Crawler crawler;
+    private final Instant lastPollTime = Instant.ofEpochMilli(0);
 
     @BeforeEach
     public void setup() {

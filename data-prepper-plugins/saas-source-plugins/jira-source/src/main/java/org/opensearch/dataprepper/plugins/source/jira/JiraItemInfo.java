@@ -77,7 +77,7 @@ public class JiraItemInfo implements ItemInfo {
     @Override
     public Instant getLastModifiedAt() {
         long updatedAtMillis = getMetadataField(Constants.UPDATED);
-        long createdAtMillis = getMetadataField(CREATED);
+        long createdAtMillis = getMetadataField(Constants.CREATED);
         return createdAtMillis > updatedAtMillis ?
                 Instant.ofEpochMilli(createdAtMillis) : Instant.ofEpochMilli(updatedAtMillis);
     }
