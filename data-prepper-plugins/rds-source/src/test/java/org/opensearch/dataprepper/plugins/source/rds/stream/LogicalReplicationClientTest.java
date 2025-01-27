@@ -63,7 +63,7 @@ class LogicalReplicationClientTest {
         final PGConnection pgConnection = mock(PGConnection.class, RETURNS_DEEP_STUBS);
         final ChainedLogicalStreamBuilder logicalStreamBuilder = mock(ChainedLogicalStreamBuilder.class);
         final PGReplicationStream stream = mock(PGReplicationStream.class);
-        final ByteBuffer message = mock(ByteBuffer.class);
+        final ByteBuffer message = ByteBuffer.allocate(0);
         final LogSequenceNumber lsn = mock(LogSequenceNumber.class);
 
         when(connectionManager.getConnection()).thenReturn(connection);

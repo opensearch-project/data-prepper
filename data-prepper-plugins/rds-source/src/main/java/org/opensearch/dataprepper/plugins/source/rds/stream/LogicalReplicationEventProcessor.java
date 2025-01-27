@@ -96,18 +96,18 @@ public class LogicalReplicationEventProcessor {
         // If it's a RELATION, update table metadata map
         // If it's INSERT/UPDATE/DELETE, prepare events
         // If it's a COMMIT, convert all prepared events and send to buffer
-        char messageType = (char) msg.get();
-        if (messageType == MessageType.BEGIN.getValue()) {
+        MessageType messageType = MessageType.from((char) msg.get());
+        if (messageType == MessageType.BEGIN) {
             processBeginMessage(msg);
-        } else if (messageType == MessageType.RELATION.getValue()) {
+        } else if (messageType == MessageType.RELATION) {
             processRelationMessage(msg);
-        } else if (messageType == MessageType.INSERT.getValue()) {
+        } else if (messageType == MessageType.INSERT) {
             processInsertMessage(msg);
-        } else if (messageType == MessageType.UPDATE.getValue()) {
+        } else if (messageType == MessageType.UPDATE) {
             processUpdateMessage(msg);
-        } else if (messageType == MessageType.DELETE.getValue()) {
+        } else if (messageType == MessageType.DELETE) {
             processDeleteMessage(msg);
-        } else if (messageType == MessageType.COMMIT.getValue()) {
+        } else if (messageType == MessageType.COMMIT) {
             processCommitMessage(msg);
         } else {
             throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
@@ -158,7 +158,7 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processCommitMessage(ByteBuffer msg) {
-        int flag = msg.get();
+        int flag = msg.getInt();
         long commitLsn = msg.getLong();
         long endLsn = msg.getLong();
         long epochMicro = msg.getLong();

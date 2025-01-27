@@ -10,6 +10,8 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.model;
 
+import java.util.Map;
+
 public enum MessageType {
     BEGIN('B'),
     RELATION('R'),
@@ -20,11 +22,27 @@ public enum MessageType {
 
     private final char value;
 
+    private static final Map<Character, MessageType> MESSAGE_TYPE_MAP = Map.of(
+            BEGIN.getValue(), BEGIN,
+            RELATION.getValue(), RELATION,
+            INSERT.getValue(), INSERT,
+            UPDATE.getValue(), UPDATE,
+            DELETE.getValue(), DELETE,
+            COMMIT.getValue(), COMMIT
+    );
+
     MessageType(char value) {
         this.value = value;
     }
 
     public char getValue() {
         return value;
+    }
+
+    public static MessageType from(char value) {
+        if (!MESSAGE_TYPE_MAP.containsKey(value)) {
+            throw new IllegalArgumentException("Invalid MessageType value: " + value);
+        }
+        return MESSAGE_TYPE_MAP.get(value);
     }
 }
