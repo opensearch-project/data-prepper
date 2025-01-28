@@ -110,10 +110,6 @@ public class LambdaProcessorIT {
         lambdaRegion = System.getProperty("tests.lambda.processor.region");
         functionName = System.getProperty("tests.lambda.processor.functionName");
         role = System.getProperty("tests.lambda.processor.sts_role_arn");
-        lambdaRegion = "us-west-2";
-        functionName = "lambdaNoReturn";
-        role = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
-
 
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
@@ -519,7 +515,7 @@ public class LambdaProcessorIT {
                 }
             }
 
-            // 11) Finally, check that we had at least one retry
+            // Finally, check that we had at least one retry
             // If concurrency=1 is truly enforced, at least some calls should have gotten a 429
             // -> triggered CountingRetryCondition
             int retryCount = countingRetryCondition.getRetryCount();
