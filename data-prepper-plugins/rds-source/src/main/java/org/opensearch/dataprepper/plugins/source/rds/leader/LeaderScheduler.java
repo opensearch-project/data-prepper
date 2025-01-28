@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Stre
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -167,17 +168,20 @@ public class LeaderScheduler implements Runnable {
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final MySqlStreamState mySqlStreamState = progressState.getMySqlStreamState();
+            final MySqlStreamState mySqlStreamState = new MySqlStreamState();
             getCurrentBinlogPosition().ifPresent(mySqlStreamState::setCurrentPosition);
             mySqlStreamState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));
+            progressState.setMySqlStreamState(mySqlStreamState);
         } else {
             // Postgres
             // Create replication slot, which will mark the starting point for stream
             final String publicationName = generatePublicationName();
             final String slotName = generateReplicationSlotName();
             ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(sourceConfig.getTableNames(), publicationName, slotName);
-            progressState.getPostgresStreamState().setPublicationName(publicationName);
-            progressState.getPostgresStreamState().setReplicationSlotName(slotName);
+            final PostgresStreamState postgresStreamState = new PostgresStreamState();
+            postgresStreamState.setPublicationName(publicationName);
+            postgresStreamState.setReplicationSlotName(slotName);
+            progressState.setPostgresStreamState(postgresStreamState);
         }
         StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
