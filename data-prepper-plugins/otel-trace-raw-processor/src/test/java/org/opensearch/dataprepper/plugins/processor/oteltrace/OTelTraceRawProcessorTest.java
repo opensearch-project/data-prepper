@@ -252,7 +252,7 @@ class OTelTraceRawProcessorTest {
 
     @ParameterizedTest
     @CsvSource({
-            "1, 4",
+            "0, 4",
             "2, 6"
     })
     void traceGroupCacheMaxSize_provides_an_upper_bound(final long cacheMaxSize, final int expectedProcessedRecords) {

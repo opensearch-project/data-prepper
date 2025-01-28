@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig.DEFAULT_BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
 
@@ -63,6 +64,7 @@ class S3SourceConfigTest {
         assertTrue(s3SourceConfig.getAcknowledgements());
 
         assertThat(s3SourceConfig.isPrefixPartitionModeValid(), equalTo(true));
+        assertThat(s3SourceConfig.isAcknowledgmentsEnabledWithDeleteS3ObjectsOnRead(), equalTo(true));
     }
 
     @Test
@@ -102,5 +104,25 @@ class S3SourceConfigTest {
         ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"s3ScanScanOptions", s3ScanScanOptions);
 
         assertFalse(s3SourceConfig.isPrefixPartitionModeValid());
+    }
+
+    @Test
+    void delete_objects_on_read_requires_acknowledgments_to_be_enabled() throws NoSuchFieldException, IllegalAccessException {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"acknowledgments", false);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"deleteS3ObjectsOnRead", true);
+
+        assertFalse(s3SourceConfig.isAcknowledgmentsEnabledWithDeleteS3ObjectsOnRead());
+    }
+
+    @Test
+    void s3Select_is_not_supported_with_deleteS3ObjectsOnRead() throws NoSuchFieldException, IllegalAccessException {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();
+        final S3SelectOptions s3SelectOptions = mock(S3SelectOptions.class);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"acknowledgments", true);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"deleteS3ObjectsOnRead", true);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"s3SelectOptions", s3SelectOptions);
+
+        assertFalse(s3SourceConfig.isS3SelectNotUsingDeleteS3ObjectsOnRead());
     }
 }
