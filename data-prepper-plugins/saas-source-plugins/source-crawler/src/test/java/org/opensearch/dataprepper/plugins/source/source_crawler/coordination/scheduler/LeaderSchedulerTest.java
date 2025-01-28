@@ -31,14 +31,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
 
+    private final int batchSize = 50;
     @Mock
     private EnhancedSourceCoordinator coordinator;
     @Mock
     private CrawlerSourcePlugin saasSourcePlugin;
     @Mock
     private Crawler crawler;
-
-    private final int batchSize = 50;
 
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
@@ -69,8 +68,8 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, times(1)).crawl(Instant.ofEpochMilli(0L), coordinator, batchSize);
-        verify(coordinator, times(2)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+        verify(crawler, times(1)).crawl(leaderPartition, coordinator, batchSize);
+        verify(coordinator, times(1)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
 
     }
 
@@ -100,7 +99,7 @@ public class LeaderSchedulerTest {
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(false);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
-        when(crawler.crawl(any(Instant.class), any(EnhancedSourceCoordinator.class), anyInt())).thenReturn(Instant.ofEpochMilli(10));
+        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt())).thenReturn(Instant.ofEpochMilli(10));
         when(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(leaderPartition))
                 .thenThrow(RuntimeException.class);
@@ -113,6 +112,6 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, atLeast(2)).crawl(any(Instant.class), any(EnhancedSourceCoordinator.class), anyInt());
+        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt());
     }
 }
