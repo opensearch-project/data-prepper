@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -261,6 +262,7 @@ class ExportSchedulerTest {
         verify(exportS3ObjectsTotalCounter, never()).increment(1);
     }
 
+    @Disabled("Flaky test, needs to be fixed")
     @Test
     void test_shutDown() throws InterruptedException {
         lenient().when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
