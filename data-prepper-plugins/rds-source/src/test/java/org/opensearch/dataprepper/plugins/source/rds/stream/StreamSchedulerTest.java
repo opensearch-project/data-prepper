@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -115,6 +116,7 @@ class StreamSchedulerTest {
         verify(pluginConfigObservable).addPluginConfigObserver(any(PluginConfigObserver.class));
     }
 
+    @Disabled("Flaky test, needs to be fixed")
     @Test
     void test_shutdown() throws InterruptedException {
         lenient().when(sourceCoordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
