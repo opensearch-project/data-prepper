@@ -12,12 +12,14 @@ package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.source.sqs.common.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsWorkerCommon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,7 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +37,8 @@ import java.util.Optional;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
+    static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
+    private final Timer sqsMessageDelayTimer;
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
     private final SqsWorkerCommon sqsWorkerCommon;
     private final SqsEventProcessor sqsEventProcessor;
@@ -64,7 +69,9 @@ public class SqsWorker implements Runnable {
         this.endToEndAcknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
         this.messageVisibilityTimesMap = new HashMap<>();
         this.failedAttemptCount = 0;
-        this.acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
+        acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
+        sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
+
     }
 
     @Override
@@ -98,6 +105,9 @@ public class SqsWorker implements Runnable {
             final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processSqsEvents(messages);
             if (!deleteMessageBatchRequestEntries.isEmpty()) {
                 sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), deleteMessageBatchRequestEntries);
+            }
+            else {
+                sqsMessageDelayTimer.record(Duration.ZERO);
             }
         }
         return messages.size();
@@ -150,6 +160,10 @@ public class SqsWorker implements Runnable {
         }
 
         for (Message message : messages) {
+            sqsMessageDelayTimer.record(
+                    Duration.between(Instant.ofEpochMilli(Long.parseLong(message.attributes().get("SentTimestamp"))), Instant.now())
+            );
+
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(message);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(message);
             final Optional<DeleteMessageBatchRequestEntry> deleteEntry = processSqsObject(message, acknowledgementSet);
@@ -174,7 +188,11 @@ public class SqsWorker implements Runnable {
             sqsWorkerCommon.getSqsMessagesFailedCounter().increment();
             LOG.error("Error processing from SQS: {}. Retrying with exponential backoff.", e.getMessage());
             sqsWorkerCommon.applyBackoff();
-            return Optional.empty();
+            if (queueConfig.getOnErrorOption().equals(OnErrorOption.DELETE_MESSAGES)) {
+                return Optional.of(sqsWorkerCommon.buildDeleteMessageBatchRequestEntry(message.messageId(), message.receiptHandle()));
+            } else {
+                return Optional.empty();
+            }
         }
     }
 

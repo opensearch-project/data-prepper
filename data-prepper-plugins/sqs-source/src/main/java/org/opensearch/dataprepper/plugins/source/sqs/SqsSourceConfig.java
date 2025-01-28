@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.sqs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.plugins.source.sqs.common.OnErrorOption;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.Duration;

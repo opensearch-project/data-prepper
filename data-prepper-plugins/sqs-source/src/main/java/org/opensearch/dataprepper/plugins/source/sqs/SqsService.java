@@ -23,13 +23,16 @@
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
  import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+ import software.amazon.awssdk.regions.Region;
  import software.amazon.awssdk.services.sqs.SqsClient;
  import org.opensearch.dataprepper.model.buffer.Buffer;
  import org.opensearch.dataprepper.model.event.Event;
  import org.opensearch.dataprepper.model.record.Record;
 
  import java.util.ArrayList;
+ import java.util.HashMap;
  import java.util.List;
+ import java.util.Map;
  import java.util.concurrent.TimeUnit;
  import java.util.concurrent.Executors;
  import java.util.concurrent.ExecutorService;
@@ -40,7 +43,6 @@
      private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
      static final long SHUTDOWN_TIMEOUT = 30L;
      private final SqsSourceConfig sqsSourceConfig;
-     private final SqsClient sqsClient;
      private final PluginMetrics pluginMetrics;
      private final PluginFactory pluginFactory;
      private final AcknowledgementSetManager acknowledgementSetManager;
@@ -48,6 +50,9 @@
      private final List<SqsWorker> sqsWorkers;
      private final Buffer<Record<Event>> buffer;
      private final Backoff backoff;
+     private final Map<String, SqsClient> sqsClientMap = new HashMap<>();
+     private final AwsCredentialsProvider credentialsProvider;
+
 
      public SqsService(final Buffer<Record<Event>> buffer,
                        final AcknowledgementSetManager acknowledgementSetManager,
@@ -59,10 +64,10 @@
         this.sqsSourceConfig = sqsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pluginFactory = pluginFactory;
+        this.credentialsProvider = credentialsProvider;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.allSqsUrlExecutorServices = new ArrayList<>();
         this.sqsWorkers = new ArrayList<>();
-        this.sqsClient = SqsClientFactory.createSqsClient(sqsSourceConfig.getAwsAuthenticationOptions().getAwsRegion(), credentialsProvider);
         this.buffer = buffer;
         backoff = SqsBackoff.createExponentialBackoff();
      }  
@@ -71,6 +76,10 @@
         LOG.info("Starting SqsService");
         sqsSourceConfig.getQueues().forEach(queueConfig -> {
             String queueUrl = queueConfig.getUrl();
+            String region = extractRegionFromQueueUrl(queueUrl);
+            SqsClient sqsClient = sqsClientMap.computeIfAbsent(region,
+                    r -> SqsClientFactory.createSqsClient(Region.of(r), credentialsProvider));
+
             String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
             int numWorkers = queueConfig.getNumWorkers();
             SqsEventProcessor sqsEventProcessor;
@@ -122,10 +131,15 @@
                 Thread.currentThread().interrupt();
             }
         });
-    
-        sqsClient.close();
+
+        sqsClientMap.values().forEach(SqsClient::close);
         LOG.info("SqsService shutdown completed.");
     }
+
+     private String extractRegionFromQueueUrl(final String queueUrl) {
+         String[] split = queueUrl.split("\\.");
+         return split[1];
+     }
     
  }
  
