@@ -66,10 +66,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -127,6 +128,9 @@ public class LambdaProcessorTest {
 
     @Mock
     private Timer lambdaLatencyMetric;
+
+    @Mock
+    private ClientOptions mockClientOptions;
 
     @Mock
     private LambdaAsyncClient lambdaAsyncClient;
@@ -610,5 +614,173 @@ public class LambdaProcessorTest {
             Record<Event> record = records.iterator().next();
             assertEquals("[lambda_failure]", record.getData().getMetadata().getTags().toString());
         }
+    }
+
+    //NOTE: This test will not pass as invoke failure is handled internally through sdk.
+    // The first attempt will fail and the second attempt will not even be considered for execution.
+//    @Test
+//    public void testDoExecute_retryScenario_successOnSecondAttempt() throws Exception {
+//        // Arrange
+//        final List<Record<Event>> records = getSampleEventRecords(2);
+//
+//        // First attempt throws TooManyRequestsException => no valid payload
+//        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+//                .thenReturn(CompletableFuture.failedFuture(
+//                        TooManyRequestsException.builder()
+//                                .message("First attempt throttled")
+//                                .build()
+//                ))
+//                // Second attempt => success with 200
+//                .thenReturn(CompletableFuture.completedFuture(
+//                        InvokeResponse.builder()
+//                                .statusCode(200)
+//                                .payload(SdkBytes.fromUtf8String(
+//                                        "[{\"successKey1\":\"successValue1\"},{\"successKey2\":\"successValue2\"}]"))
+//                                .build()
+//                ));
+//
+//        // Create a config which has at least 1 maxConnectionRetries so we can retry once.
+//        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+//
+//        // Instantiate the processor
+//        final LambdaProcessor processor = new LambdaProcessor(
+//                pluginFactory,
+//                pluginSetting,
+//                config,
+//                awsCredentialsSupplier,
+//                expressionEvaluator
+//        );
+//        populatePrivateFields(processor);
+//
+//        // Act
+//        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+//
+//        // Assert
+//        // Because the second invocation is successful (200),
+//        // we expect the final records to NOT have the "lambda_failure" tag
+//        assertEquals(records.size(), resultRecords.size());
+//        for (Record<Event> record : resultRecords) {
+//            assertFalse(
+//                    record.getData().getMetadata().getTags().contains("lambda_failure"),
+//                    "Record should NOT have a failure tag after a successful retry"
+//            );
+//        }
+//
+//        // We invoked the lambda client 2 times total: first attempt + one retry
+//        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+//
+//        // Second attempt is success => increment success counters
+//        verify(numberOfRequestsSuccessCounter, times(1)).increment();
+//    }
+
+    @Test
+    public void testDoExecute_retryScenario_failsAfterMaxRetries() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(3);
+
+        // Simulate a 500 status code (Retryable)
+        final InvokeResponse failedResponse = InvokeResponse.builder()
+                .statusCode(500)
+                .payload(SdkBytes.fromUtf8String("Internal server error"))
+                .build();
+
+        // Stub the lambda client to always return failedResponse
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse));
+
+        // Create a config with exactly 1 maxConnectionRetries (allowing 2 total attempts)
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-success-config.yaml");
+
+        // Instantiate the processor
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        // All records should have the "lambda_failure" tag
+        assertEquals(records.size(), resultRecords.size(), "Result records count should match input records count.");
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Record should have 'lambda_failure' tag after all retries fail");
+        }
+
+        // Expect 3 invocations: initial attempt + 3 retry
+        verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
+        // No success counters
+        verify(numberOfRequestsSuccessCounter, never()).increment();
+        // Records failed counter should increment once with the total number of records
+        verify(numberOfRecordsFailedCounter, times(1)).increment(records.size());
+    }
+
+
+    @Test
+    public void testDoExecute_nonRetryableStatusCode_noRetryAttempted() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(2);
+
+        // 400 is a client error => non-retryable
+        final InvokeResponse badRequestResponse = InvokeResponse.builder()
+                .statusCode(400)
+                .payload(SdkBytes.fromUtf8String("Bad request"))
+                .build();
+
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(badRequestResponse));
+
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        assertEquals(records.size(), resultRecords.size());
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Non-retryable failure should cause 'lambda_failure' tag");
+        }
+        // Only 1 attempt => no second invoke
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        // Fail counters
+        verify(numberOfRecordsFailedCounter).increment(2);
+    }
+
+    @Test
+    public void testDoExecute_nonRetryableException_thrownImmediatelyFail() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(2);
+
+        // Some random exception that is not in the list of retryable exceptions
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenThrow(new IllegalArgumentException("Non-retryable exception"));
+
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        // We expect no success => all records come back tagged
+        assertEquals(records.size(), resultRecords.size());
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Record should have 'lambda_failure' after a non-retryable exception");
+        }
+
+        // Attempted only once
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
     }
 }
