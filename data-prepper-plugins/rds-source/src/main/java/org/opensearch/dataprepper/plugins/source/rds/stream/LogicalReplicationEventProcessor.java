@@ -158,7 +158,7 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processCommitMessage(ByteBuffer msg) {
-        int flag = msg.getInt();
+        int flag = msg.get();
         long commitLsn = msg.getLong();
         long endLsn = msg.getLong();
         long epochMicro = msg.getLong();
