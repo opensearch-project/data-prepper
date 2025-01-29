@@ -87,7 +87,10 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelMetricsSourceConfig);
             CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_metrics_source", pipelineName);
-            CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+            CertificateProvider certificateProvider = null;
+            if (oTelMetricsSourceConfig.isSsl() || oTelMetricsSourceConfig.useAcmCertForSSL()) {
+                certificateProvider = certificateProviderFactory.getCertificateProvider();
+            }
 
             ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
 

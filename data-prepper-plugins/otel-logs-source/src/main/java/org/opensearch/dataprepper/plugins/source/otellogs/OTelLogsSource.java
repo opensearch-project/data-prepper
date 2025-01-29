@@ -89,7 +89,10 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
             CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_logs_source", pipelineName);
-            CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+            CertificateProvider certificateProvider = null;
+            if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
+                certificateProvider = certificateProviderFactory.getCertificateProvider();
+            }
 
             ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider);
 
