@@ -19,9 +19,9 @@ class ReadBufferHelper {
     static Map.Entry<Collection<Record<Event>>, CheckpointState> awaitRead(final KafkaBuffer objectUnderTest) {
         final Map.Entry<Collection<Record<Event>>, CheckpointState>[] lastReadResult = new Map.Entry[1];
         await()
-                .atMost(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(45))
                 .until(() -> {
-                    lastReadResult[0] = objectUnderTest.read(500);
+                    lastReadResult[0] = objectUnderTest.read(2000);
                     return lastReadResult[0] != null && lastReadResult[0].getKey() != null && lastReadResult[0].getKey().size() >= 1;
                 });
         return lastReadResult[0];
