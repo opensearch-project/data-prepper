@@ -53,24 +53,22 @@ public class JiraRestClient {
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
+    private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
-    private int sleepTimeMultiplier = 1000;
 
-    public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig) {
+    public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig, PluginMetrics pluginMetrics) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
-        ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
-        searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
-
-        issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+        ticketFetchLatencyTimer = pluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
+        searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
+        projectFetchLatencyTimer = pluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
+        issuesRequestedCounter = pluginMetrics.counter(ISSUES_REQUESTED);
     }
 
     /**

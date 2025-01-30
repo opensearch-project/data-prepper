@@ -61,13 +61,12 @@ public class JiraService {
     private final JiraSourceConfig jiraSourceConfig;
     private final JiraRestClient jiraRestClient;
     private final Counter searchResultsFoundCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
 
-    public JiraService(JiraSourceConfig jiraSourceConfig, JiraRestClient jiraRestClient) {
+    public JiraService(JiraSourceConfig jiraSourceConfig, JiraRestClient jiraRestClient, PluginMetrics pluginMetrics) {
         this.jiraSourceConfig = jiraSourceConfig;
         this.jiraRestClient = jiraRestClient;
-        this.searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
+        this.searchResultsFoundCounter = pluginMetrics.counter(SEARCH_RESULTS_FOUND);
     }
 
     /**
@@ -132,7 +131,7 @@ public class JiraService {
     private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration)) ) {
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
             validateProjectFilters(configuration);
         }
         StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -45,8 +46,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 @ExtendWith(MockitoExtension.class)
 public class JiraIteratorTest {
 
-    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
     @Mock
     private SearchResults mockSearchResults;
     @Mock
@@ -54,12 +53,13 @@ public class JiraIteratorTest {
     private JiraService jiraService;
     @Mock
     private JiraSourceConfig jiraSourceConfig;
-
     private JiraIterator jiraIterator;
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @BeforeEach
     void setUp() {
-        jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
+        jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient,
+                PluginMetrics.fromNames("jiraIteratorTest", "jira")));
     }
 
     public JiraIterator createObjectUnderTest() {
@@ -118,7 +118,7 @@ public class JiraIteratorTest {
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.hasNext();
         jiraIterator.hasNext();
-        assertTrue(jiraIterator.showFutureList().size() == 1);
+        assertEquals(1, jiraIterator.showFutureList().size());
     }
 
     @Test
@@ -145,7 +145,7 @@ public class JiraIteratorTest {
     }
 
     @Test
-    void testItemInfoQueueEmpty(){
+    void testItemInfoQueueEmpty() {
         jiraIterator = createObjectUnderTest();
         List<IssueBean> mockIssues = new ArrayList<>();
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
