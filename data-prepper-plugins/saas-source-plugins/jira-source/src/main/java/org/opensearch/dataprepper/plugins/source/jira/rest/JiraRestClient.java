@@ -51,13 +51,11 @@ public class JiraRestClient {
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
-    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
-    private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
     private int sleepTimeMultiplier = 1000;
@@ -68,8 +66,6 @@ public class JiraRestClient {
 
         ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
-
         issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
     }
 
@@ -119,20 +115,24 @@ public class JiraRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
+                log.error(NOISY, "An exception has occurred while getting response from Jira search API with statusCode {} and error message: {}", statusCode, statusMessage);
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
-                    log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
+                    log.warn(NOISY, "Token expired. We will try to renew the tokens now.");
                     authConfig.renewCredentials();
-                } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
+                } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS || statusCode == HttpStatus.SERVICE_UNAVAILABLE || statusCode == HttpStatus.GATEWAY_TIMEOUT) {
+                    log.error(NOISY, "Received {}. Backing off with sleep timer for {} seconds.", statusCode, RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
+                } else {
+                    log.error(NOISY, "Received an unexpected status code {} response from Jira.", statusCode, ex);
                 }
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                    throw new RuntimeException("Sleep in the retry attempt got interrupted.");
                 }
+            } catch (Exception ex) {
+                log.error(NOISY, "An exception has occurred while getting a response from the Jira search API", ex);
             }
             retryCount++;
         }
