@@ -34,4 +34,5 @@ dependencies {
     testImplementation libs.avro.core
     testImplementation libs.parquet.hadoop
     testImplementation libs.parquet.avro
+//    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
 }
