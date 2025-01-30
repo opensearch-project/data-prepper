@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.Metric;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.metrics.v1.Summary;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
@@ -66,7 +66,7 @@ class MetricsPluginSummaryTest {
                 .setDescription("description")
                 .build();
 
-        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
                 .addMetrics(metric).build();
 
         Resource resource = Resource.newBuilder()
@@ -77,7 +77,7 @@ class MetricsPluginSummaryTest {
 
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
 
         ExportMetricsServiceRequest exportMetricRequest = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();

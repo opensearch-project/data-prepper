@@ -12,7 +12,6 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import io.opentelemetry.proto.metrics.v1.Metric;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
@@ -54,6 +53,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.Gauge;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 
 @ExtendWith(MockitoExtension.class)
 public class OTelMetricsGrpcServiceTest {
@@ -61,7 +61,7 @@ public class OTelMetricsGrpcServiceTest {
     private static Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
     private static final ExportMetricsServiceRequest METRICS_REQUEST = ExportMetricsServiceRequest.newBuilder()
             .addResourceMetrics(ResourceMetrics.newBuilder()
-                    .addInstrumentationLibraryMetrics(InstrumentationLibraryMetrics.newBuilder()
+                    .addScopeMetrics(ScopeMetrics.newBuilder()
                             .addMetrics(Metric.newBuilder().setGauge(gauge).setUnit("seconds").setName("name").build())
                     .build())).build();
 
