@@ -248,8 +248,6 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
       releaseEventHandles(failedRecords, false);
     }
   }
-
-
     /*
      * Release events per batch
      */
@@ -266,11 +264,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     }
 
     private void flushBuffers(final List<Buffer> buffersToFlush) {
-        // Combine all their records for a single call to sendRecords
-        List<Record<Event>> combinedRecords = new ArrayList<>();
-        for (Buffer buf : buffersToFlush) {
-            combinedRecords.addAll(buf.getRecords());
-        }
+
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap;
         try {
@@ -281,6 +275,12 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             );
         } catch (Exception e) {
             LOG.error(NOISY, "Error sending buffers to Lambda", e);
+            // Note: if there are N buffers and only N-1 buffers are full,
+            // we only need to propagate N-1 buffer records as failure
+            List<Record<Event>> combinedRecords = new ArrayList<>();
+            for (Buffer buf : buffersToFlush) {
+                combinedRecords.addAll(buf.getRecords());
+            }
             handleFailure(combinedRecords, e, HttpURLConnection.HTTP_INTERNAL_ERROR);
             return;
         }
