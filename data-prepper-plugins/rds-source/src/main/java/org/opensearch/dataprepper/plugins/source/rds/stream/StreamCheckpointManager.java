@@ -7,7 +7,9 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,17 +31,20 @@ public class StreamCheckpointManager {
     private final boolean isAcknowledgmentEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Duration acknowledgmentTimeout;
+    private final EngineType engineType;
 
     public StreamCheckpointManager(final StreamCheckpointer streamCheckpointer,
                                    final boolean isAcknowledgmentEnabled,
                                    final AcknowledgementSetManager acknowledgementSetManager,
                                    final Runnable stopStreamRunnable,
-                                   final Duration acknowledgmentTimeout) {
+                                   final Duration acknowledgmentTimeout,
+                                   final EngineType engineType) {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.streamCheckpointer = streamCheckpointer;
         this.isAcknowledgmentEnabled = isAcknowledgmentEnabled;
         this.stopStreamRunnable = stopStreamRunnable;
         this.acknowledgmentTimeout = acknowledgmentTimeout;
+        this.engineType = engineType;
         executorService = Executors.newSingleThreadExecutor();
     }
 
@@ -65,7 +70,7 @@ public class StreamCheckpointManager {
                         }
 
                         if (lastChangeEventStatus != null) {
-                            streamCheckpointer.checkpoint(lastChangeEventStatus.getBinlogCoordinate());
+                            streamCheckpointer.checkpoint(engineType, lastChangeEventStatus);
                         }
 
                         // If negative ack is seen, give up partition and exit loop to stop processing stream
@@ -81,10 +86,10 @@ public class StreamCheckpointManager {
                             changeEventCount++;
                             // In case queue are populated faster than the poll, checkpoint when reaching certain count
                             if (changeEventCount % CHANGE_EVENT_COUNT_PER_CHECKPOINT_BATCH == 0) {
-                                streamCheckpointer.checkpoint(currentChangeEventStatus.getBinlogCoordinate());
+                                streamCheckpointer.checkpoint(engineType, currentChangeEventStatus);
                             }
                         } while (!changeEventStatuses.isEmpty());
-                        streamCheckpointer.checkpoint(currentChangeEventStatus.getBinlogCoordinate());
+                        streamCheckpointer.checkpoint(engineType, currentChangeEventStatus);
                     }
                 }
             } catch (Exception e) {
@@ -113,16 +118,33 @@ public class StreamCheckpointManager {
         return changeEventStatus;
     }
 
+    public ChangeEventStatus saveChangeEventsStatus(LogSequenceNumber logSequenceNumber) {
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(logSequenceNumber, Instant.now().toEpochMilli());
+        changeEventStatuses.add(changeEventStatus);
+        return changeEventStatus;
+    }
+
     public AcknowledgementSet createAcknowledgmentSet(BinlogCoordinate binlogCoordinate) {
         LOG.debug("Create acknowledgment set for events receive prior to {}", binlogCoordinate);
         final ChangeEventStatus changeEventStatus = new ChangeEventStatus(binlogCoordinate, Instant.now().toEpochMilli());
         changeEventStatuses.add(changeEventStatus);
+        return getAcknowledgementSet(changeEventStatus);
+    }
+
+    public AcknowledgementSet createAcknowledgmentSet(LogSequenceNumber logSequenceNumber) {
+        LOG.debug("Create acknowledgment set for events receive prior to {}", logSequenceNumber);
+        final ChangeEventStatus changeEventStatus = new ChangeEventStatus(logSequenceNumber, Instant.now().toEpochMilli());
+        changeEventStatuses.add(changeEventStatus);
+        return getAcknowledgementSet(changeEventStatus);
+    }
+
+    private AcknowledgementSet getAcknowledgementSet(ChangeEventStatus changeEventStatus) {
         return acknowledgementSetManager.create((result) -> {
-           if (result) {
-               changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
-           } else {
-               changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.NEGATIVE_ACK);
-           }
+            if (result) {
+                changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
+            } else {
+                changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.NEGATIVE_ACK);
+            }
         }, acknowledgmentTimeout);
     }
 

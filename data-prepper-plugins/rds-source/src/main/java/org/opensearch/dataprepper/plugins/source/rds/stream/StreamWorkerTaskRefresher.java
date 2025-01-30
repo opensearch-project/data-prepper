@@ -130,8 +130,8 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         } else {
             final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
             logicalReplicationClient.setEventProcessor(new LogicalReplicationEventProcessor(
-                streamPartition, sourceConfig, buffer, s3Prefix
-            ));
+                    streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics, logicalReplicationClient,
+                    streamCheckpointer, acknowledgementSetManager));
         }
         final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));

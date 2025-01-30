@@ -5,11 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import lombok.Builder;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.postgresql.replication.LogSequenceNumber;
 
 public class ChangeEventStatus {
 
     private final BinlogCoordinate binlogCoordinate;
+    private final LogSequenceNumber logSequenceNumber;
     private final long timestamp;
     private volatile AcknowledgmentStatus acknowledgmentStatus;
 
@@ -21,6 +24,14 @@ public class ChangeEventStatus {
 
     public ChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp) {
         this.binlogCoordinate = binlogCoordinate;
+        this.logSequenceNumber = null;
+        this.timestamp = timestamp;
+        acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;
+    }
+
+    public ChangeEventStatus(final LogSequenceNumber logSequenceNumber, final long timestamp) {
+        this.binlogCoordinate = null;
+        this.logSequenceNumber = logSequenceNumber;
         this.timestamp = timestamp;
         acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;
     }
@@ -43,6 +54,10 @@ public class ChangeEventStatus {
 
     public BinlogCoordinate getBinlogCoordinate() {
         return binlogCoordinate;
+    }
+
+    public LogSequenceNumber getLogSequenceNumber() {
+        return logSequenceNumber;
     }
 
     public long getTimestamp() {

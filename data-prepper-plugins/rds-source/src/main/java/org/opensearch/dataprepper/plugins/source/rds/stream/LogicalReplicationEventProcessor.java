@@ -10,7 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -23,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamPr
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnType;
 import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
+import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +75,11 @@ public class LogicalReplicationEventProcessor {
     private final Buffer<Record<Event>> buffer;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final List<Event> pipelineEvents;
+    private final PluginMetrics pluginMetrics;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final LogicalReplicationClient logicalReplicationClient;
+    private final StreamCheckpointer streamCheckpointer;
+    private final StreamCheckpointManager streamCheckpointManager;
 
     private long currentLsn;
     private long currentEventTimestamp;
@@ -79,12 +89,24 @@ public class LogicalReplicationEventProcessor {
     public LogicalReplicationEventProcessor(final StreamPartition streamPartition,
                                             final RdsSourceConfig sourceConfig,
                                             final Buffer<Record<Event>> buffer,
-                                            final String s3Prefix) {
+                                            final String s3Prefix,
+                                            final PluginMetrics pluginMetrics,
+                                            final LogicalReplicationClient logicalReplicationClient,
+                                            final StreamCheckpointer streamCheckpointer,
+                                            final AcknowledgementSetManager acknowledgementSetManager) {
         this.streamPartition = streamPartition;
         this.sourceConfig = sourceConfig;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.buffer = buffer;
         bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT);
+        this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.logicalReplicationClient = logicalReplicationClient;
+        this.streamCheckpointer = streamCheckpointer;
+        streamCheckpointManager = new StreamCheckpointManager(
+                streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
+                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(), sourceConfig.getEngine());
+        streamCheckpointManager.start();
 
         tableMetadataMap = new HashMap<>();
         pipelineEvents = new ArrayList<>();
@@ -111,6 +133,15 @@ public class LogicalReplicationEventProcessor {
             processCommitMessage(msg);
         } else {
             throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
+        }
+    }
+
+    public void stopClient() {
+        try {
+            logicalReplicationClient.disconnect();
+            LOG.info("Binary log client disconnected.");
+        } catch (Exception e) {
+            LOG.error("Binary log client failed to disconnect.", e);
         }
     }
 
@@ -169,8 +200,19 @@ public class LogicalReplicationEventProcessor {
             throw new RuntimeException("Commit LSN does not match current LSN, skipping");
         }
 
-        writeToBuffer(bufferAccumulator);
+        AcknowledgementSet acknowledgementSet = null;
+        if (sourceConfig.isAcknowledgmentsEnabled()) {
+            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn));
+        }
+
+        writeToBuffer(bufferAccumulator, acknowledgementSet);
         LOG.debug("Processed a COMMIT message with Flag: {} CommitLsn: {} EndLsn: {} Timestamp: {}", flag, commitLsn, endLsn, epochMicro);
+
+        if (sourceConfig.isAcknowledgmentsEnabled()) {
+            acknowledgementSet.complete();
+        } else {
+            streamCheckpointManager.saveChangeEventsStatus(LogSequenceNumber.valueOf(currentLsn));
+        }
     }
 
     void processInsertMessage(ByteBuffer msg) {
@@ -284,9 +326,12 @@ public class LogicalReplicationEventProcessor {
         pipelineEvents.add(pipelineEvent);
     }
 
-    private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator) {
+    private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator, AcknowledgementSet acknowledgementSet) {
         for (Event pipelineEvent : pipelineEvents) {
             addToBufferAccumulator(bufferAccumulator, new Record<>(pipelineEvent));
+            if (acknowledgementSet != null) {
+                acknowledgementSet.add(pipelineEvent);
+            }
         }
 
         flushBufferAccumulator(bufferAccumulator, pipelineEvents.size());

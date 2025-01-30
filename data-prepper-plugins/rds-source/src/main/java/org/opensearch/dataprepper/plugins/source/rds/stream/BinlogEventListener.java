@@ -130,7 +130,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
-                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout());
+                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(), sourceConfig.getEngine());
         streamCheckpointManager.start();
 
         this.cascadeActionDetector = cascadeActionDetector;
