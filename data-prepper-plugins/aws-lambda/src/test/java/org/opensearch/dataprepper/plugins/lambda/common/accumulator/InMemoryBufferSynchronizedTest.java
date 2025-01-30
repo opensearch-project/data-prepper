@@ -21,12 +21,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-
+/**
+ * Tests for InMemoryBufferSynchronized which extends InMemoryBuffer.
+ */
 class InMemoryBufferSynchronizedTest {
+
     private AutoCloseable mocks;
 
     @BeforeEach
     void setUp() {
+        // Initialize any mocks if you need them in the future
         mocks = MockitoAnnotations.openMocks(this);
     }
 
@@ -40,25 +44,30 @@ class InMemoryBufferSynchronizedTest {
         InMemoryBufferSynchronized buffer = new InMemoryBufferSynchronized("testKey");
 
         // Initially empty
-        assertEquals(0, buffer.getEventCount());
-        assertTrue(buffer.getRecords().isEmpty());
-        assertEquals(0, buffer.getSize());
+        assertEquals(0, buffer.getEventCount(),
+                "Expect zero events at start");
+        assertTrue(buffer.getRecords().isEmpty(),
+                "Records list should be empty initially");
+        assertEquals(0, buffer.getSize(),
+                "ByteArrayOutputStream size should be 0 initially");
 
         // Add a record
         Event event = createSimpleEvent("hello", 123);
         buffer.addRecord(new Record<>(event));
 
+        // Verify
         assertEquals(1, buffer.getEventCount());
         assertEquals(1, buffer.getRecords().size());
-        assertTrue(buffer.getSize() > 0, "ByteArrayOutputStream should have some bytes after writing an event");
+        assertTrue(buffer.getSize() > 0,
+                "ByteArrayOutputStream should have bytes after writing an event");
     }
 
     @Test
     void testGetRequestPayloadWhenEmptyReturnsNull() {
         InMemoryBufferSynchronized buffer = new InMemoryBufferSynchronized("testKey");
-        // No records added => eventCount=0
+        // No records => eventCount=0
         InvokeRequest request = buffer.getRequestPayload("someFunction", "RequestResponse");
-        assertNull(request, "Expected null request if no events are in the buffer");
+        assertNull(request, "Expected null request if buffer is empty");
     }
 
     @Test
@@ -70,26 +79,29 @@ class InMemoryBufferSynchronizedTest {
         // Now we should have 2 events
         assertEquals(2, buffer.getEventCount());
 
-        // getRequestPayload => closes JSON, returns an InvokeRequest
+        // getRequestPayload => finalize JSON array => returns InvokeRequest
         InvokeRequest request = buffer.getRequestPayload("testFunction", "RequestResponse");
-        assertNotNull(request);
-        // Should not be null after we finalize
+        assertNotNull(request, "Expected non-null InvokeRequest after finalizing JSON");
         SdkBytes payload = request.payload();
-        assertNotNull(payload);
-        // The payload should contain some JSON array with 2 items
-        String payloadString = payload.asUtf8String();
-        assertTrue(payloadString.contains("\"k1\":\"111\""), "Expected 'k1' field in JSON");
-        assertTrue(payloadString.contains("\"k2\":\"222\""), "Expected 'k2' field in JSON");
+        assertNotNull(payload, "InvokeRequest payload should not be null");
 
-        // Also, verify the payloadRequestSize is set
+        // Check JSON content
+        String payloadString = payload.asUtf8String();
+        assertTrue(payloadString.contains("\"k1\":\"111\""),
+                "Expected 'k1' field in JSON payload");
+        assertTrue(payloadString.contains("\"k2\":\"222\""),
+                "Expected 'k2' field in JSON payload");
+
+        // The payloadRequestSize should be updated
         Long requestSize = buffer.getPayloadRequestSize();
         assertNotNull(requestSize);
-        assertTrue(requestSize > 0, "Expected a non-zero payload request size");
+        assertTrue(requestSize > 0,
+                "Expected a non-zero payload request size");
     }
 
     @Test
     void testConcurrentAddRecords() throws InterruptedException {
-        InMemoryBufferSynchronized buffer = new InMemoryBufferSynchronized("testKey");
+        final InMemoryBufferSynchronized buffer = new InMemoryBufferSynchronized("testKey");
 
         int numThreads = 5;
         int recordsPerThread = 10;
@@ -104,32 +116,32 @@ class InMemoryBufferSynchronizedTest {
             });
         }
         pool.shutdown();
-        assertTrue(pool.awaitTermination(5, TimeUnit.SECONDS),
-                "Threads did not finish in time");
-
+        boolean finished = pool.awaitTermination(5, TimeUnit.SECONDS);
         // Should now have 50 records
-        assertEquals(numThreads * recordsPerThread, buffer.getEventCount());
-        assertEquals(numThreads * recordsPerThread, buffer.getRecords().size());
+        assertEquals(numThreads * recordsPerThread, buffer.getEventCount(),
+                "Event count does not match the total records added");
+        assertEquals(numThreads * recordsPerThread, buffer.getRecords().size(),
+                "Records list size does not match total added");
 
-        // ensure we get a JSON array with 50 items
+        // Now finalize the payload
         InvokeRequest request = buffer.getRequestPayload("threadFunction", "RequestResponse");
         String payloadStr = request.payload().asUtf8String();
-        // Just check if it has multiple items
+
+        // Count occurrences of "thread"
         long countOfThread = countOccurrences(payloadStr, "\"thread\":\"");
         assertTrue(countOfThread >= numThreads,
-                "Expected multiple 'thread' fields in the JSON payload, found " + countOfThread);
+                "Expected multiple 'thread' fields, found only " + countOfThread);
     }
 
-    // Utility to create a simple test event
+    // Helper: create a simple JacksonEvent with a single key-value pair
     private Event createSimpleEvent(String key, int value) {
-        // This is just one possible way to create a test Event
         return JacksonEvent.builder()
                 .withData(Collections.singletonMap(key, String.valueOf(value)))
                 .withEventType("TEST")
                 .build();
     }
 
-    // Utility to count occurrences of a substring
+    // Helper: count substring occurrences
     private static long countOccurrences(String haystack, String needle) {
         long count = 0;
         int idx = 0;

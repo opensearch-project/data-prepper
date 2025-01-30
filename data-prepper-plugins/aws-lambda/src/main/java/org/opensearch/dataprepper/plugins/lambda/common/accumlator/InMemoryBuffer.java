@@ -23,12 +23,13 @@ import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 
 /**
  * A buffer can hold in memory data and flushing it.
+ * NOT Thread-safe by default
  */
 public class InMemoryBuffer implements Buffer {
 
   private final ByteArrayOutputStream byteArrayOutputStream;
 
-  private final List<Record<Event>> records;
+  protected List<Record<Event>> records;
   private final StopWatch bufferWatch;
   private final StopWatch lambdaLatencyWatch;
   private final OutputCodec requestCodec;
