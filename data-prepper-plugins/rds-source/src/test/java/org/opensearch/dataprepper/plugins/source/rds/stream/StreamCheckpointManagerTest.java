@@ -12,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.postgresql.replication.LogSequenceNumber;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +45,7 @@ class StreamCheckpointManagerTest {
     private Runnable stopStreamRunnable;
 
     private boolean isAcknowledgmentEnabled = false;
+    private EngineType engineType = EngineType.MYSQL;
 
     @BeforeEach
     void setUp() {
@@ -76,7 +79,7 @@ class StreamCheckpointManagerTest {
     }
 
     @Test
-    void test_saveChangeEventsStatus() {
+    void test_saveChangeEventsStatus_mysql() {
         final BinlogCoordinate binlogCoordinate = mock(BinlogCoordinate.class);
         final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
         streamCheckpointManager.saveChangeEventsStatus(binlogCoordinate);
@@ -86,7 +89,18 @@ class StreamCheckpointManagerTest {
     }
 
     @Test
-    void test_createAcknowledgmentSet() {
+    void test_saveChangeEventsStatus_postgres() {
+        final LogSequenceNumber logSequenceNumber = mock(LogSequenceNumber.class);
+        engineType = EngineType.POSTGRES;
+        final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
+        streamCheckpointManager.saveChangeEventsStatus(logSequenceNumber);
+
+        assertThat(streamCheckpointManager.getChangeEventStatuses().size(), is(1));
+        assertThat(streamCheckpointManager.getChangeEventStatuses().peek().getLogSequenceNumber(), is(logSequenceNumber));
+    }
+
+    @Test
+    void test_createAcknowledgmentSet_mysql() {
         final BinlogCoordinate binlogCoordinate = mock(BinlogCoordinate.class);
         final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
         streamCheckpointManager.createAcknowledgmentSet(binlogCoordinate);
@@ -97,8 +111,21 @@ class StreamCheckpointManagerTest {
         verify(acknowledgementSetManager).create(any(Consumer.class), eq(ACK_TIMEOUT));
     }
 
+    @Test
+    void test_createAcknowledgmentSet_postgres() {
+        final LogSequenceNumber logSequenceNumber = mock(LogSequenceNumber.class);
+        engineType = EngineType.POSTGRES;
+        final StreamCheckpointManager streamCheckpointManager = createObjectUnderTest();
+        streamCheckpointManager.createAcknowledgmentSet(logSequenceNumber);
+
+        assertThat(streamCheckpointManager.getChangeEventStatuses().size(), is(1));
+        ChangeEventStatus changeEventStatus = streamCheckpointManager.getChangeEventStatuses().peek();
+        assertThat(changeEventStatus.getLogSequenceNumber(), is(logSequenceNumber));
+        verify(acknowledgementSetManager).create(any(Consumer.class), eq(ACK_TIMEOUT));
+    }
+
     private StreamCheckpointManager createObjectUnderTest() {
         return new StreamCheckpointManager(
-                streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager, stopStreamRunnable, ACK_TIMEOUT);
+                streamCheckpointer, isAcknowledgmentEnabled, acknowledgementSetManager, stopStreamRunnable, ACK_TIMEOUT, engineType);
     }
 }

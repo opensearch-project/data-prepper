@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -43,6 +45,18 @@ class LogicalReplicationEventProcessorTest {
 
     @Mock
     private Buffer<Record<Event>> buffer;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private LogicalReplicationClient logicalReplicationClient;
+
+    @Mock
+    private StreamCheckpointer streamCheckpointer;
+
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     private ByteBuffer message;
 
@@ -129,8 +143,15 @@ class LogicalReplicationEventProcessorTest {
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.process(message));
     }
 
+    @Test
+    void test_stopClient() {
+        objectUnderTest.stopClient();
+        verify(logicalReplicationClient).disconnect();
+    }
+
     private LogicalReplicationEventProcessor createObjectUnderTest() {
-        return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix);
+        return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
     }
 
     private void setMessageType(MessageType messageType) {

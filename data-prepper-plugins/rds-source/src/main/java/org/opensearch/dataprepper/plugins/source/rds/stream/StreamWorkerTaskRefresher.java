@@ -150,4 +150,3 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         return DbTableMetadata.fromMap(globalState.getProgressState().get());
     }
 }
-

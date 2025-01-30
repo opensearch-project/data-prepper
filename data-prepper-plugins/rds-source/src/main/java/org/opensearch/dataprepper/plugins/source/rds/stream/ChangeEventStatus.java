@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
-import lombok.Builder;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.postgresql.replication.LogSequenceNumber;
 

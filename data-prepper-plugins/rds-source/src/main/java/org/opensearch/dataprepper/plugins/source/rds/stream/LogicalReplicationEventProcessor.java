@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
