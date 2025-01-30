@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.jira.rest;
+package org.opensearch.dataprepper.plugins.source.confluence.rest;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.annotation.Timed;
@@ -16,12 +16,12 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
-import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
-import org.opensearch.dataprepper.plugins.source.jira.utils.AddressValidation;
+import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.confluence.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.confluence.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.utils.AddressValidation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -33,14 +33,14 @@ import java.net.URI;
 import java.util.List;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.EXPAND_FIELD;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.JQL_FIELD;
 
 @Slf4j
 @Named
-public class JiraRestClient {
+public class ConfluenceRestClient {
 
     public static final String REST_API_SEARCH = "rest/api/3/search";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
@@ -55,14 +55,14 @@ public class JiraRestClient {
     private static final String ISSUES_REQUESTED = "issuesRequested";
     private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
-    private final JiraAuthConfig authConfig;
+    private final ConfluenceAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
     private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
 
-    public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig) {
+    public ConfluenceRestClient(RestTemplate restTemplate, ConfluenceAuthConfig authConfig) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
@@ -83,7 +83,7 @@ public class JiraRestClient {
      */
     @Timed(SEARCH_CALL_LATENCY_TIMER)
     public SearchResults getAllIssues(StringBuilder jql, int startAt,
-                                      JiraSourceConfig configuration) {
+                                      ConfluenceSourceConfig configuration) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
@@ -126,8 +126,7 @@ public class JiraRestClient {
                     log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
                     authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer for {} seconds",
-                            RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
+                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.", ex);
                 }
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
