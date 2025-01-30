@@ -89,7 +89,7 @@ public class WorkerScheduler implements Runnable {
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
                 } catch (InterruptedException ex) {
-                    log.warn("Thread interrupted while waiting to retry", ex);
+                    log.warn("Thread interrupted while waiting to retry due to {}", ex.getMessage());
                 }
             }
         }
