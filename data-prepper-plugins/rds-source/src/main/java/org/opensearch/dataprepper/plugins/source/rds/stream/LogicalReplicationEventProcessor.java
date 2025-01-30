@@ -10,6 +10,9 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -36,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class LogicalReplicationEventProcessor {
     enum TupleDataType {
@@ -67,6 +71,11 @@ public class LogicalReplicationEventProcessor {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
+    static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
+    static final String BYTES_RECEIVED = "bytesReceived";
+    static final String BYTES_PROCESSED = "bytesProcessed";
+    static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
 
     private final StreamPartition streamPartition;
     private final RdsSourceConfig sourceConfig;
@@ -80,8 +89,15 @@ public class LogicalReplicationEventProcessor {
     private final StreamCheckpointer streamCheckpointer;
     private final StreamCheckpointManager streamCheckpointManager;
 
+    private final Counter changeEventSuccessCounter;
+    private final Counter changeEventErrorCounter;
+    private final DistributionSummary bytesReceivedSummary;
+    private final DistributionSummary bytesProcessedSummary;
+    private final Timer eventProcessingTimer;
+
     private long currentLsn;
     private long currentEventTimestamp;
+    private long bytesReceived;
 
     private Map<Long, TableMetadata> tableMetadataMap;
 
@@ -109,6 +125,12 @@ public class LogicalReplicationEventProcessor {
 
         tableMetadataMap = new HashMap<>();
         pipelineEvents = new ArrayList<>();
+
+        changeEventSuccessCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSED_COUNT);
+        changeEventErrorCounter = pluginMetrics.counter(CHANGE_EVENTS_PROCESSING_ERROR_COUNT);
+        bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
+        bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
+        eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
     }
 
     public void process(ByteBuffer msg) {
@@ -118,20 +140,27 @@ public class LogicalReplicationEventProcessor {
         // If it's INSERT/UPDATE/DELETE, prepare events
         // If it's a COMMIT, convert all prepared events and send to buffer
         MessageType messageType = MessageType.from((char) msg.get());
-        if (messageType == MessageType.BEGIN) {
-            processBeginMessage(msg);
-        } else if (messageType == MessageType.RELATION) {
-            processRelationMessage(msg);
-        } else if (messageType == MessageType.INSERT) {
-            processInsertMessage(msg);
-        } else if (messageType == MessageType.UPDATE) {
-            processUpdateMessage(msg);
-        } else if (messageType == MessageType.DELETE) {
-            processDeleteMessage(msg);
-        } else if (messageType == MessageType.COMMIT) {
-            processCommitMessage(msg);
-        } else {
-            throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
+        switch (messageType) {
+            case BEGIN:
+                handleMessageAndErrors(msg, this::processBeginMessage, messageType);
+                break;
+            case RELATION:
+                handleMessageAndErrors(msg, this::processRelationMessage, messageType);
+                break;
+            case INSERT:
+                handleMessageAndErrors(msg, this::processInsertMessage, messageType);
+                break;
+            case UPDATE:
+                handleMessageAndErrors(msg, this::processUpdateMessage, messageType);
+                break;
+            case DELETE:
+                handleMessageAndErrors(msg, this::processDeleteMessage, messageType);
+                break;
+            case COMMIT:
+                handleMessageAndErrors(msg, this::processCommitMessage, messageType);
+                break;
+            default:
+                throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
         }
     }
 
@@ -205,6 +234,7 @@ public class LogicalReplicationEventProcessor {
         }
 
         writeToBuffer(bufferAccumulator, acknowledgementSet);
+        bytesProcessedSummary.record(bytesReceived);
         LOG.debug("Processed a COMMIT message with Flag: {} CommitLsn: {} EndLsn: {} Timestamp: {}", flag, commitLsn, endLsn, epochMicro);
 
         if (sourceConfig.isAcknowledgmentsEnabled()) {
@@ -283,6 +313,8 @@ public class LogicalReplicationEventProcessor {
 
     private void doProcess(ByteBuffer msg, List<String> columnNames, TableMetadata tableMetadata,
                            List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
+        bytesReceived = msg.capacity();
+        bytesReceivedSummary.record(bytesReceived);
         Map<String, Object> rowDataMap = getRowDataMap(msg, columnNames);
 
         createPipelineEvent(rowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, bulkAction);
@@ -348,10 +380,12 @@ public class LogicalReplicationEventProcessor {
     private void flushBufferAccumulator(BufferAccumulator<Record<Event>> bufferAccumulator, int eventCount) {
         try {
             bufferAccumulator.flush();
+            changeEventSuccessCounter.increment(eventCount);
         } catch (Exception e) {
             // this will only happen if writing to buffer gets interrupted from shutdown,
             // otherwise bufferAccumulator will keep retrying with backoff
             LOG.error("Failed to flush buffer", e);
+            changeEventErrorCounter.increment(eventCount);
         }
     }
 
@@ -376,5 +410,13 @@ public class LogicalReplicationEventProcessor {
         StreamProgressState progressState = streamPartition.getProgressState().get();
 
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
+    }
+
+    private void handleMessageAndErrors(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
+        try {
+            eventProcessingTimer.record(() -> function.accept(message));
+        } catch (Exception e) {
+            LOG.error("Failed to process change event of type {}", messageType, e);
+        }
     }
 }
