@@ -119,14 +119,10 @@ public class JiraRestClient {
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnAuthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
-                    log.error(NOISY, "Token expired. We will try to renew the tokens now.");
+                    log.warn(NOISY, "Token expired. We will try to renew the tokens now.");
                     authConfig.renewCredentials();
-                } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
-                } else if (statusCode == HttpStatus.SERVICE_UNAVAILABLE) {
-                    log.error(NOISY, "Service unavailable.  Will retry after backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
-                } else if (statusCode == HttpStatus.GATEWAY_TIMEOUT) {
-                    log.error(NOISY, "Gateway timeout.  Will retry after backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
+                } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS || statusCode == HttpStatus.SERVICE_UNAVAILABLE || statusCode == HttpStatus.GATEWAY_TIMEOUT) {
+                    log.error(NOISY, "Received {}. Backing off with sleep timer for {} seconds.", statusCode, RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
                 } else {
                     log.error(NOISY, "Received an unexpected status code {} response from Jira.", statusCode, ex);
                 }
