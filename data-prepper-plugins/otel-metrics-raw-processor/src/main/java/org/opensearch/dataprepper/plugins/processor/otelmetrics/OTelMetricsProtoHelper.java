@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.processor.otelmetrics;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
@@ -191,21 +190,6 @@ public final class OTelMetricsProtoHelper {
                 .collect(Collectors.toMap(i -> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
 
-    /**
-     * Extracts the name and version of the used instrumentation library used
-     *
-     * @return A map, containing information about the instrumentation library
-     */
-    public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
-        final Map<String, Object> instrumentationAttr = new HashMap<>();
-        if (!instrumentationLibrary.getName().isEmpty()) {
-            instrumentationAttr.put(INSTRUMENTATION_LIBRARY_NAME, instrumentationLibrary.getName());
-        }
-        if (!instrumentationLibrary.getVersion().isEmpty()) {
-            instrumentationAttr.put(INSTRUMENTATION_LIBRARY_VERSION, instrumentationLibrary.getVersion());
-        }
-        return instrumentationAttr;
-    }
 
     /**
      * Extracts the name and version of the used instrumentation scope used
