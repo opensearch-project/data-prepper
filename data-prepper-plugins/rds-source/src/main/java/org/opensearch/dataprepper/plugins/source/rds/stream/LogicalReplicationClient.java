@@ -47,6 +47,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     @Override
     public void connect() {
+        LOG.debug("Start connecting logical replication stream. ");
         PGReplicationStream stream;
         try (Connection conn = connectionManager.getConnection()) {
             PGConnection pgConnection = conn.unwrap(PGConnection.class);
@@ -62,6 +63,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                 logicalStreamBuilder.withStartPosition(startLsn);
             }
             stream = logicalStreamBuilder.start();
+            LOG.debug("Logical replication stream started. ");
 
             if (eventProcessor != null) {
                 while (!disconnectRequested) {
@@ -88,7 +90,8 @@ public class LogicalReplicationClient implements ReplicationLogClient {
             }
 
             stream.close();
-            LOG.info("Replication stream closed successfully.");
+            disconnectRequested = false;
+            LOG.debug("Replication stream closed successfully.");
         } catch (Exception e) {
             LOG.error("Exception while creating Postgres replication stream. ", e);
         }
@@ -97,6 +100,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     @Override
     public void disconnect() {
         disconnectRequested = true;
+        LOG.debug("Requested to disconnect logical replication stream.");
     }
 
     public void setEventProcessor(LogicalReplicationEventProcessor eventProcessor) {

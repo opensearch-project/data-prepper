@@ -33,7 +33,9 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,6 +87,92 @@ class LogicalReplicationClientTest {
 
         verify(stream).setAppliedLSN(lsn);
         verify(stream).setFlushedLSN(lsn);
+    }
+
+    @Test
+    void test_disconnect() throws SQLException, InterruptedException {
+        final Connection connection = mock(Connection.class);
+        final PGConnection pgConnection = mock(PGConnection.class, RETURNS_DEEP_STUBS);
+        final ChainedLogicalStreamBuilder logicalStreamBuilder = mock(ChainedLogicalStreamBuilder.class);
+        final PGReplicationStream stream = mock(PGReplicationStream.class);
+        final ByteBuffer message = ByteBuffer.allocate(0);
+        final LogSequenceNumber lsn = mock(LogSequenceNumber.class);
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.unwrap(PGConnection.class)).thenReturn(pgConnection);
+        when(pgConnection.getReplicationAPI().replicationStream().logical()).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotName(anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.start()).thenReturn(stream);
+        when(stream.readPending()).thenReturn(message).thenReturn(null);
+        when(stream.getLastReceiveLSN()).thenReturn(lsn);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> logicalReplicationClient.connect());
+
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(eventProcessor).process(message));
+        Thread.sleep(20);
+        verify(stream).setAppliedLSN(lsn);
+        verify(stream).setFlushedLSN(lsn);
+
+        logicalReplicationClient.disconnect();
+        Thread.sleep(20);
+        verify(stream).close();
+        verifyNoMoreInteractions(stream, eventProcessor);
+
+        executorService.shutdownNow();
+    }
+
+    @Test
+    void test_connect_disconnect_cycles() throws SQLException, InterruptedException {
+        final Connection connection = mock(Connection.class);
+        final PGConnection pgConnection = mock(PGConnection.class, RETURNS_DEEP_STUBS);
+        final ChainedLogicalStreamBuilder logicalStreamBuilder = mock(ChainedLogicalStreamBuilder.class);
+        final PGReplicationStream stream = mock(PGReplicationStream.class);
+        final ByteBuffer message = ByteBuffer.allocate(0);
+        final LogSequenceNumber lsn = mock(LogSequenceNumber.class);
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.unwrap(PGConnection.class)).thenReturn(pgConnection);
+        when(pgConnection.getReplicationAPI().replicationStream().logical()).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotName(anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.withSlotOption(anyString(), anyString())).thenReturn(logicalStreamBuilder);
+        when(logicalStreamBuilder.start()).thenReturn(stream);
+        when(stream.readPending()).thenReturn(message).thenReturn(null);
+        when(stream.getLastReceiveLSN()).thenReturn(lsn);
+
+        // First connect
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> logicalReplicationClient.connect());
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(eventProcessor, times(1)).process(message));
+        Thread.sleep(20);
+        verify(stream).setAppliedLSN(lsn);
+        verify(stream).setFlushedLSN(lsn);
+
+        // First disconnect
+        logicalReplicationClient.disconnect();
+        Thread.sleep(20);
+        verify(stream).close();
+        verifyNoMoreInteractions(stream, eventProcessor);
+
+        // Second connect
+        when(stream.readPending()).thenReturn(message).thenReturn(null);
+        executorService.submit(() -> logicalReplicationClient.connect());
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(eventProcessor, times(2)).process(message));
+        Thread.sleep(20);
+        verify(stream, times(2)).setAppliedLSN(lsn);
+        verify(stream, times(2)).setFlushedLSN(lsn);
+
+        // Second disconnect
+        logicalReplicationClient.disconnect();
+        Thread.sleep(20);
+        verify(stream, times(2)).close();
+        verifyNoMoreInteractions(stream, eventProcessor);
+
+        executorService.shutdownNow();
     }
 
     private LogicalReplicationClient createObjectUnderTest() {
