@@ -122,11 +122,11 @@ public class JiraRestClient {
                     log.error(NOISY, "Token expired. We will try to renew the tokens now.");
                     authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer.");
+                    log.error(NOISY, "Hitting API rate limit. Backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
                 } else if (statusCode == HttpStatus.SERVICE_UNAVAILABLE) {
-                    log.error(NOISY, "Service unavailable.  Will retry after backing off with sleep timer.");
+                    log.error(NOISY, "Service unavailable.  Will retry after backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
                 } else if (statusCode == HttpStatus.GATEWAY_TIMEOUT) {
-                    log.error(NOISY, "Gateway timeout.  Will retry after backing off with sleep timer.");
+                    log.error(NOISY, "Gateway timeout.  Will retry after backing off with sleep timer for {} seconds.", RETRY_ATTEMPT_SLEEP_TIME.get(retryCount));
                 } else {
                     log.error(NOISY, "Received an unexpected status code {} response from Jira.", statusCode, ex);
                 }

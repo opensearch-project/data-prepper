@@ -153,6 +153,8 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     this.accessToken = (String) oauth2Config.getAccessToken().getValue();
                     this.refreshToken = (String) oauth2Config.getRefreshToken().getValue();
                     this.expireTime = Instant.now().plusSeconds(10);
+                    log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
+                    return;
                 }
                 throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }
