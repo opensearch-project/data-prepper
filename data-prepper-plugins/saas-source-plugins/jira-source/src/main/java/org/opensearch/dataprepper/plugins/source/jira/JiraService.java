@@ -98,7 +98,7 @@ public class JiraService {
         int total;
         int startAt = 0;
         do {
-            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt, configuration);
+            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt);
             List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
             total = searchIssues.getTotal();
             startAt += searchIssues.getIssues().size();

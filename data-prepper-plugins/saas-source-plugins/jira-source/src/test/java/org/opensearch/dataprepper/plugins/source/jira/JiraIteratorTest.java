@@ -73,7 +73,7 @@ public class JiraIteratorTest {
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         when(mockSearchResults.getIssues()).thenReturn(new ArrayList<>());
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
         assertFalse(jiraIterator.hasNext());
     }
 
@@ -104,7 +104,7 @@ public class JiraIteratorTest {
         mockIssues.add(issue1);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);
@@ -133,7 +133,7 @@ public class JiraIteratorTest {
         mockIssues.add(issue3);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);
@@ -150,7 +150,7 @@ public class JiraIteratorTest {
         List<IssueBean> mockIssues = new ArrayList<>();
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);

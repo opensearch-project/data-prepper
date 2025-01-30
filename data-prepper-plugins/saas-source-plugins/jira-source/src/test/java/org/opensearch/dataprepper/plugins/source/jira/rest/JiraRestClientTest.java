@@ -44,8 +44,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraRestClientTest {
@@ -113,32 +111,26 @@ public class JiraRestClientTest {
     }
 
     @Test
-    public void testGetAllIssuesOauth2() throws JsonProcessingException {
+    public void testGetAllIssuesOauth2() {
         List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(OAUTH2, issueType, issueStatus, projectKey);
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
         SearchResults mockSearchResults = mock(SearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
+        SearchResults results = jiraRestClient.getAllIssues(jql, 0);
         assertNotNull(results);
     }
 
     @Test
-    public void testGetAllIssuesBasic() throws JsonProcessingException {
+    public void testGetAllIssuesBasic() {
         List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
         SearchResults mockSearchResults = mock(SearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
         doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = jiraRestClient.getAllIssues(jql, 0, jiraSourceConfig);
+        SearchResults results = jiraRestClient.getAllIssues(jql, 0);
         assertNotNull(results);
     }
 
