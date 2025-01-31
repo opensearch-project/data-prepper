@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -50,10 +51,11 @@ public class CrawlerTest {
     private LeaderPartition leaderPartition;
     private Crawler crawler;
     private final Instant lastPollTime = Instant.ofEpochMilli(0);
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("CrawlerTest", "crawler");
 
     @BeforeEach
     public void setup() {
-        crawler = new Crawler(client);
+        crawler = new Crawler(client, pluginMetrics);
         when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
     }
 

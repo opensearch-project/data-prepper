@@ -30,12 +30,10 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 public class Crawler {
     private static final Logger log = LoggerFactory.getLogger(Crawler.class);
     private final Timer crawlingTimer;
-    private final PluginMetrics pluginMetrics =
-            PluginMetrics.fromNames("sourceCrawler", "crawler");
 
     private final CrawlerClient client;
 
-    public Crawler(CrawlerClient client) {
+    public Crawler(CrawlerClient client, PluginMetrics pluginMetrics) {
         this.client = client;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
     }

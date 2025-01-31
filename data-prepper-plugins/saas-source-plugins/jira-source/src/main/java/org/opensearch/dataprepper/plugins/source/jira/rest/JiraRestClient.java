@@ -16,7 +16,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
@@ -44,42 +43,42 @@ public class JiraRestClient {
 
     public static final String REST_API_SEARCH = "rest/api/3/search";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
-    public static final String REST_API_PROJECTS = "/rest/api/3/project/search";
+    //public static final String REST_API_PROJECTS = "/rest/api/3/project/search";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String MAX_RESULT = "maxResults";
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
+    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
     private static final String ISSUES_REQUESTED = "issuesRequested";
+    private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
     private final JiraAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
+    private final Timer projectFetchLatencyTimer;
     private final Counter issuesRequestedCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
-    private int sleepTimeMultiplier = 1000;
 
-    public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig) {
+    public JiraRestClient(RestTemplate restTemplate, JiraAuthConfig authConfig, PluginMetrics pluginMetrics) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
-        ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
-        searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+        ticketFetchLatencyTimer = pluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
+        searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
+        projectFetchLatencyTimer = pluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
+        issuesRequestedCounter = pluginMetrics.counter(ISSUES_REQUESTED);
     }
 
     /**
      * Method to get Issues.
      *
-     * @param jql           input parameter.
-     * @param startAt       the start at
-     * @param configuration input parameter.
+     * @param jql     input parameter.
+     * @param startAt the start at
      * @return InputStream input stream
      */
     @Timed(SEARCH_CALL_LATENCY_TIMER)
-    public SearchResults getAllIssues(StringBuilder jql, int startAt,
-                                      JiraSourceConfig configuration) {
+    public SearchResults getAllIssues(StringBuilder jql, int startAt) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
