@@ -216,7 +216,7 @@ class DefaultPluginFactoryTest {
                     equalTo(expectedInstance));
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{TestDISource.class}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{TestDISource.class}, convertedConfiguration, pluginSetting);
         }
 
         @Test
@@ -233,7 +233,7 @@ class DefaultPluginFactoryTest {
                     equalTo(expectedInstance));
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
         }
 
         @Test
@@ -283,7 +283,7 @@ class DefaultPluginFactoryTest {
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(0));
 
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, null);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, null, pluginSetting);
             verifyNoInteractions(pluginCreator);
         }
 
@@ -299,7 +299,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
@@ -309,7 +309,7 @@ class DefaultPluginFactoryTest {
             final Object[] pipelineDescriptionObj = actualPluginArgumentsContext.createArguments(classes.toArray(new Class[1]));
             assertThat(pipelineDescriptionObj.length, equalTo(1));
             assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
-            final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+            final PipelineDescription actualPipelineDescription = (PipelineDescription) pipelineDescriptionObj[0];
             assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(1));
@@ -328,7 +328,7 @@ class DefaultPluginFactoryTest {
 
             final Object plugin = createObjectUnderTest().loadPlugin(baseClass, pluginSetting, object);
 
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             verify(pluginConfigurationObservableFactory).createDefaultPluginConfigObservable(eq(pluginConfigurationConverter),
                     eq(PluginSetting.class), eq(pluginSetting));
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
@@ -338,7 +338,7 @@ class DefaultPluginFactoryTest {
             final Object[] pipelineDescriptionObj = actualPluginArgumentsContext.createArguments(classes.toArray(new Class[1]));
             assertThat(pipelineDescriptionObj.length, equalTo(1));
             assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
-            final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+            final PipelineDescription actualPipelineDescription = (PipelineDescription) pipelineDescriptionObj[0];
             assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             assertThat(plugin, notNullValue());
             assertThat(plugin, equalTo(expectedInstance));
@@ -380,7 +380,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 3);
 
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator, times(3)).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final List<ComponentPluginArgumentsContext> actualPluginArgumentsContextList = pluginArgumentsContextArgCapture.getAllValues();
@@ -390,7 +390,7 @@ class DefaultPluginFactoryTest {
                 final Object[] pipelineDescriptionObj = pluginArgumentsContext.createArguments(classes.toArray(new Class[1]));
                 assertThat(pipelineDescriptionObj.length, equalTo(1));
                 assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
-                final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+                final PipelineDescription actualPipelineDescription = (PipelineDescription) pipelineDescriptionObj[0];
                 assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             });
             assertThat(plugins, notNullValue());
@@ -416,7 +416,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
             final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
             final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
@@ -425,7 +425,7 @@ class DefaultPluginFactoryTest {
             assertThat(pipelineDescriptionObj.length, equalTo(2));
             assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
             assertThat(pipelineDescriptionObj[1], sameInstance(suppliedAdditionalArgument));
-            final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
+            final PipelineDescription actualPipelineDescription = (PipelineDescription) pipelineDescriptionObj[0];
             assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(1));
@@ -458,7 +458,7 @@ class DefaultPluginFactoryTest {
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
             MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).deprecatedName(), equalTo(TEST_SINK_DEPRECATED_NAME));
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
         }
     }
 
@@ -487,7 +487,7 @@ class DefaultPluginFactoryTest {
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
             MatcherAssert.assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).alternateNames(), equalTo(new String[]{TEST_SINK_ALTERNATE_NAME}));
-            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration);
+            verify(beanFactoryProvider).createPluginSpecificContext(new Class[]{}, convertedConfiguration, pluginSetting);
         }
     }
 }
