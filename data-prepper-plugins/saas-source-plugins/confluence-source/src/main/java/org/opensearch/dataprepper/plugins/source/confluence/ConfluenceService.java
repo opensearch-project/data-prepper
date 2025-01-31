@@ -41,8 +41,6 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlCons
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PROJECT_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PROJECT_NOT_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.STATUS_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.STATUS_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.SUFFIX;
 
 
@@ -156,16 +154,7 @@ public class ConfluenceService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getIssueStatusIncludeFilter(configuration))) {
-            jiraQl.append(STATUS_IN).append(ConfluenceConfigHelper.getIssueStatusIncludeFilter(configuration).stream()
-                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
-                    .append(CLOSING_ROUND_BRACKET);
-        }
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getIssueStatusExcludeFilter(configuration))) {
-            jiraQl.append(STATUS_NOT_IN).append(ConfluenceConfigHelper.getIssueStatusExcludeFilter(configuration).stream()
-                            .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
-                    .append(CLOSING_ROUND_BRACKET);
-        }
+
         log.error("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }

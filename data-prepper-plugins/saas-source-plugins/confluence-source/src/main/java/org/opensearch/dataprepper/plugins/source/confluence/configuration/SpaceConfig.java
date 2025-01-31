@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 @Getter
-public class ProjectConfig {
+public class SpaceConfig {
     @JsonProperty("key")
     private NameConfig nameConfig;
 }

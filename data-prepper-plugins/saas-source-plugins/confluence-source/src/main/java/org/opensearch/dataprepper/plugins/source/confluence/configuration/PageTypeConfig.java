@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-public class StatusConfig {
+public class PageTypeConfig {
     @JsonProperty("include")
-    @Size(max = 1000, message = "status type filter should not be more than 1000")
+    @Size(max = 1000, message = "Page type filter should not be more than 1000")
     private List<String> include = new ArrayList<>();
 
     @JsonProperty("exclude")
-    @Size(max = 1000, message = "status type filter should not be more than 1000")
+    @Size(max = 1000, message = "Page type filter should not be more than 1000")
     private List<String> exclude = new ArrayList<>();
 }

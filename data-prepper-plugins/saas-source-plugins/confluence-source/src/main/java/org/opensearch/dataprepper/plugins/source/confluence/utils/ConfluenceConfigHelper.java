@@ -25,24 +25,6 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
  */
 @Slf4j
 public class ConfluenceConfigHelper {
-    /**
-     * Get Issue Status Filter from repository configuration.
-     *
-     * @return List Issue Status Filter.
-     */
-    public static List<String> getIssueStatusIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
-        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getStatusConfig() == null) {
-            return new ArrayList<>();
-        }
-        return repositoryConfiguration.getFilterConfig().getStatusConfig().getInclude();
-    }
-
-    public static List<String> getIssueStatusExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
-        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getStatusConfig() == null) {
-            return new ArrayList<>();
-        }
-        return repositoryConfiguration.getFilterConfig().getStatusConfig().getExclude();
-    }
 
     /**
      * Get Issue Types Filter from repository configuration.
@@ -50,17 +32,17 @@ public class ConfluenceConfigHelper {
      * @return List Issue Type Filter.
      */
     public static List<String> getIssueTypeIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
-        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getIssueTypeConfig() == null) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getPageTypeConfig() == null) {
             return new ArrayList<>();
         }
-        return repositoryConfiguration.getFilterConfig().getIssueTypeConfig().getInclude();
+        return repositoryConfiguration.getFilterConfig().getPageTypeConfig().getInclude();
     }
 
     public static List<String> getIssueTypeExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
-        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getIssueTypeConfig() == null) {
+        if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getPageTypeConfig() == null) {
             return new ArrayList<>();
         }
-        return repositoryConfiguration.getFilterConfig().getIssueTypeConfig().getExclude();
+        return repositoryConfiguration.getFilterConfig().getPageTypeConfig().getExclude();
     }
 
     /**
@@ -71,20 +53,20 @@ public class ConfluenceConfigHelper {
      */
     public static List<String> getProjectNameIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null ||
-                repositoryConfiguration.getFilterConfig().getProjectConfig() == null ||
-                repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig() == null) {
+                repositoryConfiguration.getFilterConfig().getSpaceConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig() == null) {
             return new ArrayList<>();
         }
-        return repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig().getInclude();
+        return repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig().getInclude();
     }
 
     public static List<String> getProjectNameExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null ||
-                repositoryConfiguration.getFilterConfig().getProjectConfig() == null ||
-                repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig() == null) {
+                repositoryConfiguration.getFilterConfig().getSpaceConfig() == null ||
+                repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig() == null) {
             return new ArrayList<>();
         }
-        return repositoryConfiguration.getFilterConfig().getProjectConfig().getNameConfig().getExclude();
+        return repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig().getExclude();
     }
 
 

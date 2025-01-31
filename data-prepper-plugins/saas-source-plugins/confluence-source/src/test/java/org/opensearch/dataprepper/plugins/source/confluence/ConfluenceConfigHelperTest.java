@@ -18,11 +18,10 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.FilterConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.IssueTypeConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.NameConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.ProjectConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.StatusConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.configuration.PageTypeConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.configuration.SpaceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 
 import java.util.List;
@@ -49,10 +48,10 @@ public class ConfluenceConfigHelperTest {
     StatusConfig statusConfig;
 
     @Mock
-    IssueTypeConfig issueTypeConfig;
+    PageTypeConfig pageTypeConfig;
 
     @Mock
-    ProjectConfig projectConfig;
+    SpaceConfig spaceConfig;
 
     @Mock
     NameConfig nameConfig;
@@ -77,31 +76,18 @@ public class ConfluenceConfigHelperTest {
         ConfluenceConfigHelper confluenceConfigHelper = new ConfluenceConfigHelper();
         assertNotNull(confluenceConfigHelper);
     }
-
-    @Test
-    void testGetIssueStatusFilter() {
-        when(confluenceSourceConfig.getFilterConfig()).thenReturn(filterConfig);
-        when(filterConfig.getStatusConfig()).thenReturn(statusConfig);
-        assertTrue(ConfluenceConfigHelper.getIssueStatusIncludeFilter(confluenceSourceConfig).isEmpty());
-        assertTrue(ConfluenceConfigHelper.getIssueStatusExcludeFilter(confluenceSourceConfig).isEmpty());
-        List<String> issueStatusFilter = List.of("Done", "In Progress");
-        List<String> issueStatusExcludeFilter = List.of("Done2", "In Progress2");
-        when(statusConfig.getInclude()).thenReturn(issueStatusFilter);
-        when(statusConfig.getExclude()).thenReturn(issueStatusExcludeFilter);
-        assertEquals(issueStatusFilter, ConfluenceConfigHelper.getIssueStatusIncludeFilter(confluenceSourceConfig));
-        assertEquals(issueStatusExcludeFilter, ConfluenceConfigHelper.getIssueStatusExcludeFilter(confluenceSourceConfig));
-    }
+    
 
     @Test
     void testGetIssueTypeFilter() {
         when(confluenceSourceConfig.getFilterConfig()).thenReturn(filterConfig);
-        when(filterConfig.getIssueTypeConfig()).thenReturn(issueTypeConfig);
+        when(filterConfig.getPageTypeConfig()).thenReturn(pageTypeConfig);
         assertTrue(ConfluenceConfigHelper.getIssueTypeIncludeFilter(confluenceSourceConfig).isEmpty());
         assertTrue(ConfluenceConfigHelper.getIssueTypeExcludeFilter(confluenceSourceConfig).isEmpty());
         List<String> issueTypeFilter = List.of("Bug", "Story");
         List<String> issueTypeExcludeFilter = List.of("Bug2", "Story2");
-        when(issueTypeConfig.getInclude()).thenReturn(issueTypeFilter);
-        when(issueTypeConfig.getExclude()).thenReturn(issueTypeExcludeFilter);
+        when(pageTypeConfig.getInclude()).thenReturn(issueTypeFilter);
+        when(pageTypeConfig.getExclude()).thenReturn(issueTypeExcludeFilter);
         assertEquals(issueTypeFilter, ConfluenceConfigHelper.getIssueTypeIncludeFilter(confluenceSourceConfig));
         assertEquals(issueTypeExcludeFilter, ConfluenceConfigHelper.getIssueTypeExcludeFilter(confluenceSourceConfig));
     }
@@ -109,8 +95,8 @@ public class ConfluenceConfigHelperTest {
     @Test
     void testGetProjectNameFilter() {
         when(confluenceSourceConfig.getFilterConfig()).thenReturn(filterConfig);
-        when(filterConfig.getProjectConfig()).thenReturn(projectConfig);
-        when(projectConfig.getNameConfig()).thenReturn(nameConfig);
+        when(filterConfig.getSpaceConfig()).thenReturn(spaceConfig);
+        when(spaceConfig.getNameConfig()).thenReturn(nameConfig);
         assertTrue(ConfluenceConfigHelper.getProjectNameIncludeFilter(confluenceSourceConfig).isEmpty());
         assertTrue(ConfluenceConfigHelper.getProjectNameExcludeFilter(confluenceSourceConfig).isEmpty());
         List<String> projectNameFilter = List.of("TEST", "TEST2");

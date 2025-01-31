@@ -15,12 +15,9 @@ import lombok.Getter;
 
 @Getter
 public class FilterConfig {
-    @JsonProperty("project")
-    private ProjectConfig projectConfig;
+    @JsonProperty("space")
+    private SpaceConfig spaceConfig;
 
-    @JsonProperty("status")
-    private StatusConfig statusConfig;
-
-    @JsonProperty("issue_type")
-    private IssueTypeConfig issueTypeConfig;
+    @JsonProperty("page_type")
+    private PageTypeConfig pageTypeConfig;
 }

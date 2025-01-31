@@ -21,10 +21,10 @@ import java.util.List;
 @Getter
 public class NameConfig {
     @JsonProperty("include")
-    @Size(max = 1000, message = "Project name type filter should not be more than 1000")
+    @Size(max = 1000, message = "Space name type filter should not be more than 1000")
     private List<String> include = new ArrayList<>();
 
     @JsonProperty("exclude")
-    @Size(max = 1000, message = "Project name type filter should not be more than 1000")
+    @Size(max = 1000, message = "Space name type filter should not be more than 1000")
     private List<String> exclude = new ArrayList<>();
 }
