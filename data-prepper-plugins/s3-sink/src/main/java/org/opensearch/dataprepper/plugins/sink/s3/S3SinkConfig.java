@@ -126,6 +126,7 @@ public class S3SinkConfig {
 
     /**
      * Threshold configuration for the aggregation of all S3 groups
+     * @return returns aggregate threshold options
      */
     public AggregateThresholdOptions getAggregateThresholdOptions() { return aggregateThresholdOptions; }
 

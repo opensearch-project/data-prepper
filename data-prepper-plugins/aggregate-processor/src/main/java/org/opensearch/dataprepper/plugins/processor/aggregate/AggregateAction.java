@@ -32,7 +32,7 @@ public interface AggregateAction {
 
     /**
      * indicates if the action holds the events or not
-     *
+     * @return returns if events are held by the processor or not
      */
     default boolean holdsEvents() {
         return false;
