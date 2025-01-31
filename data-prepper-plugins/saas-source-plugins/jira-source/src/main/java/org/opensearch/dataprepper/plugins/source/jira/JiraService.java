@@ -75,6 +75,7 @@ public class JiraService {
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
+     * @param itemInfoQueue item info queue
      */
     public void getJiraEntities(JiraSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
@@ -91,6 +92,7 @@ public class JiraService {
      *
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
+     * @param itemInfoQueue item info queue
      */
     private void searchForNewTicketsAndAddToQueue(JiraSourceConfig configuration, Instant timestamp,
                                                   Queue<ItemInfo> itemInfoQueue) {
@@ -127,7 +129,7 @@ public class JiraService {
      *
      * @param configuration Input Parameter
      * @param ts            Input Parameter
-     * @return String Builder
+     * @return String Builder created issue filter criteria
      */
     private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 

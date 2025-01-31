@@ -33,6 +33,7 @@ public class AddressValidation {
      * Method for getInetAddress.
      *
      * @param url input parameter.
+     * @return returns inet address
      */
     public static InetAddress getInetAddress(String url) {
         try {
