@@ -50,7 +50,7 @@ public class CascadingActionDetector {
             return parentTableMap;
         }
 
-        List<ForeignKeyRelation> foreignKeyRelations = streamPartition.getProgressState().get().getForeignKeyRelations();;
+        List<ForeignKeyRelation> foreignKeyRelations = streamPartition.getProgressState().get().getMySqlStreamState().getForeignKeyRelations();;
 
         for (ForeignKeyRelation foreignKeyRelation : foreignKeyRelations) {
             if (!ForeignKeyRelation.containsCascadingAction(foreignKeyRelation)) {
@@ -83,6 +83,9 @@ public class CascadingActionDetector {
 
     /**
      * Detects if a binlog event contains cascading updates and if detected, creates resync partitions
+     * @param event event
+     * @param parentTableMap parent table map
+     * @param tableMetadata table meta data
      */
     public void detectCascadingUpdates(Event event, Map<String, ParentTable> parentTableMap, TableMetadata tableMetadata) {
         final UpdateRowsEventData data = event.getData();
@@ -140,6 +143,9 @@ public class CascadingActionDetector {
 
     /**
      * Detects if a binlog event contains cascading deletes and if detected, creates resync partitions
+     * @param event event
+     * @param parentTableMap parent table map
+     * @param tableMetadata table meta data
      */
     public void detectCascadingDeletes(Event event, Map<String, ParentTable> parentTableMap, TableMetadata tableMetadata) {
         if (parentTableMap.containsKey(tableMetadata.getFullTableName())) {

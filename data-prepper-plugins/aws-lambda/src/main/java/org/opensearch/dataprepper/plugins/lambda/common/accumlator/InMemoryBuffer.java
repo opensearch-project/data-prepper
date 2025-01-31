@@ -72,6 +72,16 @@ public class InMemoryBuffer implements Buffer {
     eventCount++;
   }
 
+  void completeCodec() {
+    if (eventCount > 0) {
+      try {
+        requestCodec.complete(this.byteArrayOutputStream);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   public List<Record<Event>> getRecords() {
     return records;
   }
@@ -98,11 +108,7 @@ public class InMemoryBuffer implements Buffer {
       return null;
     }
 
-    try {
-      requestCodec.complete(this.byteArrayOutputStream);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    completeCodec();
 
     SdkBytes payload = getPayload();
     payloadRequestSize = payload.asByteArray().length;

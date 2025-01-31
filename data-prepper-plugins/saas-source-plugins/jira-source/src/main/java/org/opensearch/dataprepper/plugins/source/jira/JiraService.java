@@ -61,13 +61,12 @@ public class JiraService {
     private final JiraSourceConfig jiraSourceConfig;
     private final JiraRestClient jiraRestClient;
     private final Counter searchResultsFoundCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
 
-    public JiraService(JiraSourceConfig jiraSourceConfig, JiraRestClient jiraRestClient) {
+    public JiraService(JiraSourceConfig jiraSourceConfig, JiraRestClient jiraRestClient, PluginMetrics pluginMetrics) {
         this.jiraSourceConfig = jiraSourceConfig;
         this.jiraRestClient = jiraRestClient;
-        this.searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
+        this.searchResultsFoundCounter = pluginMetrics.counter(SEARCH_RESULTS_FOUND);
     }
 
     /**
@@ -75,6 +74,7 @@ public class JiraService {
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
+     * @param itemInfoQueue item info queue
      */
     public void getJiraEntities(JiraSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
@@ -91,6 +91,7 @@ public class JiraService {
      *
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
+     * @param itemInfoQueue item info queue
      */
     private void searchForNewTicketsAndAddToQueue(JiraSourceConfig configuration, Instant timestamp,
                                                   Queue<ItemInfo> itemInfoQueue) {
@@ -99,7 +100,7 @@ public class JiraService {
         int total;
         int startAt = 0;
         do {
-            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt, configuration);
+            SearchResults searchIssues = jiraRestClient.getAllIssues(jql, startAt);
             List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
             total = searchIssues.getTotal();
             startAt += searchIssues.getIssues().size();
@@ -127,12 +128,12 @@ public class JiraService {
      *
      * @param configuration Input Parameter
      * @param ts            Input Parameter
-     * @return String Builder
+     * @return String Builder created issue filter criteria
      */
     private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
-        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration)) ) {
+        if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
             validateProjectFilters(configuration);
         }
         StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
@@ -166,7 +167,7 @@ public class JiraService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        log.error("Created issue filter criteria JiraQl query: {}", jiraQl);
+        log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
 

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,18 +15,19 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
 import org.opensearch.dataprepper.core.validation.LoggingPluginErrorsHandler;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
-import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
-import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
+import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
+import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
 import org.opensearch.dataprepper.plugins.test.TestComponent;
 import org.opensearch.dataprepper.plugins.test.TestDISource;
 import org.opensearch.dataprepper.plugins.test.TestPlugin;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Collections;
@@ -129,7 +131,7 @@ class DefaultPluginFactoryIT {
     }
 
     @Test
-    void loadPlugin_should_return_a_new_plugin_instance_with_DI_context_and_config_injected() {
+    void loadPlugin_should_return_a_new_plugin_instance_with_DI_context_with_config_and_plugin_metrics_injected() {
 
         final String requiredStringValue = UUID.randomUUID().toString();
         final String optionalStringValue = UUID.randomUUID().toString();
@@ -152,6 +154,9 @@ class DefaultPluginFactoryIT {
         assertThat(pluginConfig.getRequiredString(), equalTo(requiredStringValue));
         assertThat(pluginConfig.getOptionalString(), equalTo(optionalStringValue));
         assertThat(plugin.getTestComponent().getIdentifier(), equalTo("test-component-with-plugin-config-injected"));
+        PluginMetrics pluginMetrics = plugin.getTestComponent().getPluginMetrics();
+        assertInstanceOf(PluginMetrics.class, pluginMetrics);
+        assertInstanceOf(Counter.class, pluginMetrics.counter("testCounter"));
     }
 
     @Test
