@@ -36,6 +36,9 @@ public class LambdaCommonHandler {
     }
 
     public static boolean isSuccess(InvokeResponse response) {
+        if(response == null) {
+            return false;
+        }
         int statusCode = response.statusCode();
         return statusCode >= 200 && statusCode < 300;
     }

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.leader;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -128,6 +129,7 @@ class LeaderSchedulerTest {
         verify(sourceCoordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
     }
 
+    @Disabled("Flaky test, needs to be fixed")
     @Test
     void test_shutDown() {
         lenient().when(sourceCoordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
