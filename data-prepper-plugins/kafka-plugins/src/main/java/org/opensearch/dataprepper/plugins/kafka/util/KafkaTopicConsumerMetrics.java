@@ -10,6 +10,8 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -17,6 +19,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class KafkaTopicConsumerMetrics {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicConsumerMetrics.class);
     static final String NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS = "numberOfPositiveAcknowledgements";
     static final String NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS = "numberOfNegativeAcknowledgements";
     static final String NUMBER_OF_RECORDS_FAILED_TO_PARSE = "numberOfRecordsFailedToParse";
@@ -82,7 +85,10 @@ public class KafkaTopicConsumerMetrics {
                     double max = 0.0;
                     for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
                         Map<String, Double> consumerMetrics = entry.getValue();
-                        synchronized(consumerMetrics) {
+                        synchronized (consumerMetrics) {
+                            if (consumerMetrics.get(metricName) == null) {
+                                LOG.debug("No consumer metric for recordsLagMax found");
+                            }
                             max = Math.max(max, consumerMetrics.get(metricName));
                         }
                     }
