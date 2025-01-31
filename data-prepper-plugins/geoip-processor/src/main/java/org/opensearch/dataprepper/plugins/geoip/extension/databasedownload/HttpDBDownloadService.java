@@ -31,7 +31,9 @@ public class HttpDBDownloadService implements DBSource {
 
     /**
      * HttpDBDownloadService constructor for initialisation of attributes
-     * @param destinationDirectory destinationDirectory
+     * @param destinationDirectory destination directory
+     * @param geoIPFileManager geo ip file manager
+     * @param maxMindDatabaseConfig max min database config
      */
     public HttpDBDownloadService(final String destinationDirectory,
                                  final GeoIPFileManager geoIPFileManager,
@@ -85,6 +87,7 @@ public class HttpDBDownloadService implements DBSource {
     /**
      * Build Request And DownloadFile
      * @param url url
+     * @param downloadTarFilepath download tar file path
      */
     public void buildRequestAndDownloadFile(final String url, final String downloadTarFilepath)  {
         downloadDBFileFromMaxmind(url, downloadTarFilepath);

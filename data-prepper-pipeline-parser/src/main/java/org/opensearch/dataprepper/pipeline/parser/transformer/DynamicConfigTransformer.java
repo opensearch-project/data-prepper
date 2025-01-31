@@ -486,9 +486,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Replaces template node in the jsonPath with the node from
      * original json.
      *
-     * @param root
-     * @param jsonPath
-     * @param newNode
+     * @param root json root node
+     * @param jsonPath json path
+     * @param newNode new node to be repalces with
      */
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {

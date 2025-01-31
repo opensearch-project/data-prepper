@@ -44,6 +44,7 @@ public @interface ExampleValues {
 
         /**
          * A description of the example value.
+         * @return returns description
          *
          * @since 2.11
          */

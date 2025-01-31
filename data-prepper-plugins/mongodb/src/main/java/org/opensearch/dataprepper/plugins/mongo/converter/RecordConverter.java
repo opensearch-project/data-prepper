@@ -57,6 +57,7 @@ public class RecordConverter {
      * @param eventCreateTimeEpochMillis Creation timestamp of the event in epoch millis
      * @param eventVersionNumber      Event version number to handle conflicts
      * @param eventName               Event name
+     * @param primaryKeyBsonType      primaryKeyBsonType
      * @return Jackson document event
      */
     public Event convert(final String record,
@@ -98,6 +99,7 @@ public class RecordConverter {
      * @param record                  record that will be converted to Event.
      * @param eventCreationTimeMillis Creation timestamp of the event
      * @param eventVersionNumber      Event version number to handle conflicts
+     * @param primaryKeyBsonType      primaryKeyBsonType
      * @return Jackson document event
      */
     public Event convert(final String record,

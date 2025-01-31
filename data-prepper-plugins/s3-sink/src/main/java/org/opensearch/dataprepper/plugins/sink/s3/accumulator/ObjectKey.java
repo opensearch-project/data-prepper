@@ -69,6 +69,8 @@ public class ObjectKey {
      *
      * @param s3SinkConfig s3 sink configuration
      * @param codecExtension extension
+     * @param event event
+     * @param expressionEvaluator expressionEvaluator
      * @return s3 object name with prefix
      */
     public static String objectFileName(final S3SinkConfig s3SinkConfig,
