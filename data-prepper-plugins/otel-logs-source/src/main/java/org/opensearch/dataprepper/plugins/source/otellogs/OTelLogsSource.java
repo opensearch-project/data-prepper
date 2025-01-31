@@ -93,14 +93,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
             if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
-
-            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider);
-
-            sb.blockingTaskExecutor(
-                    Executors.newScheduledThreadPool(oTelLogsSourceConfig.getThreadCount()),
-                    true);
-
-            server = sb.build();
+            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

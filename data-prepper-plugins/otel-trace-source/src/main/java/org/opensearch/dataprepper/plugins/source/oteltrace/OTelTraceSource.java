@@ -89,16 +89,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
             if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
-
-            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelTraceGrpcService, certificateProvider);
-
-            final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
-                    .numThreads(oTelTraceSourceConfig.getThreadCount())
-                    .threadNamePrefix(pipelineName + "-otel_trace")
-                    .build();
-            sb.blockingTaskExecutor(blockingTaskExecutor, true);
-
-            server = sb.build();
+            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelTraceGrpcService, certificateProvider);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

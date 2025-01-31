@@ -31,6 +31,7 @@ import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsS
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_THREAD_COUNT;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 class OtelMetricsSourceConfigTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());

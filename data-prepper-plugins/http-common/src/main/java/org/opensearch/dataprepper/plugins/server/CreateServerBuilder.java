@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.server;
 
 
 import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
+import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -60,7 +61,7 @@ public class CreateServerBuilder {
         this.pipelineName = pipelineName;
     }
 
-    public ServerBuilder createGRPCServerBuilder(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider) {
+    public Server createGRPCServerBuilder(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider) {
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -135,12 +136,18 @@ public class CreateServerBuilder {
             sb.http(serverConfiguration.getPort());
         }
 
-        return sb;
+        final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
+                .numThreads(serverConfiguration.getThreadCount())
+                .threadNamePrefix(pipelineName + sourceName)
+                .build();
+        sb.blockingTaskExecutor(blockingTaskExecutor, true);
+
+        return sb.build();
     }
 
-    public ServerBuilder createHTTPServerBuilder() {
+    public Server createHTTPServerBuilder() {
         final ServerBuilder sb = Server.builder();
-        return sb;
+        return sb.build();
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {

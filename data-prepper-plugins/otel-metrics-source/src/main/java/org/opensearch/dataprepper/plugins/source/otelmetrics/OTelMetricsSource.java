@@ -91,14 +91,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
             if (oTelMetricsSourceConfig.isSsl() || oTelMetricsSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
-
-            ServerBuilder sb = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
-
-            sb.blockingTaskExecutor(
-                    Executors.newScheduledThreadPool(oTelMetricsSourceConfig.getThreadCount()),
-                    true);
-
-            server = sb.build();
+            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
