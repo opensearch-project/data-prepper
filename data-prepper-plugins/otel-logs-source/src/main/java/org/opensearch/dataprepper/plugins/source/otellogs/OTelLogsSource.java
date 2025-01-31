@@ -6,7 +6,10 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.server.Server;
-import com.linecorp.armeria.server.ServerBuilder;
+import io.grpc.MethodDescriptor;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
+import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -22,17 +25,14 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
-import org.opensearch.dataprepper.plugins.server.CreateServerBuilder;
+import org.opensearch.dataprepper.plugins.server.CreateServer;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
-import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
 public class OTelLogsSource implements Source<Record<Object>> {
@@ -88,12 +88,13 @@ public class OTelLogsSource implements Source<Record<Object>> {
             );
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);
-            CreateServerBuilder createServer = new CreateServerBuilder(serverConfiguration, LOG, pluginMetrics, "otel_logs_source", pipelineName);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, "otel_logs_source", pipelineName);
             CertificateProvider certificateProvider = null;
             if (oTelLogsSourceConfig.isSsl() || oTelLogsSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
-            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider);
+            final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
+            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

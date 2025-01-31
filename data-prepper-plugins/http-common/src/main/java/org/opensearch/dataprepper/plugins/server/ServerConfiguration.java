@@ -5,9 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.server;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Setter;
 import lombok.Getter;
+import lombok.Setter;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;

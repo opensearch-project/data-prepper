@@ -20,9 +20,6 @@ import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
-import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -40,7 +37,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 
-public class CreateServerBuilder {
+public class CreateServer {
     private final ServerConfiguration serverConfiguration;
     private final Logger LOG;
     private final PluginMetrics  pluginMetrics;
@@ -53,7 +50,7 @@ public class CreateServerBuilder {
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
-    public CreateServerBuilder(final ServerConfiguration serverConfiguration, Logger LOG, PluginMetrics pluginMetrics, String sourceName, String pipelineName) {
+    public CreateServer(final ServerConfiguration serverConfiguration, Logger LOG, PluginMetrics pluginMetrics, String sourceName, String pipelineName) {
         this.serverConfiguration = serverConfiguration;
         this.LOG = LOG;
         this.pluginMetrics = pluginMetrics;
@@ -61,7 +58,7 @@ public class CreateServerBuilder {
         this.pipelineName = pipelineName;
     }
 
-    public Server createGRPCServerBuilder(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider) {
+    public <K, V> Server createGRPCServerBuilder(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider, MethodDescriptor<K, V> methodDescriptor) {
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -70,7 +67,6 @@ public class CreateServerBuilder {
                 .useBlockingTaskExecutor(true)
                 .exceptionHandler(createGrpExceptionHandler());
 
-        final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
         final String sourcePath = serverConfiguration.getPath();
         if (sourcePath != null) {
             final String transformedSourcePath = sourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
