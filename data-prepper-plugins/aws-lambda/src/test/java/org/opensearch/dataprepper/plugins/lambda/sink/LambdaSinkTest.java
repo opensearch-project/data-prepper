@@ -15,11 +15,13 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferSynchronized;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
@@ -34,21 +36,31 @@ import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -375,6 +387,80 @@ class LambdaSinkTest {
         verify(numberOfRecordsFailedCounter, times(1)).increment(1);
         verify(dlqPushHandler, never()).perform(anyList());
     }
+
+    @Test
+    void testFlushDueToTimeoutWhenSecondCallHasNoRecords() throws Exception {
+        // Set the maxCollectTime to a very short duration so that the buffer will be considered timed-out.
+        setPrivateField(lambdaSink, "maxCollectTime", Duration.ofMillis(1));
+
+        // Create a spy on lambdaSink to intercept flushBuffers() calls.
+        LambdaSink spySink = spy(lambdaSink);
+
+        // Use an AtomicBoolean flag to record whether flushBuffers() is called.
+        AtomicBoolean flushCalled = new AtomicBoolean(false);
+        doAnswer(invocation -> {
+            flushCalled.set(true);
+            return null;
+        }).when(spySink).flushBuffers(anyList());
+
+        // First call: add one record so that the buffer is non-empty.
+        List<Record<Event>> records = Collections.singletonList(new Record<>(mock(Event.class)));
+        spySink.doOutput(records);
+
+        // Wait briefly to allow the buffer's duration to exceed maxCollectTime.
+        Thread.sleep(10);
+
+        // Second call: pass an empty collection; this should trigger the timeout flush.
+        spySink.doOutput(Collections.emptyList());
+
+        // Verify that flushBuffers() was called due to the timeout.
+        assertTrue(flushCalled.get(), "Expected flushBuffers() to be called on the second call due to timeout.");
+    }
+
+    @Test
+    void testConcurrentDoOutputWithMultipleThreads() throws Exception {
+        // Set maxCollectTime to a very short duration to force the timeout flush.
+        setPrivateField(lambdaSink, "maxCollectTime", Duration.ofMillis(1));
+
+        // Create a spy of the sink so we can intercept flushBuffers() calls.
+        LambdaSink spySink = spy(lambdaSink);
+
+        // Use an AtomicInteger to count how many times flushBuffers() is called.
+        AtomicInteger flushCount = new AtomicInteger(0);
+        doAnswer(invocation -> {
+            flushCount.incrementAndGet();
+            return null;
+        }).when(spySink).flushBuffers(anyList());
+
+        // Create a thread pool with multiple threads.
+        int threadCount = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        int iterations = 1000;
+        List<Future<?>> futures = new ArrayList<>();
+
+        // Each task calls doOutput() with one record.
+        for (int i = 0; i < iterations; i++) {
+            futures.add(executor.submit(() -> {
+                spySink.doOutput(Collections.singletonList(new Record<>(mock(Event.class))));
+            }));
+        }
+
+        // Wait for all tasks to complete.
+        for (Future<?> future : futures) {
+            future.get();
+        }
+
+        // Additionally, call doOutput() with an empty collection to trigger any pending timeout flush.
+        spySink.doOutput(Collections.emptyList());
+
+        executor.shutdown();
+
+        // Assert that flushBuffers() was called at least once (or more) under concurrent load.
+        // With a short timeout, even if each call adds a record, eventually the partial buffer becomes "old"
+        // and flushes. If the locking is working correctly, flushCount should be > 0.
+        assertTrue(flushCount.get() > 0, "Expected at least one flush due to timeout under concurrent calls, but flushCount is " + flushCount.get());
+    }
+
 
 
     // Utility to set private fields
