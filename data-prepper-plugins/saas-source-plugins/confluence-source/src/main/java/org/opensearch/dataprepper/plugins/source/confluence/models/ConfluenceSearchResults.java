@@ -11,6 +11,7 @@
 
 package org.opensearch.dataprepper.plugins.source.confluence.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
@@ -20,20 +21,20 @@ import java.util.List;
  * The result of a JQL search.
  */
 @Getter
-public class SearchResults {
-    @JsonProperty("expand")
-    private String expand = null;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ConfluenceSearchResults {
 
-    @JsonProperty("startAt")
-    private Integer startAt = null;
 
-    @JsonProperty("maxResults")
-    private Integer maxResults = null;
+    @JsonProperty("start")
+    private Integer start = null;
 
-    @JsonProperty("total")
-    private Integer total = null;
+    @JsonProperty("limit")
+    private Integer limit = null;
 
-    @JsonProperty("issues")
-    private List<IssueBean> issues = null;
+    @JsonProperty("size")
+    private Integer size = null;
+
+    @JsonProperty("results")
+    private List<ConfluenceItem> results = null;
 
 }

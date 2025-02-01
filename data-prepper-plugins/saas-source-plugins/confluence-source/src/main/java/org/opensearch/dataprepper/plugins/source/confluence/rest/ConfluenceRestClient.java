@@ -16,10 +16,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.UnAuthorizedException;
-import org.opensearch.dataprepper.plugins.source.confluence.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.AddressValidation;
 import org.springframework.http.HttpStatus;
@@ -34,78 +33,76 @@ import java.util.List;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.EXPAND_FIELD;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.EXPAND_VALUE;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.JQL_FIELD;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CQL_FIELD;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_FIELD;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_VALUE;
 
 @Slf4j
 @Named
 public class ConfluenceRestClient {
 
-    public static final String REST_API_SEARCH = "rest/api/3/search";
-    public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
-    public static final String REST_API_PROJECTS = "/rest/api/3/project/search";
+    public static final String REST_API_SEARCH = "wiki/rest/api/content/search";
+    public static final String REST_API_FETCH_CONTENT = "wiki/rest/api/content/";
+    public static final String REST_API_CONTENT_EXPAND_PARAM = "?expand=body.view";
+    //public static final String REST_API_SPACES = "/rest/api/api/spaces";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String MAX_RESULT = "maxResults";
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
-    private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
+    private static final String PAGE_FETCH_LATENCY_TIMER = "pageFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
-    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
-    private static final String ISSUES_REQUESTED = "issuesRequested";
+    private static final String SPACES_FETCH_LATENCY_TIMER = "spacesFetchLatency";
+    private static final String PAGES_REQUESTED = "pagesRequested";
     private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
     private final ConfluenceAuthConfig authConfig;
-    private final Timer ticketFetchLatencyTimer;
+    private final Timer contentFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
-    private final Timer projectFetchLatencyTimer;
-    private final Counter issuesRequestedCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
+    private final Timer spaceFetchLatencyTimer;
+    private final Counter contentRequestedCounter;
 
-    public ConfluenceRestClient(RestTemplate restTemplate, ConfluenceAuthConfig authConfig) {
+    public ConfluenceRestClient(RestTemplate restTemplate, ConfluenceAuthConfig authConfig,
+                                PluginMetrics pluginMetrics) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
-        ticketFetchLatencyTimer = jiraPluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
-        searchCallLatencyTimer = jiraPluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        projectFetchLatencyTimer = jiraPluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
-
-        issuesRequestedCounter = jiraPluginMetrics.counter(ISSUES_REQUESTED);
+        contentFetchLatencyTimer = pluginMetrics.timer(PAGE_FETCH_LATENCY_TIMER);
+        searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
+        spaceFetchLatencyTimer = pluginMetrics.timer(SPACES_FETCH_LATENCY_TIMER);
+        contentRequestedCounter = pluginMetrics.counter(PAGES_REQUESTED);
     }
 
     /**
      * Method to get Issues.
      *
-     * @param jql           input parameter.
-     * @param startAt       the start at
-     * @param configuration input parameter.
+     * @param jql     input parameter.
+     * @param startAt the start at
      * @return InputStream input stream
      */
     @Timed(SEARCH_CALL_LATENCY_TIMER)
-    public SearchResults getAllIssues(StringBuilder jql, int startAt,
-                                      ConfluenceSourceConfig configuration) {
+    public ConfluenceSearchResults getAllContent(StringBuilder jql, int startAt) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
         URI uri = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam(MAX_RESULT, FIFTY)
                 .queryParam(START_AT, startAt)
-                .queryParam(JQL_FIELD, jql)
+                .queryParam(CQL_FIELD, jql)
                 .queryParam(EXPAND_FIELD, EXPAND_VALUE)
                 .buildAndExpand().toUri();
-        return invokeRestApi(uri, SearchResults.class).getBody();
+        return invokeRestApi(uri, ConfluenceSearchResults.class).getBody();
     }
 
     /**
      * Gets issue.
      *
-     * @param issueKey the item info
+     * @param contentId the item info
      * @return the issue
      */
-    @Timed(TICKET_FETCH_LATENCY_TIMER)
-    public String getIssue(String issueKey) {
-        issuesRequestedCounter.increment();
-        String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
+    @Timed(PAGE_FETCH_LATENCY_TIMER)
+    public String getContent(String contentId) {
+        contentRequestedCounter.increment();
+        String url = authConfig.getUrl() + REST_API_FETCH_CONTENT + "/" + contentId + REST_API_CONTENT_EXPAND_PARAM;
         URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
         return invokeRestApi(uri, String.class).getBody();
     }

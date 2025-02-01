@@ -21,24 +21,24 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
 /**
- * The type Jira configuration.
+ * The type Confluence configuration.
  */
 @Slf4j
 public class ConfluenceConfigHelper {
 
     /**
-     * Get Issue Types Filter from repository configuration.
+     * Get Content Types Filter from configuration.
      *
-     * @return List Issue Type Filter.
+     * @return List Content Type Filter.
      */
-    public static List<String> getIssueTypeIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
+    public static List<String> getContentTypeIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getPageTypeConfig() == null) {
             return new ArrayList<>();
         }
         return repositoryConfiguration.getFilterConfig().getPageTypeConfig().getInclude();
     }
 
-    public static List<String> getIssueTypeExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
+    public static List<String> getContentTypeExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null || repositoryConfiguration.getFilterConfig().getPageTypeConfig() == null) {
             return new ArrayList<>();
         }
@@ -46,12 +46,11 @@ public class ConfluenceConfigHelper {
     }
 
     /**
-     * Get Project Filter Types from repository configuration.
-     * public static final String ST = "status";
+     * Get Space Filter Types from configuration.
      *
-     * @return List Project Filter.
+     * @return List Space Filter.
      */
-    public static List<String> getProjectNameIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
+    public static List<String> getSpacesNameIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null ||
                 repositoryConfiguration.getFilterConfig().getSpaceConfig() == null ||
                 repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig() == null) {
@@ -60,7 +59,7 @@ public class ConfluenceConfigHelper {
         return repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig().getInclude();
     }
 
-    public static List<String> getProjectNameExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
+    public static List<String> getSpacesNameExcludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
         if (repositoryConfiguration.getFilterConfig() == null ||
                 repositoryConfiguration.getFilterConfig().getSpaceConfig() == null ||
                 repositoryConfiguration.getFilterConfig().getSpaceConfig().getNameConfig() == null) {
@@ -85,7 +84,7 @@ public class ConfluenceConfigHelper {
 
         if (BASIC.equals(authType)) {
             if (config.getAuthenticationConfig().getBasicConfig().getUsername() == null || config.getAuthenticationConfig().getBasicConfig().getPassword() == null) {
-                throw new RuntimeException("Jira ID or Credential are required for Basic AuthType");
+                throw new RuntimeException("Confluence ID or Credential are required for Basic AuthType");
             }
         }
 

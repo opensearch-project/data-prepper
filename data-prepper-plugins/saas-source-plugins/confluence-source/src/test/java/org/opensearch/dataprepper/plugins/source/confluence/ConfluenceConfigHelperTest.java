@@ -45,9 +45,6 @@ public class ConfluenceConfigHelperTest {
     FilterConfig filterConfig;
 
     @Mock
-    StatusConfig statusConfig;
-
-    @Mock
     PageTypeConfig pageTypeConfig;
 
     @Mock
@@ -76,20 +73,20 @@ public class ConfluenceConfigHelperTest {
         ConfluenceConfigHelper confluenceConfigHelper = new ConfluenceConfigHelper();
         assertNotNull(confluenceConfigHelper);
     }
-    
+
 
     @Test
     void testGetIssueTypeFilter() {
         when(confluenceSourceConfig.getFilterConfig()).thenReturn(filterConfig);
         when(filterConfig.getPageTypeConfig()).thenReturn(pageTypeConfig);
-        assertTrue(ConfluenceConfigHelper.getIssueTypeIncludeFilter(confluenceSourceConfig).isEmpty());
-        assertTrue(ConfluenceConfigHelper.getIssueTypeExcludeFilter(confluenceSourceConfig).isEmpty());
+        assertTrue(ConfluenceConfigHelper.getContentTypeIncludeFilter(confluenceSourceConfig).isEmpty());
+        assertTrue(ConfluenceConfigHelper.getContentTypeExcludeFilter(confluenceSourceConfig).isEmpty());
         List<String> issueTypeFilter = List.of("Bug", "Story");
         List<String> issueTypeExcludeFilter = List.of("Bug2", "Story2");
         when(pageTypeConfig.getInclude()).thenReturn(issueTypeFilter);
         when(pageTypeConfig.getExclude()).thenReturn(issueTypeExcludeFilter);
-        assertEquals(issueTypeFilter, ConfluenceConfigHelper.getIssueTypeIncludeFilter(confluenceSourceConfig));
-        assertEquals(issueTypeExcludeFilter, ConfluenceConfigHelper.getIssueTypeExcludeFilter(confluenceSourceConfig));
+        assertEquals(issueTypeFilter, ConfluenceConfigHelper.getContentTypeIncludeFilter(confluenceSourceConfig));
+        assertEquals(issueTypeExcludeFilter, ConfluenceConfigHelper.getContentTypeExcludeFilter(confluenceSourceConfig));
     }
 
     @Test
@@ -97,14 +94,14 @@ public class ConfluenceConfigHelperTest {
         when(confluenceSourceConfig.getFilterConfig()).thenReturn(filterConfig);
         when(filterConfig.getSpaceConfig()).thenReturn(spaceConfig);
         when(spaceConfig.getNameConfig()).thenReturn(nameConfig);
-        assertTrue(ConfluenceConfigHelper.getProjectNameIncludeFilter(confluenceSourceConfig).isEmpty());
-        assertTrue(ConfluenceConfigHelper.getProjectNameExcludeFilter(confluenceSourceConfig).isEmpty());
+        assertTrue(ConfluenceConfigHelper.getSpacesNameIncludeFilter(confluenceSourceConfig).isEmpty());
+        assertTrue(ConfluenceConfigHelper.getSpacesNameExcludeFilter(confluenceSourceConfig).isEmpty());
         List<String> projectNameFilter = List.of("TEST", "TEST2");
         List<String> projectNameExcludeFilter = List.of("TEST3", "TEST4");
         when(nameConfig.getInclude()).thenReturn(projectNameFilter);
         when(nameConfig.getExclude()).thenReturn(projectNameExcludeFilter);
-        assertEquals(projectNameFilter, ConfluenceConfigHelper.getProjectNameIncludeFilter(confluenceSourceConfig));
-        assertEquals(projectNameExcludeFilter, ConfluenceConfigHelper.getProjectNameExcludeFilter(confluenceSourceConfig));
+        assertEquals(projectNameFilter, ConfluenceConfigHelper.getSpacesNameIncludeFilter(confluenceSourceConfig));
+        assertEquals(projectNameExcludeFilter, ConfluenceConfigHelper.getSpacesNameExcludeFilter(confluenceSourceConfig));
     }
 
 

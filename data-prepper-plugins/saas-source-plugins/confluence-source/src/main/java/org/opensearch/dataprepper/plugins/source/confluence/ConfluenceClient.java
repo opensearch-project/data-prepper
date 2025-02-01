@@ -41,7 +41,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.util.concurrent.CompletableFuture.supplyAsync;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.PROJECT;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.SPACE;
 
 /**
  * This class represents a Jira client.
@@ -93,7 +93,7 @@ public class ConfluenceClient implements CrawlerClient {
                 state.getKeyAttributes(), state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
         Map<String, Object> keyAttributes = state.getKeyAttributes();
-        String project = (String) keyAttributes.get(PROJECT);
+        String project = (String) keyAttributes.get(SPACE);
         Instant eventTime = state.getExportStartTime();
         List<ItemInfo> itemInfos = new ArrayList<>();
         for (String itemId : itemIds) {
@@ -103,7 +103,7 @@ public class ConfluenceClient implements CrawlerClient {
             ItemInfo itemInfo = ConfluenceItemInfo.builder()
                     .withItemId(itemId)
                     .withId(itemId)
-                    .withProject(project)
+                    .withSpace(project)
                     .withEventTime(eventTime)
                     .withMetadata(keyAttributes).build();
             itemInfos.add(itemInfo);
@@ -112,12 +112,12 @@ public class ConfluenceClient implements CrawlerClient {
         String eventType = EventType.DOCUMENT.toString();
         List<Record<Event>> recordsToWrite = itemInfos
                 .parallelStream()
-                .map(t -> (Supplier<String>) (() -> service.getIssue(t.getId())))
+                .map(t -> (Supplier<String>) (() -> service.getContent(t.getId())))
                 .map(supplier -> supplyAsync(supplier, this.executorService))
                 .map(CompletableFuture::join)
-                .map(ticketJson -> {
+                .map(contentJson -> {
                     try {
-                        return objectMapper.readValue(ticketJson, new TypeReference<>() {
+                        return objectMapper.readValue(contentJson, new TypeReference<>() {
                         });
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);

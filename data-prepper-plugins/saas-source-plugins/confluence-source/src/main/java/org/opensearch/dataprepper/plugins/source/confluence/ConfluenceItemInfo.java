@@ -12,7 +12,7 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.opensearch.dataprepper.plugins.source.confluence.models.IssueBean;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceContentType;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.Constants;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
@@ -22,18 +22,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.CONTENT_ID;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.CONTENT_TITLE;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.CREATED;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.ISSUE_KEY;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.PROJECT_KEY;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.PROJECT_NAME;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.UPDATED;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants._ISSUE;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.LAST_MODIFIED;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.SPACE_KEY;
 
 @Setter
 @Getter
 public class ConfluenceItemInfo implements ItemInfo {
-    private String project;
-    private String issueType;
+    private String space;
+    // either a page or a BlogPost
+    private String contentType;
     private String id;
     private String itemId;
     private Map<String, Object> metadata;
@@ -41,14 +41,14 @@ public class ConfluenceItemInfo implements ItemInfo {
 
     public ConfluenceItemInfo(String id,
                               String itemId,
-                              String project,
-                              String issueType,
+                              String space,
+                              String contentType,
                               Map<String, Object> metadata,
                               Instant eventTime
     ) {
         this.id = id;
-        this.project = project;
-        this.issueType = issueType;
+        this.space = space;
+        this.contentType = contentType;
         this.itemId = itemId;
         this.metadata = metadata;
         this.eventTime = eventTime;
@@ -60,7 +60,7 @@ public class ConfluenceItemInfo implements ItemInfo {
 
     @Override
     public String getPartitionKey() {
-        return project + "|" + issueType + "|" + UUID.randomUUID();
+        return space + "|" + contentType + "|" + UUID.randomUUID();
     }
 
     @Override
@@ -70,12 +70,12 @@ public class ConfluenceItemInfo implements ItemInfo {
 
     @Override
     public Map<String, Object> getKeyAttributes() {
-        return Map.of(Constants.PROJECT, project);
+        return Map.of(Constants.SPACE, space);
     }
 
     @Override
     public Instant getLastModifiedAt() {
-        long updatedAtMillis = getMetadataField(Constants.UPDATED);
+        long updatedAtMillis = getMetadataField(Constants.LAST_MODIFIED);
         long createdAtMillis = getMetadataField(Constants.CREATED);
         return createdAtMillis > updatedAtMillis ?
                 Instant.ofEpochMilli(createdAtMillis) : Instant.ofEpochMilli(updatedAtMillis);
@@ -102,14 +102,14 @@ public class ConfluenceItemInfo implements ItemInfo {
         private Instant eventTime;
         private String id;
         private String itemId;
-        private String project;
-        private String issueType;
+        private String space;
+        private String contentType;
 
         public ConfluenceItemInfoBuilder() {
         }
 
         public ConfluenceItemInfo build() {
-            return new ConfluenceItemInfo(id, itemId, project, issueType, metadata, eventTime);
+            return new ConfluenceItemInfo(id, itemId, space, contentType, metadata, eventTime);
         }
 
         public ConfluenceItemInfoBuilder withMetadata(Map<String, Object> metadata) {
@@ -132,25 +132,25 @@ public class ConfluenceItemInfo implements ItemInfo {
             return this;
         }
 
-        public ConfluenceItemInfoBuilder withProject(String project) {
-            this.project = project;
+        public ConfluenceItemInfoBuilder withSpace(String space) {
+            this.space = space;
             return this;
         }
 
-        public ConfluenceItemInfoBuilder withIssueBean(IssueBean issue) {
-            Map<String, Object> issueMetadata = new HashMap<>();
-            issueMetadata.put(PROJECT_KEY, issue.getProject());
-            issueMetadata.put(PROJECT_NAME, issue.getProjectName());
-            issueMetadata.put(CREATED, issue.getCreatedTimeMillis());
-            issueMetadata.put(UPDATED, issue.getUpdatedTimeMillis());
-            issueMetadata.put(ISSUE_KEY, issue.getKey());
-            issueMetadata.put(ConfluenceService.CONTENT_TYPE, ConfluenceContentType.ISSUE.getType());
+        public ConfluenceItemInfoBuilder withIssueBean(ConfluenceItem contentItem) {
+            Map<String, Object> contentItemMetadata = new HashMap<>();
+            contentItemMetadata.put(SPACE_KEY, contentItem.getSpaceItem().getKey());
+            contentItemMetadata.put(CONTENT_TITLE, contentItem.getTitle());
+            contentItemMetadata.put(CREATED, contentItem.getCreatedTimeMillis());
+            contentItemMetadata.put(LAST_MODIFIED, contentItem.getUpdatedTimeMillis());
+            contentItemMetadata.put(CONTENT_ID, contentItem.getId());
+            contentItemMetadata.put(ConfluenceService.CONTENT_TYPE, ConfluenceContentType.ISSUE.getType());
 
-            this.project = issue.getProject();
-            this.id = issue.getKey();
-            this.issueType = ConfluenceContentType.ISSUE.getType();
-            this.itemId = _ISSUE + issueMetadata.get(PROJECT_KEY) + "-" + issue.getKey();
-            this.metadata = issueMetadata;
+            this.space = contentItem.getSpaceItem().getKey();
+            this.id = contentItem.getId();
+            this.contentType = ConfluenceContentType.ISSUE.getType();
+            this.itemId = contentItem.getId();
+            this.metadata = contentItemMetadata;
             return this;
         }
     }

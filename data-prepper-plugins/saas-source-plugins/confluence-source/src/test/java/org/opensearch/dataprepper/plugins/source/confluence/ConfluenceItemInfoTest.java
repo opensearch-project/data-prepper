@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceItemInfo;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.Constants;
 
 import java.time.Instant;
@@ -59,8 +58,8 @@ public class ConfluenceItemInfoTest {
     void testGetters() {
         assertEquals(confluenceItemInfo.getItemId(), itemId);
         assertEquals(confluenceItemInfo.getId(), id);
-        assertEquals(confluenceItemInfo.getProject(), project);
-        assertEquals(confluenceItemInfo.getIssueType(), issueType);
+        assertEquals(confluenceItemInfo.getSpace(), project);
+        assertEquals(confluenceItemInfo.getContentType(), issueType);
         assertEquals(confluenceItemInfo.getMetadata(), metadata);
         assertEquals(confluenceItemInfo.getEventTime(), eventTime);
     }
@@ -78,12 +77,12 @@ public class ConfluenceItemInfoTest {
         assertNotEquals(confluenceItemInfo.getItemId(), itemId);
         confluenceItemInfo.setId("newID");
         assertNotEquals(confluenceItemInfo.getId(), id);
-        confluenceItemInfo.setProject("newProject");
-        assertNotEquals(confluenceItemInfo.getProject(), project);
+        confluenceItemInfo.setSpace("newProject");
+        assertNotEquals(confluenceItemInfo.getSpace(), project);
         confluenceItemInfo.setMetadata(newMetadata);
         assertNotEquals(confluenceItemInfo.getMetadata(), metadata);
-        confluenceItemInfo.setIssueType("newIssueType");
-        assertNotEquals(confluenceItemInfo.getIssueType(), issueType);
+        confluenceItemInfo.setContentType("newIssueType");
+        assertNotEquals(confluenceItemInfo.getContentType(), issueType);
 
     }
 
@@ -97,11 +96,11 @@ public class ConfluenceItemInfoTest {
 
     @Test
     void testGetLastModifiedAt() {
-        when(metadata.get(Constants.UPDATED)).thenReturn("5");
+        when(metadata.get(Constants.LAST_MODIFIED)).thenReturn("5");
         when(metadata.get(Constants.CREATED)).thenReturn("0");
         assertEquals(Instant.ofEpochMilli(5), confluenceItemInfo.getLastModifiedAt());
 
-        when(metadata.get(Constants.UPDATED)).thenReturn("5");
+        when(metadata.get(Constants.LAST_MODIFIED)).thenReturn("5");
         when(metadata.get(Constants.CREATED)).thenReturn("7");
         assertEquals(Instant.ofEpochMilli(7), confluenceItemInfo.getLastModifiedAt());
     }

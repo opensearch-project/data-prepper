@@ -19,14 +19,12 @@ public class Constants {
 
     public static final String KEY = "key";
     public static final String NAME = "name";
-    public static final String PROJECT = "project";
+    public static final String SPACE = "space";
     public static final String OAUTH2 = "OAuth2";
-    public static final String _PROJECT = "project-";
-    public static final String _ISSUE = "ISSUE-";
-    public static final String UPDATED = "updated";
-    public static final String PROJECT_KEY = "j_project_key";
-    public static final String PROJECT_NAME = "j_project_name";
-    public static final String ISSUE_KEY = "j_issue_key";
+    public static final String LAST_MODIFIED = "lastModified";
+    public static final String SPACE_KEY = "space";
+    public static final String CONTENT_TITLE = "title";
+    public static final String CONTENT_ID = "id";
     public static final String CREATED = "created";
     public static final String BASIC = "Basic";
     public static final String LIVE = "live";

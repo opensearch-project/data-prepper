@@ -19,11 +19,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceServiceTest;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.UnAuthorizedException;
-import org.opensearch.dataprepper.plugins.source.confluence.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthFactory;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,8 @@ public class ConfluenceRestClientTest {
     @Mock
     private ConfluenceAuthConfig authConfig;
 
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
+
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
                 Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
@@ -74,24 +77,24 @@ public class ConfluenceRestClientTest {
         doReturn(new ResponseEntity<>(exampleTicketResponse, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         ConfluenceSourceConfig confluenceSourceConfig = ConfluenceServiceTest.createJiraConfigurationFromYaml(configFileName);
         ConfluenceAuthConfig authConfig = new ConfluenceAuthFactory(confluenceSourceConfig).getObject();
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
-        String ticketDetails = confluenceRestClient.getIssue("key");
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
+        String ticketDetails = confluenceRestClient.getContent("key");
         assertEquals(exampleTicketResponse, ticketDetails);
     }
 
     @ParameterizedTest
     @MethodSource("provideHttpStatusCodesWithExceptionClass")
     void testInvokeRestApiTokenExpired(HttpStatus statusCode, Class expectedExceptionType) {
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         confluenceRestClient.setSleepTimeMultiplier(1);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
         when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(statusCode));
-        assertThrows(expectedExceptionType, () -> confluenceRestClient.getIssue("key"));
+        assertThrows(expectedExceptionType, () -> confluenceRestClient.getContent("key"));
     }
 
     @Test
     void testInvokeRestApiTokenExpiredInterruptException() throws InterruptedException {
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         when(authConfig.getUrl()).thenReturn("https://example.com/rest/api/2/issue/key");
         when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS));
         confluenceRestClient.setSleepTimeMultiplier(100000);
@@ -99,7 +102,7 @@ public class ConfluenceRestClientTest {
         Thread testThread = new Thread(() -> {
             assertThrows(InterruptedException.class, () -> {
                 try {
-                    confluenceRestClient.getIssue("key");
+                    confluenceRestClient.getContent("key");
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -111,40 +114,40 @@ public class ConfluenceRestClientTest {
     }
 
     @Test
-    public void testGetAllIssuesOauth2() throws JsonProcessingException {
+    public void testGetAllContentOauth2() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         ConfluenceSourceConfig confluenceSourceConfig = ConfluenceServiceTest.createJiraConfiguration(OAUTH2, issueType, issueStatus, projectKey);
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
-        SearchResults mockSearchResults = mock(SearchResults.class);
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
+        ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
-        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = confluenceRestClient.getAllIssues(jql, 0, confluenceSourceConfig);
+        doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0);
         assertNotNull(results);
     }
 
     @Test
-    public void testGetAllIssuesBasic() throws JsonProcessingException {
+    public void testGetAllContentBasic() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         ConfluenceSourceConfig confluenceSourceConfig = ConfluenceServiceTest.createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
-        SearchResults mockSearchResults = mock(SearchResults.class);
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
+        ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
-        doReturn(new ResponseEntity<>(mockSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        SearchResults results = confluenceRestClient.getAllIssues(jql, 0, confluenceSourceConfig);
+        doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
+        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0);
         assertNotNull(results);
     }
 
     @Test
     public void testRestApiAddressValidation() throws JsonProcessingException {
         when(authConfig.getUrl()).thenReturn("https://224.0.0.1/");
-        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig);
-        assertThrows(BadRequestException.class, () -> confluenceRestClient.getIssue("TEST-1"));
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
+        assertThrows(BadRequestException.class, () -> confluenceRestClient.getContent("TEST-1"));
     }
 
 }

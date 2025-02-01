@@ -114,7 +114,6 @@ public class ConfluenceSourceConfigTest {
         confluenceSourceConfig = createJiraSourceConfig(BASIC, false);
         assertEquals(confluenceSourceConfig.getFilterConfig().getPageTypeConfig().getInclude(), issueTypeList);
         assertEquals(confluenceSourceConfig.getFilterConfig().getSpaceConfig().getNameConfig().getInclude(), projectList);
-        assertEquals(confluenceSourceConfig.getFilterConfig().getStatusConfig().getInclude(), statusList);
         assertEquals(confluenceSourceConfig.getAccountUrl(), accountUrl);
         assertEquals(confluenceSourceConfig.getAuthenticationConfig().getBasicConfig().getPassword(), password);
         assertEquals(confluenceSourceConfig.getAuthenticationConfig().getBasicConfig().getUsername(), username);

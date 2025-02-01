@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.SLASH;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SLASH;
 
 /**
  * The type Jira service.

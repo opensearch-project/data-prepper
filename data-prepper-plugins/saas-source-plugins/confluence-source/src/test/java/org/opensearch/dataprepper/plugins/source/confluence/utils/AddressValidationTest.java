@@ -12,9 +12,6 @@ package org.opensearch.dataprepper.plugins.source.confluence.utils;
 
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.confluence.utils.AddressValidation;
-import org.opensearch.dataprepper.plugins.source.confluence.utils.Constants;
-import org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -31,7 +28,7 @@ public class AddressValidationTest {
     void testInstanceCreation() {
         assertNotNull(new AddressValidation());
         assertNotNull(new Constants());
-        assertNotNull(new JqlConstants());
+        assertNotNull(new CqlConstants());
     }
 
     @Test

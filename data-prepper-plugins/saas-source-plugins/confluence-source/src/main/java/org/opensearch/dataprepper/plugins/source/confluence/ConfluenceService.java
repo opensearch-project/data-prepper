@@ -14,8 +14,8 @@ import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.confluence.models.IssueBean;
-import org.opensearch.dataprepper.plugins.source.confluence.models.SearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
@@ -23,6 +23,9 @@ import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,16 +35,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.UPDATED;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.CLOSING_ROUND_BRACKET;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.GREATER_THAN_EQUALS;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.ISSUE_TYPE_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.ISSUE_TYPE_NOT_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PREFIX;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PROJECT_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.PROJECT_NOT_IN;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.JqlConstants.SUFFIX;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.LAST_MODIFIED;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CLOSING_ROUND_BRACKET;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_IN;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_NOT_IN;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.DELIMITER;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.PREFIX;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_IN;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_NOT_IN;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SUFFIX;
 
 
 /**
@@ -74,14 +77,14 @@ public class ConfluenceService {
      * @param configuration the configuration.
      * @param timestamp     timestamp.
      */
-    public void getJiraEntities(ConfluenceSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
+    public void getPages(ConfluenceSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
-        searchForNewTicketsAndAddToQueue(configuration, timestamp, itemInfoQueue);
+        searchForNewContentAndAddToQueue(configuration, timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
     }
 
-    public String getIssue(String issueKey) {
-        return confluenceRestClient.getIssue(issueKey);
+    public String getContent(String contentId) {
+        return confluenceRestClient.getContent(contentId);
     }
 
     /**
@@ -90,17 +93,17 @@ public class ConfluenceService {
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
      */
-    private void searchForNewTicketsAndAddToQueue(ConfluenceSourceConfig configuration, Instant timestamp,
+    private void searchForNewContentAndAddToQueue(ConfluenceSourceConfig configuration, Instant timestamp,
                                                   Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
-        StringBuilder jql = createIssueFilterCriteria(configuration, timestamp);
+        StringBuilder cql = createContentFilterCriteria(configuration, timestamp);
         int total;
         int startAt = 0;
         do {
-            SearchResults searchIssues = confluenceRestClient.getAllIssues(jql, startAt, configuration);
-            List<IssueBean> issueList = new ArrayList<>(searchIssues.getIssues());
-            total = searchIssues.getTotal();
-            startAt += searchIssues.getIssues().size();
+            ConfluenceSearchResults searchIssues = confluenceRestClient.getAllContent(cql, startAt);
+            List<ConfluenceItem> issueList = new ArrayList<>(searchIssues.getResults());
+            total = searchIssues.getSize();
+            startAt += searchIssues.getResults().size();
             addItemsToQueue(issueList, itemInfoQueue);
         } while (startAt < total);
         searchResultsFoundCounter.increment(total);
@@ -113,7 +116,7 @@ public class ConfluenceService {
      * @param issueList     Issue list.
      * @param itemInfoQueue Item info queue.
      */
-    private void addItemsToQueue(List<IssueBean> issueList, Queue<ItemInfo> itemInfoQueue) {
+    private void addItemsToQueue(List<ConfluenceItem> issueList, Queue<ItemInfo> itemInfoQueue) {
         issueList.forEach(issue -> {
             itemInfoQueue.add(ConfluenceItemInfo.builder().withEventTime(Instant.now()).withIssueBean(issue).build());
         });
@@ -121,63 +124,65 @@ public class ConfluenceService {
 
 
     /**
-     * Method for creating Issue Filter Criteria.
+     * Method for creating Content Filter Criteria.
      *
      * @param configuration Input Parameter
      * @param ts            Input Parameter
      * @return String Builder
      */
-    private StringBuilder createIssueFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
+    private StringBuilder createContentFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
 
-        log.info("Creating issue filter criteria");
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getProjectNameExcludeFilter(configuration))) {
-            validateProjectFilters(configuration);
+        log.info("Creating content filter criteria");
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration))) {
+            validateSpaceFilters(configuration);
         }
-        StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getProjectNameIncludeFilter(configuration))) {
-            jiraQl.append(PROJECT_IN).append(ConfluenceConfigHelper.getProjectNameIncludeFilter(configuration).stream()
+        String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_EQUALS + "\"" + formattedTimeStamp + "\"");
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
+            cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getProjectNameExcludeFilter(configuration))) {
-            jiraQl.append(PROJECT_NOT_IN).append(ConfluenceConfigHelper.getProjectNameExcludeFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration))) {
+            cQl.append(SPACE_NOT_IN).append(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getIssueTypeIncludeFilter(configuration))) {
-            jiraQl.append(ISSUE_TYPE_IN).append(ConfluenceConfigHelper.getIssueTypeIncludeFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration))) {
+            cQl.append(CONTENT_TYPE_IN).append(ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getIssueTypeExcludeFilter(configuration))) {
-            jiraQl.append(ISSUE_TYPE_NOT_IN).append(ConfluenceConfigHelper.getIssueTypeExcludeFilter(configuration).stream()
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeExcludeFilter(configuration))) {
+            cQl.append(CONTENT_TYPE_NOT_IN).append(ConfluenceConfigHelper.getContentTypeExcludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
 
-        log.error("Created issue filter criteria JiraQl query: {}", jiraQl);
-        return jiraQl;
+        log.error("Created issue filter criteria JiraQl query: {}", cQl);
+        return cQl;
     }
 
     /**
-     * Method for Validating Project Filters.
+     * Method for Validating Space Filters.
      *
      * @param configuration Input Parameter
      */
-    private void validateProjectFilters(ConfluenceSourceConfig configuration) {
+    private void validateSpaceFilters(ConfluenceSourceConfig configuration) {
         log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
         Set<String> includedProjects = new HashSet<>();
         List<String> includedAndExcludedProjects = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
-        ConfluenceConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
+        ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             includedProjects.add(projectFilter);
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);
             }
         });
-        ConfluenceConfigHelper.getProjectNameExcludeFilter(configuration).forEach(projectFilter -> {
+        ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             if (includedProjects.contains(projectFilter)) {
                 includedAndExcludedProjects.add(projectFilter);
@@ -188,16 +193,16 @@ public class ConfluenceService {
         });
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
-            log.error("One or more invalid project keys found in filter configuration: {}", badFilters);
+            log.error("One or more invalid Space keys found in filter configuration: {}", badFilters);
             throw new BadRequestException("Bad request exception occurred " +
-                    "Invalid project key found in filter configuration for "
+                    "Invalid Space key found in filter configuration for "
                     + filters);
         }
         if (!includedAndExcludedProjects.isEmpty()) {
             String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
-            log.error("One or more project keys found in both include and exclude: {}", includedAndExcludedProjects);
+            log.error("One or more Space keys found in both include and exclude: {}", includedAndExcludedProjects);
             throw new BadRequestException("Bad request exception occurred " +
-                    "Project filters is invalid because the following projects are listed in both include and exclude"
+                    "Space filters is invalid because the following space are listed in both include and exclude"
                     + filters);
         }
 

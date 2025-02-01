@@ -22,10 +22,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceClient;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceIterator;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceService;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 
@@ -92,7 +88,7 @@ public class ConfluenceClientTest {
         Instant exportStartTime = Instant.now();
         when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
 
-        when(confluenceService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
+        when(confluenceService.getContent(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
 
         ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
@@ -117,7 +113,7 @@ public class ConfluenceClientTest {
         Instant exportStartTime = Instant.now();
         when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
 
-        when(confluenceService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
+        when(confluenceService.getContent(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
 
 
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
@@ -139,7 +135,7 @@ public class ConfluenceClientTest {
         Instant exportStartTime = Instant.now();
         when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.ofEpochSecond(exportStartTime.toEpochMilli()));
 
-        when(confluenceService.getIssue(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
+        when(confluenceService.getContent(anyString())).thenReturn("{\"id\":\"ID1\",\"key\":\"TEST-1\"}");
 
         ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
 
