@@ -38,6 +38,7 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.net.HttpURLConnection;
+import java.nio.channels.AsynchronousFileChannel;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
@@ -85,6 +87,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     // The partial buffer that may not yet have reached threshold.
     // Access must be synchronized
     private Buffer statefulBuffer;
+    private ReentrantLock reentrantLock;
 
     @DataPrepperPluginConstructor
     public LambdaSink(final PluginSetting pluginSetting,
@@ -127,6 +130,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         if (lambdaSinkConfig.getDlqPluginSetting() != null) {
             this.dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, lambdaSinkConfig.getDlq(), lambdaSinkConfig.getAwsAuthenticationOptions());
         }
+        reentrantLock = new ReentrantLock();
 
     }
 
@@ -177,32 +181,46 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
             LOG.warn("LambdaSink doOutput called before initialization");
             return;
         }
-        if (records.isEmpty()) {
-            return;
-        }
-
-        // We'll collect any "full" buffers in a local list, flush them at the end
-        List<Buffer> fullBuffers = new ArrayList<>();
-
-        // Add to the persistent buffer, check threshold
-        for (Record<Event> record : records) {
-            //statefulBuffer is either empty or partially filled(from previous run)
-            statefulBuffer.addRecord(record);
-
-            if (isThresholdExceeded(statefulBuffer)) {
-                // This buffer is full
-                fullBuffers.add(statefulBuffer);
-                // Create new partial buffer
+        reentrantLock.lock();
+        try {
+            //check if old buffer needs to be flushed
+            if (statefulBuffer.getEventCount() > 0
+                    && ThresholdCheck.checkTimeoutExceeded(statefulBuffer, maxCollectTime)) {
+                LOG.debug("Flushing partial buffer due to timeout of {}", maxCollectTime);
+                final Buffer bufferToFlush = statefulBuffer;
+                // create a new partial buffer.
                 statefulBuffer = new InMemoryBufferSynchronized(
                         lambdaSinkConfig.getBatchOptions().getKeyName(),
                         outputCodecContext
                 );
+                flushBuffers(Collections.singletonList(bufferToFlush));
             }
-        }
 
-        // Flush any full buffers
-        if (!fullBuffers.isEmpty()) {
-            flushBuffers(fullBuffers);
+            // We'll collect any "full" buffers in a local list, flush them at the end
+            List<Buffer> fullBuffers = new ArrayList<>();
+
+            // Add to the persistent buffer, check threshold
+            for (Record<Event> record : records) {
+                //statefulBuffer is either empty or partially filled(from previous run)
+                statefulBuffer.addRecord(record);
+
+                if (isThresholdExceeded(statefulBuffer)) {
+                    // This buffer is full
+                    fullBuffers.add(statefulBuffer);
+                    // Create new partial buffer
+                    statefulBuffer = new InMemoryBufferSynchronized(
+                            lambdaSinkConfig.getBatchOptions().getKeyName(),
+                            outputCodecContext
+                    );
+                }
+            }
+
+            // Flush any full buffers
+            if (!fullBuffers.isEmpty()) {
+                flushBuffers(fullBuffers);
+            }
+        } finally {
+            reentrantLock.unlock();
         }
     }
 
@@ -263,7 +281,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         }
     }
 
-    private void flushBuffers(final List<Buffer> buffersToFlush) {
+    void flushBuffers(final List<Buffer> buffersToFlush) {
 
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap;
