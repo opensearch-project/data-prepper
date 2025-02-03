@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.confluence.utils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.utils.AddressValidation;
 
 import java.util.ArrayList;
 import java.util.List;

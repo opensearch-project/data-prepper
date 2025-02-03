@@ -13,11 +13,11 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.util.CollectionUtils;
 

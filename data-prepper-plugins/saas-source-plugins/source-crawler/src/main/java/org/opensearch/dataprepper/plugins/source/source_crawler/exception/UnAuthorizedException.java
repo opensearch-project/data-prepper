@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.exception;
+package org.opensearch.dataprepper.plugins.source.source_crawler.exception;
 
 /**
  * Exception to indicate unauthorized access.

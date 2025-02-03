@@ -8,11 +8,11 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest.auth;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,14 +30,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.RETRY_ATTEMPT;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SLASH;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.SLASH;
 
 /**
  * The type Jira service.
  */
 
-public class ConfluenceOauthConfig implements ConfluenceAuthConfig {
+public class AtlassianOauthConfig implements AtlassianAuthConfig {
 
     public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
     public static final String ACCESSIBLE_RESOURCES = "https://api.atlassian.com/oauth/token/accessible-resources";
@@ -46,7 +46,7 @@ public class ConfluenceOauthConfig implements ConfluenceAuthConfig {
     public static final String EXPIRES_IN = "expires_in";
     public static final String REFRESH_TOKEN = "refresh_token";
     public static final String ACCESS_TOKEN = "access_token";
-    private static final Logger log = LoggerFactory.getLogger(ConfluenceOauthConfig.class);
+    private static final Logger log = LoggerFactory.getLogger(AtlassianOauthConfig.class);
     RestTemplate restTemplate = new RestTemplate();
     private String url;
     @Getter
@@ -60,11 +60,11 @@ public class ConfluenceOauthConfig implements ConfluenceAuthConfig {
     private String cloudId = null;
     private final String clientId;
     private final String clientSecret;
-    private final ConfluenceSourceConfig confluenceSourceConfig;
+    private final AtlassianSourceConfig confluenceSourceConfig;
     private final Object cloudIdFetchLock = new Object();
     private final Object tokenRenewLock = new Object();
 
-    public ConfluenceOauthConfig(ConfluenceSourceConfig confluenceSourceConfig) {
+    public AtlassianOauthConfig(AtlassianSourceConfig confluenceSourceConfig) {
         this.confluenceSourceConfig = confluenceSourceConfig;
         this.accessToken = (String) confluenceSourceConfig.getAuthenticationConfig().getOauth2Config()
                 .getAccessToken().getValue();

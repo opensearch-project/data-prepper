@@ -8,11 +8,11 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.utils;
+package org.opensearch.dataprepper.plugins.source.source_crawler.utils;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;

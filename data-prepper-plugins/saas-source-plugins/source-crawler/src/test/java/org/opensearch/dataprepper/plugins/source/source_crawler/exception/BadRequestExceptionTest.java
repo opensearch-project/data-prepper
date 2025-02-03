@@ -8,12 +8,11 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.exception;
+package org.opensearch.dataprepper.plugins.source.source_crawler.exception;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
