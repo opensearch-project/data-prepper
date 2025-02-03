@@ -172,9 +172,13 @@ public class SqsWorker implements Runnable {
         }
 
         for (Message message : messages) {
-            Duration duration = Duration.between(Instant.ofEpochMilli(Long.parseLong(message.attributes().get(MessageSystemAttributeName.SENT_TIMESTAMP))), Instant.now());
-            sqsMessageDelayTimer.record(duration.isNegative() ? Duration.ZERO : duration); // Negative durations can occur if messages are processed immediately
-
+            final int receiveCount = Integer.parseInt(message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT));
+            if (receiveCount < 1) {
+                Duration duration = Duration.between(
+                        Instant.ofEpochMilli(Long.parseLong(message.attributes().get(MessageSystemAttributeName.SENT_TIMESTAMP))),
+                        Instant.now());
+                sqsMessageDelayTimer.record(duration.isNegative() ? Duration.ZERO : duration); // can sometimes record negative durations if message is processed immediately
+            }
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(message);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(message);
             final Optional<DeleteMessageBatchRequestEntry> deleteEntry = processSqsObject(message, acknowledgementSet);

@@ -37,6 +37,7 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -117,8 +118,12 @@ class SqsWorkerTest {
                 .messageId("msg-1")
                 .receiptHandle("rh-1")
                 .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World\"}]}")
-                .attributes(Collections.singletonMap(MessageSystemAttributeName.SENT_TIMESTAMP, "1234567890"))
+                .attributes(Map.of(
+                        MessageSystemAttributeName.SENT_TIMESTAMP, "1234567890",
+                        MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT, "0"
+                ))
                 .build();
+
 
         lenient().when(sqsWorkerCommon.pollSqsMessages(
                 anyString(),
