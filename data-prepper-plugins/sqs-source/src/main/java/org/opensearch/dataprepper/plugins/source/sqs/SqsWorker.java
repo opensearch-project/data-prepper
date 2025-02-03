@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.sqs;
 
-import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -26,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
+import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +43,7 @@ public class SqsWorker implements Runnable {
     static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
     private final SqsWorkerCommon sqsWorkerCommon;
     private final SqsEventProcessor sqsEventProcessor;
+    private final SqsClient sqsClient;
     private final QueueConfig queueConfig;
     private final boolean endToEndAcknowledgementsEnabled;
     private final Buffer<Record<Event>> buffer;
@@ -55,15 +57,17 @@ public class SqsWorker implements Runnable {
     public SqsWorker(final Buffer<Record<Event>> buffer,
                      final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
+                     final SqsWorkerCommon sqsWorkerCommon,
                      final SqsSourceConfig sqsSourceConfig,
                      final QueueConfig queueConfig,
                      final PluginMetrics pluginMetrics,
-                     final SqsEventProcessor sqsEventProcessor,
-                     final Backoff backoff) {
-        this.sqsWorkerCommon = new SqsWorkerCommon(sqsClient, backoff, pluginMetrics, acknowledgementSetManager);
+                     final SqsEventProcessor sqsEventProcessor) {
+
+        this.sqsWorkerCommon = sqsWorkerCommon;
         this.queueConfig = queueConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsEventProcessor = sqsEventProcessor;
+        this.sqsClient = sqsClient;
         this.buffer = buffer;
         this.bufferTimeoutMillis = (int) sqsSourceConfig.getBufferTimeout().toMillis();
         this.endToEndAcknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
@@ -97,20 +101,27 @@ public class SqsWorker implements Runnable {
     }
 
     int processSqsMessages() {
-        List<Message> messages = sqsWorkerCommon.pollSqsMessages(queueConfig.getUrl(),
-                queueConfig.getMaximumMessages(),
-                queueConfig.getWaitTime(),
-                queueConfig.getVisibilityTimeout());
-        if (!messages.isEmpty()) {
-            final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processSqsEvents(messages);
-            if (!deleteMessageBatchRequestEntries.isEmpty()) {
-                sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), deleteMessageBatchRequestEntries);
-            }
-            else {
+        try {
+            List<Message> messages = sqsWorkerCommon.pollSqsMessages(
+                    queueConfig.getUrl(),
+                    sqsClient,
+                    queueConfig.getMaximumMessages(),
+                    queueConfig.getWaitTime(),
+                    queueConfig.getVisibilityTimeout());
+
+            if (!messages.isEmpty()) {
+                final List<DeleteMessageBatchRequestEntry> deleteEntries = processSqsEvents(messages);
+                if (!deleteEntries.isEmpty()) {
+                    sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), sqsClient, deleteEntries);
+                }
+            } else {
                 sqsMessageDelayTimer.record(Duration.ZERO);
             }
+            return messages.size();
+        } catch (SqsException e) {
+            sqsWorkerCommon.applyBackoff();
+            return 0;
         }
-        return messages.size();
     }
 
     private List<DeleteMessageBatchRequestEntry> processSqsEvents(final List<Message> messages) {
@@ -138,7 +149,7 @@ public class SqsWorker implements Runnable {
                         messageVisibilityTimesMap.remove(message);
                     }
                     if (result) {
-                        sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), waitingForAcknowledgements);
+                        sqsWorkerCommon.deleteSqsMessages(queueConfig.getUrl(), sqsClient, waitingForAcknowledgements);
                     }
                 }, Duration.ofSeconds(expiryTimeout));
                 if (queueConfig.getVisibilityDuplicateProtection()) {
@@ -149,6 +160,7 @@ public class SqsWorker implements Runnable {
                         }
                         messageVisibilityTimesMap.put(message, newValue);
                         sqsWorkerCommon.increaseVisibilityTimeout(queueConfig.getUrl(),
+                                sqsClient,
                                 message.receiptHandle(),
                                 visibilityTimeout,
                                 message.messageId());
@@ -160,9 +172,8 @@ public class SqsWorker implements Runnable {
         }
 
         for (Message message : messages) {
-            sqsMessageDelayTimer.record(
-                    Duration.between(Instant.ofEpochMilli(Long.parseLong(message.attributes().get("SentTimestamp"))), Instant.now())
-            );
+            Duration duration = Duration.between(Instant.ofEpochMilli(Long.parseLong(message.attributes().get(MessageSystemAttributeName.SENT_TIMESTAMP))), Instant.now());
+            sqsMessageDelayTimer.record(duration.isNegative() ? Duration.ZERO : duration); // Negative durations can occur if messages are processed immediately
 
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(message);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(message);

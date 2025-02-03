@@ -20,6 +20,7 @@
  import org.opensearch.dataprepper.model.plugin.PluginFactory;
  import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
  import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
+ import org.opensearch.dataprepper.plugins.source.sqs.common.SqsWorkerCommon;
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
  import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -47,6 +48,7 @@
      private final PluginFactory pluginFactory;
      private final AcknowledgementSetManager acknowledgementSetManager;
      private final List<ExecutorService> allSqsUrlExecutorServices;
+     private final SqsWorkerCommon sqsWorkerCommon;
      private final List<SqsWorker> sqsWorkers;
      private final Buffer<Record<Event>> buffer;
      private final Backoff backoff;
@@ -70,6 +72,7 @@
         this.sqsWorkers = new ArrayList<>();
         this.buffer = buffer;
         backoff = SqsBackoff.createExponentialBackoff();
+        sqsWorkerCommon = new SqsWorkerCommon(backoff, pluginMetrics, acknowledgementSetManager);
      }  
 
      public void start() {
@@ -102,11 +105,11 @@
                             buffer,
                             acknowledgementSetManager,
                             sqsClient,
+                            sqsWorkerCommon,
                             sqsSourceConfig,
                             queueConfig,
                             pluginMetrics,
-                            sqsEventProcessor,
-                            backoff))
+                            sqsEventProcessor))
                     .collect(Collectors.toList());
 
             sqsWorkers.addAll(workers); 
