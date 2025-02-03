@@ -76,6 +76,7 @@ public class LogicalReplicationEventProcessor {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String REPLICATION_LOG_PROCESSING_ERROR_COUNT = "replicationLogEntryProcessingErrors";
 
     private final StreamPartition streamPartition;
     private final RdsSourceConfig sourceConfig;
@@ -94,6 +95,7 @@ public class LogicalReplicationEventProcessor {
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
     private final Timer eventProcessingTimer;
+    private final Counter eventProcessingErrorCounter;
 
     private long currentLsn;
     private long currentEventTimestamp;
@@ -120,7 +122,8 @@ public class LogicalReplicationEventProcessor {
         this.streamCheckpointer = streamCheckpointer;
         streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
-                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(), sourceConfig.getEngine());
+                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(),
+                sourceConfig.getEngine(), pluginMetrics);
         streamCheckpointManager.start();
 
         tableMetadataMap = new HashMap<>();
@@ -131,6 +134,7 @@ public class LogicalReplicationEventProcessor {
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
+        eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
     public void process(ByteBuffer msg) {
@@ -228,9 +232,10 @@ public class LogicalReplicationEventProcessor {
             throw new RuntimeException("Commit LSN does not match current LSN, skipping");
         }
 
+        final long recordCount = pipelineEvents.size();
         AcknowledgementSet acknowledgementSet = null;
         if (sourceConfig.isAcknowledgmentsEnabled()) {
-            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn));
+            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn), recordCount);
         }
 
         writeToBuffer(bufferAccumulator, acknowledgementSet);
@@ -240,7 +245,7 @@ public class LogicalReplicationEventProcessor {
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             acknowledgementSet.complete();
         } else {
-            streamCheckpointManager.saveChangeEventsStatus(LogSequenceNumber.valueOf(currentLsn));
+            streamCheckpointManager.saveChangeEventsStatus(LogSequenceNumber.valueOf(currentLsn), recordCount);
         }
     }
 
@@ -417,6 +422,7 @@ public class LogicalReplicationEventProcessor {
             eventProcessingTimer.record(() -> function.accept(message));
         } catch (Exception e) {
             LOG.error("Failed to process change event of type {}", messageType, e);
+            eventProcessingErrorCounter.increment();
         }
     }
 }

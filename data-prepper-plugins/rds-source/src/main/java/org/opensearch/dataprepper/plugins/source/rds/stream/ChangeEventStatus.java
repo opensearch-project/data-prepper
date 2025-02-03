@@ -13,6 +13,7 @@ public class ChangeEventStatus {
     private final BinlogCoordinate binlogCoordinate;
     private final LogSequenceNumber logSequenceNumber;
     private final long timestamp;
+    private final long recordCount;
     private volatile AcknowledgmentStatus acknowledgmentStatus;
 
     public enum AcknowledgmentStatus {
@@ -21,17 +22,19 @@ public class ChangeEventStatus {
         NO_ACK
     }
 
-    public ChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp) {
+    public ChangeEventStatus(final BinlogCoordinate binlogCoordinate, final long timestamp, final long recordCount) {
         this.binlogCoordinate = binlogCoordinate;
         this.logSequenceNumber = null;
         this.timestamp = timestamp;
+        this.recordCount = recordCount;
         acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;
     }
 
-    public ChangeEventStatus(final LogSequenceNumber logSequenceNumber, final long timestamp) {
+    public ChangeEventStatus(final LogSequenceNumber logSequenceNumber, final long timestamp, final long recordCount) {
         this.binlogCoordinate = null;
         this.logSequenceNumber = logSequenceNumber;
         this.timestamp = timestamp;
+        this.recordCount = recordCount;
         acknowledgmentStatus = AcknowledgmentStatus.NO_ACK;
     }
 
@@ -61,5 +64,9 @@ public class ChangeEventStatus {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    public long getRecordCount() {
+        return recordCount;
     }
 }

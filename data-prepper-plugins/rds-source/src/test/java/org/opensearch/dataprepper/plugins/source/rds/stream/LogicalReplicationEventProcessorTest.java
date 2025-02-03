@@ -11,7 +11,6 @@
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,11 +31,11 @@ import java.util.Random;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogEventListener.REPLICATION_LOG_EVENT_PROCESSING_TIME;
 
 @ExtendWith(MockitoExtension.class)
 class LogicalReplicationEventProcessorTest {
@@ -70,14 +69,12 @@ class LogicalReplicationEventProcessorTest {
 
     private Random random;
 
-    private Timer eventProcessingTimer;
-
     @BeforeEach
     void setUp() {
         s3Prefix = UUID.randomUUID().toString();
         random = new Random();
-        eventProcessingTimer = Metrics.timer("test-timer");
-        when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
+        when(pluginMetrics.timer(anyString())).thenReturn(Metrics.timer("test-timer"));
+        when(pluginMetrics.counter(anyString())).thenReturn(Metrics.counter("test-counter"));
 
         objectUnderTest = spy(createObjectUnderTest());
     }
