@@ -33,12 +33,13 @@ public class AddressValidation {
      * Method for getInetAddress.
      *
      * @param url input parameter.
+     * @return returns inet address
      */
     public static InetAddress getInetAddress(String url) {
         try {
             return InetAddress.getByName(new URL(url).getHost());
         } catch (UnknownHostException | MalformedURLException e) {
-            log.error(INVALID_URL, e);
+            log.error("{}: {}", INVALID_URL, url);
             throw new BadRequestException(e.getMessage(), e);
         }
     }

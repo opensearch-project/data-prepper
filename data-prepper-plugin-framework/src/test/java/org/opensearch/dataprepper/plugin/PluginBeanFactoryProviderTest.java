@@ -78,7 +78,7 @@ class PluginBeanFactoryProviderTest {
         final PluginBeanFactoryProvider beanFactoryProvider = createObjectUnderTest();
 
         verify(context).getParent();
-        assertThat(beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null), is(instanceOf(BeanFactory.class)));
+        assertThat(beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null, null), is(instanceOf(BeanFactory.class)));
     }
 
     @Test
@@ -86,8 +86,8 @@ class PluginBeanFactoryProviderTest {
         doReturn(context).when(context).getParent();
 
         final PluginBeanFactoryProvider beanFactoryProvider = createObjectUnderTest();
-        final BeanFactory isolatedBeanFactoryA = beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null);
-        final BeanFactory isolatedBeanFactoryB = beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null);
+        final BeanFactory isolatedBeanFactoryA = beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null, null);
+        final BeanFactory isolatedBeanFactoryB = beanFactoryProvider.createPluginSpecificContext(new Class[]{}, null, null);
 
         verify(context).getParent();
         assertThat(isolatedBeanFactoryA, not(sameInstance(isolatedBeanFactoryB)));
@@ -113,7 +113,7 @@ class PluginBeanFactoryProviderTest {
     void testCreatePluginSpecificContext() {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
-        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, null);
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, null, null);
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
     }
@@ -122,7 +122,7 @@ class PluginBeanFactoryProviderTest {
     void testCreatePluginSpecificContext_with_empty_array() {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
-        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, null);
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, null, null);
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory, instanceOf(ListableBeanFactory.class));
         ListableBeanFactory listableBeanFactory = (ListableBeanFactory) beanFactory;
@@ -137,9 +137,9 @@ class PluginBeanFactoryProviderTest {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         PluginSetting pipelineSettings = new PluginSetting(UUID.randomUUID().toString(), Map.of("key", "val"));
-        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, pipelineSettings);
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, pipelineSettings, pipelineSettings);
         assertThat(beanFactory, notNullValue());
-        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(PluginSetting.class));
+        assertThrows(NoSuchBeanDefinitionException.class, () -> beanFactory.getBean(PluginSetting.class));
     }
 
     @Test
@@ -147,10 +147,10 @@ class PluginBeanFactoryProviderTest {
         when(context.getParent()).thenReturn(context);
         final PluginBeanFactoryProvider objectUnderTest = createObjectUnderTest();
         TestPluginConfiguration config = new TestPluginConfiguration();
-        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, config);
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{}, config, null);
         assertThat(beanFactory, notNullValue());
-        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestComponent.class));
-        assertThrows(NoSuchBeanDefinitionException.class, ()->beanFactory.getBean(TestPluginConfiguration.class));
+        assertThrows(NoSuchBeanDefinitionException.class, () -> beanFactory.getBean(TestComponent.class));
+        assertThrows(NoSuchBeanDefinitionException.class, () -> beanFactory.getBean(TestPluginConfiguration.class));
     }
 
     @Test
@@ -160,7 +160,7 @@ class PluginBeanFactoryProviderTest {
         TestPluginConfiguration config = new TestPluginConfiguration();
         String requiredStringValue = UUID.randomUUID().toString();
         config.setRequiredString(requiredStringValue);
-        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, config);
+        BeanFactory beanFactory = objectUnderTest.createPluginSpecificContext(new Class[]{TestComponent.class}, config, null);
         assertThat(beanFactory, notNullValue());
         assertThat(beanFactory.getBean(TestComponent.class), notNullValue());
         assertThat(beanFactory.getBean(TestPluginConfiguration.class), notNullValue());

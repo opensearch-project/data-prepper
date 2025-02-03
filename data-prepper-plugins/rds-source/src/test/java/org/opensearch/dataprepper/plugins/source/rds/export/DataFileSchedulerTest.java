@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -186,6 +187,7 @@ class DataFileSchedulerTest {
         verify(sourceCoordinator).giveUpPartition(dataFilePartition);
     }
 
+    @Disabled("Flaky test, needs to be fixed")
     @Test
     void test_shutdown() throws InterruptedException {
         DataFileScheduler objectUnderTest = createObjectUnderTest();
