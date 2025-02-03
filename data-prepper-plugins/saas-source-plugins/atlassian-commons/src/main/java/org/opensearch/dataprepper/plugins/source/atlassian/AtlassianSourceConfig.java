@@ -8,11 +8,12 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.atlassian.configuration;
+package org.opensearch.dataprepper.plugins.source.atlassian;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import lombok.Getter;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
 import java.util.List;

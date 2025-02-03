@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
 
-import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

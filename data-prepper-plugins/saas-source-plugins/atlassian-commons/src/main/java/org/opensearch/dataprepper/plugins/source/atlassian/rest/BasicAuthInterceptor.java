@@ -10,7 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
-import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;

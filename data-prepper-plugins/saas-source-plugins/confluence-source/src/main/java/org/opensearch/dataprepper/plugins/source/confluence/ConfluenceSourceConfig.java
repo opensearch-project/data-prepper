@@ -11,39 +11,13 @@
 package org.opensearch.dataprepper.plugins.source.confluence;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
-import java.util.List;
-
 @Getter
-public class ConfluenceSourceConfig implements CrawlerSourceConfig {
-
-    private static final int DEFAULT_BATCH_SIZE = 50;
-
-    /**
-     * Jira account url
-     */
-    @JsonProperty("hosts")
-    private List<String> hosts;
-
-    /**
-     * Authentication Config to Access Jira
-     */
-    @JsonProperty("authentication")
-    @Valid
-    private AuthenticationConfig authenticationConfig;
-
-    /**
-     * Batch size for fetching tickets
-     */
-    @JsonProperty("batch_size")
-    private int batchSize = DEFAULT_BATCH_SIZE;
-
-
+public class ConfluenceSourceConfig extends AtlassianSourceConfig implements CrawlerSourceConfig {
     /**
      * Filter Config to filter what tickets get ingested
      */
@@ -57,11 +31,4 @@ public class ConfluenceSourceConfig implements CrawlerSourceConfig {
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
 
-    public String getAccountUrl() {
-        return this.getHosts().get(0);
-    }
-
-    public String getAuthType() {
-        return this.getAuthenticationConfig().getAuthType();
-    }
 }

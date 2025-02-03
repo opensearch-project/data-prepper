@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
 import org.slf4j.Logger;

@@ -137,7 +137,7 @@ public class ConfluenceItemInfo implements ItemInfo {
             return this;
         }
 
-        public ConfluenceItemInfoBuilder withIssueBean(ConfluenceItem contentItem) {
+        public ConfluenceItemInfoBuilder withContentBean(ConfluenceItem contentItem) {
             Map<String, Object> contentItemMetadata = new HashMap<>();
             contentItemMetadata.put(SPACE_KEY, contentItem.getSpaceItem().getKey());
             contentItemMetadata.put(CONTENT_TITLE, contentItem.getTitle());

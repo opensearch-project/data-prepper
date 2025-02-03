@@ -48,7 +48,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 
 
 /**
- * Service class for interactive external Atlassian jira SaaS service and fetch required details using their rest apis.
+ * Service class for interactive external Atlassian Confluence SaaS service and fetch required details using their rest apis.
  */
 
 @Slf4j
@@ -73,7 +73,7 @@ public class ConfluenceService {
     }
 
     /**
-     * Get jira entities.
+     * Get Confluence entities.
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
@@ -89,7 +89,7 @@ public class ConfluenceService {
     }
 
     /**
-     * Method for building Issue Item Info.
+     * Method for building Content Item Info.
      *
      * @param configuration Input Parameter
      * @param timestamp     Input Parameter
@@ -101,11 +101,11 @@ public class ConfluenceService {
         int total;
         int startAt = 0;
         do {
-            ConfluenceSearchResults searchIssues = confluenceRestClient.getAllContent(cql, startAt);
-            List<ConfluenceItem> issueList = new ArrayList<>(searchIssues.getResults());
-            total = searchIssues.getSize();
-            startAt += searchIssues.getResults().size();
-            addItemsToQueue(issueList, itemInfoQueue);
+            ConfluenceSearchResults searchContentItems = confluenceRestClient.getAllContent(cql, startAt);
+            List<ConfluenceItem> contentList = new ArrayList<>(searchContentItems.getResults());
+            total = searchContentItems.getSize();
+            startAt += searchContentItems.getResults().size();
+            addItemsToQueue(contentList, itemInfoQueue);
         } while (startAt < total);
         searchResultsFoundCounter.increment(total);
         log.info("Number of tickets found in search api call: {}", total);
@@ -114,12 +114,12 @@ public class ConfluenceService {
     /**
      * Add items to queue.
      *
-     * @param issueList     Issue list.
+     * @param contentList   Content list.
      * @param itemInfoQueue Item info queue.
      */
-    private void addItemsToQueue(List<ConfluenceItem> issueList, Queue<ItemInfo> itemInfoQueue) {
-        issueList.forEach(issue -> itemInfoQueue.add(ConfluenceItemInfo.builder()
-                .withEventTime(Instant.now()).withIssueBean(issue).build()));
+    private void addItemsToQueue(List<ConfluenceItem> contentList, Queue<ItemInfo> itemInfoQueue) {
+        contentList.forEach(contentItem -> itemInfoQueue.add(ConfluenceItemInfo.builder()
+                .withEventTime(Instant.now()).withContentBean(contentItem).build()));
     }
 
 
@@ -160,7 +160,7 @@ public class ConfluenceService {
                     .append(CLOSING_ROUND_BRACKET);
         }
 
-        log.error("Created issue filter criteria JiraQl query: {}", cQl);
+        log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
     }
 
@@ -170,25 +170,25 @@ public class ConfluenceService {
      * @param configuration Input Parameter
      */
     private void validateSpaceFilters(ConfluenceSourceConfig configuration) {
-        log.trace("Validating project filters");
+        log.trace("Validating space filters");
         List<String> badFilters = new ArrayList<>();
-        Set<String> includedProjects = new HashSet<>();
+        Set<String> includedSpaces = new HashSet<>();
         List<String> includedAndExcludedSpaces = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
-        ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(projectFilter -> {
-            Matcher matcher = regex.matcher(projectFilter);
-            includedProjects.add(projectFilter);
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
-                badFilters.add(projectFilter);
+        ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(spaceFilter -> {
+            Matcher matcher = regex.matcher(spaceFilter);
+            includedSpaces.add(spaceFilter);
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+                badFilters.add(spaceFilter);
             }
         });
-        ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).forEach(projectFilter -> {
-            Matcher matcher = regex.matcher(projectFilter);
-            if (includedProjects.contains(projectFilter)) {
-                includedAndExcludedSpaces.add(projectFilter);
+        ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).forEach(spaceFilter -> {
+            Matcher matcher = regex.matcher(spaceFilter);
+            if (includedSpaces.contains(spaceFilter)) {
+                includedAndExcludedSpaces.add(spaceFilter);
             }
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
-                badFilters.add(projectFilter);
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+                badFilters.add(spaceFilter);
             }
         });
         if (!badFilters.isEmpty()) {

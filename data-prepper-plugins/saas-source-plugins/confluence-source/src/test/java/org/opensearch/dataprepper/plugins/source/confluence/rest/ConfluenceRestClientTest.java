@@ -20,13 +20,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthFactory;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceServiceTest;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
-import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthFactory;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -57,7 +57,7 @@ public class ConfluenceRestClientTest {
     private RestTemplate restTemplate;
 
     @Mock
-    private ConfluenceAuthConfig authConfig;
+    private AtlassianAuthConfig authConfig;
 
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
 
@@ -76,7 +76,7 @@ public class ConfluenceRestClientTest {
         String exampleTicketResponse = "{\"id\":\"123\",\"key\":\"key\",\"self\":\"https://example.com/rest/api/2/issue/123\"}";
         doReturn(new ResponseEntity<>(exampleTicketResponse, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         ConfluenceSourceConfig confluenceSourceConfig = ConfluenceServiceTest.createJiraConfigurationFromYaml(configFileName);
-        ConfluenceAuthConfig authConfig = new ConfluenceAuthFactory(confluenceSourceConfig).getObject();
+        AtlassianAuthConfig authConfig = new AtlassianAuthFactory(confluenceSourceConfig).getObject();
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         String ticketDetails = confluenceRestClient.getContent("key");
         assertEquals(exampleTicketResponse, ticketDetails);

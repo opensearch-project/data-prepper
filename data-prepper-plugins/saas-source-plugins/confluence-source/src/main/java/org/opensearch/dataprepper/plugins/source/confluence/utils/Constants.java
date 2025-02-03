@@ -27,6 +27,5 @@ public class Constants {
     public static final String CONTENT_ID = "id";
     public static final String CREATED = "created";
     public static final String BASIC = "Basic";
-    public static final String LIVE = "live";
     public static final String PLUGIN_NAME = "confluence";
 }

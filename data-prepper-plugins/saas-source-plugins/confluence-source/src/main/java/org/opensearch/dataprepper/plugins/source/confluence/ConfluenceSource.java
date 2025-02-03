@@ -20,7 +20,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
@@ -33,37 +34,37 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
 
 
 /**
- * JiraConnector connector entry point.
+ * Confluence connector entry point.
  */
 
 @DataPrepperPlugin(name = PLUGIN_NAME,
         pluginType = Source.class,
         pluginConfigurationType = ConfluenceSourceConfig.class,
-        packagesToScan = {CrawlerApplicationContextMarker.class, ConfluenceSource.class}
+        packagesToScan = {CrawlerApplicationContextMarker.class, AtlassianSourceConfig.class, ConfluenceSource.class}
 )
 public class ConfluenceSource extends CrawlerSourcePlugin {
 
     private static final Logger log = LoggerFactory.getLogger(ConfluenceSource.class);
     private final ConfluenceSourceConfig confluenceSourceConfig;
-    private final ConfluenceAuthConfig jiraOauthConfig;
+    private final AtlassianAuthConfig jiraOauthConfig;
 
     @DataPrepperPluginConstructor
     public ConfluenceSource(final PluginMetrics pluginMetrics,
                             final ConfluenceSourceConfig confluenceSourceConfig,
-                            final ConfluenceAuthConfig jiraOauthConfig,
+                            final AtlassianAuthConfig jiraOauthConfig,
                             final PluginFactory pluginFactory,
                             final AcknowledgementSetManager acknowledgementSetManager,
                             Crawler crawler,
                             PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, confluenceSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
-        log.info("Creating Jira Source Plugin");
+        log.info("Creating Confluence Source Plugin");
         this.confluenceSourceConfig = confluenceSourceConfig;
         this.jiraOauthConfig = jiraOauthConfig;
     }
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
-        log.info("Starting Jira Source Plugin... ");
+        log.info("Starting Confluence Source Plugin... ");
         ConfluenceConfigHelper.validateConfig(confluenceSourceConfig);
         jiraOauthConfig.initCredentials();
         super.start(buffer);
@@ -71,7 +72,7 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
 
     @Override
     public void stop() {
-        log.info("Stopping Jira Source Plugin");
+        log.info("Stopping Confluence Source Plugin");
         super.stop();
     }
 

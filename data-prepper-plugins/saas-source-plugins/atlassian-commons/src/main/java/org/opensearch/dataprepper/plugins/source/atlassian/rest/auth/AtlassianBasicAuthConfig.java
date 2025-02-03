@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 
-import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 
 public class AtlassianBasicAuthConfig implements AtlassianAuthConfig {
 
