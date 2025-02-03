@@ -117,9 +117,8 @@ public class ConfluenceService {
      * @param itemInfoQueue Item info queue.
      */
     private void addItemsToQueue(List<ConfluenceItem> issueList, Queue<ItemInfo> itemInfoQueue) {
-        issueList.forEach(issue -> {
-            itemInfoQueue.add(ConfluenceItemInfo.builder().withEventTime(Instant.now()).withIssueBean(issue).build());
-        });
+        issueList.forEach(issue -> itemInfoQueue.add(ConfluenceItemInfo.builder()
+                .withEventTime(Instant.now()).withIssueBean(issue).build()));
     }
 
 
@@ -173,7 +172,7 @@ public class ConfluenceService {
         log.trace("Validating project filters");
         List<String> badFilters = new ArrayList<>();
         Set<String> includedProjects = new HashSet<>();
-        List<String> includedAndExcludedProjects = new ArrayList<>();
+        List<String> includedAndExcludedSpaces = new ArrayList<>();
         Pattern regex = Pattern.compile("[^A-Z0-9]");
         ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
@@ -185,7 +184,7 @@ public class ConfluenceService {
         ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             if (includedProjects.contains(projectFilter)) {
-                includedAndExcludedProjects.add(projectFilter);
+                includedAndExcludedSpaces.add(projectFilter);
             }
             if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
                 badFilters.add(projectFilter);
@@ -198,9 +197,9 @@ public class ConfluenceService {
                     "Invalid Space key found in filter configuration for "
                     + filters);
         }
-        if (!includedAndExcludedProjects.isEmpty()) {
-            String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
-            log.error("One or more Space keys found in both include and exclude: {}", includedAndExcludedProjects);
+        if (!includedAndExcludedSpaces.isEmpty()) {
+            String filters = String.join("\"" + includedAndExcludedSpaces + "\"", ", ");
+            log.error("One or more Space keys found in both include and exclude: {}", includedAndExcludedSpaces);
             throw new BadRequestException("Bad request exception occurred " +
                     "Space filters is invalid because the following space are listed in both include and exclude"
                     + filters);

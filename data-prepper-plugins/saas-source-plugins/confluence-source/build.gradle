@@ -15,6 +15,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'javax.inject:javax.inject:1'
+    implementation 'org.jsoup:jsoup:1.18.3'
     implementation("org.springframework:spring-web:${libs.versions.spring.get()}")
 
     implementation 'org.projectlombok:lombok:1.18.30'

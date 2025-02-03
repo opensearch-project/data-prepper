@@ -13,6 +13,7 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -20,6 +21,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.confluence.utils.HtmlToTextConversionUtil;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
@@ -117,8 +119,9 @@ public class ConfluenceClient implements CrawlerClient {
                 .map(CompletableFuture::join)
                 .map(contentJson -> {
                     try {
-                        return objectMapper.readValue(contentJson, new TypeReference<>() {
+                        ObjectNode contentJsonObj = objectMapper.readValue(contentJson, new TypeReference<>() {
                         });
+                        return HtmlToTextConversionUtil.convertHtmlToText(contentJsonObj, "body/view/value");
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -127,7 +130,7 @@ public class ConfluenceClient implements CrawlerClient {
                         .withEventType(eventType)
                         .withData(t)
                         .build())
-                .map(event -> new Record<>(event))
+                .map(Record::new)
                 .collect(Collectors.toList());
 
         try {
