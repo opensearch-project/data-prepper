@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
@@ -41,11 +42,12 @@ public class ConfluenceIteratorTest {
     @Mock
     private ConfluenceSourceConfig confluenceSourceConfig;
     private ConfluenceIterator confluenceIterator;
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("confluenceService", "aws");
     private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @BeforeEach
     void setUp() {
-        confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient));
+        confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
     }
 
     public ConfluenceIterator createObjectUnderTest() {

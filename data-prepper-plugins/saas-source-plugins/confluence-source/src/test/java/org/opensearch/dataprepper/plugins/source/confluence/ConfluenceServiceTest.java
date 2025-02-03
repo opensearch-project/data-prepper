@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
@@ -74,6 +75,7 @@ public class ConfluenceServiceTest {
     @Mock
     private ConfluenceRestClient confluenceRestClient;
     private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("confluenceService", "aws");
 
     private static InputStream getResourceAsStream(String resourceName) {
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
@@ -176,7 +178,7 @@ public class ConfluenceServiceTest {
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient);
+        ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
         assertNotNull(confluenceService);
         when(confluenceRestClient.getContent(anyString())).thenReturn("test String");
         assertNotNull(confluenceService.getContent("test Key"));
@@ -191,7 +193,7 @@ public class ConfluenceServiceTest {
         issueStatus.add("Done");
         projectKey.add("KAN");
         ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient));
+        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
         ConfluenceItem issue1 = createConfluenceItemBean(false, false);
         mockIssues.add(issue1);
@@ -217,7 +219,7 @@ public class ConfluenceServiceTest {
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient));
+        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
             ConfluenceItem issue1 = createConfluenceItemBean(false, false);
@@ -248,7 +250,7 @@ public class ConfluenceServiceTest {
         projectKey.add("AAAAAAAAAAAAAA");
 
         ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient);
+        ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -263,7 +265,7 @@ public class ConfluenceServiceTest {
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient));
+        ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
 
         doThrow(RuntimeException.class).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
 

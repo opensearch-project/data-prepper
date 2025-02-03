@@ -62,13 +62,14 @@ public class ConfluenceService {
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final ConfluenceRestClient confluenceRestClient;
     private final Counter searchResultsFoundCounter;
-    private final PluginMetrics jiraPluginMetrics = PluginMetrics.fromNames("jiraService", "aws");
 
 
-    public ConfluenceService(ConfluenceSourceConfig confluenceSourceConfig, ConfluenceRestClient confluenceRestClient) {
+    public ConfluenceService(ConfluenceSourceConfig confluenceSourceConfig,
+                             ConfluenceRestClient confluenceRestClient,
+                             PluginMetrics pluginMetrics) {
         this.confluenceSourceConfig = confluenceSourceConfig;
         this.confluenceRestClient = confluenceRestClient;
-        this.searchResultsFoundCounter = jiraPluginMetrics.counter(SEARCH_RESULTS_FOUND);
+        this.searchResultsFoundCounter = pluginMetrics.counter(SEARCH_RESULTS_FOUND);
     }
 
     /**
