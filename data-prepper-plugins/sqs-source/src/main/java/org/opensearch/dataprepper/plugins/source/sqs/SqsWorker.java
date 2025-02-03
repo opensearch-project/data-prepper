@@ -173,7 +173,7 @@ public class SqsWorker implements Runnable {
 
         for (Message message : messages) {
             final int receiveCount = Integer.parseInt(message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT));
-            if (receiveCount < 1) {
+            if (receiveCount <= 1) {
                 Duration duration = Duration.between(
                         Instant.ofEpochMilli(Long.parseLong(message.attributes().get(MessageSystemAttributeName.SENT_TIMESTAMP))),
                         Instant.now());

@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -52,6 +53,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -281,7 +283,6 @@ class SqsWorkerTest {
     @Test
     void processSqsMessages_should_return_delete_message_entry_when_exception_thrown_and_onErrorOption_is_DELETE_MESSAGES() throws IOException {
         when(queueConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
-        when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         doThrow(new RuntimeException("Processing error"))
                 .when(sqsEventProcessor).addSqsObject(any(),
                         anyString(),
@@ -304,7 +305,6 @@ class SqsWorkerTest {
     @Test
     void processSqsMessages_should_not_delete_message_entry_when_exception_thrown_and_onErrorOption_is_RETAIN_MESSAGES() throws IOException {
         when(queueConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
-        when(queueConfig.getUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
         doThrow(new RuntimeException("Processing error"))
                 .when(sqsEventProcessor).addSqsObject(any(),
                         anyString(),
@@ -329,5 +329,46 @@ class SqsWorkerTest {
         SqsWorker worker = createObjectUnderTest();
         worker.stop();
         verify(sqsWorkerCommon, times(1)).stop();
+    }
+
+    @Test
+    void processSqsMessages_should_record_sqsMessageDelayTimer_when_approximateReceiveCount_less_than_or_equal_to_one() throws IOException {
+        final long sentTimestampMillis = Instant.now().minusSeconds(5).toEpochMilli();
+        final Message message = Message.builder()
+                .messageId("msg-1")
+                .receiptHandle("rh-1")
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World\"}]}")
+                .attributes(Map.of(
+                        MessageSystemAttributeName.SENT_TIMESTAMP, String.valueOf(sentTimestampMillis),
+                        MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT, "1"
+                ))
+                .build();
+        when(sqsWorkerCommon.pollSqsMessages(anyString(), eq(sqsClient), anyInt(), any(), any()))
+                .thenReturn(Collections.singletonList(message));
+
+        SqsWorker worker = createObjectUnderTest();
+        worker.processSqsMessages();
+        ArgumentCaptor<Duration> durationCaptor = ArgumentCaptor.forClass(Duration.class);
+        verify(sqsMessageDelayTimer).record(durationCaptor.capture());
+    }
+
+    @Test
+    void processSqsMessages_should_not_record_sqsMessageDelayTimer_when_approximateReceiveCount_greater_than_one() throws IOException {
+        final long sentTimestampMillis = Instant.now().minusSeconds(5).toEpochMilli();
+        final Message message = Message.builder()
+                .messageId("msg-1")
+                .receiptHandle("rh-1")
+                .body("{\"Records\":[{\"eventSource\":\"custom\",\"message\":\"Hello World\"}]}")
+                .attributes(Map.of(
+                        MessageSystemAttributeName.SENT_TIMESTAMP, String.valueOf(sentTimestampMillis),
+                        MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT, "2"
+                ))
+                .build();
+        when(sqsWorkerCommon.pollSqsMessages(anyString(), eq(sqsClient), anyInt(), any(), any()))
+                .thenReturn(Collections.singletonList(message));
+
+        SqsWorker worker = createObjectUnderTest();
+        worker.processSqsMessages();
+        verify(sqsMessageDelayTimer, never()).record(any(Duration.class));
     }
 }
