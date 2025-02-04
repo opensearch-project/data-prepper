@@ -19,7 +19,9 @@ public class ServerConfiguration {
     static final boolean DEFAULT_SSL = true;
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_THREAD_COUNT = 200;
+    static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
+    static final double BUFFER_TIMEOUT_FRACTION = 0.8;
 
     @Setter
     @Getter
@@ -77,6 +79,14 @@ public class ServerConfiguration {
     @Getter
     @Setter
     private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
+
+    @Getter
+    @Setter
+    private int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
+
+    @Getter
+    @Setter
+    private int bufferTimeoutInMillis;
 
     public boolean hasHealthCheck() {
         return healthCheck;

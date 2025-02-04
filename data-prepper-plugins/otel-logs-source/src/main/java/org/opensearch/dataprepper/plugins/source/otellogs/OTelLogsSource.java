@@ -94,7 +94,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
             final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
-            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
+            server = createServer.createGRPCServer(authenticationProvider, oTelLogsGrpcService, certificateProvider, methodDescriptor);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

@@ -92,7 +92,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
             final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
-            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelTraceGrpcService, certificateProvider, methodDescriptor);
+            server = createServer.createGRPCServer(authenticationProvider, oTelTraceGrpcService, certificateProvider, methodDescriptor);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

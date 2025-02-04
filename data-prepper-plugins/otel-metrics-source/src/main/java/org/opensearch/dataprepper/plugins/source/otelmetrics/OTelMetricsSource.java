@@ -92,7 +92,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
             }
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
-            server = createServer.createGRPCServerBuilder(authenticationProvider, oTelMetricsGrpcService, certificateProvider, methodDescriptor);
+            server = createServer.createGRPCServer(authenticationProvider, oTelMetricsGrpcService, certificateProvider, methodDescriptor);
 
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

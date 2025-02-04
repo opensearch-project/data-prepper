@@ -15,14 +15,23 @@ import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
+import com.linecorp.armeria.server.throttling.ThrottlingService;
 import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
+import org.opensearch.dataprepper.http.LogThrottlingStrategy;
+import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -34,6 +43,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Function;
 
 
@@ -58,7 +68,7 @@ public class CreateServer {
         this.pipelineName = pipelineName;
     }
 
-    public <K, V> Server createGRPCServerBuilder(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider, MethodDescriptor<K, V> methodDescriptor) {
+    public <K, V> Server createGRPCServer(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider, MethodDescriptor<K, V> methodDescriptor) {
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -141,8 +151,65 @@ public class CreateServer {
         return sb.build();
     }
 
-    public Server createHTTPServerBuilder() {
+    public Server createHTTPServer(Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler) {
         final ServerBuilder sb = Server.builder();
+
+        sb.disableServerHeader();
+
+        if (serverConfiguration.isSsl()) {
+            LOG.info("Creating http source with SSL/TLS enabled.");
+            final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+            final Certificate certificate = certificateProvider.getCertificate();
+            // TODO: enable encrypted key with password
+            sb.https(serverConfiguration.getPort()).tls(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
+                    )
+            );
+        } else {
+            LOG.warn("Creating http source without SSL/TLS. This is not secure.");
+            LOG.warn("In order to set up TLS for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
+            sb.http(serverConfiguration.getPort());
+        }
+
+        if(serverConfiguration.getAuthentication() != null) {
+            final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
+
+            if (serverConfiguration.isUnauthenticatedHealthCheck()) {
+                optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
+            } else {
+                optionalAuthDecorator.ifPresent(sb::decorator);
+            }
+        }
+
+        sb.maxNumConnections(serverConfiguration.getMaxConnectionCount());
+        sb.requestTimeout(Duration.ofMillis(serverConfiguration.getRequestTimeoutInMillis()));
+        if(serverConfiguration.getMaxRequestLength() != null) {
+            sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
+        }
+        final int threads = serverConfiguration.getThreadCount();
+        final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
+        sb.blockingTaskExecutor(blockingTaskExecutor, true);
+        final int maxPendingRequests = serverConfiguration.getMaxPendingRequests();
+        final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
+                maxPendingRequests, blockingTaskExecutor.getQueue());
+        final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
+
+        final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+        sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+        final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+
+        if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
+            sb.annotatedService(httpSourcePath, logHTTPService, httpRequestExceptionHandler);
+        } else {
+            sb.annotatedService(httpSourcePath, logHTTPService, DecodingService.newDecorator(), httpRequestExceptionHandler);
+        }
+
+        if (serverConfiguration.hasHealthCheck()) {
+            LOG.info("HTTP source health check is enabled");
+            sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
+        }
+
         return sb.build();
     }
 
