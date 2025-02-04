@@ -173,10 +173,14 @@ public class LogicalReplicationEventProcessor {
     public void stopClient() {
         try {
             logicalReplicationClient.disconnect();
-            LOG.info("Binary log client disconnected.");
+            LOG.info("Logical replication client disconnected.");
         } catch (Exception e) {
-            LOG.error("Binary log client failed to disconnect.", e);
+            LOG.error("Logical replication client failed to disconnect.", e);
         }
+    }
+
+    public void stopCheckpointManager() {
+        streamCheckpointManager.stop();
     }
 
     void processBeginMessage(ByteBuffer msg) {
