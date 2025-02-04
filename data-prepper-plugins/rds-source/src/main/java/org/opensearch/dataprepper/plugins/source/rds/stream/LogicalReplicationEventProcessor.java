@@ -71,6 +71,8 @@ public class LogicalReplicationEventProcessor {
 
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
+    static final int NUM_OF_RETRIES = 3;
+    static final int BACKOFF_IN_MILLIS = 500;
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -146,22 +148,22 @@ public class LogicalReplicationEventProcessor {
         MessageType messageType = MessageType.from((char) msg.get());
         switch (messageType) {
             case BEGIN:
-                handleMessageAndErrors(msg, this::processBeginMessage, messageType);
+                handleMessageWithRetries(msg, this::processBeginMessage, messageType);
                 break;
             case RELATION:
-                handleMessageAndErrors(msg, this::processRelationMessage, messageType);
+                handleMessageWithRetries(msg, this::processRelationMessage, messageType);
                 break;
             case INSERT:
-                handleMessageAndErrors(msg, this::processInsertMessage, messageType);
+                handleMessageWithRetries(msg, this::processInsertMessage, messageType);
                 break;
             case UPDATE:
-                handleMessageAndErrors(msg, this::processUpdateMessage, messageType);
+                handleMessageWithRetries(msg, this::processUpdateMessage, messageType);
                 break;
             case DELETE:
-                handleMessageAndErrors(msg, this::processDeleteMessage, messageType);
+                handleMessageWithRetries(msg, this::processDeleteMessage, messageType);
                 break;
             case COMMIT:
-                handleMessageAndErrors(msg, this::processCommitMessage, messageType);
+                handleMessageWithRetries(msg, this::processCommitMessage, messageType);
                 break;
             default:
                 throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
@@ -253,7 +255,7 @@ public class LogicalReplicationEventProcessor {
         int tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long)tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -265,7 +267,7 @@ public class LogicalReplicationEventProcessor {
     void processUpdateMessage(ByteBuffer msg) {
         final int tableId = msg.getInt();
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long)tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -307,7 +309,7 @@ public class LogicalReplicationEventProcessor {
         int tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long)tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -417,12 +419,27 @@ public class LogicalReplicationEventProcessor {
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
     }
 
-    private void handleMessageAndErrors(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
+    private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try {
+                eventProcessingTimer.record(() -> function.accept(message));
+                return;
+            } catch (Exception e) {
+                LOG.warn("Error when processing change event of type {}, will retry", messageType, e);
+                applyBackoff();
+            }
+            retry++;
+        }
+        LOG.error("Failed to process change event of type {} after {} retries", messageType, NUM_OF_RETRIES);
+        eventProcessingErrorCounter.increment();
+    }
+
+    private void applyBackoff() {
         try {
-            eventProcessingTimer.record(() -> function.accept(message));
-        } catch (Exception e) {
-            LOG.error("Failed to process change event of type {}", messageType, e);
-            eventProcessingErrorCounter.increment();
+            Thread.sleep(BACKOFF_IN_MILLIS);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

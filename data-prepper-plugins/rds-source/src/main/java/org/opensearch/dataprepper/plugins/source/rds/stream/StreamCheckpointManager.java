@@ -27,7 +27,7 @@ public class StreamCheckpointManager {
     static final int CHANGE_EVENT_COUNT_PER_CHECKPOINT_BATCH = 1000;
     static final String POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME = "positiveAcknowledgementSets";
     static final String NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME = "negativeAcknowledgementSets";
-    static final String RECORDS_CHECKPOINTED = "recordsCheckpointed";
+    static final String CHECKPOINT_COUNT = "checkpointCount";
     static final String NO_DATA_EXTEND_LEASE_COUNT = "noDataExtendLeaseCount";
     static final String GIVE_UP_PARTITION_COUNT = "giveupPartitionCount";
 
@@ -42,7 +42,7 @@ public class StreamCheckpointManager {
     private final PluginMetrics pluginMetrics;
     private final Counter positiveAcknowledgementSets;
     private final Counter negativeAcknowledgementSets;
-    private final Counter recordsCheckpointed;
+    private final Counter checkpointCount;
     private final Counter noDataExtendLeaseCount;
     private final Counter giveupPartitionCount;
 
@@ -64,7 +64,7 @@ public class StreamCheckpointManager {
 
         this.positiveAcknowledgementSets = pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
         this.negativeAcknowledgementSets = pluginMetrics.counter(NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME);
-        this.recordsCheckpointed = pluginMetrics.counter(RECORDS_CHECKPOINTED);
+        this.checkpointCount = pluginMetrics.counter(CHECKPOINT_COUNT);
         this.noDataExtendLeaseCount = pluginMetrics.counter(NO_DATA_EXTEND_LEASE_COUNT);
         this.giveupPartitionCount = pluginMetrics.counter(GIVE_UP_PARTITION_COUNT);
     }
@@ -178,7 +178,7 @@ public class StreamCheckpointManager {
                 changeEventStatus.getBinlogCoordinate() : changeEventStatus.getLogSequenceNumber(),
                 changeEventStatus.getRecordCount());
         streamCheckpointer.checkpoint(engineType, changeEventStatus);
-        recordsCheckpointed.increment(changeEventStatus.getRecordCount());
+        checkpointCount.increment();
     }
 
     //VisibleForTesting
