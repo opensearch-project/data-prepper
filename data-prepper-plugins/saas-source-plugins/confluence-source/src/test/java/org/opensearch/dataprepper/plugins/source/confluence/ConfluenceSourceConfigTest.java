@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.MockPluginConfigVariableImpl;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -36,11 +36,10 @@ public class ConfluenceSourceConfigTest {
     private final String password = "test Jira Credential";
     private final String username = "test Jira Id";
     private final String accountUrl = "https://example.atlassian.net";
-    private final List<String> projectList = new ArrayList<>();
-    private final List<String> issueTypeList = new ArrayList<>();
-    private final List<String> statusList = new ArrayList<>();
+    private final List<String> spacesList = new ArrayList<>();
+    private final List<String> contentTypeList = new ArrayList<>();
 
-    private ConfluenceSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws Exception {
+    private ConfluenceSourceConfig createConfluenceSourceConfig(String authtype, boolean hasToken) throws Exception {
         PluginConfigVariable pcvAccessToken = null;
         PluginConfigVariable pcvRefreshToken = null;
         Map<String, Object> configMap = new HashMap<>();
@@ -70,30 +69,25 @@ public class ConfluenceSourceConfigTest {
 
         configMap.put("authentication", authenticationMap);
 
-        projectList.add("project1");
-        projectList.add("project2");
+        spacesList.add("space1");
+        spacesList.add("space2");
 
-        issueTypeList.add("issue type 1");
-        issueTypeList.add("issue type 2");
-
-        statusList.add("status 1");
-        statusList.add("status 2");
+        contentTypeList.add("page");
+        contentTypeList.add("blogpost");
 
         Map<String, Object> filterMap = new HashMap<>();
         Map<String, Object> projectMap = new HashMap<>();
         Map<String, Object> issueTypeMap = new HashMap<>();
         Map<String, Object> statusMap = new HashMap<>();
 
-        issueTypeMap.put("include", issueTypeList);
-        filterMap.put("issue_type", issueTypeMap);
+        issueTypeMap.put("include", contentTypeList);
+        filterMap.put("page_type", issueTypeMap);
 
-        statusMap.put("include", statusList);
-        filterMap.put("status", statusMap);
 
         Map<String, Object> nameMap = new HashMap<>();
-        nameMap.put("include", projectList);
+        nameMap.put("include", spacesList);
         projectMap.put("key", nameMap);
-        filterMap.put("project", projectMap);
+        filterMap.put("space", projectMap);
 
         configMap.put("filter", filterMap);
 
@@ -111,9 +105,9 @@ public class ConfluenceSourceConfigTest {
 
     @Test
     void testGetters() throws Exception {
-        confluenceSourceConfig = createJiraSourceConfig(BASIC, false);
-        assertEquals(confluenceSourceConfig.getFilterConfig().getPageTypeConfig().getInclude(), issueTypeList);
-        assertEquals(confluenceSourceConfig.getFilterConfig().getSpaceConfig().getNameConfig().getInclude(), projectList);
+        confluenceSourceConfig = createConfluenceSourceConfig(BASIC, false);
+        assertEquals(confluenceSourceConfig.getFilterConfig().getPageTypeConfig().getInclude(), contentTypeList);
+        assertEquals(confluenceSourceConfig.getFilterConfig().getSpaceConfig().getNameConfig().getInclude(), spacesList);
         assertEquals(confluenceSourceConfig.getAccountUrl(), accountUrl);
         assertEquals(confluenceSourceConfig.getAuthenticationConfig().getBasicConfig().getPassword(), password);
         assertEquals(confluenceSourceConfig.getAuthenticationConfig().getBasicConfig().getUsername(), username);
@@ -121,13 +115,13 @@ public class ConfluenceSourceConfigTest {
 
     @Test
     void testFetchGivenOauthAttributeWrongAuthType() throws Exception {
-        confluenceSourceConfig = createJiraSourceConfig(BASIC, true);
+        confluenceSourceConfig = createConfluenceSourceConfig(BASIC, true);
         assertThrows(RuntimeException.class, () -> confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken());
     }
 
     @Test
     void testFetchGivenOauthAtrribute() throws Exception {
-        confluenceSourceConfig = createJiraSourceConfig(OAUTH2, true);
+        confluenceSourceConfig = createConfluenceSourceConfig(OAUTH2, true);
         assertEquals(accessToken, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken());
         assertEquals(refreshToken, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken());
         assertEquals(clientId, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId());

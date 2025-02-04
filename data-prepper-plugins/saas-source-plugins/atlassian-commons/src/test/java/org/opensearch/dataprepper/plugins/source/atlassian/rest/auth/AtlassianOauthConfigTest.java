@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest.auth;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceServiceTest;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.utils.ConfigUtilForTests;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -44,23 +44,23 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.RETRY_ATTEMPT;
 
 @ExtendWith(MockitoExtension.class)
-public class JiraOauthConfigTest {
+public class AtlassianOauthConfigTest {
 
     @Mock
     RestTemplate restTemplateMock;
 
 
-    ConfluenceSourceConfig confluenceSourceConfig;
+    AtlassianSourceConfig confluenceSourceConfig;
 
     @Mock
     PluginConfigVariable accessTokenVariable;
 
     @BeforeEach
     void setUp() {
-        confluenceSourceConfig = ConfluenceServiceTest.createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
+        confluenceSourceConfig = ConfigUtilForTests.createJiraConfigurationFromYaml("oauth2-auth-jira-pipeline.yaml");
     }
 
     @Test
@@ -69,7 +69,7 @@ public class JiraOauthConfigTest {
         Map<String, Object> firstMockResponseMap = Map.of("access_token", "first_mock_access_token",
                 "refresh_token", "first_mock_refresh_token",
                 "expires_in", 3600);
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
                 .thenReturn(new ResponseEntity<>(firstMockResponseMap, HttpStatus.OK));
         jiraOauthConfig.restTemplate = restTemplateMock;
@@ -96,7 +96,7 @@ public class JiraOauthConfigTest {
 
     @Test
     void testFailedToRenewAccessToken() throws NoSuchFieldException, IllegalAccessException {
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
         ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", accessTokenVariable);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
@@ -110,7 +110,7 @@ public class JiraOauthConfigTest {
     @Test
     void testFailedToRenewAccessToken_with_unauthorized_and_trigger_secrets_refresh()
             throws NoSuchFieldException, IllegalAccessException {
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
         ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken", accessTokenVariable);
         HttpClientErrorException unAuthorizedException = new HttpClientErrorException(HttpStatus.UNAUTHORIZED);
@@ -129,7 +129,7 @@ public class JiraOauthConfigTest {
         mockGetCallResponse.put("id", "test_cloud_id");
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
                 .thenReturn(new ResponseEntity<>(List.of(mockGetCallResponse), HttpStatus.OK));
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -159,7 +159,7 @@ public class JiraOauthConfigTest {
                 "expires_in", 3600);
         when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), any(Class.class)))
                 .thenReturn(new ResponseEntity<>(mockRenewTokenResponse, HttpStatus.OK));
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
 
 
@@ -176,7 +176,7 @@ public class JiraOauthConfigTest {
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
                 .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED))
                 .thenThrow(HttpClientErrorException.class);
-        ConfluenceOauthConfig jiraOauthConfig = new ConfluenceOauthConfig(confluenceSourceConfig);
+        AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
         assertThrows(RuntimeException.class, jiraOauthConfig::getUrl);
         for (int i = 0; i <= RETRY_ATTEMPT; i++) {

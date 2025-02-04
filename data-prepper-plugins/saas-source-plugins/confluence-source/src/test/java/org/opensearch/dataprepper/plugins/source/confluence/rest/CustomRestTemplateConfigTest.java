@@ -18,11 +18,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.BasicAuthInterceptor;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.CustomRestTemplateConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.OAuth2RequestInterceptor;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.AuthenticationConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.BasicConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceAuthConfig;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
@@ -47,7 +50,7 @@ class CustomRestTemplateConfigTest {
     private ConfluenceSourceConfig mockSourceConfig;
 
     @Mock
-    private ConfluenceAuthConfig mockAuthConfig;
+    private AtlassianAuthConfig mockAuthConfig;
 
     @Mock
     private BasicConfig mockBasicConfig;

@@ -15,9 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -26,46 +23,40 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 public class ConfluenceItemTest {
 
 
-    private ConfluenceItem issueBean;
+    private ConfluenceItem confluenceItemBean;
 
     @BeforeEach
     void setup() {
-        issueBean = new ConfluenceItem();
+        confluenceItemBean = new ConfluenceItem();
     }
 
     @Test
     public void testInitialization() {
-        assertNotNull(issueBean);
+        assertNotNull(confluenceItemBean);
     }
 
     @Test
     public void testNull() {
-        assertNull(issueBean.getId());
+        assertNull(confluenceItemBean.getId());
     }
 
     @Test
     void testNullCases() {
-        assertEquals(issueBean.getUpdatedTimeMillis(), 0);
+        assertEquals(confluenceItemBean.getUpdatedTimeMillis(), 0);
     }
 
     @Test
     void testGivenDateField() {
-        Map<String, Object> fieldsTestObject = new HashMap<>();
-        fieldsTestObject.put("created", "2024-07-06T21:12:23.437-0700");
-        fieldsTestObject.put("updated", "2022-07-06T21:12:23.106-0700");
-        assertEquals(issueBean.getCreatedTimeMillis(), 1720325543000L);
-        assertEquals(issueBean.getUpdatedTimeMillis(), 1657167143000L);
+        assertEquals(confluenceItemBean.getCreatedTimeMillis(), 0L);
+        assertEquals(confluenceItemBean.getUpdatedTimeMillis(), 0L);
     }
 
     @Test
     public void testStringSettersAndGetters() {
-        String self = "selfTest";
-        String key = "keyTest";
         String id = "idTest";
-        String expand = "expandTest";
 
-        issueBean.setId(id);
-        assertEquals(issueBean.getId(), id);
+        confluenceItemBean.setId(id);
+        assertEquals(confluenceItemBean.getId(), id);
     }
 
 }

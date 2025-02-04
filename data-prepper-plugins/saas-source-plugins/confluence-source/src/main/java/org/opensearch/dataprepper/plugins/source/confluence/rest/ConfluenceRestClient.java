@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.confluence.rest;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -44,7 +43,6 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String SPACES_FETCH_LATENCY_TIMER = "spacesFetchLatency";
     private static final String PAGES_REQUESTED = "pagesRequested";
-    private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
     private final Timer contentFetchLatencyTimer;
@@ -99,9 +97,4 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         return invokeRestApi(uri, String.class).getBody();
     }
 
-
-    @VisibleForTesting
-    public void setSleepTimeMultiplier(int multiplier) {
-        sleepTimeMultiplier = multiplier;
-    }
 }

@@ -20,13 +20,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.confluence.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.SpaceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.MockPluginConfigVariableImpl;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.slf4j.Logger;
@@ -40,13 +41,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -55,14 +56,9 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceOauthConfig.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.CREATED;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.KEY;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.LAST_MODIFIED;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.NAME;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.SPACE;
 
 
 /**
@@ -85,7 +81,7 @@ public class ConfluenceServiceTest {
         return inputStream;
     }
 
-    public static ConfluenceSourceConfig createJiraConfigurationFromYaml(String fileName) {
+    public static ConfluenceSourceConfig createConfluenceConfigurationFromYaml(String fileName) {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         try (InputStream inputStream = getResourceAsStream(fileName)) {
             ConfluenceSourceConfig confluenceSourceConfig = objectMapper.readValue(inputStream, ConfluenceSourceConfig.class);
@@ -105,10 +101,9 @@ public class ConfluenceServiceTest {
         return null;
     }
 
-    public static ConfluenceSourceConfig createJiraConfiguration(String auth_type,
-                                                                 List<String> issueType,
-                                                                 List<String> issueStatus,
-                                                                 List<String> projectKey) throws JsonProcessingException {
+    public static ConfluenceSourceConfig createConfluenceConfiguration(String auth_type,
+                                                                       List<String> issueType,
+                                                                       List<String> projectKey) throws JsonProcessingException {
         PluginConfigVariable pcvAccessToken = null;
         PluginConfigVariable pcvRefreshToken = null;
         ObjectMapper objectMapper = new ObjectMapper();
@@ -132,20 +127,16 @@ public class ConfluenceServiceTest {
         hosts.add(ACCESSIBLE_RESOURCES);
 
         Map<String, Object> filterMap = new HashMap<>();
-        Map<String, Object> projectMap = new HashMap<>();
-        Map<String, Object> issueTypeMap = new HashMap<>();
-        Map<String, Object> statusMap = new HashMap<>();
+        Map<String, Object> spacesMap = new HashMap<>();
+        Map<String, Object> contentTypeMap = new HashMap<>();
 
-        issueTypeMap.put("include", issueType);
-        filterMap.put("issue_type", issueTypeMap);
-
-        statusMap.put("include", issueStatus);
-        filterMap.put("status", statusMap);
+        contentTypeMap.put("include", issueType);
+        filterMap.put("page_type", contentTypeMap);
 
         Map<String, Object> nameMap = new HashMap<>();
         nameMap.put("include", projectKey);
-        projectMap.put("key", nameMap);
-        filterMap.put("project", projectMap);
+        spacesMap.put("key", nameMap);
+        filterMap.put("space", spacesMap);
 
 
         jiraSourceConfigMap.put("hosts", hosts);
@@ -174,10 +165,9 @@ public class ConfluenceServiceTest {
 
     @Test
     void testJiraServiceInitialization() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
-        ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        List<String> contentType = new ArrayList<>();
+        List<String> spacesKey = new ArrayList<>();
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, contentType, spacesKey);
         ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
         assertNotNull(confluenceService);
         when(confluenceRestClient.getContent(anyString())).thenReturn("test String");
@@ -186,55 +176,54 @@ public class ConfluenceServiceTest {
 
     @Test
     public void testGetPages() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
-        issueType.add("Task");
-        issueStatus.add("Done");
-        projectKey.add("KAN");
-        ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        List<String> contentType = new ArrayList<>();
+        List<String> spaceKey = new ArrayList<>();
+        contentType.add("page");
+        spaceKey.add("KAN");
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, contentType, spaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
-        List<ConfluenceItem> mockIssues = new ArrayList<>();
-        ConfluenceItem issue1 = createConfluenceItemBean(false, false);
-        mockIssues.add(issue1);
-        ConfluenceItem issue2 = createConfluenceItemBean(true, false);
-        mockIssues.add(issue2);
-        ConfluenceItem issue3 = createConfluenceItemBean(false, true);
-        mockIssues.add(issue3);
+        List<ConfluenceItem> mockPages = new ArrayList<>();
+        ConfluenceItem issue1 = createConfluenceItemBean();
+        mockPages.add(issue1);
+        ConfluenceItem issue2 = createConfluenceItemBean();
+        mockPages.add(issue2);
+        ConfluenceItem issue3 = createConfluenceItemBean();
+        mockPages.add(issue3);
 
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
+        when(mockConfluenceSearchResults.getResults()).thenReturn(mockPages);
 
         doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         confluenceService.getPages(confluenceSourceConfig, timestamp, itemInfoQueue);
-        assertEquals(mockIssues.size(), itemInfoQueue.size());
+        assertEquals(mockPages.size(), itemInfoQueue.size());
     }
 
     @Test
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException {
         List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            ConfluenceItem issue1 = createConfluenceItemBean(false, false);
-            mockIssues.add(issue1);
+        Random random = new Random();
+        int numberOfIssues = random.nextInt(100);
+        for (int i = 0; i < numberOfIssues; i++) {
+            mockIssues.add(createConfluenceItemBean());
         }
 
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
-
+        when(mockConfluenceSearchResults.getResults()).thenReturn(mockIssues);
 
         doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
         confluenceService.getPages(confluenceSourceConfig, timestamp, itemInfoQueue);
-        assertTrue(itemInfoQueue.size() >= 100);
+        assertEquals(numberOfIssues, itemInfoQueue.size());
     }
 
     @Test
@@ -249,7 +238,7 @@ public class ConfluenceServiceTest {
         projectKey.add("!@#$");
         projectKey.add("AAAAAAAAAAAAAA");
 
-        ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
         ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
 
         Instant timestamp = Instant.ofEpochSecond(0);
@@ -264,7 +253,7 @@ public class ConfluenceServiceTest {
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
-        ConfluenceSourceConfig confluenceSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
 
         doThrow(RuntimeException.class).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
@@ -276,45 +265,15 @@ public class ConfluenceServiceTest {
     }
 
 
-    private ConfluenceItem createConfluenceItemBean(boolean nullFields, boolean createdNull) {
-        ConfluenceItem issue1 = new ConfluenceItem();
-        issue1.setId(UUID.randomUUID().toString());
-        issue1.setTitle("issue_1_key");
-
-        Map<String, Object> fieldMap = new HashMap<>();
-        if (!nullFields) {
-            fieldMap.put(CREATED, "2024-07-06T21:12:23.437-0700");
-            fieldMap.put(LAST_MODIFIED, "2024-07-06T21:12:23.106-0700");
-        } else {
-            fieldMap.put(CREATED, 0);
-            fieldMap.put(LAST_MODIFIED, 0);
-        }
-        if (createdNull) {
-            fieldMap.put(CREATED, null);
-        }
-
-        Map<String, Object> issueTypeMap = new HashMap<>();
-        issueTypeMap.put("name", "Task");
-        issueTypeMap.put("self", "https://example.com/rest/api/2/issuetype/1");
-        issueTypeMap.put("id", "1");
-        fieldMap.put("issuetype", issueTypeMap);
-
-        Map<String, Object> projectMap = new HashMap<>();
-        if (!nullFields) {
-            projectMap.put(NAME, "project name test");
-            projectMap.put(KEY, "TEST");
-        }
-        fieldMap.put(SPACE, projectMap);
-
-        Map<String, Object> priorityMap = new HashMap<>();
-        priorityMap.put(NAME, "Medium");
-        fieldMap.put("priority", priorityMap);
-
-        Map<String, Object> statusMap = new HashMap<>();
-        statusMap.put(NAME, "In Progress");
-        fieldMap.put("statuses", statusMap);
-
-        return issue1;
+    private ConfluenceItem createConfluenceItemBean() {
+        ConfluenceItem confluenceItem = new ConfluenceItem();
+        confluenceItem.setId(UUID.randomUUID().toString());
+        confluenceItem.setTitle("issue_1_key");
+        SpaceItem spaceItem = new SpaceItem();
+        spaceItem.setId(new Random().nextInt());
+        spaceItem.setKey(UUID.randomUUID().toString());
+        confluenceItem.setSpaceItem(spaceItem);
+        return confluenceItem;
     }
 
 }

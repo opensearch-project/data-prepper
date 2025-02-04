@@ -8,30 +8,30 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest.auth;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class JiraBasicAuthConfigTest {
+public class AtlassianBasicAuthConfigTest {
 
     String url = "https://example.com";
     @Mock
-    private ConfluenceSourceConfig confluenceSourceConfig;
-    private ConfluenceBasicAuthConfig jiraBasicAuthConfig;
+    private AtlassianSourceConfig confluenceSourceConfig;
+    private AtlassianBasicAuthConfig jiraBasicAuthConfig;
 
     @BeforeEach
     void setUp() {
         when(confluenceSourceConfig.getAccountUrl()).thenReturn(url);
-        jiraBasicAuthConfig = new ConfluenceBasicAuthConfig(confluenceSourceConfig);
+        jiraBasicAuthConfig = new AtlassianBasicAuthConfig(confluenceSourceConfig);
     }
 
     @Test

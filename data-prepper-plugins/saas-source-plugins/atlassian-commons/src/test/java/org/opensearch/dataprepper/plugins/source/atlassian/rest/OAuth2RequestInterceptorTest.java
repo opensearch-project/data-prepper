@@ -8,14 +8,14 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.source.confluence.rest.auth.ConfluenceOauthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -41,7 +41,7 @@ public class OAuth2RequestInterceptorTest {
     private ClientHttpResponse mockResponse;
 
     @Mock
-    private ConfluenceOauthConfig mockConfig;
+    private AtlassianOauthConfig mockConfig;
 
     @Mock
     private HttpHeaders mockHeaders;

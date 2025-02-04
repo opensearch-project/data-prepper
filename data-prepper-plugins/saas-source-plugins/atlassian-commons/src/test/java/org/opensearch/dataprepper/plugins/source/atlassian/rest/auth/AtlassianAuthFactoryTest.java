@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest.auth;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,20 +16,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.AuthenticationConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.OAUTH2;
 
 @ExtendWith(MockitoExtension.class)
-public class ConfluenceAuthFactoryTest {
+public class AtlassianAuthFactoryTest {
 
     @Mock
-    private ConfluenceSourceConfig sourceConfig;
+    private AtlassianSourceConfig sourceConfig;
 
     @Mock
     private AuthenticationConfig authenticationConfig;
@@ -43,11 +43,11 @@ public class ConfluenceAuthFactoryTest {
     @Mock
     private PluginConfigVariable refreshTokenPluginConfigVariable;
 
-    private ConfluenceAuthFactory confluenceAuthFactory;
+    private AtlassianAuthFactory confluenceAuthFactory;
 
     @BeforeEach
     void setUp() {
-        confluenceAuthFactory = new ConfluenceAuthFactory(sourceConfig);
+        confluenceAuthFactory = new AtlassianAuthFactory(sourceConfig);
     }
 
     @Test
@@ -58,17 +58,17 @@ public class ConfluenceAuthFactoryTest {
         when(oauth2Config.getRefreshToken()).thenReturn(refreshTokenPluginConfigVariable);
         when(oauth2Config.getAccessToken()).thenReturn(accessTokenPluginConfigVariable);
         when(accessTokenPluginConfigVariable.getValue()).thenReturn("mockRefreshToken");
-        assertInstanceOf(ConfluenceOauthConfig.class, confluenceAuthFactory.getObject());
+        assertInstanceOf(AtlassianOauthConfig.class, confluenceAuthFactory.getObject());
     }
 
     @Test
     void testGetObjectBasicAuth() {
         when(sourceConfig.getAccountUrl()).thenReturn("https://example.com");
-        assertInstanceOf(ConfluenceBasicAuthConfig.class, confluenceAuthFactory.getObject());
+        assertInstanceOf(AtlassianBasicAuthConfig.class, confluenceAuthFactory.getObject());
     }
 
     @Test
     void testGetObjectType() {
-        assertEquals(ConfluenceAuthConfig.class, confluenceAuthFactory.getObjectType());
+        assertEquals(AtlassianAuthConfig.class, confluenceAuthFactory.getObjectType());
     }
 }
