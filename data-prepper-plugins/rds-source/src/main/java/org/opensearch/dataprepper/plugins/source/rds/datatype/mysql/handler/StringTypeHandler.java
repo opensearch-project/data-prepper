@@ -1,13 +1,13 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class StringTypeHandler implements DataTypeHandler {
+public class StringTypeHandler implements MySQLDataTypeHandler {
 
     @Override
     public String handle(final MySQLDataType columnType, final String columnName, final Object value,
