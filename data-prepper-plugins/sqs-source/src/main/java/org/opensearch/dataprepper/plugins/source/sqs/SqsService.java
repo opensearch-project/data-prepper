@@ -48,10 +48,8 @@
      private final PluginFactory pluginFactory;
      private final AcknowledgementSetManager acknowledgementSetManager;
      private final List<ExecutorService> allSqsUrlExecutorServices;
-     private final SqsWorkerCommon sqsWorkerCommon;
      private final List<SqsWorker> sqsWorkers;
      private final Buffer<Record<Event>> buffer;
-     private final Backoff backoff;
      private final Map<String, SqsClient> sqsClientMap = new HashMap<>();
      private final AwsCredentialsProvider credentialsProvider;
 
@@ -71,8 +69,6 @@
         this.allSqsUrlExecutorServices = new ArrayList<>();
         this.sqsWorkers = new ArrayList<>();
         this.buffer = buffer;
-        backoff = SqsBackoff.createExponentialBackoff();
-        sqsWorkerCommon = new SqsWorkerCommon(backoff, pluginMetrics, acknowledgementSetManager);
      }  
 
      public void start() {
@@ -82,8 +78,9 @@
             String region = extractRegionFromQueueUrl(queueUrl);
             SqsClient sqsClient = sqsClientMap.computeIfAbsent(region,
                     r -> SqsClientFactory.createSqsClient(Region.of(r), credentialsProvider));
-
             String queueName = queueUrl.substring(queueUrl.lastIndexOf('/') + 1);
+            Backoff backoff = SqsBackoff.createExponentialBackoff();
+            SqsWorkerCommon sqsWorkerCommon = new SqsWorkerCommon(backoff, pluginMetrics, acknowledgementSetManager);
             int numWorkers = queueConfig.getNumWorkers();
             SqsEventProcessor sqsEventProcessor;
             MessageFieldStrategy strategy;
