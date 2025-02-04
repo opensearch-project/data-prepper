@@ -103,22 +103,17 @@ public class ConfluenceIterator implements Iterator<ItemInfo> {
     /**
      * Initialize.
      *
-     * @param jiraChangeLogToken the jira change log token
+     * @param confluenceChangeLogToken the jira change log token
      */
-    public void initialize(Instant jiraChangeLogToken) {
+    public void initialize(Instant confluenceChangeLogToken) {
         this.itemInfoQueue = new ConcurrentLinkedQueue<>();
-        this.lastPollTime = jiraChangeLogToken;
+        this.lastPollTime = confluenceChangeLogToken;
         this.firstTime = true;
     }
 
     @VisibleForTesting
     public List<Future<Boolean>> showFutureList() {
         return futureList;
-    }
-
-    @VisibleForTesting
-    public Queue<ItemInfo> showItemInfoQueue() {
-        return itemInfoQueue;
     }
 
 }

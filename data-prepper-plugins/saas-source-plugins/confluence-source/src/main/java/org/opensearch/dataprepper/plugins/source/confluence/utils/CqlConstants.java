@@ -14,7 +14,6 @@ public class CqlConstants {
     public static final String GREATER_THAN_EQUALS = ">=";
     public static final String CLOSING_ROUND_BRACKET = ")";
 
-    public static final String SLASH = "/";
     public static final String SPACE_IN = " AND space in (";
     public static final String SPACE_NOT_IN = " AND space not in (";
     public static final String DELIMITER = "\",\"";

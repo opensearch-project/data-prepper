@@ -18,19 +18,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class ConfluenceContentTypeTest {
     @Test
     void testEnumConstants() {
-        assertNotNull(ConfluenceContentType.PROJECT);
-        assertNotNull(ConfluenceContentType.ISSUE);
+        assertNotNull(ConfluenceContentType.SPACE);
+        assertNotNull(ConfluenceContentType.PAGE);
         assertNotNull(ConfluenceContentType.COMMENT);
         assertNotNull(ConfluenceContentType.ATTACHMENT);
-        assertNotNull(ConfluenceContentType.WORKLOG);
+        assertNotNull(ConfluenceContentType.BLOGPOST);
     }
 
     @Test
     void testTypeValues() {
-        assertEquals("PROJECT", ConfluenceContentType.PROJECT.getType());
-        assertEquals("ISSUE", ConfluenceContentType.ISSUE.getType());
+        assertEquals("SPACE", ConfluenceContentType.SPACE.getType());
+        assertEquals("PAGE", ConfluenceContentType.PAGE.getType());
         assertEquals("COMMENT", ConfluenceContentType.COMMENT.getType());
         assertEquals("ATTACHMENT", ConfluenceContentType.ATTACHMENT.getType());
-        assertEquals("WORKLOG", ConfluenceContentType.WORKLOG.getType());
+        assertEquals("BLOGPOST", ConfluenceContentType.BLOGPOST.getType());
     }
 }

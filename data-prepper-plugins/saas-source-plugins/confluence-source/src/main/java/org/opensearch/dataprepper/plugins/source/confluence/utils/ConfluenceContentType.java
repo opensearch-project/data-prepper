@@ -15,11 +15,11 @@ import lombok.Getter;
 
 @AllArgsConstructor
 public enum ConfluenceContentType {
-    PROJECT("PROJECT"),
-    ISSUE("ISSUE"),
+    SPACE("SPACE"),
+    PAGE("PAGE"),
+    BLOGPOST("BLOGPOST"),
     COMMENT("COMMENT"),
-    ATTACHMENT("ATTACHMENT"),
-    WORKLOG("WORKLOG");
+    ATTACHMENT("ATTACHMENT");
 
     @Getter
     private final String type;

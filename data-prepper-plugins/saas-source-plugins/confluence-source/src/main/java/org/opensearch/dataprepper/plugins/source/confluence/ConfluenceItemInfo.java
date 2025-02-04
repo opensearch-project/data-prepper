@@ -144,11 +144,11 @@ public class ConfluenceItemInfo implements ItemInfo {
             contentItemMetadata.put(CREATED, contentItem.getCreatedTimeMillis());
             contentItemMetadata.put(LAST_MODIFIED, contentItem.getUpdatedTimeMillis());
             contentItemMetadata.put(CONTENT_ID, contentItem.getId());
-            contentItemMetadata.put(ConfluenceService.CONTENT_TYPE, ConfluenceContentType.ISSUE.getType());
+            contentItemMetadata.put(ConfluenceService.CONTENT_TYPE, ConfluenceContentType.PAGE.getType());
 
             this.space = contentItem.getSpaceItem().getKey();
             this.id = contentItem.getId();
-            this.contentType = ConfluenceContentType.ISSUE.getType();
+            this.contentType = ConfluenceContentType.PAGE.getType();
             this.itemId = contentItem.getId();
             this.metadata = contentItemMetadata;
             return this;

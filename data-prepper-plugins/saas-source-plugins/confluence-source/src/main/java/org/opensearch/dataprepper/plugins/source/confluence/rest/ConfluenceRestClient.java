@@ -63,31 +63,31 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     }
 
     /**
-     * Method to get Issues.
+     * Method to get all Contents in a paginated fashion.
      *
-     * @param jql     input parameter.
+     * @param cql     input parameter.
      * @param startAt the start at
      * @return InputStream input stream
      */
     @Timed(SEARCH_CALL_LATENCY_TIMER)
-    public ConfluenceSearchResults getAllContent(StringBuilder jql, int startAt) {
+    public ConfluenceSearchResults getAllContent(StringBuilder cql, int startAt) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
         URI uri = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam(MAX_RESULT, FIFTY)
                 .queryParam(START_AT, startAt)
-                .queryParam(CQL_FIELD, jql)
+                .queryParam(CQL_FIELD, cql)
                 .queryParam(EXPAND_FIELD, EXPAND_VALUE)
                 .buildAndExpand().toUri();
         return invokeRestApi(uri, ConfluenceSearchResults.class).getBody();
     }
 
     /**
-     * Gets issue.
+     * Fetches content based on given the content id.
      *
      * @param contentId the item info
-     * @return the issue
+     * @return the content based on the given content id
      */
     @Timed(PAGE_FETCH_LATENCY_TIMER)
     public String getContent(String contentId) {

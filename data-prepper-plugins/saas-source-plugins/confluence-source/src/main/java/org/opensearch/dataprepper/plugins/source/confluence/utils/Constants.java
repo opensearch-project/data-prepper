@@ -15,10 +15,6 @@ package org.opensearch.dataprepper.plugins.source.confluence.utils;
  */
 public class Constants {
 
-    public static final int RETRY_ATTEMPT = 6;
-
-    public static final String KEY = "key";
-    public static final String NAME = "name";
     public static final String SPACE = "space";
     public static final String OAUTH2 = "OAuth2";
     public static final String LAST_MODIFIED = "lastModified";

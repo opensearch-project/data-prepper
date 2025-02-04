@@ -46,7 +46,7 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.SPACE;
 
 /**
- * This class represents a Jira client.
+ * This class represents a Confluence client.
  */
 @Named
 public class ConfluenceClient implements CrawlerClient {
@@ -95,7 +95,7 @@ public class ConfluenceClient implements CrawlerClient {
                 state.getKeyAttributes(), state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
         Map<String, Object> keyAttributes = state.getKeyAttributes();
-        String project = (String) keyAttributes.get(SPACE);
+        String space = (String) keyAttributes.get(SPACE);
         Instant eventTime = state.getExportStartTime();
         List<ItemInfo> itemInfos = new ArrayList<>();
         for (String itemId : itemIds) {
@@ -105,7 +105,7 @@ public class ConfluenceClient implements CrawlerClient {
             ItemInfo itemInfo = ConfluenceItemInfo.builder()
                     .withItemId(itemId)
                     .withId(itemId)
-                    .withSpace(project)
+                    .withSpace(space)
                     .withEventTime(eventTime)
                     .withMetadata(keyAttributes).build();
             itemInfos.add(itemInfo);

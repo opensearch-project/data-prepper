@@ -18,7 +18,7 @@ import lombok.Getter;
 import java.util.List;
 
 /**
- * The result of a JQL search.
+ * The result of a CQL search.
  */
 @Getter
 @JsonIgnoreProperties(ignoreUnknown = true)
