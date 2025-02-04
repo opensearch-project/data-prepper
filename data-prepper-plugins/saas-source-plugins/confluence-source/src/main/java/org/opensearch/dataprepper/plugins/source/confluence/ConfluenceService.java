@@ -108,7 +108,7 @@ public class ConfluenceService {
             addItemsToQueue(contentList, itemInfoQueue);
         } while (startAt < total);
         searchResultsFoundCounter.increment(total);
-        log.info("Number of tickets found in search api call: {}", total);
+        log.info("Number of content items found in search api call: {}", total);
     }
 
     /**

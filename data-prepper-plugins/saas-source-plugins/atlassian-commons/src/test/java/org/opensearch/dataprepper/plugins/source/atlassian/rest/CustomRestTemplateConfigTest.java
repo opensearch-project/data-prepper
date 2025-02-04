@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.confluence.rest;
+package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,14 +18,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.atlassian.rest.BasicAuthInterceptor;
-import org.opensearch.dataprepper.plugins.source.atlassian.rest.CustomRestTemplateConfig;
-import org.opensearch.dataprepper.plugins.source.atlassian.rest.OAuth2RequestInterceptor;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
@@ -38,8 +36,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
 @ExtendWith(MockitoExtension.class)
 class CustomRestTemplateConfigTest {
@@ -47,7 +43,7 @@ class CustomRestTemplateConfigTest {
     private CustomRestTemplateConfig config;
 
     @Mock
-    private ConfluenceSourceConfig mockSourceConfig;
+    private AtlassianSourceConfig mockSourceConfig;
 
     @Mock
     private AtlassianAuthConfig mockAuthConfig;
@@ -69,8 +65,8 @@ class CustomRestTemplateConfigTest {
 
     private static Stream<Arguments> provideAuthTypeAndExpectedInterceptorType() {
         return Stream.of(
-                Arguments.of(OAUTH2, OAuth2RequestInterceptor.class),
-                Arguments.of(BASIC, BasicAuthInterceptor.class),
+                Arguments.of(Constants.OAUTH2, OAuth2RequestInterceptor.class),
+                Arguments.of(Constants.BASIC, BasicAuthInterceptor.class),
                 Arguments.of("Default", BasicAuthInterceptor.class),
                 Arguments.of(null, BasicAuthInterceptor.class)
         );
