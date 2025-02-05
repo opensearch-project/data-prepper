@@ -24,4 +24,5 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation project(':data-prepper-test-event')
     testImplementation testLibs.slf4j.simple
+    testImplementation testLibs.spring.test
 }
