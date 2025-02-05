@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -115,7 +116,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
     }
 
     @Override
-    public void doOutput(Collection<Record<Event>> records) {
+    public void doOutput(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         reentrantLock.lock();
         if (records.isEmpty()) {
             return;
