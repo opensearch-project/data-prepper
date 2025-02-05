@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +74,7 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
-    public void output(final Collection<T> records) {
+    public void output(final Collection<T> records, final PipelineIf failurePipeline) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
                 while (true) {

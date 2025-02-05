@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.personalize;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.plugins.sink.personalize.configuration.PersonalizeSinkConfiguration;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -61,7 +62,7 @@ class PersonalizeSinkService {
     /**
      * @param records received records and add into buffer.
      */
-    void output(Collection<Record<Event>> records) {
+    void output(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         LOG.trace("{} records received", records.size());
         return;
     }
