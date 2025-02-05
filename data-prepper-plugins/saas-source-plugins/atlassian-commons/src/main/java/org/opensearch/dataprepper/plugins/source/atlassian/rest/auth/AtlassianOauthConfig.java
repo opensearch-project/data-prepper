@@ -30,7 +30,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.MAX_RETRIES;
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.SLASH;
 
 /**
@@ -83,7 +83,7 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
             }
 
             int retryCount = 0;
-            while (retryCount < RETRY_ATTEMPT) {
+            while (retryCount < MAX_RETRIES) {
                 retryCount++;
                 try {
                     HttpHeaders headers = new HttpHeaders();
@@ -103,7 +103,7 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
                     log.error("Error occurred while accessing resources: ", e);
                 }
             }
-            throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
+            throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", MAX_RETRIES));
         }
     }
 

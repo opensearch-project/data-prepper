@@ -25,11 +25,11 @@ import java.net.URI;
 import java.util.List;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.MAX_RETRIES;
 
 @Slf4j
 public class AtlassianRestClient {
-    
+
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
     private int sleepTimeMultiplier = 1000;
     private final RestTemplate restTemplate;
@@ -44,7 +44,7 @@ public class AtlassianRestClient {
     protected <T> ResponseEntity<T> invokeRestApi(URI uri, Class<T> responseType) throws BadRequestException {
         AddressValidation.validateInetAddress(AddressValidation.getInetAddress(uri.toString()));
         int retryCount = 0;
-        while (retryCount < RETRY_ATTEMPT) {
+        while (retryCount < MAX_RETRIES) {
             try {
                 return restTemplate.getForEntity(uri, responseType);
             } catch (HttpClientErrorException ex) {

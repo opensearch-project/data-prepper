@@ -44,7 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.RETRY_ATTEMPT;
+import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.MAX_RETRIES;
 
 @ExtendWith(MockitoExtension.class)
 public class AtlassianOauthConfigTest {
@@ -179,7 +179,7 @@ public class AtlassianOauthConfigTest {
         AtlassianOauthConfig jiraOauthConfig = new AtlassianOauthConfig(confluenceSourceConfig);
         jiraOauthConfig.restTemplate = restTemplateMock;
         assertThrows(RuntimeException.class, jiraOauthConfig::getUrl);
-        for (int i = 0; i <= RETRY_ATTEMPT; i++) {
+        for (int i = 0; i <= MAX_RETRIES; i++) {
             assertThrows(RuntimeException.class, jiraOauthConfig::getUrl);
         }
     }

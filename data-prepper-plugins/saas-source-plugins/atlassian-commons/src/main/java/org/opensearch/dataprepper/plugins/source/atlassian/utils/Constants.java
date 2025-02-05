@@ -15,7 +15,7 @@ package org.opensearch.dataprepper.plugins.source.atlassian.utils;
  */
 public class Constants {
 
-    public static final int RETRY_ATTEMPT = 6;
+    public static final int MAX_RETRIES = 6;
 
     public static final String OAUTH2 = "OAuth2";
     public static final String BASIC = "Basic";
