@@ -25,7 +25,8 @@ public interface AtlassianAuthConfig {
     /**
      * Initializes the credentials for the Jira instance.
      */
-    void initCredentials();
+    default void initCredentials() {
+    }
 
     /**
      * Renews the credentials for the Jira instance.

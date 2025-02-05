@@ -30,11 +30,7 @@ public class AtlassianBasicAuthConfig implements AtlassianAuthConfig {
     public String getUrl() {
         return accountUrl;
     }
-
-    @Override
-    public void initCredentials() {
-        //do nothing for basic authentication
-    }
+    
 
     @Override
     public void renewCredentials() {
