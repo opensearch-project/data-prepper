@@ -42,7 +42,6 @@ public class SqsWorkerCommon {
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangedCount";
     public static final String SQS_VISIBILITY_TIMEOUT_CHANGE_FAILED_COUNT_METRIC_NAME = "sqsVisibilityTimeoutChangeFailedCount";
 
-    private final SqsClient sqsClient;
     private final Backoff standardBackoff;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -56,17 +55,16 @@ public class SqsWorkerCommon {
     private final Counter sqsVisibilityTimeoutChangedCount;
     private final Counter sqsVisibilityTimeoutChangeFailedCount;
 
-    public SqsWorkerCommon(final SqsClient sqsClient,
-                           final Backoff standardBackoff,
+    public SqsWorkerCommon(final Backoff standardBackoff,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager) {
 
-        this.sqsClient = sqsClient;
         this.standardBackoff = standardBackoff;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.isStopped = false;
         this.failedAttemptCount = 0;
+
 
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
@@ -78,6 +76,7 @@ public class SqsWorkerCommon {
     }
 
     public List<Message> pollSqsMessages(final String queueUrl,
+                                         final SqsClient sqsClient,
                                          final Integer maxNumberOfMessages,
                                          final Duration waitTime,
                                          final Duration visibilityTimeout) {
@@ -134,7 +133,7 @@ public class SqsWorkerCommon {
         }
     }
 
-    public void deleteSqsMessages(final String queueUrl, final List<DeleteMessageBatchRequestEntry> entries) {
+    public void deleteSqsMessages(final String queueUrl, final SqsClient sqsClient, final List<DeleteMessageBatchRequestEntry> entries) {
         if (entries == null || entries.isEmpty() || isStopped) {
             return;
         }
@@ -146,7 +145,6 @@ public class SqsWorkerCommon {
                     .build();
 
             final DeleteMessageBatchResponse response = sqsClient.deleteMessageBatch(request);
-
             if (response.hasSuccessful()) {
                 final int successCount = response.successful().size();
                 sqsMessagesDeletedCounter.increment(successCount);
@@ -164,6 +162,7 @@ public class SqsWorkerCommon {
     }
 
     public void increaseVisibilityTimeout(final String queueUrl,
+                                          final SqsClient sqsClient,
                                           final String receiptHandle,
                                           final int newVisibilityTimeoutSeconds,
                                           final String messageIdForLogging) {
@@ -204,6 +203,10 @@ public class SqsWorkerCommon {
 
     public Counter getSqsMessagesFailedCounter() {
         return sqsMessagesFailedCounter;
+    }
+
+    public Counter getSqsMessagesDeletedCounter() {
+        return sqsMessagesDeletedCounter;
     }
 
     public void stop() {
