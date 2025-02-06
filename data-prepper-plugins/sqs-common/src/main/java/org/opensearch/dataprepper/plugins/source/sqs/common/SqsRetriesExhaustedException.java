@@ -8,7 +8,7 @@
  *
  */
 
-package org.opensearch.dataprepper.plugins.source.sqs;
+package org.opensearch.dataprepper.plugins.source.sqs.common;
 
 /**
  * This exception is thrown when SQS retries are exhausted

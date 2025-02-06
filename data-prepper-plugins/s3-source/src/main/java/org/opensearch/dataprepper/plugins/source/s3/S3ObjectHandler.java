@@ -18,6 +18,8 @@ public interface S3ObjectHandler {
      * Parse S3 object content using S3 object reference and pushing to buffer
      * @param s3ObjectReference Contains bucket and s3 object details
      * @param acknowledgementSet acknowledgement set for the object
+     * @param sourceCoordinator source coordinator
+     * @param partitionKey partition key
      *
      * @throws IOException exception is thrown every time because this is not supported
      */
@@ -25,4 +27,6 @@ public interface S3ObjectHandler {
                        final AcknowledgementSet acknowledgementSet,
                        final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                        final String partitionKey) throws IOException;
+
+    void deleteS3Object(final S3ObjectReference s3ObjectReference);
 }

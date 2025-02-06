@@ -114,6 +114,11 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
     }
 
+    @Override
+    public void deleteS3Object(final S3ObjectReference s3ObjectReference) {
+        throw new UnsupportedOperationException("Deleting S3 objects is not supported with S3 select");
+    }
+
     private void selectObject(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption);
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);

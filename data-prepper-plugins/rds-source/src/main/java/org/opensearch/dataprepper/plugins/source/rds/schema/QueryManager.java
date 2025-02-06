@@ -26,9 +26,9 @@ public class QueryManager {
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
 
-    private final ConnectionManager connectionManager;
+    private final MySqlConnectionManager connectionManager;
 
-    public QueryManager(ConnectionManager connectionManager) {
+    public QueryManager(MySqlConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }
 

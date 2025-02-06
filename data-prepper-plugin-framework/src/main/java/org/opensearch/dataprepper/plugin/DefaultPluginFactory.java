@@ -64,14 +64,14 @@ public class DefaultPluginFactory implements PluginFactory {
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
 
-        if(pluginProviders.isEmpty()) {
+        if (pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
                     "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
         }
     }
 
     @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args) {
+    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object... args) {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
@@ -100,7 +100,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final Integer numberOfInstances = numberOfInstancesFunction.apply(pluginClass);
 
-        if(numberOfInstances == null || numberOfInstances < 0)
+        if (numberOfInstances == null || numberOfInstances < 0)
             throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
@@ -121,7 +121,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
         Class[] markersToScan = pluginAnnotation.packagesToScan();
-        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan, configuration);
+        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan, configuration, pluginSetting);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)

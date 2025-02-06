@@ -146,6 +146,7 @@ public class S3EventNotification {
 
     /**
      * @deprecated use {@link #getSizeAsLong()} instead.
+     * @return returns size
      */
     @Deprecated
     @JsonIgnore

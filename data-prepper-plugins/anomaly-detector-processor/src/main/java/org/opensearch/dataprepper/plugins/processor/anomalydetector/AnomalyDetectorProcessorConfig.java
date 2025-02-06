@@ -34,7 +34,7 @@ public class AnomalyDetectorProcessorConfig {
     @UsesDataPrepperPlugin(pluginType = AnomalyDetectorMode.class)
     private PluginModel detectorMode;
 
-    @JsonPropertyDescription("If provided, anomalies will be detected within each unique instance of these keys. For example, if you provide the ip field, anomalies will be detected separately for each unique IP address.")
+    @JsonPropertyDescription("If provided, anomalies will be detected within each unique instance of these keys. For example, if you provide the IP field, anomalies will be detected separately for each unique IP address.")
     @JsonProperty("identification_keys")
     @ExampleValues({
             @Example(value = "ip_address", description = "Anomalies will be detected separately for each unique IP address from the existing ip_address key of the Event.")

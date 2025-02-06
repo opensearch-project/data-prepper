@@ -40,7 +40,6 @@ public class WorkerScheduler implements Runnable {
     private final Counter acknowledgementSetSuccesses;
     private final Counter acknowledgementSetFailures;
     private final String sourcePluginName;
-    private final String SOURCE_PLUGIN_NAME = "sourcePluginName";
 
 
     public WorkerScheduler(final String sourcePluginName,
@@ -58,8 +57,8 @@ public class WorkerScheduler implements Runnable {
 
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
-        this.acknowledgementSetSuccesses = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME, SOURCE_PLUGIN_NAME, sourcePluginName);
-        this.acknowledgementSetFailures = pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME, SOURCE_PLUGIN_NAME, sourcePluginName);
+        this.acknowledgementSetSuccesses = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME);
+        this.acknowledgementSetFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME);
     }
 
     @Override
@@ -89,7 +88,7 @@ public class WorkerScheduler implements Runnable {
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
                 } catch (InterruptedException ex) {
-                    log.warn("Thread interrupted while waiting to retry", ex);
+                    log.warn("Thread interrupted while waiting to retry due to {}", ex.getMessage());
                 }
             }
         }

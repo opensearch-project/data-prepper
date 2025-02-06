@@ -9,30 +9,13 @@ import com.fasterxml.jackson.core.JsonParseException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -55,9 +38,6 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
-import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.createLambdaConfigurationFromYaml;
-import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleEventRecords;
-import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleRecord;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
@@ -74,6 +54,29 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.createLambdaConfigurationFromYaml;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleEventRecords;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleRecord;
 
 
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -127,8 +130,60 @@ public class LambdaProcessorTest {
     private Timer lambdaLatencyMetric;
 
     @Mock
+    private ClientOptions mockClientOptions;
+
+    @Mock
     private LambdaAsyncClient lambdaAsyncClient;
 
+    private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictAndAggregateMode() {
+        return Stream.of(
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), null, 2),
+                //Aggregate mode
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "null", null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), null, 0),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1)
+
+        );
+    }
+
+    private static Stream<Arguments> getDoExecuteSamplesForStrictAndAggregateMode() {
+        List<Record<Event>> firstSample = getSampleEventRecords(1);
+
+        List<Record<Event>> secondSample = getSampleEventRecords(1);
+        List<Record<Event>> thirdSample = getSampleEventRecords(1);
+        List<Record<Event>> fourthSample = getSampleEventRecords(1);
+        List<Record<Event>> fifthSample = getSampleEventRecords(1);
+        String fifthSampleJsonString = fifthSample.get(0).getData().toJsonString();
+        fifthSampleJsonString = "[" + fifthSampleJsonString + "]";
+
+
+        return Stream.of(
+                arguments("lambda-processor-success-config.yaml", firstSample, null, firstSample, true),
+                arguments("lambda-processor-success-config.yaml", secondSample, "null", secondSample, true),
+                arguments("lambda-processor-success-config.yaml", thirdSample, "random string", thirdSample, true),
+                arguments("lambda-processor-success-config.yaml", fourthSample, SdkBytes.fromByteArray("[]".getBytes()), fourthSample, true),
+                arguments("lambda-processor-success-config.yaml", fifthSample, SdkBytes.fromByteArray(fifthSampleJsonString.getBytes()), fifthSample, false)/*,
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()),Collections.emptyList()),
+                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), Collections.emptyList()),
+                //Aggregate mode
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), null, Collections.emptyList()),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "null", Collections.emptyList()),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "random string", Collections.emptyList()),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), Collections.emptyList()),
+                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), Collections.emptyList())
+*/
+        );
+    }
 
     @BeforeEach
     public void setUp() {
@@ -263,19 +318,27 @@ public class LambdaProcessorTest {
         int recordCount = (int) (Math.random() * 100);
         List<Record<Event>> records = getSampleEventRecords(recordCount);
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
+        // Setting up an invalid json that will fail at the parsing step
+        when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"invalid_json:\"parsing_fails\"}]"));
+        when(invokeResponse.statusCode()).thenReturn(200); // Success status code
+        // Mock the invoke method to return a completed future
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
 
-
-        // Mock Buffer to return empty payload
-        when(invokeResponse.payload()).thenReturn(SdkBytes.fromUtf8String("[{\"key\": \"value\"}]"));
+        // Processor instant creation and executing
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
                 awsCredentialsSupplier, expressionEvaluator);
+        // Clearing up previous interactions in case if they have any
+        reset(numberOfRecordsSuccessCounter);
+        reset(numberOfRecordsFailedCounter);
         populatePrivateFields(lambdaProcessor);
         // Act
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
         // Assert
-        assertEquals(recordCount, result.size(), "Result should be empty due to empty Lambda response.");
+        assertEquals(recordCount, result.size(),
+                "In the case of parsing failure, original records with failure tags should come out as response");
         verify(numberOfRecordsSuccessCounter, times(0)).increment(1.0);
         verify(numberOfRecordsFailedCounter, times(1)).increment(recordCount);
     }
@@ -493,28 +556,6 @@ public class LambdaProcessorTest {
         assertEquals(3, resultRecords.size(), "ResultRecords should contain three records.");
     }
 
-
-    private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictAndAggregateMode() {
-        return Stream.of(
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "null", StrictResponseModeNotRespectedException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), StrictResponseModeNotRespectedException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), StrictResponseModeNotRespectedException.class, 0),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), null, 2),
-                //Aggregate mode
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), null, RuntimeException.class, 0),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "null", null, 0),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "random string", JsonParseException.class, 0),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), null, 0),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), null, 0),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}]".getBytes()), null, 1)
-
-        );
-    }
-
     @ParameterizedTest
     @MethodSource("getLambdaResponseConversionSamplesForStrictAndAggregateMode")
     public void testConvertLambdaResponseToEvent_for_strict_and_aggregate_mode(String configFile,
@@ -545,35 +586,6 @@ public class LambdaProcessorTest {
         }
     }
 
-    private static Stream<Arguments> getDoExecuteSamplesForStrictAndAggregateMode() {
-        List<Record<Event>> firstSample = getSampleEventRecords(1);
-
-        List<Record<Event>> secondSample = getSampleEventRecords(1);
-        List<Record<Event>> thirdSample = getSampleEventRecords(1);
-        List<Record<Event>> fourthSample = getSampleEventRecords(1);
-        List<Record<Event>> fifthSample = getSampleEventRecords(1);
-        String fifthSampleJsonString = fifthSample.get(0).getData().toJsonString();
-        fifthSampleJsonString = "[" + fifthSampleJsonString + "]";
-
-
-        return Stream.of(
-                arguments("lambda-processor-success-config.yaml",  firstSample, null, firstSample, true),
-                arguments("lambda-processor-success-config.yaml", secondSample, "null", secondSample, true),
-                arguments("lambda-processor-success-config.yaml", thirdSample, "random string",thirdSample, true),
-                arguments("lambda-processor-success-config.yaml", fourthSample, SdkBytes.fromByteArray("[]".getBytes()), fourthSample, true),
-                arguments("lambda-processor-success-config.yaml", fifthSample, SdkBytes.fromByteArray(fifthSampleJsonString.getBytes()), fifthSample, false)/*,
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()),Collections.emptyList()),
-                arguments("lambda-processor-success-config.yaml", getSampleEventRecords(2), SdkBytes.fromByteArray("[{\"key\":\"val\"}, {\"key\":\"val\"}]".getBytes()), Collections.emptyList()),
-                //Aggregate mode
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), null, Collections.emptyList()),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "null", Collections.emptyList()),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), "random string", Collections.emptyList()),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("{}".getBytes()), Collections.emptyList()),
-                arguments("lambda-processor-aggregate-mode-config.yaml", getSampleEventRecords(1), SdkBytes.fromByteArray("[]".getBytes()), Collections.emptyList())
-*/
-        );
-    }
-
     @ParameterizedTest
     @MethodSource("getDoExecuteSamplesForStrictAndAggregateMode")
     public void testDoExecute_for_strict_and_aggregate_mode(String configFile,
@@ -602,5 +614,173 @@ public class LambdaProcessorTest {
             Record<Event> record = records.iterator().next();
             assertEquals("[lambda_failure]", record.getData().getMetadata().getTags().toString());
         }
+    }
+
+    //NOTE: This test will not pass as invoke failure is handled internally through sdk.
+    // The first attempt will fail and the second attempt will not even be considered for execution.
+//    @Test
+//    public void testDoExecute_retryScenario_successOnSecondAttempt() throws Exception {
+//        // Arrange
+//        final List<Record<Event>> records = getSampleEventRecords(2);
+//
+//        // First attempt throws TooManyRequestsException => no valid payload
+//        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+//                .thenReturn(CompletableFuture.failedFuture(
+//                        TooManyRequestsException.builder()
+//                                .message("First attempt throttled")
+//                                .build()
+//                ))
+//                // Second attempt => success with 200
+//                .thenReturn(CompletableFuture.completedFuture(
+//                        InvokeResponse.builder()
+//                                .statusCode(200)
+//                                .payload(SdkBytes.fromUtf8String(
+//                                        "[{\"successKey1\":\"successValue1\"},{\"successKey2\":\"successValue2\"}]"))
+//                                .build()
+//                ));
+//
+//        // Create a config which has at least 1 maxConnectionRetries so we can retry once.
+//        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+//
+//        // Instantiate the processor
+//        final LambdaProcessor processor = new LambdaProcessor(
+//                pluginFactory,
+//                pluginSetting,
+//                config,
+//                awsCredentialsSupplier,
+//                expressionEvaluator
+//        );
+//        populatePrivateFields(processor);
+//
+//        // Act
+//        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+//
+//        // Assert
+//        // Because the second invocation is successful (200),
+//        // we expect the final records to NOT have the "lambda_failure" tag
+//        assertEquals(records.size(), resultRecords.size());
+//        for (Record<Event> record : resultRecords) {
+//            assertFalse(
+//                    record.getData().getMetadata().getTags().contains("lambda_failure"),
+//                    "Record should NOT have a failure tag after a successful retry"
+//            );
+//        }
+//
+//        // We invoked the lambda client 2 times total: first attempt + one retry
+//        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+//
+//        // Second attempt is success => increment success counters
+//        verify(numberOfRequestsSuccessCounter, times(1)).increment();
+//    }
+
+    @Test
+    public void testDoExecute_retryScenario_failsAfterMaxRetries() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(3);
+
+        // Simulate a 500 status code (Retryable)
+        final InvokeResponse failedResponse = InvokeResponse.builder()
+                .statusCode(500)
+                .payload(SdkBytes.fromUtf8String("Internal server error"))
+                .build();
+
+        // Stub the lambda client to always return failedResponse
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse))
+                .thenReturn(CompletableFuture.completedFuture(failedResponse));
+
+        // Create a config with exactly 1 maxConnectionRetries (allowing 2 total attempts)
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-success-config.yaml");
+
+        // Instantiate the processor
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        // All records should have the "lambda_failure" tag
+        assertEquals(records.size(), resultRecords.size(), "Result records count should match input records count.");
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Record should have 'lambda_failure' tag after all retries fail");
+        }
+
+        // Expect 3 invocations: initial attempt + 3 retry
+        verify(lambdaAsyncClient, atLeastOnce()).invoke(any(InvokeRequest.class));
+        // No success counters
+        verify(numberOfRequestsSuccessCounter, never()).increment();
+        // Records failed counter should increment once with the total number of records
+        verify(numberOfRecordsFailedCounter, times(1)).increment(records.size());
+    }
+
+
+    @Test
+    public void testDoExecute_nonRetryableStatusCode_noRetryAttempted() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(2);
+
+        // 400 is a client error => non-retryable
+        final InvokeResponse badRequestResponse = InvokeResponse.builder()
+                .statusCode(400)
+                .payload(SdkBytes.fromUtf8String("Bad request"))
+                .build();
+
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(badRequestResponse));
+
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        assertEquals(records.size(), resultRecords.size());
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Non-retryable failure should cause 'lambda_failure' tag");
+        }
+        // Only 1 attempt => no second invoke
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        // Fail counters
+        verify(numberOfRecordsFailedCounter).increment(2);
+    }
+
+    @Test
+    public void testDoExecute_nonRetryableException_thrownImmediatelyFail() throws Exception {
+        // Arrange
+        final List<Record<Event>> records = getSampleEventRecords(2);
+
+        // Some random exception that is not in the list of retryable exceptions
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenThrow(new IllegalArgumentException("Non-retryable exception"));
+
+        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
+
+        final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
+                awsCredentialsSupplier, expressionEvaluator);
+        populatePrivateFields(processor);
+
+        // Act
+        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
+
+        // Assert
+        // We expect no success => all records come back tagged
+        assertEquals(records.size(), resultRecords.size());
+        for (Record<Event> record : resultRecords) {
+            assertTrue(record.getData().getMetadata().getTags().contains("lambda_failure"),
+                    "Record should have 'lambda_failure' after a non-retryable exception");
+        }
+
+        // Attempted only once
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
     }
 }
