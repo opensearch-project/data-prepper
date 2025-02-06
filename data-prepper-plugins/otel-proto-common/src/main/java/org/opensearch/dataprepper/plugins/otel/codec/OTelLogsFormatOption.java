@@ -14,7 +14,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum OTelLogsFormatOption {
-    JSON("json");
+    JSON("json"),
+    PROTOBUF("protobuf");
  
     private static final Map<String, OTelLogsFormatOption> NAMES_MAP = Arrays.stream(OTelLogsFormatOption.values())
             .collect(Collectors.toMap(
