@@ -50,8 +50,9 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
         // Each request is written in a separate S3 object, so, no legth preceeding the actual data
         // Same with Kafka exporter too. Each message is written as a separate message to Kafka
         if (!lengthPrefixedEncoding) {
-            if (inputStream.available() > MAX_REQUEST_LEN) {
-                throw new IOException("buffer length exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
+            int available = inputStream.available();
+            if (available > MAX_REQUEST_LEN) {
+                throw new IOException("buffer length " + available + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
             }
             byte[] buffer = inputStream.readAllBytes();
             parseRequest(buffer, timeReceivedMs, eventConsumer);
@@ -65,7 +66,7 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
             ByteBuffer lengthBuffer = ByteBuffer.wrap(lenBytes);
             int len = lengthBuffer.getInt();
             if (len > MAX_REQUEST_LEN) {
-                throw new IOException("buffer length exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
+                throw new IOException("buffer length " + len + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
             }
             byte[] buffer = new byte[len];
             if (inputStream.read(buffer, 0, len) != len) {
