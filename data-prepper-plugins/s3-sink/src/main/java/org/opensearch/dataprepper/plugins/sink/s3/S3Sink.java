@@ -60,6 +60,9 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      * @param pluginSetting dp plugin settings.
      * @param s3SinkConfig  s3 sink configurations.
      * @param pluginFactory dp plugin factory.
+     * @param sinkContext sink context
+     * @param awsCredentialsSupplier aws credentials supplier
+     * @param expressionEvaluator expression evaluator
      */
     @DataPrepperPluginConstructor
     public S3Sink(final PluginSetting pluginSetting,

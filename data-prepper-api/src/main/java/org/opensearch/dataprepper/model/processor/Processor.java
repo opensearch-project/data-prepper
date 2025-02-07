@@ -37,6 +37,7 @@ public interface Processor<InputRecord extends Record<?>, OutputRecord extends R
      * @since 2.11
      * Indicates if the processor holds the events or not
      * Holding events indicates that the events are not ready to be released.
+     * @return returns if events are held by the processor or not
      */
     default boolean holdsEvents() {
         return false;

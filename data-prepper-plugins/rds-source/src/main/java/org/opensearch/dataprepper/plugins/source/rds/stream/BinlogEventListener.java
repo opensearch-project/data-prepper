@@ -130,7 +130,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
-                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout());
+                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(),
+                sourceConfig.getEngine(), pluginMetrics);
         streamCheckpointManager.start();
 
         this.cascadeActionDetector = cascadeActionDetector;
@@ -200,7 +201,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
         // Trigger a checkpoint update for this rotate when there're no row mutation events being processed
         if (streamCheckpointManager.getChangeEventStatuses().isEmpty()) {
-            ChangeEventStatus changeEventStatus = streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate);
+            ChangeEventStatus changeEventStatus = streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate, 0);
             if (isAcknowledgmentsEnabled) {
                 changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
             }
@@ -347,9 +348,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             LOG.debug("Current binlog coordinate after receiving a row change event: " + currentBinlogCoordinate);
         }
 
+        final long recordCount = rows.size();
         AcknowledgementSet acknowledgementSet = null;
         if (isAcknowledgmentsEnabled) {
-            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(currentBinlogCoordinate);
+            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(currentBinlogCoordinate, recordCount);
         }
 
         final long bytes = event.toString().getBytes().length;
@@ -398,7 +400,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         if (isAcknowledgmentsEnabled) {
             acknowledgementSet.complete();
         } else {
-            streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate);
+            streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate, recordCount);
         }
     }
 

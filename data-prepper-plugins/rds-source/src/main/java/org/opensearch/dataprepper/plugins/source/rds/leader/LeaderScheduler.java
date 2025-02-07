@@ -81,6 +81,7 @@ public class LeaderScheduler implements Runnable {
                 if (leaderPartition != null) {
                     LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
                     if (!leaderProgressState.isInitialized()) {
+                        LOG.info("Performing initialization as LEADER node.");
                         init();
                     }
                 }
@@ -139,6 +140,7 @@ public class LeaderScheduler implements Runnable {
 
     private void createExportPartition(RdsSourceConfig sourceConfig) {
         ExportProgressState progressState = new ExportProgressState();
+        progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setIamRoleArn(sourceConfig.getExport().getIamRoleArn());
         progressState.setBucket(sourceConfig.getS3Bucket());
         // This prefix is for data exported from RDS

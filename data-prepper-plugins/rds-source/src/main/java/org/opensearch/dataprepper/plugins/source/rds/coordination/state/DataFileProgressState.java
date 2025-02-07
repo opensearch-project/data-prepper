@@ -12,6 +12,9 @@ import java.util.Map;
 
 public class DataFileProgressState {
 
+    @JsonProperty("engineType")
+    private String engineType;
+
     @JsonProperty("isLoaded")
     private boolean isLoaded = false;
 
@@ -21,6 +24,10 @@ public class DataFileProgressState {
     @JsonProperty("sourceDatabase")
     private String sourceDatabase;
 
+    /**
+     * For MySQL, sourceTable is in the format of tableName
+     * For Postgres, sourceTable is in the format of schemaName.tableName
+     */
     @JsonProperty("sourceTable")
     private String sourceTable;
 
@@ -32,6 +39,14 @@ public class DataFileProgressState {
 
     @JsonProperty("snapshotTime")
     private long snapshotTime;
+
+    public String getEngineType() {
+        return engineType;
+    }
+
+    public void setEngineType(String engineType) {
+        this.engineType = engineType;
+    }
 
     public int getTotalRecords() {
         return totalRecords;

@@ -17,7 +17,7 @@ import java.util.Optional;
  */
 public interface GeoIpConfigSupplier {
     /**
-     * Returns the {@link GeoIPProcessorService}
+     * @return returns the {@link GeoIPProcessorService}
      *
      * @since 2.7
      */
