@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
@@ -90,6 +91,18 @@ class LogicalReplicationClientTest {
     }
 
     @Test
+    void test_connect_exception_should_throw() throws SQLException {
+        when(connectionManager.getConnection()).thenThrow(RuntimeException.class);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> logicalReplicationClient.connect());
+
+        assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+
+        executorService.shutdownNow();
+    }
+
+    @Test
     void test_disconnect() throws SQLException, InterruptedException {
         final Connection connection = mock(Connection.class);
         final PGConnection pgConnection = mock(PGConnection.class, RETURNS_DEEP_STUBS);
@@ -119,6 +132,7 @@ class LogicalReplicationClientTest {
         logicalReplicationClient.disconnect();
         Thread.sleep(20);
         verify(stream).close();
+        verify(eventProcessor).stopCheckpointManager();
         verifyNoMoreInteractions(stream, eventProcessor);
 
         executorService.shutdownNow();
@@ -155,6 +169,7 @@ class LogicalReplicationClientTest {
         logicalReplicationClient.disconnect();
         Thread.sleep(20);
         verify(stream).close();
+        verify(eventProcessor).stopCheckpointManager();
         verifyNoMoreInteractions(stream, eventProcessor);
 
         // Second connect
@@ -170,6 +185,7 @@ class LogicalReplicationClientTest {
         logicalReplicationClient.disconnect();
         Thread.sleep(20);
         verify(stream, times(2)).close();
+        verify(eventProcessor, times(2)).stopCheckpointManager();
         verifyNoMoreInteractions(stream, eventProcessor);
 
         executorService.shutdownNow();

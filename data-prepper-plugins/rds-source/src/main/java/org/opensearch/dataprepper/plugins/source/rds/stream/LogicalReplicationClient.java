@@ -85,15 +85,20 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                         stream.setAppliedLSN(lsn);
                     } catch (Exception e) {
                         LOG.error("Exception while processing Postgres replication stream. ", e);
+                        throw e;
                     }
                 }
             }
 
             stream.close();
             disconnectRequested = false;
+            if (eventProcessor != null) {
+                eventProcessor.stopCheckpointManager();
+            }
             LOG.debug("Replication stream closed successfully.");
         } catch (Exception e) {
             LOG.error("Exception while creating Postgres replication stream. ", e);
+            throw new RuntimeException(e);
         }
     }
 
