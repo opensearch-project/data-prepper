@@ -83,9 +83,9 @@ public class CascadingActionDetector {
 
     /**
      * Detects if a binlog event contains cascading updates and if detected, creates resync partitions
-     * @param event event
+     * @param event binlog event
      * @param parentTableMap parent table map
-     * @param tableMetadata table meta data
+     * @param tableMetadata table metadata
      */
     public void detectCascadingUpdates(Event event, Map<String, ParentTable> parentTableMap, TableMetadata tableMetadata) {
         final UpdateRowsEventData data = event.getData();
@@ -143,9 +143,9 @@ public class CascadingActionDetector {
 
     /**
      * Detects if a binlog event contains cascading deletes and if detected, creates resync partitions
-     * @param event event
+     * @param event binlog event
      * @param parentTableMap parent table map
-     * @param tableMetadata table meta data
+     * @param tableMetadata table metadata
      */
     public void detectCascadingDeletes(Event event, Map<String, ParentTable> parentTableMap, TableMetadata tableMetadata) {
         if (parentTableMap.containsKey(tableMetadata.getFullTableName())) {
