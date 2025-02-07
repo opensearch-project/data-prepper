@@ -25,12 +25,21 @@ import java.time.Instant;
  
 public class OTelLogsProtoBufDecoder implements ByteDecoder {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsProtoBufDecoder.class);
+    private static final int MAX_REQUEST_LEN = (8 * 1024 * 1024);
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
     private final boolean lengthPrefixedEncoding;
     
     public OTelLogsProtoBufDecoder(boolean lengthPrefixedEncoding) {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
         this.lengthPrefixedEncoding = lengthPrefixedEncoding;
+    }
+
+    private void parseRequest(byte[] buffer, final Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
+        ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(buffer);
+        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
+        for (OpenTelemetryLog log: logs) {
+            eventConsumer.accept(new Record<>(log));
+        }
     }
 
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
@@ -41,16 +50,11 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
         // Each request is written in a separate S3 object, so, no legth preceeding the actual data
         // Same with Kafka exporter too. Each message is written as a separate message to Kafka
         if (!lengthPrefixedEncoding) {
-            try {
-                byte[] buffer = inputStream.readAllBytes();
-                ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(buffer);
-                List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
-                for (OpenTelemetryLog log: logs) {
-                    eventConsumer.accept(new Record<>(log));
-                }
-            } catch (Exception e) {
-                LOG.warn("Failed to parse Log Request");
+            if (inputStream.available() > MAX_REQUEST_LEN) {
+                throw new IOException("buffer length exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
             }
+            byte[] buffer = inputStream.readAllBytes();
+            parseRequest(buffer, timeReceivedMs, eventConsumer);
             return;
         }
         // As per the implementation of File exporter in "proto" format at
@@ -60,20 +64,15 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
         while (inputStream.read(lenBytes, 0, 4) == 4) {
             ByteBuffer lengthBuffer = ByteBuffer.wrap(lenBytes);
             int len = lengthBuffer.getInt();
-            byte[] buf = new byte[len];
-            if (inputStream.read(buf, 0, len) != len) {
+            if (len > MAX_REQUEST_LEN) {
+                throw new IOException("buffer length exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
+            }
+            byte[] buffer = new byte[len];
+            if (inputStream.read(buffer, 0, len) != len) {
                 LOG.warn("Failed to read {} bytes", len);
                 continue;
             }
-            try {
-                ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(buf);
-                List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
-                for (OpenTelemetryLog log: logs) {
-                    eventConsumer.accept(new Record<>(log));
-                }
-            } catch (Exception e) {
-                LOG.warn("Failed to parse Log Request");
-            }
+            parseRequest(buffer, timeReceivedMs, eventConsumer);
         }
     }
 }

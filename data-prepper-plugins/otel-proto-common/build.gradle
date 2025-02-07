@@ -7,6 +7,10 @@ plugins {
     id 'java'
 }
 
+test {
+    jvmArgs '-Xmx4g'
+}
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation libs.opentelemetry.proto
