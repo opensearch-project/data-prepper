@@ -1,6 +1,8 @@
-package org.opensearch.dataprepper.plugins.buffer.zerobuffer;
+package org.opensearch.dataprepper.core.pipeline.buffer;
 
-import org.opensearch.dataprepper.core.pipeline.buffer.AbstractZeroBuffer;
+import com.google.common.annotations.VisibleForTesting;
+import org.opensearch.dataprepper.core.pipeline.PipelineRunner;
+import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -12,25 +14,21 @@ import org.opensearch.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import lombok.Getter;
-import lombok.AccessLevel;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-@DataPrepperPlugin(name = "zero_buffer", pluginType = Buffer.class)
-public class ZeroBuffer<T extends Record<?>> extends AbstractZeroBuffer<T> {
+@DataPrepperPlugin(name = "zero", pluginType = Buffer.class)
+public class ZeroBuffer<T extends Record<?>> implements Buffer<T>, SupportsPipelineRunner {
     private static final Logger LOG = LoggerFactory.getLogger(ZeroBuffer.class);
     private static final String PLUGIN_COMPONENT_ID = "ZeroBuffer";
     private final PluginMetrics pluginMetrics;
     private final ThreadLocal<Collection<T>> threadLocalStore;
-    @Getter(value = AccessLevel.PACKAGE)
-    private final String pipelineName;
-    @Getter(value = AccessLevel.PACKAGE)
+    private PipelineRunner pipelineRunner;
+    @VisibleForTesting
+    final String pipelineName;
     private final Counter writeRecordsCounter;
-    @Getter(value = AccessLevel.PACKAGE)
     private final Counter readRecordsCounter;
 
     @DataPrepperPluginConstructor
@@ -55,7 +53,7 @@ public class ZeroBuffer<T extends Record<?>> extends AbstractZeroBuffer<T> {
         threadLocalStore.get().add(record);
         writeRecordsCounter.increment();
 
-        runAllProcessorsAndPublishToSinks();
+        getPipelineRunner().runAllProcessorsAndPublishToSinks();
     }
 
     @Override
@@ -65,14 +63,14 @@ public class ZeroBuffer<T extends Record<?>> extends AbstractZeroBuffer<T> {
         }
 
         if (threadLocalStore.get() == null) {
-            threadLocalStore.set(records);
+            threadLocalStore.set(new ArrayList<>(records));
         } else {
             // Add the new records to the existing records
             threadLocalStore.get().addAll(records);
         }
 
-        writeRecordsCounter.increment(records.size() * 1.0);
-        runAllProcessorsAndPublishToSinks();
+        writeRecordsCounter.increment((double) records.size());
+        getPipelineRunner().runAllProcessorsAndPublishToSinks();
     }
 
     @Override
@@ -86,10 +84,10 @@ public class ZeroBuffer<T extends Record<?>> extends AbstractZeroBuffer<T> {
         if (storedRecords!= null && !storedRecords.isEmpty()) {
             checkpointState = new CheckpointState(storedRecords.size());
             threadLocalStore.remove();
-            readRecordsCounter.increment(storedRecords.size() * 1.0);
+            readRecordsCounter.increment((double) storedRecords.size());
         }
 
-        return new AbstractMap.SimpleEntry<>(storedRecords, checkpointState);
+        return Map.entry(storedRecords, checkpointState);
     }
 
     @Override
@@ -98,5 +96,15 @@ public class ZeroBuffer<T extends Record<?>> extends AbstractZeroBuffer<T> {
     @Override
     public boolean isEmpty() {
         return (this.threadLocalStore.get() == null || this.threadLocalStore.get().isEmpty());
+    }
+
+    @Override
+    public PipelineRunner getPipelineRunner() {
+        return pipelineRunner;
+    }
+
+    @Override
+    public void setPipelineRunner(PipelineRunner pipelineRunner) {
+        this.pipelineRunner = pipelineRunner;
     }
 }
