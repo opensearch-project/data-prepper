@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
@@ -189,6 +190,7 @@ public class SqsWorker implements Runnable {
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
                 .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
                 .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
+                .attributeNamesWithStrings(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT.toString())
                 .build();
     }
 
@@ -232,10 +234,20 @@ public class SqsWorker implements Runnable {
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
         
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
-            sqsMessageDelayTimer.record(Duration.between(
-                    Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
-                    Instant.now()
-            ));
+            final int approximateReceiveCount = getApproximateReceiveCount(parsedMessage.getMessage());
+            if (s3SourceConfig.getSqsOptions().getMaxReceiveAttempts() != null &&
+                    approximateReceiveCount > s3SourceConfig.getSqsOptions().getMaxReceiveAttempts()) {
+                deleteSqsMessages(List.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage())));
+                parsedMessage.setShouldSkipProcessing(true);
+                continue;
+            }
+
+            if (approximateReceiveCount <= 1) {
+                sqsMessageDelayTimer.record(Duration.between(
+                        Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
+                        Instant.now()
+                ));
+            }
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             List<S3ObjectReference> s3ObjectDeletionWaitingForAcknowledgments = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
@@ -288,6 +300,10 @@ public class SqsWorker implements Runnable {
 
         // Use a separate loop for processing the S3 objects
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            if (parsedMessage.isShouldSkipProcessing()) {
+                continue;
+            }
+
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(parsedMessage);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(parsedMessage);
             final List<S3ObjectReference> s3ObjectDeletionsWaitingForAcknowledgments = messagesWaitingForS3ObjectDeletion.get(parsedMessage);
@@ -426,6 +442,11 @@ public class SqsWorker implements Runnable {
         return S3ObjectReference
                 .bucketAndKey(bucketName, objectKey)
                 .build();
+    }
+
+    private int getApproximateReceiveCount(final Message message) {
+        return message.attributes() != null && message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT) != null ?
+                Integer.parseInt(message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT)) : 0;
     }
 
     void stop() {
