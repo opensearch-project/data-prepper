@@ -91,6 +91,7 @@ public class CreateServerTest {
         return new BlockingBuffer<>(pluginSetting);
     }
 
+    //Me when idk how to mock a grpc service.  Tested in otel logs, metrics and trace i guess :(
 //    @Test
 //    void createGrpcServerTest() throws JsonProcessingException {
 //        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
