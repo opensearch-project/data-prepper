@@ -3,56 +3,19 @@ package org.opensearch.dataprepper.plugins.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Empty;
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.StringValue;
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpMethod;
-import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.Request;
-import com.linecorp.armeria.common.RequestHeaders;
-import com.linecorp.armeria.common.Response;
-import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.server.Server;
-import com.linecorp.armeria.server.grpc.GrpcService;
 import io.grpc.BindableService;
-import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
-import io.grpc.ServerInterceptors;
 import io.grpc.ServerServiceDefinition;
-import io.grpc.ServiceDescriptor;
-import io.grpc.protobuf.ProtoFileDescriptorSupplier;
-import io.grpc.protobuf.ProtoServiceDescriptorSupplier;
-import io.grpc.protobuf.ProtoUtils;
-import io.grpc.stub.ServerCalls;
-import io.grpc.stub.StreamObserver;
-import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Statistic;
-import io.netty.util.AsciiString;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
-import io.opentelemetry.proto.collector.logs.v1.LogsServiceProto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
@@ -69,24 +32,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -209,55 +159,4 @@ public class CreateServerTest {
         String json = new ObjectMapper().writeValueAsString(metadata);
         return objectMapper.readValue(json, ServerConfiguration.class);
     }
-
-
-//
-//    public class BasicService implements BindableService {
-//        @Override
-//        public io.grpc.ServerServiceDefinition bindService() {
-//            return io.grpc.ServerServiceDefinition.builder(getServiceDescriptor())
-//                    .addMethod(getMethodDescriptor(), new ServerCallHandler<Request, Response>() {
-//                        @Override
-//                        public io.grpc.ServerCall.Listener<Request> startCall(
-//                                io.grpc.ServerCall<Request, Response> call,
-//                                io.grpc.Metadata headers) {
-//                            return new UnaryServerCallHandler<Request, Response>(
-//                                    (request, responseObserver) -> {
-//                                        handleRequest(request, responseObserver);
-//                                        return null;
-//                                    }).startCall(call, headers);
-//                        }
-//                    })
-//                    .build();
-//        }
-//
-//        private io.grpc.ServiceDescriptor getServiceDescriptor() {
-//            return io.grpc.ServiceDescriptor.newBuilder("BasicService")
-//                    .addMethod(getMethodDescriptor())
-//                    .build();
-//        }
-//
-//        private io.grpc.MethodDescriptor<Request, Response> getMethodDescriptor() {
-//            return io.grpc.MethodDescriptor.<Request, Response>newBuilder()
-//                    .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
-//                    .setFullMethodName("BasicService/handleRequest")
-//                    .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(Request.getDefaultInstance()))
-//                    .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(Response.getDefaultInstance()))
-//                    .build();
-//        }
-//
-//        private void handleRequest(Request request, StreamObserver<Response> responseObserver) {
-//            try {
-//                Response response = Response.newBuilder()
-//                        .setMessage("Processed request: " + request.getMessage())
-//                        .build();
-//                responseObserver.onNext(response);
-//                responseObserver.onCompleted();
-//            } catch (Exception e) {
-//                responseObserver.onError(e);
-//            }
-//        }
-//    }
-//
-
 }
