@@ -31,7 +31,6 @@ public class FailedBulkOperationConverterTest {
     private String testId;
     private String pipelineName;
     private String pluginName;
-    private String pluginId;
     private BulkOperation bulkOperation;
     private BulkResponseItem bulkResponseItem;
     private String errorReason;
@@ -47,7 +46,6 @@ public class FailedBulkOperationConverterTest {
         testId = UUID.randomUUID().toString();
         pipelineName = UUID.randomUUID().toString();
         pluginName = UUID.randomUUID().toString();
-        pluginId = UUID.randomUUID().toString();
         errorReason = UUID.randomUUID().toString();
 
         failureMessage = UUID.randomUUID().toString();
@@ -75,7 +73,7 @@ public class FailedBulkOperationConverterTest {
         when(bulkResponseItem.error()).thenReturn(errorCause);
         when(errorCause.reason()).thenReturn(errorReason);
 
-        converter = new FailedBulkOperationConverter(pipelineName, pluginName, pluginId);
+        converter = new FailedBulkOperationConverter(pipelineName, pluginName);
     }
 
     @Test
@@ -136,7 +134,7 @@ public class FailedBulkOperationConverterTest {
     private void validateResponse(final DlqObject result, final String expectedErrorMessage) {
         assertThat(result, is(notNullValue()));
         assertThat(result.getPipelineName(), is(equalTo(pipelineName)));
-        assertThat(result.getPluginId(), is(equalTo(pluginId)));
+        assertThat(result.getPluginId(), is(equalTo(pluginName)));
         assertThat(result.getPluginName(), is(equalTo(pluginName)));
         final Object failedData = result.getFailedData();
         assertThat(failedData, is(notNullValue()));

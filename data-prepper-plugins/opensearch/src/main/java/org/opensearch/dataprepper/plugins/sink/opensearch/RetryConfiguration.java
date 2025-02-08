@@ -5,11 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.DlqConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -21,13 +19,13 @@ public class RetryConfiguration {
 
   private final String dlqFile;
   private final int maxRetries;
-  private final PluginModel dlq;
+  private final DlqConfiguration dlq;
 
   public String getDlqFile() {
     return dlqFile;
   }
 
-  public Optional<PluginModel> getDlq() {
+  public Optional<DlqConfiguration> getDlq() {
     return Optional.ofNullable(dlq);
   }
 
@@ -42,7 +40,7 @@ public class RetryConfiguration {
     private String dlqFile;
     private int maxRetries = Integer.MAX_VALUE;
 
-    private PluginModel dlq;
+    private DlqConfiguration dlq;
 
     public Builder withDlqFile(final String dlqFile) {
       checkNotNull(dlqFile, "dlqFile cannot be null.");
@@ -56,7 +54,7 @@ public class RetryConfiguration {
       return this;
     }
 
-    public Builder withDlq(final PluginModel dlq) {
+    public Builder withDlq(final DlqConfiguration dlq) {
       checkNotNull(dlq, "dlq cannot be null");
       this.dlq = dlq;
       return this;
@@ -72,30 +70,20 @@ public class RetryConfiguration {
     this.dlq = builder.dlq;
   }
 
-  public static RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
-    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
-    final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
-    if (dlqFile != null) {
-      builder = builder.withDlqFile(dlqFile);
-    }
-    final Integer maxRetries = pluginSetting.getIntegerOrDefault(MAX_RETRIES, null);
-    if (maxRetries != null) {
-      builder = builder.withMaxRetries(maxRetries);
-    }
-    final LinkedHashMap<String, Map<String, Object>> dlq = (LinkedHashMap) pluginSetting.getAttributeFromSettings(DLQ);
-    if (dlq != null) {
-      if (dlqFile != null) {
-        final String dlqOptionConflictMessage = String.format("%s option cannot be used along with %s option", DLQ_FILE, DLQ);
-        throw new RuntimeException(dlqOptionConflictMessage);
-      }
-      if (dlq.size() != 1) {
-        throw new RuntimeException("dlq option must declare exactly one dlq configuration");
-      }
-      final Map.Entry<String, Map<String, Object>> entry = dlq.entrySet().stream()
-          .findFirst()
-          .get();
-      builder = builder.withDlq(new PluginModel(entry.getKey(), entry.getValue()));
-    }
-    return builder.build();
+ public static RetryConfiguration readRetryConfig(final OpenSearchSinkConfig openSearchSinkConfig) {
+   RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
+   final String dlqFile = openSearchSinkConfig.getDlqFile();
+   if (dlqFile != null) {
+     builder = builder.withDlqFile(dlqFile);
+   }
+   final Integer maxRetries = openSearchSinkConfig.getMaxRetries();
+   if (maxRetries != null) {
+     builder = builder.withMaxRetries(maxRetries);
+   }
+   final DlqConfiguration dlqConfiguration = openSearchSinkConfig.getDlq();
+   if (dlqConfiguration != null) {
+     builder = builder.withDlq(dlqConfiguration);
+   }
+   return builder.build();
   }
 }
