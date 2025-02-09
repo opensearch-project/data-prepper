@@ -14,7 +14,7 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.utils.AddressValidation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +52,7 @@ public class AtlassianRestClient {
                 String statusMessage = ex.getMessage();
                 log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
                 if (statusCode == HttpStatus.FORBIDDEN) {
-                    throw new UnAuthorizedException(statusMessage);
+                    throw new UnauthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
                     log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
                     authConfig.renewCredentials();

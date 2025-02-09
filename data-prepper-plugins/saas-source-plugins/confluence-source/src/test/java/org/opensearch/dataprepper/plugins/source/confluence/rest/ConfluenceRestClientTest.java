@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceServiceTes
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -60,7 +60,7 @@ public class ConfluenceRestClientTest {
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
-                Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
+                Arguments.of(HttpStatus.FORBIDDEN, UnauthorizedException.class),
                 Arguments.of(HttpStatus.UNAUTHORIZED, RuntimeException.class),
                 Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
                 Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)

@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 
-public class UnAuthorizedExceptionTest {
+public class UnauthorizedExceptionTest {
     private String message;
     private Throwable throwable;
 
@@ -30,8 +30,8 @@ public class UnAuthorizedExceptionTest {
 
     @Nested
     class MessageOnlyConstructor {
-        private UnAuthorizedException createObjectUnderTest() {
-            return new UnAuthorizedException(message);
+        private UnauthorizedException createObjectUnderTest() {
+            return new UnauthorizedException(message);
         }
 
         @Test
@@ -47,8 +47,8 @@ public class UnAuthorizedExceptionTest {
 
     @Nested
     class MessageThrowableConstructor {
-        private UnAuthorizedException createObjectUnderTest() {
-            return new UnAuthorizedException(message, throwable);
+        private UnauthorizedException createObjectUnderTest() {
+            return new UnauthorizedException(message, throwable);
         }
 
         @Test

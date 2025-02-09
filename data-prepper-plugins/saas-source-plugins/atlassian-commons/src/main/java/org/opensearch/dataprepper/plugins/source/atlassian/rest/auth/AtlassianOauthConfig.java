@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.atlassian.rest.auth;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -103,7 +103,7 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
                     log.error("Error occurred while accessing resources: ", e);
                 }
             }
-            throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", MAX_RETRIES));
+            throw new UnauthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", MAX_RETRIES));
         }
     }
 

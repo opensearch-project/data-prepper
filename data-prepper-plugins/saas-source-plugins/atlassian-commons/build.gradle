@@ -15,7 +15,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
-    implementation("org.springframework:spring-web:${libs.versions.spring.get()}")
+    implementation(libs.spring.web)
 
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
@@ -23,8 +23,4 @@ dependencies {
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
     testImplementation project(path: ':data-prepper-test-common')
-}
-
-test {
-    useJUnitPlatform()
 }

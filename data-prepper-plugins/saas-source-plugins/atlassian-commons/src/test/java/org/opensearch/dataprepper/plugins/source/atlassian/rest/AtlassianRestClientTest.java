@@ -18,7 +18,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -44,7 +44,7 @@ public class AtlassianRestClientTest {
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
-                Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
+                Arguments.of(HttpStatus.FORBIDDEN, UnauthorizedException.class),
                 Arguments.of(HttpStatus.UNAUTHORIZED, RuntimeException.class),
                 Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
                 Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)

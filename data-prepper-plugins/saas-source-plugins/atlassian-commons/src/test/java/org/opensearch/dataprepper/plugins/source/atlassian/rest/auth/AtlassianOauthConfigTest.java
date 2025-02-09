@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.atlassian.utils.ConfigUtilForTests;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnAuthorizedException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -163,7 +163,7 @@ public class AtlassianOauthConfigTest {
         jiraOauthConfig.restTemplate = restTemplateMock;
 
 
-        assertThrows(UnAuthorizedException.class, () -> jiraOauthConfig.initCredentials());
+        assertThrows(UnauthorizedException.class, () -> jiraOauthConfig.initCredentials());
         verify(restTemplateMock, times(6))
                 .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
         verify(restTemplateMock, times(1))
