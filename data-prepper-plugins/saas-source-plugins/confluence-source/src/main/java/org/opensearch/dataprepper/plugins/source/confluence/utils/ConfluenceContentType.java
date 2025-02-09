@@ -23,4 +23,13 @@ public enum ConfluenceContentType {
 
     @Getter
     private final String type;
+
+    public static ConfluenceContentType fromString(String value) {
+        for (ConfluenceContentType contentType : ConfluenceContentType.values()) {
+            if (contentType.type.equalsIgnoreCase(value)) {
+                return contentType;
+            }
+        }
+        return null;
+    }
 }

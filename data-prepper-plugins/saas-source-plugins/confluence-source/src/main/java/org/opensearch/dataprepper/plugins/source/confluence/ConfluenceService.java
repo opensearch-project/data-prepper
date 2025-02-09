@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceIte
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
+import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceContentType;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.util.CollectionUtils;
@@ -136,6 +137,11 @@ public class ConfluenceService {
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration))) {
             validateSpaceFilters(configuration);
         }
+
+        if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeExcludeFilter(configuration))) {
+            validatePageTypeFilters(configuration);
+        }
+        
         String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_EQUALS + "\"" + formattedTimeStamp + "\"");
@@ -162,6 +168,48 @@ public class ConfluenceService {
 
         log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
+    }
+
+    /**
+     * Method for Validating Page Type Filters.
+     *
+     * @param configuration Input Parameter
+     */
+    private void validatePageTypeFilters(ConfluenceSourceConfig configuration) {
+        log.trace("Validating Page Type filters");
+        List<String> badFilters = new ArrayList<>();
+        Set<String> includedPageType = new HashSet<>();
+        List<String> includedAndExcludedPageType = new ArrayList<>();
+        ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration).forEach(pageTypeFilter -> {
+            if (ConfluenceContentType.fromString(pageTypeFilter) == null) {
+                badFilters.add(pageTypeFilter);
+            } else {
+                includedPageType.add(pageTypeFilter);
+            }
+        });
+        ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration).forEach(pageTypeFilter -> {
+            if (includedPageType.contains(pageTypeFilter)) {
+                includedAndExcludedPageType.add(pageTypeFilter);
+            }
+            if (ConfluenceContentType.fromString(pageTypeFilter) == null) {
+                badFilters.add(pageTypeFilter);
+            }
+        });
+        if (!badFilters.isEmpty()) {
+            String filters = String.join("\"" + badFilters + "\"", ", ");
+            log.error("One or more invalid Page Types found in filter configuration: {}", badFilters);
+            throw new BadRequestException("Bad request exception occurred " +
+                    "Invalid Page Type key found in filter configuration "
+                    + filters);
+        }
+        if (!includedAndExcludedPageType.isEmpty()) {
+            String filters = String.join("\"" + includedAndExcludedPageType + "\"", ", ");
+            log.error("One or more Page types found in both include and exclude: {}", includedAndExcludedPageType);
+            throw new BadRequestException("Bad request exception occurred " +
+                    "Page Type filters is invalid because the following Page types are listed in both include and exclude"
+                    + filters);
+        }
+
     }
 
     /**
