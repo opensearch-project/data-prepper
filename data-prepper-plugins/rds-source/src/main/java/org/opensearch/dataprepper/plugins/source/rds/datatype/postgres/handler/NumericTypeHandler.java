@@ -49,7 +49,6 @@ public class NumericTypeHandler implements PostgresDataTypeHandler {
             if (isNegative) {
                 textValue = textValue.substring(1);
             }
-
             char currencySymbol = textValue.charAt(0);
             PGmoney money = new PGmoney(textValue);
             double value = isNegative ? -money.val : money.val;
