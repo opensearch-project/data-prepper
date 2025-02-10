@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.function.Consumer;
 
 /**
@@ -83,4 +84,10 @@ public interface AcknowledgementSet {
      * @since 2.6
      */
     public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval);
+
+    void increaseExpiry(final Duration expiryIncreaseTime);
+
+    Instant getExpirationTime();
+
+    void shutdown();
 }

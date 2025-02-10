@@ -10,12 +10,14 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -45,6 +47,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -231,6 +234,14 @@ class ShardConsumerTest {
         }
 
         shardConsumer.run();
+
+        final ArgumentCaptor<Consumer> progressCheckConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet).addProgressCheck(progressCheckConsumerArgumentCaptor.capture(), any(Duration.class));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckConsumerArgumentCaptor.getValue();
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+
+        verify(acknowledgementSet).increaseExpiry(any(Duration.class));
 
         // Should call GetRecords
         verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));

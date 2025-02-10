@@ -28,7 +28,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAcknowledgementSet.class);
     private final Consumer<Boolean> callback;
     private Consumer<ProgressCheck> progressCheckCallback;
-    private final Instant expiryTime;
+    private Instant expiryTime;
     private final ScheduledExecutorService scheduledExecutor;
     // This lock protects all the non-final members
     private final ReentrantLock lock;
@@ -60,6 +60,27 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     public void addProgressCheck(final Consumer<ProgressCheck> progressCheckCallback, final Duration progressCheckInterval) {
         this.progressCheckCallback = progressCheckCallback;
         this.progressCheckFuture = scheduledExecutor.scheduleAtFixedRate(this::checkProgress, 0L, progressCheckInterval.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void increaseExpiry(final Duration expiryIncreaseTime) {
+        this.expiryTime = Instant.now().plus(expiryIncreaseTime);
+    }
+
+    @Override
+    public Instant getExpirationTime() {
+        return expiryTime;
+    }
+
+    @Override
+    public void shutdown() {
+        if (progressCheckFuture != null) {
+            progressCheckFuture.cancel(true);
+        }
+
+        if (callbackFuture != null) {
+            callbackFuture.cancel(false);
+        }
     }
 
     public void checkProgress() {
