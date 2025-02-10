@@ -40,6 +40,7 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -106,9 +107,13 @@ public class LambdaSinkIT {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        lambdaRegion = System.getProperty("tests.lambda.sink.region", "us-east-1");
-        functionName = System.getProperty("tests.lambda.sink.functionName", "testFunctionName");
-        roleArn = System.getProperty("tests.lambda.sink.sts_role_arn", "someRole");
+//        lambdaRegion = System.getProperty("tests.lambda.sink.region", "us-east-1");
+//        functionName = System.getProperty("tests.lambda.sink.functionName", "testFunctionName");
+//        roleArn = System.getProperty("tests.lambda.sink.sts_role_arn", "someRole");
+
+        lambdaRegion = "us-west-2";
+        functionName = "lambdaNoReturn";
+        roleArn = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
 
         // Mock pluginSetting
         when(pluginSetting.getName()).thenReturn("aws_lambda");
@@ -268,6 +273,41 @@ public class LambdaSinkIT {
 
         lambdaSink.shutdown();
         // leftover=1 => flush => success=1 => total=6
+        verify(numberOfRecordsSuccessCounter).increment(1.0);
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+    }
+
+    @Test
+    void testTimeBasedThresholdFlush() throws InterruptedException {
+        // Send 3 events (below the event count threshold)
+        List<Record<Event>> events = createEvents(3, "TimeBatch1");
+        lambdaSink.doOutput(events);
+
+        // Wait for slightly less than the timeout
+        Thread.sleep(400);
+
+        // Send 2 more events
+        events = createEvents(2, "TimeBatch2");
+        lambdaSink.doOutput(events);
+
+        // Wait for the timeout to be exceeded
+        Thread.sleep(200);
+
+        // Send an empty batch to trigger the time-based flush
+        lambdaSink.doOutput(Collections.emptyList());
+
+        // Verify that 5 events were flushed due to time-based threshold
+        verify(numberOfRecordsSuccessCounter).increment(5.0);
+        verify(numberOfRequestsSuccessCounter).increment();
+
+        // Send 1 more event
+        events = createEvents(1, "TimeBatch3");
+        lambdaSink.doOutput(events);
+
+        // Shutdown to flush any remaining events
+        lambdaSink.shutdown();
+
+        // Verify that the final event was flushed
         verify(numberOfRecordsSuccessCounter).increment(1.0);
         verify(numberOfRequestsSuccessCounter, times(2)).increment();
     }
