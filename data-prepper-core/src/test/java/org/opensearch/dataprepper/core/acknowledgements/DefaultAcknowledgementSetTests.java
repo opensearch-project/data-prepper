@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -273,5 +274,15 @@ class DefaultAcknowledgementSetTests {
                 .untilAsserted(() -> {
                     assertThat(acknowledgementSetResult, equalTo(true));
                 });
+    }
+
+    @Test
+    void increase_expiry_increase_acknowledgment_set_expiry_time() {
+        final AcknowledgementSet objectUnderTest = createObjectUnderTest();
+        final Instant nowPlusEightSeconds = Instant.now().plusSeconds(8);
+
+        objectUnderTest.increaseExpiry(Duration.ofSeconds(10));
+
+        assertThat(objectUnderTest.getExpirationTime().isAfter(nowPlusEightSeconds), equalTo(true));
     }
 }

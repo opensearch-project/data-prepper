@@ -35,6 +35,10 @@ public class ShardConsumer implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardConsumer.class);
 
+    private static final Duration ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME = Duration.ofMinutes(10);
+
+    private static final Duration ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL = Duration.ofMinutes(3);
+
     /**
      * A flag to interrupt the process
      */
@@ -245,6 +249,10 @@ public class ShardConsumer implements Runnable {
             return;
         }
 
+        if (acknowledgementSet != null) {
+            addProgressCheck(acknowledgementSet);
+        }
+
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
         int interval;
@@ -404,5 +412,10 @@ public class ShardConsumer implements Runnable {
         shouldStop = true;
     }
 
-
+    private void addProgressCheck(final AcknowledgementSet acknowledgementSet) {
+        acknowledgementSet.addProgressCheck(
+                (ignored) -> {
+                    acknowledgementSet.increaseExpiry(ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME);
+                }, ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL);
+    }
 }
