@@ -22,6 +22,10 @@ import java.time.Duration;
  */
 public class DataFileLoaderFactory {
 
+    static final Duration ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME = Duration.ofMinutes(10);
+
+    private static final Duration ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL = Duration.ofMinutes(2);
+
     private final EnhancedSourceCoordinator coordinator;
 
     private final S3ObjectReader objectReader;
@@ -45,6 +49,10 @@ public class DataFileLoaderFactory {
 
         DataFileCheckpointer checkpointer = new DataFileCheckpointer(coordinator, dataFilePartition);
 
+        if (acknowledgementSet != null) {
+            addProgressCheck(acknowledgementSet);
+        }
+
         // Start a data loader thread.
         return DataFileLoader.builder(objectReader, pluginMetrics, buffer)
                 .bucketName(dataFilePartition.getBucket())
@@ -57,6 +65,13 @@ public class DataFileLoaderFactory {
                 // We can't checkpoint with acks enabled yet
                 .startLine(acknowledgementSet == null ? dataFilePartition.getProgressState().get().getLoaded() : 0)
                 .build();
+    }
+
+    private void addProgressCheck(final AcknowledgementSet acknowledgementSet) {
+        acknowledgementSet.addProgressCheck(
+                (ignored) -> {
+                    acknowledgementSet.increaseExpiry(ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME);
+                }, ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL);
     }
 
 }

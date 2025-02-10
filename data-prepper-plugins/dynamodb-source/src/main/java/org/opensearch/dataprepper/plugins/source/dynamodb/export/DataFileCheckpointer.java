@@ -21,8 +21,7 @@ import java.util.Optional;
 public class DataFileCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(DataFileCheckpointer.class);
 
-    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
-
+    static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(10);
 
     private final EnhancedSourceCoordinator enhancedSourceCoordinator;
 

@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.core.acknowledgements;
 
 import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
-
 public class DefaultProgressCheck implements ProgressCheck {
     double ratio;
 
