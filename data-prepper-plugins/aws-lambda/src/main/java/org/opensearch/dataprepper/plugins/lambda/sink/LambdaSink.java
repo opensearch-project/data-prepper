@@ -38,7 +38,6 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
 import java.net.HttpURLConnection;
-import java.nio.channels.AsynchronousFileChannel;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.ArrayList;

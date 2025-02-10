@@ -15,13 +15,11 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBuffer;
-import org.opensearch.dataprepper.plugins.lambda.common.accumlator.InMemoryBufferSynchronized;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
@@ -43,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -167,8 +164,6 @@ class LambdaSinkTest {
                 expressionEvaluator
         );
 
-        // Insert pluginMetrics, counters, etc.
-//        setPrivateField(lambdaSink, "pluginMetrics", pluginMetrics);
         setPrivateField(lambdaSink, "numberOfRecordsSuccessCounter", numberOfRecordsSuccessCounter);
         setPrivateField(lambdaSink, "numberOfRecordsFailedCounter", numberOfRecordsFailedCounter);
         setPrivateField(lambdaSink, "numberOfRequestsSuccessCounter", numberOfRequestsSuccessCounter);
