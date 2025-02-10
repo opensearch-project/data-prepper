@@ -107,13 +107,9 @@ public class LambdaSinkIT {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-//        lambdaRegion = System.getProperty("tests.lambda.sink.region", "us-east-1");
-//        functionName = System.getProperty("tests.lambda.sink.functionName", "testFunctionName");
-//        roleArn = System.getProperty("tests.lambda.sink.sts_role_arn", "someRole");
-
-        lambdaRegion = "us-west-2";
-        functionName = "lambdaNoReturn";
-        roleArn = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
+        lambdaRegion = System.getProperty("tests.lambda.sink.region", "us-east-1");
+        functionName = System.getProperty("tests.lambda.sink.functionName", "testFunctionName");
+        roleArn = System.getProperty("tests.lambda.sink.sts_role_arn", "someRole");
 
         // Mock pluginSetting
         when(pluginSetting.getName()).thenReturn("aws_lambda");
