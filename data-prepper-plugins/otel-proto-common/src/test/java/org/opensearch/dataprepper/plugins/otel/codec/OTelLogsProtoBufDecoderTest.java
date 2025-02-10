@@ -41,7 +41,7 @@ public class OTelLogsProtoBufDecoderTest {
         return new OTelLogsProtoBufDecoder(lengthPrefixedEncoding);
     }
 
-    private void validateLog(OpenTelemetryLog logRecord, final int severityNumber, final String time, final String spanId) {
+    private void assertLog(OpenTelemetryLog logRecord, final int severityNumber, final String time, final String spanId) {
         assertThat(logRecord.getServiceName(), is("my.service"));
         assertThat(logRecord.getTime(), is(time));
         assertThat(logRecord.getObservedTime(), is(time));
@@ -61,7 +61,7 @@ public class OTelLogsProtoBufDecoderTest {
     public void testParse() throws Exception {
         InputStream inputStream = OTelLogsProtoBufDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
         createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
-            validateLog((OpenTelemetryLog)record.getData(), 50, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
+            assertLog((OpenTelemetryLog)record.getData(), 50, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
         });
         
     }
@@ -74,12 +74,12 @@ public class OTelLogsProtoBufDecoderTest {
             parsedRecords.add(record);
         });
         assertThat(parsedRecords.size(), equalTo(3));
-        validateLog((OpenTelemetryLog)parsedRecords.get(0).getData(), 50, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
-        validateLog((OpenTelemetryLog)parsedRecords.get(1).getData(), 42, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
-        validateLog((OpenTelemetryLog)parsedRecords.get(2).getData(), 43, "2025-01-26T20:07:40Z", "fff19b7ec3c1b174");
+        assertLog((OpenTelemetryLog)parsedRecords.get(0).getData(), 50, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
+        assertLog((OpenTelemetryLog)parsedRecords.get(1).getData(), 42, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
+        assertLog((OpenTelemetryLog)parsedRecords.get(2).getData(), 43, "2025-01-26T20:07:40Z", "fff19b7ec3c1b174");
     }
 
-    private void validateLogFromRequest(OpenTelemetryLog logRecord) {
+    private void assertLogFromRequest(OpenTelemetryLog logRecord) {
         assertThat(logRecord.getServiceName(), is("service"));
         assertThat(logRecord.getTime(), is("2020-05-24T14:00:00Z"));
         assertThat(logRecord.getObservedTime(), is("2020-05-24T14:00:02Z"));
@@ -117,7 +117,7 @@ public class OTelLogsProtoBufDecoderTest {
         final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_JSON_LOGS_FILE);
         InputStream inputStream = new ByteArrayInputStream(exportLogsServiceRequest.toByteArray());
         createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
-            validateLogFromRequest((OpenTelemetryLog)record.getData());
+            assertLogFromRequest((OpenTelemetryLog)record.getData());
         });
     }
         
@@ -136,8 +136,8 @@ public class OTelLogsProtoBufDecoderTest {
                     .build())).build();
 
         InputStream inputStream = new ByteArrayInputStream(exportLogsServiceRequest.toByteArray());
-        assertThrows(IOException.class, () -> createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
-            validateLogFromRequest((OpenTelemetryLog)record.getData());
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
+            assertLogFromRequest((OpenTelemetryLog)record.getData());
         }));
     }
 

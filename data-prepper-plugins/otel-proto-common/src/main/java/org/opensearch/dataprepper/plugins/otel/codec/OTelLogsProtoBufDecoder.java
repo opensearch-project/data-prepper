@@ -34,8 +34,7 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
         this.lengthPrefixedEncoding = lengthPrefixedEncoding;
     }
 
-    private void parseRequest(byte[] buffer, final Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
-        ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(buffer);
+    private void parseRequest(final ExportLogsServiceRequest request, final Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
         for (OpenTelemetryLog log: logs) {
             eventConsumer.accept(new Record<>(log));
@@ -52,10 +51,10 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
         if (!lengthPrefixedEncoding) {
             int available = inputStream.available();
             if (available > MAX_REQUEST_LEN) {
-                throw new IOException("buffer length " + available + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
+                throw new IllegalArgumentException("buffer length " + available + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
             }
-            byte[] buffer = inputStream.readAllBytes();
-            parseRequest(buffer, timeReceivedMs, eventConsumer);
+            ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(inputStream);
+            parseRequest(request, timeReceivedMs, eventConsumer);
             return;
         }
         // As per the implementation of File exporter in "proto" format at
@@ -66,14 +65,15 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
             ByteBuffer lengthBuffer = ByteBuffer.wrap(lenBytes);
             int len = lengthBuffer.getInt();
             if (len > MAX_REQUEST_LEN) {
-                throw new IOException("buffer length " + len + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
+                throw new IllegalArgumentException("buffer length " + len + " exceeds max allowed buffer length of "+ MAX_REQUEST_LEN);
             }
             byte[] buffer = new byte[len];
             if (inputStream.read(buffer, 0, len) != len) {
                 LOG.warn("Failed to read {} bytes", len);
                 continue;
             }
-            parseRequest(buffer, timeReceivedMs, eventConsumer);
+            ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(buffer);
+            parseRequest(request, timeReceivedMs, eventConsumer);
         }
     }
 }
