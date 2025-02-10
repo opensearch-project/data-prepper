@@ -29,6 +29,9 @@ public class OTelLogsInputCodec implements InputCodec {
         if (config.getFormat() == OTelLogsFormatOption.JSON) {
             OTelLogsJsonDecoder decoder = new OTelLogsJsonDecoder();
             decoder.parse(inputStream, null, eventConsumer);
-        } 
+        } else if (config.getFormat() == OTelLogsFormatOption.PROTOBUF) {
+            OTelLogsProtoBufDecoder decoder = new OTelLogsProtoBufDecoder(config.getLengthPrefixedEncoding());
+            decoder.parse(inputStream, null, eventConsumer);
+        }
     }      
 }
