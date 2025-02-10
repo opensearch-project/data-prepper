@@ -141,7 +141,7 @@ public class ConfluenceService {
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getContentTypeExcludeFilter(configuration))) {
             validatePageTypeFilters(configuration);
         }
-        
+
         String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_EQUALS + "\"" + formattedTimeStamp + "\"");
@@ -187,7 +187,7 @@ public class ConfluenceService {
                 includedPageType.add(pageTypeFilter);
             }
         });
-        ConfluenceConfigHelper.getContentTypeIncludeFilter(configuration).forEach(pageTypeFilter -> {
+        ConfluenceConfigHelper.getContentTypeExcludeFilter(configuration).forEach(pageTypeFilter -> {
             if (includedPageType.contains(pageTypeFilter)) {
                 includedAndExcludedPageType.add(pageTypeFilter);
             }

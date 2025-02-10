@@ -52,7 +52,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -102,7 +101,7 @@ public class ConfluenceServiceTest {
     }
 
     public static ConfluenceSourceConfig createConfluenceConfiguration(String auth_type,
-                                                                       List<String> issueType,
+                                                                       List<String> pageTypes,
                                                                        List<String> projectKey) throws JsonProcessingException {
         PluginConfigVariable pcvAccessToken = null;
         PluginConfigVariable pcvRefreshToken = null;
@@ -130,7 +129,7 @@ public class ConfluenceServiceTest {
         Map<String, Object> spacesMap = new HashMap<>();
         Map<String, Object> contentTypeMap = new HashMap<>();
 
-        contentTypeMap.put("include", issueType);
+        contentTypeMap.put("include", pageTypes);
         filterMap.put("page_type", contentTypeMap);
 
         Map<String, Object> nameMap = new HashMap<>();
@@ -178,17 +177,17 @@ public class ConfluenceServiceTest {
     public void testGetPages() throws JsonProcessingException {
         List<String> contentType = new ArrayList<>();
         List<String> spaceKey = new ArrayList<>();
-        contentType.add("page");
+        contentType.add("PAGE");
         spaceKey.add("KAN");
         ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, contentType, spaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockPages = new ArrayList<>();
-        ConfluenceItem issue1 = createConfluenceItemBean();
-        mockPages.add(issue1);
-        ConfluenceItem issue2 = createConfluenceItemBean();
-        mockPages.add(issue2);
-        ConfluenceItem issue3 = createConfluenceItemBean();
-        mockPages.add(issue3);
+        ConfluenceItem item1 = createConfluenceItemBean();
+        mockPages.add(item1);
+        ConfluenceItem item2 = createConfluenceItemBean();
+        mockPages.add(item2);
+        ConfluenceItem item3 = createConfluenceItemBean();
+        mockPages.add(item3);
 
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(mockConfluenceSearchResults.getResults()).thenReturn(mockPages);
@@ -203,10 +202,10 @@ public class ConfluenceServiceTest {
 
     @Test
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
+        List<String> pageType = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
-        issueType.add("Task");
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
+        pageType.add("PAGE");
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
         Random random = new Random();
@@ -228,17 +227,15 @@ public class ConfluenceServiceTest {
 
     @Test
     public void testBadProjectKeys() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
+        List<String> pageType = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
-        issueType.add("Task");
-        issueStatus.add("Done");
+        pageType.add("PAGE");
         projectKey.add("Bad Project Key");
         projectKey.add("A");
         projectKey.add("!@#$");
         projectKey.add("AAAAAAAAAAAAAA");
 
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
         ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
 
         Instant timestamp = Instant.ofEpochSecond(0);
@@ -249,14 +246,11 @@ public class ConfluenceServiceTest {
 
     @Test
     public void testGetPagesException() throws JsonProcessingException {
-        List<String> issueType = new ArrayList<>();
-        List<String> issueStatus = new ArrayList<>();
+        List<String> pageType = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
-        issueType.add("Task");
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, issueType, projectKey);
+        pageType.add("Task");
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
-
-        doThrow(RuntimeException.class).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
