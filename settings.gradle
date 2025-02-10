@@ -49,6 +49,7 @@ dependencyResolutionManagement {
             version('spring', '5.3.39')
             library('spring-core', 'org.springframework', 'spring-core').versionRef('spring')
             library('spring-context', 'org.springframework', 'spring-context').versionRef('spring')
+            library('spring-web', 'org.springframework', 'spring-web').versionRef('spring')
             version('bouncycastle', '1.78.1')
             library('bouncycastle-bcprov', 'org.bouncycastle', 'bcprov-jdk18on').versionRef('bouncycastle')
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
@@ -190,4 +191,6 @@ include 'data-prepper-plugins:opensearch-api-source'
 include 'data-prepper-plugins:saas-source-plugins'
 include 'data-prepper-plugins:saas-source-plugins:source-crawler'
 include 'data-prepper-plugins:saas-source-plugins:jira-source'
+include 'data-prepper-plugins:saas-source-plugins:confluence-source'
+include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
 

@@ -1,0 +1,6 @@
+hosts: ["https://jira.com/"]
+authentication:
+  basic:
+    username: "jiraId"
+    password: "jiraApiKey"
+

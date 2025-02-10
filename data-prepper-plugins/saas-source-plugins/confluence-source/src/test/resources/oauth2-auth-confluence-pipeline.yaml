@@ -1,0 +1,6 @@
+hosts: [ "https://jira.com/" ]
+authentication:
+  oauth2:
+    client_id: "client_id"
+    client_secret: "client_secret"
+
