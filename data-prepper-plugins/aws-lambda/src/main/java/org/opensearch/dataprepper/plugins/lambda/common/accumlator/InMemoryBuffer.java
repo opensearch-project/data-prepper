@@ -58,6 +58,7 @@ public class InMemoryBuffer implements Buffer {
     this.outputCodecContext = outputCodecContext;
   }
 
+  @Override
   public void addRecord(Record<Event> record) {
     records.add(record);
     Event event = record.getData();
@@ -72,16 +73,7 @@ public class InMemoryBuffer implements Buffer {
     eventCount++;
   }
 
-  void completeCodec() {
-    if (eventCount > 0) {
-      try {
-        requestCodec.complete(this.byteArrayOutputStream);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
+  @Override
   public List<Record<Event>> getRecords() {
     return records;
   }
@@ -108,7 +100,11 @@ public class InMemoryBuffer implements Buffer {
       return null;
     }
 
-    completeCodec();
+    try {
+      requestCodec.complete(this.byteArrayOutputStream);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
     SdkBytes payload = getPayload();
     payloadRequestSize = payload.asByteArray().length;
