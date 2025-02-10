@@ -1,8 +1,8 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,7 +30,7 @@ import java.time.format.DateTimeParseException;
  *   Note: Fractional seconds are optional for DATETIME and TIMESTAMP
  * - YEAR: "yyyy" (Example: "2024")
  */
-public class TemporalTypeHandler implements DataTypeHandler {
+public class TemporalTypeHandler implements MySQLDataTypeHandler {
     private static final String MYSQL_DATE_FORMAT = "yyyy-MM-dd";
     private static final String MYSQL_TIME_FORMAT = "HH:mm:ss[.SSSSSS]";
     private static final String MYSQL_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss[.SSSSSS]";

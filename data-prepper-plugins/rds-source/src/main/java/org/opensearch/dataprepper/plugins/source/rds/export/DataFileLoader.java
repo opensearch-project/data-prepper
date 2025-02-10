@@ -20,8 +20,8 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -179,7 +179,7 @@ public class DataFileLoader implements Runnable {
         if (engineType == EngineType.MYSQL) {
             Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
             for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
-                final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+                final Object data = MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
                         entry.getValue(), null);
                 event.put(entry.getKey(), data);
             }

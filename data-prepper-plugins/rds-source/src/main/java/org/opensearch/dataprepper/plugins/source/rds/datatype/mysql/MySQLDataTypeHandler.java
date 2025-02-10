@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql;
 
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
@@ -7,7 +7,7 @@ import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
  * Implementations of this interface are responsible for converting MySQL column values
  * to appropriate string representations based on their data types.
  */
-public interface DataTypeHandler {
+public interface MySQLDataTypeHandler {
     String BYTES_KEY = "bytes";
     /**
      * Handles the conversion of a MySQL column value to its string representation.

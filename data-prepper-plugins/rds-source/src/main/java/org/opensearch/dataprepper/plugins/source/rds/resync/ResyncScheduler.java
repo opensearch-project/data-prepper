@@ -125,7 +125,7 @@ public class ResyncScheduler implements Runnable {
             }, sourceConfig.getStreamAcknowledgmentTimeout());
         }
 
-        final ResyncWorker resyncWorker = ResyncWorker.create(
+        final MySQLResyncWorker resyncWorker = MySQLResyncWorker.create(
                 resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, getDBTableMetadata());
 
         CompletableFuture.runAsync(resyncWorker, resyncExecutor)

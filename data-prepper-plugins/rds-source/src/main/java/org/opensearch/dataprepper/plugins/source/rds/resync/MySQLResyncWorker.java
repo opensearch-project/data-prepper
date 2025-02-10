@@ -16,8 +16,8 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.RecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ResyncProgressState;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.slf4j.Logger;
@@ -30,8 +30,8 @@ import java.util.Map;
 
 import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
-public class ResyncWorker implements Runnable {
-    private static final Logger LOG = LoggerFactory.getLogger(ResyncWorker.class);
+public class MySQLResyncWorker implements Runnable {
+    private static final Logger LOG = LoggerFactory.getLogger(MySQLResyncWorker.class);
     private static final String QUERY_NULL_FORMAT_STRING = "SELECT * FROM %s WHERE %s IS NULL";
     private static final String QUERY_NOT_NULL_FORMAT_STRING = "SELECT * FROM %s WHERE %s='%s'";
 
@@ -47,7 +47,7 @@ public class ResyncWorker implements Runnable {
     private final AcknowledgementSet acknowledgementSet;
     private final DbTableMetadata dbTableMetadata;
 
-    ResyncWorker(ResyncPartition resyncPartition,
+    MySQLResyncWorker(ResyncPartition resyncPartition,
                  RdsSourceConfig sourceConfig,
                  QueryManager queryManager,
                  Buffer<Record<Event>> buffer,
@@ -63,14 +63,14 @@ public class ResyncWorker implements Runnable {
         this.dbTableMetadata = dbTableMetadata;
     }
 
-    public static ResyncWorker create(ResyncPartition resyncPartition,
+    public static MySQLResyncWorker create(ResyncPartition resyncPartition,
                                       RdsSourceConfig sourceConfig,
                                       QueryManager queryManager,
                                       Buffer<Record<Event>> buffer,
                                       RecordConverter recordConverter,
                                       AcknowledgementSet acknowledgementSet,
                                       DbTableMetadata dbTableMetadata) {
-        return new ResyncWorker(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, dbTableMetadata);
+        return new MySQLResyncWorker(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, dbTableMetadata);
     }
 
     public void run() {
@@ -158,7 +158,7 @@ public class ResyncWorker implements Runnable {
         Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
         Map<String, Object> rowDataAfterMapping = new HashMap<>();
         for (Map.Entry<String, Object> entry : rowData.entrySet()) {
-            final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+            final Object data = MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
                     entry.getValue(), null);
             rowDataAfterMapping.put(entry.getKey(), data);
         }

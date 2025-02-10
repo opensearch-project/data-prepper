@@ -1,15 +1,15 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Map;
 
-public class NumericTypeHandler implements DataTypeHandler {
+public class NumericTypeHandler implements MySQLDataTypeHandler {
 
     @Override
     public Number handle(final MySQLDataType columnType, final String columnName, final Object value,

@@ -1,8 +1,8 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -18,12 +18,16 @@ public class BinaryTypeHandlerTest {
 
     @Test
     public void testHandleByteArrayData() {
-        final DataTypeHandler handler = new BinaryTypeHandler();
+        final MySQLDataTypeHandler handler = new BinaryTypeHandler();
         final MySQLDataType columnType = MySQLDataType.BINARY;
         final String columnName = "binaryColumn";
         final String testData = UUID.randomUUID().toString();
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName));
+        final TableMetadata metadata = TableMetadata.builder().
+                withTableName(UUID.randomUUID().toString()).
+                withDatabaseName(UUID.randomUUID().toString()).
+                withColumnNames(List.of(columnName)).
+                withPrimaryKeys(List.of(columnName))
+                .build();
         final Object result = handler.handle(columnType, columnName, testData.getBytes(), metadata);
 
         assertThat(result, is(instanceOf(String.class)));
@@ -32,11 +36,15 @@ public class BinaryTypeHandlerTest {
 
     @Test
     public void testHandleMapWithByteArrayData() {
-        final DataTypeHandler handler = new BinaryTypeHandler();
+        final MySQLDataTypeHandler handler = new BinaryTypeHandler();
         final MySQLDataType columnType = MySQLDataType.BINARY;
         final String columnName = "test_column";
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName));
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .build();
         final String testData = UUID.randomUUID().toString();
         final Map<String, Object> value = new HashMap<>();
         value.put("bytes", testData.getBytes());
@@ -49,11 +57,15 @@ public class BinaryTypeHandlerTest {
 
     @Test
     public void testHandleMapValueNotByteArray() {
-        final DataTypeHandler handler = new BinaryTypeHandler();
+        final MySQLDataTypeHandler handler = new BinaryTypeHandler();
         final MySQLDataType columnType = MySQLDataType.BINARY;
         final String columnName = "test_column";
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName));
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .build();
         final Map<String, Object> value = new HashMap<>();
         final String testData = UUID.randomUUID().toString();
         value.put("bytes", testData);
@@ -66,13 +78,16 @@ public class BinaryTypeHandlerTest {
 
     @Test
     public void testHandleNonByteArrayNonMapValue() {
-        final DataTypeHandler handler = new BinaryTypeHandler();
+        final MySQLDataTypeHandler handler = new BinaryTypeHandler();
         final MySQLDataType columnType = MySQLDataType.BINARY;
         final String columnName = "test_column";
         final Integer value = 42;
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName));
-
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .build();
         final Object result = handler.handle(columnType, columnName, value, metadata);
 
         assertThat(result, is(instanceOf(String.class)));
