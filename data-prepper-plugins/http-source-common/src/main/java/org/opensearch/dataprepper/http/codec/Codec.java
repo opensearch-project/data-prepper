@@ -12,14 +12,14 @@ import java.util.function.Consumer;
 
 /**
  * Codec parses the content of HTTP request into custom Java type.
- * <p>
  */
 public interface Codec<T> {
     /**
      * parse the request into custom type
      *
      * @param httpData The content of the original HTTP request
-     * @return The target data type
+     * @return T The target data type
+     * @throws IOException A failure while parsing data.
      */
     T parse(HttpData httpData) throws IOException;
 
@@ -33,9 +33,7 @@ public interface Codec<T> {
 
     /*
      * Serializes the HttpData and split into multiple bodies based on splitLength.
-     * <p>
      * The serialized bodies are passed to the serializedBodyConsumer.
-     * <p>
      * This API will split into multiple bodies based on splitLength. Note that if a single
      * item is larger than this, it will be output and exceed that length.
      *

@@ -25,6 +25,8 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(LogicalReplicationClient.class);
 
+    static final String PROTO_VERSION_KEY = "proto_version";
+    static final String VERSION_ONE = "1";
     static final String PUBLICATION_NAMES_KEY = "publication_names";
 
     private final ConnectionManager connectionManager;
@@ -36,15 +38,16 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     private volatile boolean disconnectRequested = false;
 
     public LogicalReplicationClient(final ConnectionManager connectionManager,
-                                    final String replicationSlotName,
-                                    final String publicationName) {
-        this.publicationName = publicationName;
+                                    final String publicationName,
+                                    final String replicationSlotName) {
         this.connectionManager = connectionManager;
+        this.publicationName = publicationName;
         this.replicationSlotName = replicationSlotName;
     }
 
     @Override
     public void connect() {
+        LOG.debug("Start connecting logical replication stream. ");
         PGReplicationStream stream;
         try (Connection conn = connectionManager.getConnection()) {
             PGConnection pgConnection = conn.unwrap(PGConnection.class);
@@ -54,11 +57,13 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                     .replicationStream()
                     .logical()
                     .withSlotName(replicationSlotName)
+                    .withSlotOption(PROTO_VERSION_KEY, VERSION_ONE)
                     .withSlotOption(PUBLICATION_NAMES_KEY, publicationName);
             if (startLsn != null) {
                 logicalStreamBuilder.withStartPosition(startLsn);
             }
             stream = logicalStreamBuilder.start();
+            LOG.debug("Logical replication stream started. ");
 
             if (eventProcessor != null) {
                 while (!disconnectRequested) {
@@ -80,20 +85,27 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                         stream.setAppliedLSN(lsn);
                     } catch (Exception e) {
                         LOG.error("Exception while processing Postgres replication stream. ", e);
+                        throw e;
                     }
                 }
             }
 
             stream.close();
-            LOG.info("Replication stream closed successfully.");
+            disconnectRequested = false;
+            if (eventProcessor != null) {
+                eventProcessor.stopCheckpointManager();
+            }
+            LOG.debug("Replication stream closed successfully.");
         } catch (Exception e) {
             LOG.error("Exception while creating Postgres replication stream. ", e);
+            throw new RuntimeException(e);
         }
     }
 
     @Override
     public void disconnect() {
         disconnectRequested = true;
+        LOG.debug("Requested to disconnect logical replication stream.");
     }
 
     public void setEventProcessor(LogicalReplicationEventProcessor eventProcessor) {

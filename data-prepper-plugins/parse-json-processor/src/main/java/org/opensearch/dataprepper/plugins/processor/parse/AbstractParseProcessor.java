@@ -84,6 +84,8 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     }
 
     /**
+     * @param message message
+     * @param context context
      * @return Optional HashMap of the parsed value - empty if the message was invalid (be sure to log the error)
      */
     protected abstract Optional<Map<String, Object>> readValue(String message, Event context);
@@ -222,6 +224,8 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
 
     /**
      * Trim the pointer and change each front slash / to be a dot (.) to process
+     * @param pointer input string
+     * @return returns replaced string
      */
     private String normalizePointerStructure(final String pointer) {
         return pointer.replace('/','.');

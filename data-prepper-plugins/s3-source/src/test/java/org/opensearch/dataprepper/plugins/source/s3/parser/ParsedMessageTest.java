@@ -120,6 +120,7 @@ class ParsedMessageTest {
             assertThat(parsedMessage.getEventTime(), equalTo(testEventTime));
             assertThat(parsedMessage.isFailedParsing(), equalTo(false));
             assertThat(parsedMessage.isEmptyNotification(), equalTo(false));
+            assertThat(parsedMessage.isShouldSkipProcessing(), equalTo(false));
         }
 
         @Test

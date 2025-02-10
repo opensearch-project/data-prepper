@@ -217,7 +217,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     /**
      * Setups anything required for the index.
      *
-     * @throws IOException
+     * @throws IOException io exception
      */
     @Override
     public void setupIndex() throws IOException {

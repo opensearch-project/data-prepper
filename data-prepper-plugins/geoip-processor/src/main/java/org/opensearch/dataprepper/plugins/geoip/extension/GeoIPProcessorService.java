@@ -30,6 +30,8 @@ public class GeoIPProcessorService {
      * GeoIPProcessorService constructor for initialization of required attributes
      *
      * @param geoIpServiceConfig geoIpServiceConfig
+     * @param geoIPDatabaseManager geoIPDatabaseManager
+     * @param readLock readLock
      */
     public GeoIPProcessorService(final GeoIpServiceConfig geoIpServiceConfig,
                                  final GeoIPDatabaseManager geoIPDatabaseManager,

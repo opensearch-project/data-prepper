@@ -140,7 +140,7 @@ class DataFileLoaderTest {
         ParquetReader<GenericRecord> parquetReader = mock(ParquetReader.class);
         BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
         when(builder.build()).thenReturn(parquetReader);
-        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), (GenericRecord) null);
         try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
              MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
 
@@ -191,7 +191,7 @@ class DataFileLoaderTest {
         BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
         doThrow(new RuntimeException("testing")).when(bufferAccumulator).flush();
         when(builder.build()).thenReturn(parquetReader);
-        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), null);
+        when(parquetReader.read()).thenReturn(mock(GenericRecord.class, RETURNS_DEEP_STUBS), (GenericRecord) null);
         try (MockedStatic<AvroParquetReader> readerMockedStatic = mockStatic(AvroParquetReader.class);
              MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             readerMockedStatic.when(() -> AvroParquetReader.<GenericRecord>builder(any(InputFile.class), any())).thenReturn(builder);

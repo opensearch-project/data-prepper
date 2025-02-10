@@ -17,6 +17,7 @@ public class ReflectivelySetField {
 
     /**
      * Reflectively set the field of a configuration object.
+     * @param <T> The type
      * @param configurationClass The class of the configuration object.
      * @param configurationObject The configuration object itself (for tests you might need to specify
      *                            "NameOfTestClass.this.configurationObject"

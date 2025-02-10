@@ -139,7 +139,7 @@ public class AwsCredentialsOptions {
         /**
          * Configures whether to use default credentials.
          *
-         * @param useDefaultCredentialsProvider
+         * @param useDefaultCredentialsProvider boolean indicating if default credentials provider should be used or not
          * @return The {@link Builder} for continuing to build
          */
         public Builder withUseDefaultCredentialsProvider(final boolean useDefaultCredentialsProvider) {

@@ -22,6 +22,7 @@ public class LocalDBDownloadService implements DBSource {
     /**
      * LocalDBDownloadService constructor for initialisation of attributes
      * @param destinationDirectory destinationDirectory
+     * @param maxMindDatabaseConfig maxMindDatabaseConfig
      */
     public LocalDBDownloadService(final String destinationDirectory, final MaxMindDatabaseConfig maxMindDatabaseConfig) {
         this.destinationDirectory = destinationDirectory;
@@ -30,6 +31,7 @@ public class LocalDBDownloadService implements DBSource {
 
     /**
      * Initialisation of Download from local file path
+     * @throws Exception exception
      */
     @Override
     public void initiateDownload() throws Exception {

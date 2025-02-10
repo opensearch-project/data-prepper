@@ -34,7 +34,7 @@ echo "JAVA_HOME is set to $JAVA_HOME"
 export PATH=$JAVA_HOME/bin:$PATH
 
 DATA_PREPPER_HOME_OPTS="-Ddata-prepper.dir=$DATA_PREPPER_HOME"
-DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
+DATA_PREPPER_JAVA_OPTS="-Dfile.encoding=UTF-8 -Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
 
 if [[ $# == 0 ]]; then
     exec java $DATA_PREPPER_JAVA_OPTS $JAVA_OPTS $DATA_PREPPER_HOME_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute

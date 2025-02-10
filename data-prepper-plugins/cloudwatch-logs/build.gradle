@@ -1,6 +1,26 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 plugins {
     id 'java'
     id 'java-library'
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
 }
 
 dependencies {
@@ -33,4 +53,20 @@ jacocoTestCoverageVerification {
 
 test {
     useJUnitPlatform()
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.cloudwatch.log_group', System.getProperty('tests.cloudwatch.log_group')
+    systemProperty 'tests.cloudwatch.log_stream', System.getProperty('tests.cloudwatch.log_stream')
+    systemProperty 'tests.aws.region', System.getProperty('tests.aws.region')
+    systemProperty 'tests.aws.role', System.getProperty('tests.aws.role')
+    filter {
+        includeTestsMatching '*IT'
+    }
 }

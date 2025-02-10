@@ -30,6 +30,7 @@ public class KeyGenerator {
     /**
      * Generate the s3 object path prefix and object file name.
      *
+     * @param event event
      * @return object key path.
      */
     public String generateKeyForEvent(final Event event) {

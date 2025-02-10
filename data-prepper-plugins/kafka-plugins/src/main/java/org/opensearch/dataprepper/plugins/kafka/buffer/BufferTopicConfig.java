@@ -26,8 +26,8 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     private static final Long DEFAULT_RETENTION_PERIOD = 604800000L;
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final ByteCount DEFAULT_FETCH_MAX_BYTES = ByteCount.parse("50mb");
-    static final Duration DEFAULT_FETCH_MAX_WAIT = Duration.ofMillis(500);
-    static final ByteCount DEFAULT_FETCH_MIN_BYTES = ByteCount.parse("1b");
+    static final Duration DEFAULT_FETCH_MAX_WAIT = Duration.ofMillis(1000);
+    static final ByteCount DEFAULT_FETCH_MIN_BYTES = ByteCount.parse("2kb");
     static final ByteCount DEFAULT_MAX_PARTITION_FETCH_BYTES = ByteCount.parse("1mb");
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";

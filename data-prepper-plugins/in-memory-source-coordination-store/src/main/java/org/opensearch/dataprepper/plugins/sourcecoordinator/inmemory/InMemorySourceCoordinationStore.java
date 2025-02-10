@@ -40,6 +40,7 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
 
     /**
      * For Testing
+     * @param inMemoryPartitionAccessor inMemoryPartitionAccessor
      */
     public InMemorySourceCoordinationStore(final InMemoryPartitionAccessor inMemoryPartitionAccessor) {
         this.inMemoryPartitionAccessor = inMemoryPartitionAccessor;

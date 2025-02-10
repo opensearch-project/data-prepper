@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
@@ -133,8 +134,7 @@ public class DateProcessorConfig {
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("match")
-    @JsonPropertyDescription("The date match configuration. " +
-            "This option cannot be defined at the same time as <code>from_time_received</code>. " +
+    @JsonPropertyDescription("This option cannot be defined at the same time as <code>from_time_received</code>. " +
             "The date processor will use the first pattern that matches each event's timestamp field. " +
             "You must provide at least one pattern unless you have <code>from_time_received</code>.")
     @AlsoRequired(values = {
@@ -155,9 +155,11 @@ public class DateProcessorConfig {
     })
     private String outputFormat = DEFAULT_OUTPUT_FORMAT;
 
-    @JsonProperty("to_origination_metadata")
-    @JsonPropertyDescription("When <code>true</code>, the matched time is also added to the event's metadata as an instance of " +
-            "<code>Instant</code>. Default is <code>false</code>.")
+    @JsonProperty("origination_timestamp_to_metadata")
+    @JsonAlias("to_origination_metadata")
+    @JsonPropertyDescription("Include the origination timestamp in the metadata. " +
+            "Enabling this option will use this timestamp to report the EndToEndLatency metric " +
+            "when events reach the sink. Default is <code>false</code>.")
     private Boolean toOriginationMetadata = DEFAULT_TO_ORIGINATION_METADATA;
 
     @JsonProperty("source_timezone")
@@ -187,7 +189,7 @@ public class DateProcessorConfig {
             "or a string representation of the " +
             "<a href=\"https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html\">locale</a> object, such as <code>en_US</code>. " +
             "A full list of locale fields, including language, country, and variant, can be found " +
-            "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>." +
+            "<a href=\"https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry\">here</a>. " +
             "Default is <code>Locale.ROOT</code>.")
     @ExampleValues({
             @Example("en-US"),
@@ -196,10 +198,10 @@ public class DateProcessorConfig {
     private String locale;
 
     @JsonProperty("date_when")
-    @JsonPropertyDescription("Specifies under what condition the <code>date</code> processor should perform matching. " +
+    @JsonPropertyDescription("Specifies under what condition the <code>date</code> processor should run. " +
             "Default is no condition.")
     @ExampleValues({
-        @Example(value = "/some_key == null", description = "Only runs the date processor on the Event if some_key is null or doesn't exist.")
+        @Example(value = "/some_key == null", description = "The processor will only run on events where this condition evaluates to true.")
     })
     private String dateWhen;
 

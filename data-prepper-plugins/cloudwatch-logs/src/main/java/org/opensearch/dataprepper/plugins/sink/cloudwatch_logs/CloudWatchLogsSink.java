@@ -87,10 +87,6 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doOutput(Collection<Record<Event>> records) {
-        if (records.isEmpty()) {
-            return;
-        }
-
         cloudWatchLogsService.processLogEvents(records);
     }
 

@@ -52,6 +52,7 @@ public class KafkaPluginThreadFactory implements ThreadFactory {
      * Creates an instance specifically for use with {@link Executors}.
      *
      * @param kafkaPluginType The name of the plugin type. e.g. sink, source, buffer
+     * @param kafkaTopic kafka topic name
      * @return An instance of the {@link KafkaPluginThreadFactory}.
      */
     public static KafkaPluginThreadFactory defaultExecutorThreadFactory(

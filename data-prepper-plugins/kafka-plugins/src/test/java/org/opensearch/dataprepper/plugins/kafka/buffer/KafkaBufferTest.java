@@ -334,6 +334,7 @@ class KafkaBufferTest {
         kafkaBuffer.shutdown();
         verify(executorService).shutdown();
         verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.SECONDS));
+        verify(consumer).closeConsumer();
     }
 
     @Test

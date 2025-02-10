@@ -33,7 +33,7 @@ public enum EngineType {
     }
 
     @JsonCreator
-    public static EngineType fromOptionValue(final String option) {
+    public static EngineType fromString(final String option) {
         return ENGINE_TYPE_MAP.get(option);
     }
 }

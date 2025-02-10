@@ -67,7 +67,10 @@ public class S3SinkService {
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
-     * @param pluginMetrics metrics.
+     * @param codecContext codecContext.
+     * @param retrySleepTime retrySleepTime
+     * @param pluginMetrics pluginMetrics
+     * @param s3GroupManager s3GroupManager
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig,
                          final OutputCodecContext codecContext,
@@ -169,6 +172,9 @@ public class S3SinkService {
     }
 
     /**
+     * @param completableFutures completableFutures
+     * @param s3Group s3 group
+     * @param forceFlush force flush flag
      * @return whether the flush was attempted
      */
     private boolean flushToS3IfNeeded(final List<CompletableFuture<?>> completableFutures, final S3Group s3Group, final boolean forceFlush) {

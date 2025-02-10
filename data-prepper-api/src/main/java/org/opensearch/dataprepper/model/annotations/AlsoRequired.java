@@ -16,6 +16,7 @@ import java.lang.annotation.Target;
 public @interface AlsoRequired {
     /**
      * Array of Required annotations, each representing a required property with its allowed values.
+     * @return returns array of required values
      */
     Required[] values();
 
@@ -25,11 +26,13 @@ public @interface AlsoRequired {
     @interface Required {
         /**
          * Name of the required property.
+         * @return returns name
          */
         String name();
 
         /**
          * Allowed values for the required property. The default value of {} means any non-null value is allowed.
+         * @return returns array of allowed values
          */
         String[] allowedValues() default {};
     }

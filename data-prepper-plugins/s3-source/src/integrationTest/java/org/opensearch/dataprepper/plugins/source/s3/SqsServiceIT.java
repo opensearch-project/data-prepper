@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSo
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -154,8 +155,7 @@ class SqsServiceIT {
     }
 
     private void clearSqsQueue() {
-        Backoff backoff = Backoff.exponential(SqsService.INITIAL_DELAY, SqsService.MAXIMUM_DELAY).withJitter(SqsService.JITTER_RATE)
-                .withMaxAttempts(Integer.MAX_VALUE);
+        Backoff backoff = SqsBackoff.createExponentialBackoff();
         final SqsWorker sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
         //final SqsService objectUnderTest = createObjectUnderTest();
         int sqsMessagesProcessed;

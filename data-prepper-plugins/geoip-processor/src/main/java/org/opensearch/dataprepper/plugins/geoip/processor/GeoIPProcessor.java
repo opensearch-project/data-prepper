@@ -65,9 +65,10 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
-   * @param pluginMetrics pluginMetrics
-   * @param geoIPProcessorConfig geoIPProcessorConfig
-   * @param geoIpConfigSupplier geoIpConfigSupplier
+   * @param pluginMetrics plugin metrics
+   * @param geoIPProcessorConfig geoIP processor config
+   * @param geoIpConfigSupplier geoIp config supplier
+   * @param expressionEvaluator expression evaluator
    */
   @DataPrepperPluginConstructor
   public GeoIPProcessor(final PluginMetrics pluginMetrics,

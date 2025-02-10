@@ -195,8 +195,7 @@ public class KeyValueProcessorConfig {
             "If this flag is enabled, then the content between the delimiters is considered to be one entity and " +
             "they are not parsed as key-value pairs. The following characters are used a group delimiters: " +
             "<code>{...}</code>, <code>[...]</code>, <code>&lt;...&gt;</code>, <code>(...)</code>, <code>\"...\"</code>, <code>'...'</code>, <code>http://... (space)</code>, and <code>https:// (space)</code>. " +
-            "Default is <code>false</code>. For example, if <code>value_grouping</code> is <code>true</code>, then " +
-            "<code>{\"key1=[a=b,c=d]&amp;key2=value2\"}</code> parses to <code>{\"key1\": \"[a=b,c=d]\", \"key2\": \"value2\"}</code>.")
+            "Default is <code>false</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FIELD_DELIMITER_REGEX_KEY, allowedValues = {"null"})
     })

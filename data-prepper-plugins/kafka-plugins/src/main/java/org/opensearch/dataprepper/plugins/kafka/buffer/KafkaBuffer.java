@@ -64,6 +64,8 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     private final AbstractBuffer<Record<Event>> innerBuffer;
     private final ExecutorService executorService;
     private final Duration drainTimeout;
+
+    private final List<KafkaCustomConsumer> consumers;
     private AtomicBoolean shutdownInProgress;
     private ByteDecoder byteDecoder;
 
@@ -83,7 +85,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
-        final List<KafkaCustomConsumer> consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
+        this.consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
             innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker);
         this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size(), KafkaPluginThreadFactory.defaultExecutorThreadFactory(MDC_KAFKA_PLUGIN_VALUE));
@@ -232,6 +234,9 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                 LOG.error("Interrupted while waiting for consumer task to terminate", e);
                 executorService.shutdownNow();
             }
+
+            LOG.info("Closing {} consumers", consumers.size());
+            consumers.forEach(KafkaCustomConsumer::closeConsumer);
 
             innerBuffer.shutdown();
         } finally {

@@ -27,7 +27,6 @@ import java.util.function.Consumer;
 /**
  * JsonCodec parses the json array format HTTP data into List&lt;{@link String}&gt;.
  * TODO: replace output List&lt;String&gt; with List&lt;InternalModel&gt; type
- * <p>
  */
 public class JsonCodec implements Codec<List<String>> {
     private static final ObjectMapper mapper = new ObjectMapper();

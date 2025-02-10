@@ -73,7 +73,7 @@ public final class OTelMetricsProtoHelper {
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
-     * @return
+     * @return returns converted value object
      */
     public static Object convertAnyValue(final AnyValue value) {
         switch (value.getValueCase()) {
@@ -125,7 +125,6 @@ public final class OTelMetricsProtoHelper {
 
     /**
      * Unpacks the List of {@link KeyValue} object into a Map.
-     * <p>
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
@@ -138,7 +137,6 @@ public final class OTelMetricsProtoHelper {
 
     /**
      * Unpacks the List of {@link KeyValue} object into a Map.
-     * <p>
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
@@ -194,6 +192,7 @@ public final class OTelMetricsProtoHelper {
     /**
      * Extracts the name and version of the used instrumentation library used
      *
+     * @param instrumentationLibrary instrumentationLibrary
      * @return A map, containing information about the instrumentation library
      */
     public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
@@ -210,6 +209,7 @@ public final class OTelMetricsProtoHelper {
     /**
      * Extracts the name and version of the used instrumentation scope used
      *
+     * @param instrumentationScope instrumentationScope
      * @return A map, containing information about the instrumentation scope
      */
     public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope) {
@@ -260,9 +260,7 @@ public final class OTelMetricsProtoHelper {
     /**
      * Create the buckets, see <a href="https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto">
      *     the OTel metrics proto spec</a>
-     * <p>
-     * The boundaries for bucket at index i are:
-     * <p>
+     * <p> The boundaries for bucket at index i are: </p>
      * <pre>{@code
      * (-infinity, explicit_bounds[i]) for i == 0
      * (explicit_bounds[i-1], +infinity) for i == size(explicit_bounds)

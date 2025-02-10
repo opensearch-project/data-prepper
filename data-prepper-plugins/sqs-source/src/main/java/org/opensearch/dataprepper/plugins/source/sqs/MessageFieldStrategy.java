@@ -16,6 +16,8 @@ import java.util.List;
 public interface MessageFieldStrategy {
   /**
    * Converts the SQS message body into one or more events.
+   * @param messageBody message body
+   * @return returns list of events fromt he body
    */
     List<Event> parseEvents(String messageBody);
 }

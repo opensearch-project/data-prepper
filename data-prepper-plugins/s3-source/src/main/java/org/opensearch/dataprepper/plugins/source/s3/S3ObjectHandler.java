@@ -18,6 +18,8 @@ public interface S3ObjectHandler {
      * Parse S3 object content using S3 object reference and pushing to buffer
      * @param s3ObjectReference Contains bucket and s3 object details
      * @param acknowledgementSet acknowledgement set for the object
+     * @param sourceCoordinator source coordinator
+     * @param partitionKey partition key
      *
      * @throws IOException exception is thrown every time because this is not supported
      */

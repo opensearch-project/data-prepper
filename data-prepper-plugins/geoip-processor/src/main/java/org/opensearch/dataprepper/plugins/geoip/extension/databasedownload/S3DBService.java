@@ -26,7 +26,9 @@ public class S3DBService implements DBSource {
     /**
      * S3DBService constructor for initialisation of attributes
      *
+     * @param awsAuthenticationOptionsConfig  awsAuthenticationOptionsConfig 
      * @param destinationDirectory destinationDirectory
+     * @param maxMindDatabaseConfig maxMindDatabaseConfig
      */
     public S3DBService(final AwsAuthenticationOptionsConfig awsAuthenticationOptionsConfig,
                        final String destinationDirectory,

@@ -38,6 +38,8 @@ public interface GeoIPDatabaseReader extends AutoCloseable {
      * Gets the geo data from the {@link com.maxmind.geoip2.DatabaseReader}
      *
      * @param inetAddress InetAddress
+     * @param fields fields
+     * @param geoIPDatabases geo ip databases
      * @return Map of geo field and value pairs from IP address
      *
      * @since 2.7

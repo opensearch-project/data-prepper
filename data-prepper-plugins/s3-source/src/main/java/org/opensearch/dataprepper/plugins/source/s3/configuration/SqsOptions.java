@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -53,6 +54,11 @@ public class SqsOptions {
     @DurationMin(seconds = 0)
     private Duration pollDelay = DEFAULT_POLL_DELAY_SECONDS;
 
+    @JsonPropertyDescription("Messages that contain an ApproximateReceiveCount greater than this value will be deleted")
+    @JsonProperty("max_receive_attempts")
+    @Min(1)
+    private Integer maxReceiveAttempts;
+
     public String getSqsUrl() {
         return sqsUrl;
     }
@@ -80,4 +86,6 @@ public class SqsOptions {
     public Duration getPollDelay() {
         return pollDelay;
     }
+
+    public Integer getMaxReceiveAttempts() { return maxReceiveAttempts; }
 }

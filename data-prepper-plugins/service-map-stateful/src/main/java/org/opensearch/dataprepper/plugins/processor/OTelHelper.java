@@ -18,8 +18,8 @@ public class OTelHelper {
     /**
      * Helper method which accepts a OpenTelemetry trace resource object and return the service name object.
      *
-     * @param resource
-     * @return
+     * @param resource resource
+     * @return returns service name
      */
     public static Optional<String> getServiceName(final Resource resource) {
         return resource.getAttributesList().stream().filter(
@@ -31,8 +31,8 @@ public class OTelHelper {
     /**
      * Helper method which checks if OpenTelemetry span is valid for processing.
      *
-     * @param span
-     * @return
+     * @param span span
+     * @return returns if the span is valid or not
      */
     public static boolean checkValidSpan(final Span span) {
         return !span.getTraceId().isEmpty() && !span.getSpanId().isEmpty() && !span.getName().isEmpty();

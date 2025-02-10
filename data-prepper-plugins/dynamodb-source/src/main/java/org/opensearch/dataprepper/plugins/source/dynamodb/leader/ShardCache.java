@@ -49,7 +49,7 @@ public class ShardCache {
      * Get child shard ids by parent shard id from cache.
      * If none is found, return null.
      *
-     * @param parentShardId
+     * @param parentShardId parent shard id
      * @return a list of Child Shard IDs
      */
     public List<String> get(String parentShardId) {

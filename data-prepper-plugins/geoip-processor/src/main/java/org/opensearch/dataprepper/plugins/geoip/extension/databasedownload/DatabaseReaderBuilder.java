@@ -24,6 +24,7 @@ public class DatabaseReaderBuilder {
      * @param databasePath databasePath
      * @param cacheSize cacheSize
      * @return DatabaseReader
+     * @throws IOException io exception
      */
     public DatabaseReader buildReader(final Path databasePath, final int cacheSize) throws IOException {
         return new DatabaseReader.Builder(databasePath.toFile())

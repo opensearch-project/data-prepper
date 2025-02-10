@@ -51,7 +51,7 @@ public class RandomCutForestModeConfig {
     @JsonProperty(value = "time_decay", defaultValue = "" + DEFAULT_TIME_DECAY)
     private double timeDecay = DEFAULT_TIME_DECAY;
 
-    @JsonPropertyDescription("Output after indicates the number of events to consume before outputting anomalies. Default is 32.")
+    @JsonPropertyDescription("The number of events to train the model before generating an anomaly event. Default is 32.")
     @JsonProperty(value = "output_after", defaultValue = "" + DEFAULT_OUTPUT_AFTER)
     private int outputAfter = DEFAULT_OUTPUT_AFTER;
 

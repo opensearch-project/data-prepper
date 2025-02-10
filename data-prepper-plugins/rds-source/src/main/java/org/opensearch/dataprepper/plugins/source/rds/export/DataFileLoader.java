@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
@@ -127,7 +128,7 @@ public class DataFileLoader implements Runnable {
 
                     final String fullTableName = progressState.getSourceDatabase() + DOT_DELIMITER + progressState.getSourceTable();
                     final List<String> primaryKeys = progressState.getPrimaryKeyMap().getOrDefault(fullTableName, List.of());
-                    transformEvent(event, fullTableName);
+                    transformEvent(event, fullTableName, EngineType.fromString(progressState.getEngineType()));
 
                     final long snapshotTime = progressState.getSnapshotTime();
                     final long eventVersionNumber = snapshotTime - VERSION_OVERLAP_TIME_FOR_EXPORT.toMillis();
@@ -173,13 +174,15 @@ public class DataFileLoader implements Runnable {
         }
     }
 
-    private void transformEvent(final Event event, final String fullTableName) {
-        Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
-        for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
-            final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
-                    entry.getValue(), null);
-            event.put(entry.getKey(), data);
+    private void transformEvent(final Event event, final String fullTableName, final EngineType engineType) {
+        // TODO: support data type mapping in Postgres
+        if (engineType == EngineType.MYSQL) {
+            Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
+            for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
+                final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+                        entry.getValue(), null);
+                event.put(entry.getKey(), data);
+            }
         }
     }
-
 }

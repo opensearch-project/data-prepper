@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.configtest;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
 
 import javax.inject.Named;
@@ -7,9 +8,11 @@ import javax.inject.Named;
 @Named
 public class TestComponentWithConfigInject {
     private final TestPluginConfiguration configuration;
+    private final PluginMetrics pluginMetrics;
 
-    public TestComponentWithConfigInject(TestPluginConfiguration configuration) {
+    public TestComponentWithConfigInject(TestPluginConfiguration configuration, PluginMetrics pluginMetrics) {
         this.configuration = configuration;
+        this.pluginMetrics = pluginMetrics;
     }
 
     public String getIdentifier() {
@@ -18,5 +21,9 @@ public class TestComponentWithConfigInject {
 
     public TestPluginConfiguration getConfiguration() {
         return configuration;
+    }
+
+    public PluginMetrics getPluginMetrics() {
+        return pluginMetrics;
     }
 }

@@ -52,23 +52,27 @@ public interface CommonParseConfig {
     /**
      * An optional setting used to specify whether the destination field should be overwritten if it already exists.
      * Defaults to true.
+     * @return returns  overwrite if destination exists flag
      */
     boolean getOverwriteIfDestinationExists();
 
     /**
      * An optional setting used to request dropping the original raw message after successfully parsing the input event.
      * Defaults to false.
+     * @return returns delete source required flag
      */
     boolean isDeleteSourceRequested();
 
     /**
      * An optional setting used to determine how to handle parsing errors. Default is skip, which includes logging the error
      * and passing the failed Event downstream to the next processor.
+     * @return returns handle failed events option
      */
     HandleFailedEventsOption getHandleFailedEventsOption();
 
     /**
      * An optional setting used to determine the depth of the input to handle
+     * @return returns depth
      */
     int getDepth();
 }

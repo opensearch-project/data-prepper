@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -93,8 +94,7 @@ class SqsWorkerIT {
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
 
-        backoff = Backoff.exponential(SqsService.INITIAL_DELAY, SqsService.MAXIMUM_DELAY).withJitter(SqsService.JITTER_RATE)
-                .withMaxAttempts(Integer.MAX_VALUE);
+        backoff = SqsBackoff.createExponentialBackoff();
 
         s3SourceConfig = mock(S3SourceConfig.class);
         s3Service = mock(S3Service.class);

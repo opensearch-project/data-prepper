@@ -62,6 +62,8 @@ public class StreamWorker {
             LOG.info("Connect to database to read change events.");
             replicationLogClient.connect();
         } catch (Exception e) {
+            LOG.warn("Error while connecting to replication stream, will retry.");
+            sourceCoordinator.giveUpPartition(streamPartition);
             throw new RuntimeException(e);
         } finally {
             try {
