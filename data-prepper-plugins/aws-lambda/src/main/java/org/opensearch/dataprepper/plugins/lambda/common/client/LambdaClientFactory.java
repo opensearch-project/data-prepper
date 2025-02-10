@@ -62,7 +62,7 @@ public final class LambdaClientFactory {
             .build();
   }
 
-  private static AwsCredentialsOptions convertToCredentialsOptions(
+  public static AwsCredentialsOptions convertToCredentialsOptions(
           final AwsAuthenticationOptions awsAuthenticationOptions) {
     return AwsCredentialsOptions.builder()
             .withRegion(awsAuthenticationOptions.getAwsRegion())
