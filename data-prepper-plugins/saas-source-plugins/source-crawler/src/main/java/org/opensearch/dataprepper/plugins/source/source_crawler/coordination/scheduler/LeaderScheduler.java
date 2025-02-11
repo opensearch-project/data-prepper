@@ -6,23 +6,19 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.LeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 
 public class LeaderScheduler implements Runnable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(LeaderScheduler.class);
-
     /**
      * Default duration to extend the timeout of lease
      */
-    private static final Duration DEFAULT_EXTEND_LEASE_MINUTES = Duration.ofMinutes(3);
-
+    public static final Duration DEFAULT_EXTEND_LEASE_MINUTES = Duration.ofMinutes(3);
+    private static final Logger LOG = LoggerFactory.getLogger(LeaderScheduler.class);
     /**
      * Default interval to run lease check and shard discovery
      */
@@ -34,14 +30,17 @@ public class LeaderScheduler implements Runnable {
     @Setter
     private Duration leaseInterval;
     private LeaderPartition leaderPartition;
+    private final int batchSize;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator,
                            CrawlerSourcePlugin sourcePlugin,
-                           Crawler crawler) {
+                           Crawler crawler,
+                           int batchSize) {
         this.coordinator = coordinator;
         this.leaseInterval = DEFAULT_LEASE_INTERVAL;
         this.sourcePlugin = sourcePlugin;
         this.crawler = crawler;
+        this.batchSize = batchSize;
     }
 
     @Override
@@ -61,14 +60,8 @@ public class LeaderScheduler implements Runnable {
                 // Once owned, run Normal LEADER node process.
                 // May want to quit this scheduler if we don't want to monitor future changes
                 if (leaderPartition != null) {
-                    LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
-                    Instant lastPollTime = leaderProgressState.getLastPollTime();
-
-                    //Start crawling and create child partitions
-                    Instant updatedPollTime = crawler.crawl(lastPollTime, coordinator);
-                    leaderProgressState.setLastPollTime(updatedPollTime);
-                    leaderPartition.setLeaderProgressState(leaderProgressState);
-                    coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
+                    //Start crawling, create child partitions and also continue to update leader partition state
+                    crawler.crawl(leaderPartition, coordinator, batchSize);
                 }
 
             } catch (Exception e) {

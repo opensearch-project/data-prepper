@@ -34,6 +34,10 @@ public class MockPluginConfigVariableImpl implements PluginConfigVariable {
     }
 
     @Override
+    public void refresh() {
+    }
+
+    @Override
     public boolean isUpdatable() {
         return true;
     }

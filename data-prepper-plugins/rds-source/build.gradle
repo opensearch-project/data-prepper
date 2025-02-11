@@ -23,6 +23,7 @@ dependencies {
 
     implementation 'com.zendesk:mysql-binlog-connector-java:0.29.2'
     implementation 'com.mysql:mysql-connector-j:8.4.0'
+    implementation 'org.postgresql:postgresql:42.7.4'
 
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'

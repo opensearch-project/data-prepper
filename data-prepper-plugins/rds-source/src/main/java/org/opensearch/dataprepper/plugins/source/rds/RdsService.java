@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
@@ -26,9 +27,13 @@ import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
-import org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientFactory;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManagerFactory;
+import org.opensearch.dataprepper.plugins.source.rds.stream.ReplicationLogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
 import org.slf4j.Logger;
@@ -37,6 +42,7 @@ import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -101,9 +107,16 @@ public class RdsService {
                 new ClusterApiStrategy(rdsClient) : new InstanceApiStrategy(rdsClient);
         final DbMetadata dbMetadata = rdsApiStrategy.describeDb(sourceConfig.getDbIdentifier());
         final String s3PathPrefix = getS3PathPrefix();
+
         final SchemaManager schemaManager = getSchemaManager(sourceConfig, dbMetadata);
-        final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(schemaManager);
-        final DbTableMetadata dbTableMetadata = new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
+        DbTableMetadata dbTableMetadata;
+        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+            final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(
+                    (MySqlSchemaManager) schemaManager);
+            dbTableMetadata  = new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
+        } else {
+            dbTableMetadata = new DbTableMetadata(dbMetadata, Collections.emptyMap());
+        }
 
         leaderScheduler = new LeaderScheduler(
                 sourceCoordinator, sourceConfig, s3PathPrefix,  schemaManager, dbTableMetadata);
@@ -121,21 +134,23 @@ public class RdsService {
         }
 
         if (sourceConfig.isStreamEnabled()) {
-            BinlogClientFactory binaryLogClientFactory = new BinlogClientFactory(sourceConfig, rdsClient, dbMetadata);
+            ReplicationLogClientFactory replicationLogClientFactory = new ReplicationLogClientFactory(sourceConfig, rdsClient, dbMetadata);
 
             if (sourceConfig.isTlsEnabled()) {
-                binaryLogClientFactory.setSSLMode(SSLMode.REQUIRED);
+                replicationLogClientFactory.setSSLMode(SSLMode.REQUIRED);
             } else {
-                binaryLogClientFactory.setSSLMode(SSLMode.DISABLED);
+                replicationLogClientFactory.setSSLMode(SSLMode.DISABLED);
             }
 
             streamScheduler = new StreamScheduler(
-                    sourceCoordinator, sourceConfig, s3PathPrefix, binaryLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
             runnableList.add(streamScheduler);
 
-            resyncScheduler = new ResyncScheduler(
-                    sourceCoordinator, sourceConfig, getQueryManager(sourceConfig, dbMetadata), s3PathPrefix, buffer, pluginMetrics, acknowledgementSetManager);
-            runnableList.add(resyncScheduler);
+            if (sourceConfig.getEngine() == EngineType.MYSQL) {
+                resyncScheduler = new ResyncScheduler(
+                        sourceCoordinator, sourceConfig, getQueryManager(sourceConfig, dbMetadata), s3PathPrefix, buffer, pluginMetrics, acknowledgementSetManager);
+                runnableList.add(resyncScheduler);
+            }
         }
 
         executor = Executors.newFixedThreadPool(runnableList.size());
@@ -164,19 +179,14 @@ public class RdsService {
     }
 
     private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
-        final ConnectionManager connectionManager = new ConnectionManager(
-                dbMetadata.getEndpoint(),
-                dbMetadata.getPort(),
-                sourceConfig.getAuthenticationConfig().getUsername(),
-                sourceConfig.getAuthenticationConfig().getPassword(),
-                sourceConfig.isTlsEnabled());
-        return new SchemaManager(connectionManager);
+        final ConnectionManager connectionManager = new ConnectionManagerFactory(sourceConfig, dbMetadata).getConnectionManager();
+        return new SchemaManagerFactory(connectionManager).getSchemaManager();
     }
 
     private QueryManager getQueryManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final String readerEndpoint = dbMetadata.getReaderEndpoint() != null ? dbMetadata.getReaderEndpoint() : dbMetadata.getEndpoint();
         final int readerPort = dbMetadata.getReaderPort() == 0 ? dbMetadata.getPort() : dbMetadata.getReaderPort();
-        final ConnectionManager readerConnectionManager = new ConnectionManager(
+        final MySqlConnectionManager readerConnectionManager = new MySqlConnectionManager(
                 readerEndpoint,
                 readerPort,
                 sourceConfig.getAuthenticationConfig().getUsername(),
@@ -203,13 +213,11 @@ public class RdsService {
         return s3PathPrefix;
     }
 
-    private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
+    private Map<String, Map<String, String>> getColumnDataTypeMap(final MySqlSchemaManager schemaManager) {
         return sourceConfig.getTableNames().stream()
                 .collect(Collectors.toMap(
                         fullTableName -> fullTableName,
                         fullTableName -> schemaManager.getColumnDataTypes(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
                 ));
     }
-
-
 }

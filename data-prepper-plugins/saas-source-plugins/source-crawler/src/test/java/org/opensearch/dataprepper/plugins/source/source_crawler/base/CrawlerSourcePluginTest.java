@@ -62,6 +62,8 @@ public class CrawlerSourcePluginTest {
 
     private testCrawlerSourcePlugin saasSourcePlugin;
 
+    private final int batchSize = 50;
+
     @BeforeEach
     void setUp() {
         when(executorServiceProvider.get()).thenReturn(executorService);

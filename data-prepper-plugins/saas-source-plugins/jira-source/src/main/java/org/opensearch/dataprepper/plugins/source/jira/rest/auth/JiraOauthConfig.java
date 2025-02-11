@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.jira.rest.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
+import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +100,7 @@ public class JiraOauthConfig implements JiraAuthConfig {
                     if (e.getRawStatusCode() == HttpStatus.UNAUTHORIZED.value()) {
                         renewCredentials();
                     }
-                    log.error("Error occurred while accessing resources: ", e);
+                    log.error("Error occurred while accessing resources.  Status code: {}.  Error message: {}", e.getStatusCode(), e.getMessage());
                 }
             }
             throw new UnAuthorizedException(String.format("Access token expired. Unable to renew even after %s attempts", RETRY_ATTEMPT));
@@ -126,25 +127,35 @@ public class JiraOauthConfig implements JiraAuthConfig {
             String payload = String.format(payloadTemplate, "refresh_token", clientId, clientSecret, refreshToken);
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
+            Oauth2Config oauth2Config = jiraSourceConfig.getAuthenticationConfig().getOauth2Config();
             try {
                 ResponseEntity<Map> responseEntity = restTemplate.postForEntity(TOKEN_LOCATION, entity, Map.class);
                 Map<String, Object> oauthClientResponse = responseEntity.getBody();
                 this.accessToken = (String) oauthClientResponse.get(ACCESS_TOKEN);
                 this.refreshToken = (String) oauthClientResponse.get(REFRESH_TOKEN);
                 this.expiresInSeconds = (int) oauthClientResponse.get(EXPIRES_IN);
-                this.expireTime = Instant.ofEpochMilli(System.currentTimeMillis() + (expiresInSeconds * 1000L));
+                this.expireTime = Instant.now().plusSeconds(expiresInSeconds);
                 // updating config object's PluginConfigVariable so that it updates the underlying Secret store
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getAccessToken()
-                        .setValue(this.accessToken);
-                jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken()
-                        .setValue(this.refreshToken);
+                oauth2Config.getAccessToken().setValue(this.accessToken);
+                oauth2Config.getRefreshToken().setValue(this.refreshToken);
                 log.info("Access Token and Refresh Token pair is now refreshed. Corresponding Secret store key updated.");
             } catch (HttpClientErrorException ex) {
                 this.expireTime = Instant.ofEpochMilli(0);
                 this.expiresInSeconds = 0;
+                HttpStatus statusCode = ex.getStatusCode();
                 log.error("Failed to renew access token. Status code: {}, Error Message: {}",
-                        ex.getRawStatusCode(), ex.getMessage());
-                throw new RuntimeException("Failed to renew access token" + ex.getMessage(), ex);
+                        statusCode, ex.getMessage());
+                if (statusCode == HttpStatus.FORBIDDEN || statusCode == HttpStatus.UNAUTHORIZED) {
+                    log.info("Trying to refresh the secrets");
+                    // Refreshing the secrets. It should help if someone already renewed the tokens.
+                    // Refreshing one of the secret refreshes the entire store so triggering refresh on just one
+                    oauth2Config.getAccessToken().refresh();
+                    this.accessToken = (String) oauth2Config.getAccessToken().getValue();
+                    this.refreshToken = (String) oauth2Config.getRefreshToken().getValue();
+                    this.expireTime = Instant.now().plusSeconds(10);
+                    log.info("Access Token and Refresh Token pair is now refreshed.");
+                }
+                throw new RuntimeException("Failed to renew access token message:" + ex.getMessage(), ex);
             }
         }
     }

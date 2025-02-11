@@ -32,6 +32,11 @@ public interface PluginConfigVariable {
     void setValue(Object updatedValue);
 
     /**
+     * Refresh the secret value on demand
+     */
+    void refresh();
+
+    /**
      * Returns if the variable is updatable.
      *
      * @return true if this variable is updatable, false otherwise
