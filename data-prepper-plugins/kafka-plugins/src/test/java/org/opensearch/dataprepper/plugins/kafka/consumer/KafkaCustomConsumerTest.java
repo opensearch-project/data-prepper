@@ -279,6 +279,7 @@ public class KafkaCustomConsumerTest {
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
+
     @Test
     public void testPlainTextConsumeRecords() throws InterruptedException {
         String topic = topicConfig.getName();
