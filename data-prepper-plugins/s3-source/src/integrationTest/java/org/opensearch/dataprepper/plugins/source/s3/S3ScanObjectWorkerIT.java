@@ -151,7 +151,7 @@ public class S3ScanObjectWorkerIT {
         bucketOwnerProvider = b -> Optional.empty();
 
         final SourceCoordinationStore inMemoryStore = new InMemorySourceCoordinationStore(new PluginSetting("in_memory", Collections.emptyMap()));
-        final SourceCoordinationConfig sourceCoordinationConfig = new SourceCoordinationConfig(new PluginModel("in_memory", Collections.emptyMap()), null);
+        final SourceCoordinationConfig sourceCoordinationConfig = SourceCoordinationConfig.getDefaultSourceCoordinationConfig();
         sourceCoordinator = new LeaseBasedSourceCoordinator<>(S3SourceProgressState.class,
                 inMemoryStore, sourceCoordinationConfig, "s3-test-pipeline", PluginMetrics.fromNames("source-coordinator", "s3-test-pipeline"));
         sourceCoordinator.initialize();
