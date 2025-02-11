@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -43,6 +44,7 @@ public class StdInSource implements Source<Record<Event>> {
      * @param stdInSourceConfig The configuration instance for {@link StdInSource}
      * @param pipelineDescription The pipeline description which has access to pipeline Name
      */
+    @DataPrepperPluginConstructor
     public StdInSource(final StdInSourceConfig stdInSourceConfig, final PipelineDescription pipelineDescription) {
         this(checkNotNull(stdInSourceConfig, "StdInSourceConfig cannot be null")
                         .getWriteTimeout(),

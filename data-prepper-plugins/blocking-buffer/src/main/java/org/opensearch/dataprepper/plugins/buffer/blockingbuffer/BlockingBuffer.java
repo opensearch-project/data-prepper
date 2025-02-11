@@ -9,6 +9,7 @@ import com.google.common.base.Stopwatch;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -89,6 +90,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
      * @param blockingBufferConfig instance takes values from yaml
      * @param pipelineDescription  instance with metadata information aout pipeline man
      */
+    @DataPrepperPluginConstructor
     public BlockingBuffer(final BlockingBufferConfig blockingBufferConfig, final PipelineDescription pipelineDescription) {
         this(checkNotNull(blockingBufferConfig, "BlockingBufferConfig cannot be null").getBufferSize(),
                 blockingBufferConfig.getBatchSize(),
