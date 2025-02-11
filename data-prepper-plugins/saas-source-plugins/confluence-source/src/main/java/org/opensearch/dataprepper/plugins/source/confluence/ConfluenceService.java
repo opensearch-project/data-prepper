@@ -13,12 +13,12 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceContentType;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.util.CollectionUtils;
 
@@ -198,14 +198,14 @@ public class ConfluenceService {
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
             log.error("One or more invalid Page Types found in filter configuration: {}", badFilters);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Invalid Page Type key found in filter configuration "
                     + filters);
         }
         if (!includedAndExcludedPageType.isEmpty()) {
             String filters = String.join("\"" + includedAndExcludedPageType + "\"", ", ");
             log.error("One or more Page types found in both include and exclude: {}", includedAndExcludedPageType);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Page Type filters is invalid because the following Page types are listed in both include and exclude"
                     + filters);
         }
@@ -242,14 +242,14 @@ public class ConfluenceService {
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
             log.error("One or more invalid Space keys found in filter configuration: {}", badFilters);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Invalid Space key found in filter configuration for "
                     + filters);
         }
         if (!includedAndExcludedSpaces.isEmpty()) {
             String filters = String.join("\"" + includedAndExcludedSpaces + "\"", ", ");
             log.error("One or more Space keys found in both include and exclude: {}", includedAndExcludedSpaces);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Space filters is invalid because the following space are listed in both include and exclude"
                     + filters);
         }

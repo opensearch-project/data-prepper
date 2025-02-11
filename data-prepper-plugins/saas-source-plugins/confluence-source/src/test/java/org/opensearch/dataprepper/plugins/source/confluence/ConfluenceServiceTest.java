@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
@@ -27,7 +28,6 @@ import org.opensearch.dataprepper.plugins.source.confluence.models.SpaceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.MockPluginConfigVariableImpl;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.slf4j.Logger;
@@ -61,7 +61,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
 
 
 /**
- * The type Jira service.
+ * The type Confluence service Test.
  */
 @ExtendWith(MockitoExtension.class)
 public class ConfluenceServiceTest {
@@ -102,7 +102,7 @@ public class ConfluenceServiceTest {
 
     public static ConfluenceSourceConfig createConfluenceConfiguration(String auth_type,
                                                                        List<String> pageTypes,
-                                                                       List<String> projectKey) throws JsonProcessingException {
+                                                                       List<String> spaceKey) throws JsonProcessingException {
         PluginConfigVariable pcvAccessToken = null;
         PluginConfigVariable pcvRefreshToken = null;
         ObjectMapper objectMapper = new ObjectMapper();
@@ -121,7 +121,7 @@ public class ConfluenceServiceTest {
             authenticationMap.put("oauth2", oauth2Map);
         }
 
-        Map<String, Object> jiraSourceConfigMap = new HashMap<>();
+        Map<String, Object> sourceConfigMap = new HashMap<>();
         List<String> hosts = new ArrayList<>();
         hosts.add(ACCESSIBLE_RESOURCES);
 
@@ -133,17 +133,17 @@ public class ConfluenceServiceTest {
         filterMap.put("page_type", contentTypeMap);
 
         Map<String, Object> nameMap = new HashMap<>();
-        nameMap.put("include", projectKey);
+        nameMap.put("include", spaceKey);
         spacesMap.put("key", nameMap);
         filterMap.put("space", spacesMap);
 
 
-        jiraSourceConfigMap.put("hosts", hosts);
-        jiraSourceConfigMap.put("authentication", authenticationMap);
-        jiraSourceConfigMap.put("filter", filterMap);
+        sourceConfigMap.put("hosts", hosts);
+        sourceConfigMap.put("authentication", authenticationMap);
+        sourceConfigMap.put("filter", filterMap);
 
-        String jiraSourceConfigJsonString = objectMapper.writeValueAsString(jiraSourceConfigMap);
-        ConfluenceSourceConfig confluenceSourceConfig = objectMapper.readValue(jiraSourceConfigJsonString, ConfluenceSourceConfig.class);
+        String sourceConfigJsonString = objectMapper.writeValueAsString(sourceConfigMap);
+        ConfluenceSourceConfig confluenceSourceConfig = objectMapper.readValue(sourceConfigJsonString, ConfluenceSourceConfig.class);
         if (confluenceSourceConfig.getAuthenticationConfig().getOauth2Config() != null && pcvAccessToken != null) {
             try {
                 ReflectivelySetField.setField(Oauth2Config.class,
@@ -163,7 +163,7 @@ public class ConfluenceServiceTest {
     }
 
     @Test
-    void testJiraServiceInitialization() throws JsonProcessingException {
+    void testConfluenceServiceInitialization() throws JsonProcessingException {
         List<String> contentType = new ArrayList<>();
         List<String> spacesKey = new ArrayList<>();
         ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, contentType, spacesKey);
@@ -203,9 +203,9 @@ public class ConfluenceServiceTest {
     @Test
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException {
         List<String> pageType = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
+        List<String> spaceKey = new ArrayList<>();
         pageType.add("PAGE");
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, spaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
         Random random = new Random();
@@ -226,30 +226,30 @@ public class ConfluenceServiceTest {
     }
 
     @Test
-    public void testBadProjectKeys() throws JsonProcessingException {
+    public void testBadSpaceKeys() throws JsonProcessingException {
         List<String> pageType = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
+        List<String> spaceKey = new ArrayList<>();
         pageType.add("PAGE");
-        projectKey.add("Bad Project Key");
-        projectKey.add("A");
-        projectKey.add("!@#$");
-        projectKey.add("AAAAAAAAAAAAAA");
+        spaceKey.add("Bad Project Key");
+        spaceKey.add("A");
+        spaceKey.add("!@#$");
+        spaceKey.add("AAAAAAAAAAAAAA");
 
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, spaceKey);
         ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
 
-        assertThrows(BadRequestException.class, () -> confluenceService.getPages(confluenceSourceConfig, timestamp, itemInfoQueue));
+        assertThrows(InvalidPluginConfigurationException.class, () -> confluenceService.getPages(confluenceSourceConfig, timestamp, itemInfoQueue));
     }
 
     @Test
     public void testGetPagesException() throws JsonProcessingException {
         List<String> pageType = new ArrayList<>();
-        List<String> projectKey = new ArrayList<>();
+        List<String> SpaceKey = new ArrayList<>();
         pageType.add("Task");
-        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, projectKey);
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, SpaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
 
         Instant timestamp = Instant.ofEpochSecond(0);
@@ -262,7 +262,7 @@ public class ConfluenceServiceTest {
     private ConfluenceItem createConfluenceItemBean() {
         ConfluenceItem confluenceItem = new ConfluenceItem();
         confluenceItem.setId(UUID.randomUUID().toString());
-        confluenceItem.setTitle("issue_1_key");
+        confluenceItem.setTitle("item_1_key");
         SpaceItem spaceItem = new SpaceItem();
         spaceItem.setId(new Random().nextInt());
         spaceItem.setKey(UUID.randomUUID().toString());
