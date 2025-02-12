@@ -1,11 +1,11 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
-public class JsonTypeHandler implements DataTypeHandler {
+public class JsonTypeHandler implements MySQLDataTypeHandler {
 
     @Override
     public String handle(final MySQLDataType columnType, final String columnName, final Object value,

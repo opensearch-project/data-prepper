@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 @ExtendWith(MockitoExtension.class)
-class ResyncWorkerTest {
+class MySQLResyncWorkerTest {
 
     @Mock
     private ResyncPartition resyncPartition;
@@ -63,7 +63,7 @@ class ResyncWorkerTest {
     @Mock
     private DbTableMetadata dbTableMetadata;
 
-    private ResyncWorker resyncWorker;
+    private MySQLResyncWorker resyncWorker;
 
     @BeforeEach
     void setUp() {
@@ -111,7 +111,7 @@ class ResyncWorkerTest {
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, ResyncWorker.DEFAULT_BUFFER_BATCH_SIZE, ResyncWorker.BUFFER_TIMEOUT))
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, MySQLResyncWorker.DEFAULT_BUFFER_BATCH_SIZE, MySQLResyncWorker.BUFFER_TIMEOUT))
                     .thenReturn(bufferAccumulator);
             resyncWorker.run();
         }
@@ -127,7 +127,7 @@ class ResyncWorkerTest {
         verify(acknowledgementSet).complete();
     }
 
-    private ResyncWorker createObjectUnderTest() {
-        return ResyncWorker.create(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, dbTableMetadata);
+    private MySQLResyncWorker createObjectUnderTest() {
+        return MySQLResyncWorker.create(resyncPartition, sourceConfig, queryManager, buffer, recordConverter, acknowledgementSet, dbTableMetadata);
     }
 }

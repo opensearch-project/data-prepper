@@ -30,8 +30,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
@@ -215,9 +215,14 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         final List<String> primaryKeys = tableMapEventMetadata.getSimplePrimaryKeys().stream()
                 .map(columnNames::get)
                 .collect(Collectors.toList());
-        final TableMetadata tableMetadata = new TableMetadata(
-                eventData.getTable(), eventData.getDatabase(), columnNames, primaryKeys,
-                getSetStrValues(eventData), getEnumStrValues(eventData));
+        final TableMetadata tableMetadata = TableMetadata.builder()
+                .withTableName(eventData.getTable())
+                .withDatabaseName(eventData.getDatabase())
+                .withColumnNames(columnNames)
+                .withPrimaryKeys(primaryKeys)
+                .withSetStrValues(getSetStrValues(eventData))
+                .withEnumStrValues(getEnumStrValues(eventData))
+                .build();
         if (isTableOfInterest(tableMetadata.getFullTableName())) {
             tableMetadataMap.put(eventData.getTableId(), tableMetadata);
         }
@@ -372,7 +377,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             for (int i = 0; i < rowDataArray.length; i++) {
                 final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
                 final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
-                final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                final Object data =  MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
                         rowDataArray[i], tableMetadata);
                 rowDataMap.put(columnNames.get(i), data);
             }
