@@ -1,11 +1,11 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
 import java.nio.ByteBuffer;
@@ -25,10 +25,13 @@ public class SpatialTypeHandlerTest {
 
     @Test
     public void test_handleInvalidType() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("invalid_col"), List.of("invalid_col"));
-        final DataTypeHandler spatialTypeHandler = new SpatialTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("invalid_col"))
+                .withPrimaryKeys(List.of("invalid_col"))
+                .build();
+        final MySQLDataTypeHandler spatialTypeHandler = new SpatialTypeHandler();
 
         assertThrows(IllegalArgumentException.class, () -> {
             spatialTypeHandler.handle(MySQLDataType.GEOMETRY, "invalid_col", "not_a_geometry", metadata);
@@ -37,10 +40,13 @@ public class SpatialTypeHandlerTest {
 
     @Test
     public void test_handleInvalidGeometryValue() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("invalid_col"), List.of("invalid_col"));
-        final DataTypeHandler spatialTypeHandler = new SpatialTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("invalid_col"))
+                .withPrimaryKeys(List.of("invalid_col"))
+                .build();
+        final MySQLDataTypeHandler spatialTypeHandler = new SpatialTypeHandler();
 
         assertThrows(RuntimeException.class, () -> {
             spatialTypeHandler.handle(MySQLDataType.GEOMETRY, "invalid_col", "not_a_geometry".getBytes(), metadata);
@@ -50,9 +56,13 @@ public class SpatialTypeHandlerTest {
     @ParameterizedTest
     @MethodSource("provideGeometryTypeData")
     public void test_handleGeometryTypes_success(final MySQLDataType mySQLDataType, final String columnName, final Object value, final Object expectedValue) {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName));
-        final DataTypeHandler numericTypeHandler = new SpatialTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new SpatialTypeHandler();
         Object result = numericTypeHandler.handle(mySQLDataType, columnName, value, metadata);
 
         if (result != null) {

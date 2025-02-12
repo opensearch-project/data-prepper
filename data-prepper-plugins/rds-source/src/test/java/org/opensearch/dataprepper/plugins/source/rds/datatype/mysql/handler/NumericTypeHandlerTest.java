@@ -1,11 +1,11 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 
 import java.math.BigDecimal;
@@ -27,10 +27,15 @@ public class NumericTypeHandlerTest {
     @ParameterizedTest
     @MethodSource("provideNumericTypeData")
     public void test_handle(final MySQLDataType mySQLDataType, final String columnName, final Object value, final Object expectedValue) {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(), List.of(columnName), List.of(columnName),
-                Collections.emptyMap(), Collections.emptyMap());
-        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
+                .withEnumStrValues(Collections.emptyMap())
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new NumericTypeHandler();
         Object result = numericTypeHandler.handle(mySQLDataType, columnName, value, metadata);
 
         if (result != null) {
@@ -114,11 +119,15 @@ public class NumericTypeHandlerTest {
 
     @Test
     public void test_handleInvalidType() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("invalid_col"), List.of("invalid_col"),
-                Collections.emptyMap(), Collections.emptyMap());
-        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("invalid_col"))
+                .withPrimaryKeys(List.of("invalid_col"))
+                .withEnumStrValues(Collections.emptyMap())
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new NumericTypeHandler();
 
         assertThrows(IllegalArgumentException.class, () -> {
             numericTypeHandler.handle(MySQLDataType.INT_UNSIGNED, "invalid_col", "not_a_number", metadata);
@@ -127,11 +136,15 @@ public class NumericTypeHandlerTest {
 
     @Test
     public void test_handleInvalidValue() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("int_col"), List.of("int_col"),
-                Collections.emptyMap(), Collections.emptyMap());
-        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("int_col"))
+                .withPrimaryKeys(List.of("int_col"))
+                .withEnumStrValues(Collections.emptyMap())
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new NumericTypeHandler();
 
         assertThrows(IllegalArgumentException.class, () -> {
             numericTypeHandler.handle(MySQLDataType.INT, "int_col", "not_a_number", metadata);
@@ -140,11 +153,15 @@ public class NumericTypeHandlerTest {
 
     @Test
     public void test_handleInvalidUnsignedBigInt() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("int_col"), List.of("int_col"),
-                Collections.emptyMap(), Collections.emptyMap());
-        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("int_col"))
+                .withPrimaryKeys(List.of("int_col"))
+                .withEnumStrValues(Collections.emptyMap())
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new NumericTypeHandler();
 
         assertThrows(IllegalArgumentException.class, () -> {
             numericTypeHandler.handle(MySQLDataType.BIGINT, "bigint_col", "not_a_number", metadata);
@@ -154,11 +171,15 @@ public class NumericTypeHandlerTest {
 
     @Test
     public void test_handleInvalidBit() {
-        final TableMetadata metadata = new TableMetadata(
-                UUID.randomUUID().toString(), UUID.randomUUID().toString(),
-                List.of("int_col"), List.of("int_col"),
-                Collections.emptyMap(), Collections.emptyMap());
-        final DataTypeHandler numericTypeHandler = new NumericTypeHandler();
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of("int_col"))
+                .withPrimaryKeys(List.of("int_col"))
+                .withEnumStrValues(Collections.emptyMap())
+                .withSetStrValues(Collections.emptyMap())
+                .build();
+        final MySQLDataTypeHandler numericTypeHandler = new NumericTypeHandler();
 
         assertThrows(IllegalArgumentException.class, () -> {
             numericTypeHandler.handle(MySQLDataType.BIT, "bit_col", "not_a_number", metadata);

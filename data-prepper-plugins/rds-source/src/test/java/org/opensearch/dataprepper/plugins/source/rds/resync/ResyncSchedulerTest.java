@@ -89,14 +89,14 @@ class ResyncSchedulerTest {
         when(globalState.getProgressState()).thenReturn(Optional.of(progressState));
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        final ResyncWorker resyncWorker = mock(ResyncWorker.class);
+        final MySQLResyncWorker resyncWorker = mock(MySQLResyncWorker.class);
         doNothing().when(resyncWorker).run();
 
         executorService.submit(() -> {
-            try (MockedStatic<ResyncWorker> resyncWorkerMockedStatic = mockStatic(ResyncWorker.class);
+            try (MockedStatic<MySQLResyncWorker> resyncWorkerMockedStatic = mockStatic(MySQLResyncWorker.class);
                  MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
                 dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
-                resyncWorkerMockedStatic.when(() -> ResyncWorker.create(eq(resyncPartition), eq(sourceConfig),
+                resyncWorkerMockedStatic.when(() -> MySQLResyncWorker.create(eq(resyncPartition), eq(sourceConfig),
                         eq(queryManager), eq(buffer), any(RecordConverter.class), any(), eq(dbTableMetadata))).thenReturn(resyncWorker);
                 resyncScheduler.run();
             }

@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql;
 
 import java.util.HashMap;
 import java.util.Map;

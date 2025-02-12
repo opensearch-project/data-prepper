@@ -1,8 +1,8 @@
-package org.opensearch.dataprepper.plugins.source.rds.datatype.impl;
+package org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.handler;
 
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -28,7 +28,7 @@ import java.util.Map;
  *   <li>GEOMETRYCOLLECTION(POINT(x y), LINESTRING(x y, x y))</li>
  * </ul>
  * */
-public class SpatialTypeHandler implements DataTypeHandler {
+public class SpatialTypeHandler implements MySQLDataTypeHandler {
     // MySQL geometry type constants
     private static final int GEOMETRY_POINT = 1;
     private static final int GEOMETRY_LINESTRING = 2;

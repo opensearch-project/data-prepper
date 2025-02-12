@@ -27,6 +27,8 @@ import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConve
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.postgresql.replication.LogSequenceNumber;
@@ -34,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -201,12 +204,14 @@ public class LogicalReplicationEventProcessor {
         short numberOfColumns = msg.getShort();
 
         List<String> columnNames = new ArrayList<>();
+        List<String> columnTypes = new ArrayList<>();
         for (int i = 0; i < numberOfColumns; i++) {
             int flag = msg.get();    // 1 indicates this column is part of the replica identity
             // null terminated string
             String columnName = getNullTerminatedString(msg);
             ColumnType columnType = ColumnType.getByTypeId(msg.getInt());
             String columnTypeName = columnType.getTypeName();
+            columnTypes.add(columnTypeName);
             int typeModifier = msg.getInt();
             if (columnType == ColumnType.VARCHAR) {
                 int varcharLength = typeModifier - 4;
@@ -218,8 +223,13 @@ public class LogicalReplicationEventProcessor {
         }
 
         final List<String> primaryKeys = getPrimaryKeys(schemaName, tableName);
-        final TableMetadata tableMetadata = new TableMetadata(
-                tableName, schemaName, columnNames, primaryKeys);
+        final TableMetadata tableMetadata = TableMetadata.builder().
+                withTableName(tableName).
+                withDatabaseName(schemaName).
+                withColumnNames(columnNames).
+                withColumnTypes(columnTypes).
+                withPrimaryKeys(primaryKeys).
+                build();
 
         tableMetadataMap.put((long) tableId, tableMetadata);
 
@@ -274,6 +284,7 @@ public class LogicalReplicationEventProcessor {
         final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
+        final List<String> columnTypes = tableMetadata.getColumnTypes();
         final long eventTimestampMillis = currentEventTimestamp;
 
         TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
@@ -289,9 +300,9 @@ public class LogicalReplicationEventProcessor {
 
         } else if (tupleDataType == TupleDataType.OLD) {
             // Replica Identity is set to full, containing both old and new row data
-            Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames);
+            Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
             msg.get();  // should be a char 'N'
-            Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames);
+            Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
 
             if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
                 createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
@@ -326,12 +337,12 @@ public class LogicalReplicationEventProcessor {
                            List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
         bytesReceived = msg.capacity();
         bytesReceivedSummary.record(bytesReceived);
-        Map<String, Object> rowDataMap = getRowDataMap(msg, columnNames);
-
+        final List<String> columnTypes = tableMetadata.getColumnTypes();
+        Map<String, Object> rowDataMap = getRowDataMap(msg, columnNames, columnTypes);
         createPipelineEvent(rowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, bulkAction);
     }
 
-    private Map<String, Object> getRowDataMap(ByteBuffer msg, List<String> columnNames) {
+    private Map<String, Object> getRowDataMap(ByteBuffer msg, List<String> columnNames, List<String> columnTypes) {
         Map<String, Object> rowDataMap = new HashMap<>();
         short numberOfColumns = msg.getShort();
         for (int i = 0; i < numberOfColumns; i++) {
@@ -342,7 +353,12 @@ public class LogicalReplicationEventProcessor {
                 int length = msg.getInt();
                 byte[] bytes = new byte[length];
                 msg.get(bytes);
-                rowDataMap.put(columnNames.get(i), new String(bytes));
+                final String value = new String(bytes, StandardCharsets.UTF_8);
+                final String columnName = columnNames.get(i);
+                final String columnType = columnTypes.get(i);
+                final Object data = PostgresDataTypeHelper.getDataByColumnType(PostgresDataType.byDataType(columnType), columnName,
+                        value);
+                rowDataMap.put(columnNames.get(i), data);
             } else {
                 LOG.warn("Unknown column type: {}", type);
             }
