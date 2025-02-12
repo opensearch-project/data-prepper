@@ -105,7 +105,7 @@ class MySQLResyncWorkerTest {
         when(progressState.getPrimaryKeys()).thenReturn(List.of(primaryKeyName));
         when(queryManager.selectRows(queryStatement)).thenReturn(rows);
         when(dbTableMetadata.getTableColumnDataTypeMap()).thenReturn(tableColumnTypeMap);
-        when(recordConverter.convert(any(Event.class), eq(database), eq(table), eq(OpenSearchBulkActions.INDEX),
+        when(recordConverter.convert(any(Event.class), eq(database), eq(database), eq(table), eq(OpenSearchBulkActions.INDEX),
                 eq(List.of(primaryKeyName)), eq(eventTimestampMillis), eq(eventTimestampMillis), eq(null)))
                 .thenReturn(dataPrepperEvent);
 

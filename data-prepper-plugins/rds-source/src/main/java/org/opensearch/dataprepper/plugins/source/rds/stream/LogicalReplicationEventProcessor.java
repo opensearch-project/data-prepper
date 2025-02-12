@@ -222,14 +222,15 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        final List<String> primaryKeys = getPrimaryKeys(schemaName, tableName);
-        final TableMetadata tableMetadata = TableMetadata.builder().
-                withTableName(tableName).
-                withDatabaseName(schemaName).
-                withColumnNames(columnNames).
-                withColumnTypes(columnTypes).
-                withPrimaryKeys(primaryKeys).
-                build();
+        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
+        final List<String> primaryKeys = getPrimaryKeys(databaseName, schemaName, tableName);
+        final TableMetadata tableMetadata = TableMetadata.builder()
+                .withDatabaseName(databaseName)
+                .withSchemaName(schemaName)
+                .withTableName(tableName)
+                .withColumnNames(columnNames)
+                .withPrimaryKeys(primaryKeys)
+                .build();
 
         tableMetadataMap.put((long) tableId, tableMetadata);
 
@@ -375,6 +376,7 @@ public class LogicalReplicationEventProcessor {
         final Event pipelineEvent = recordConverter.convert(
                 dataPrepperEvent,
                 tableMetadata.getDatabaseName(),
+                tableMetadata.getSchemaName(),
                 tableMetadata.getTableName(),
                 bulkAction,
                 primaryKeys,
@@ -432,11 +434,14 @@ public class LogicalReplicationEventProcessor {
         return sb.toString();
     }
 
-    private List<String> getPrimaryKeys(String schemaName, String tableName) {
-        final String databaseName = sourceConfig.getTableNames().get(0).split("\\.")[0];
+    private List<String> getPrimaryKeys(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
 
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
+    }
+
+    private String getDatabaseName(List<String> tableNames) {
+        return tableNames.get(0).split("\\.")[0];
     }
 
     private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
