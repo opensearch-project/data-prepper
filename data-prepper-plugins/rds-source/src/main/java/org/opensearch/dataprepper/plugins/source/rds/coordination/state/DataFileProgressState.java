@@ -27,8 +27,8 @@ public class DataFileProgressState {
     private String sourceDatabase;
 
     /**
-     * For PostgreSQL engine type, schema is the schema name.
-     * For MySQL engine type, this field will store database name, same as sourceDataBase field.
+     * For PostgreSQL engine type, sourceSchema is the schema name.
+     * For MySQL engine type, this field will store database name, same as sourceDatabase field.
      */
     @JsonProperty("sourceSchema")
     private String sourceSchema;
