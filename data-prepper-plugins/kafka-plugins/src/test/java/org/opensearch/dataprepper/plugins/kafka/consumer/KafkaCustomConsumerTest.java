@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.consumer;
 
 import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -29,13 +30,14 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
@@ -47,8 +49,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
@@ -90,6 +92,9 @@ public class KafkaCustomConsumerTest {
     private KafkaTopicConsumerMetrics topicMetrics;
 
     @Mock
+    private PipelineDescription  pipelineDescription;
+
+    @Mock
     private PauseConsumePredicate pauseConsumePredicate;
 
     private KafkaCustomConsumer consumer;
@@ -123,7 +128,7 @@ public class KafkaCustomConsumerTest {
     private boolean resumed;
 
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws JsonProcessingException {
         delayTime = Duration.ofMillis(10);
         paused = false;
         resumed = false;
@@ -190,13 +195,15 @@ public class KafkaCustomConsumerTest {
                 acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
 
-    private BlockingBuffer<Record<Event>> getBuffer() {
+    private BlockingBuffer<Record<Event>> getBuffer() throws JsonProcessingException {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 10);
         integerHashMap.put("batch_size", 10);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<>(pluginSetting);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(integerHashMap);
+        BlockingBufferConfig blockingBufferConfig = objectMapper.readValue(json, BlockingBufferConfig.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        return new BlockingBuffer<>(blockingBufferConfig, pipelineDescription);
     }
 
     @Test
@@ -272,6 +279,7 @@ public class KafkaCustomConsumerTest {
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
         }
     }
+
     @Test
     public void testPlainTextConsumeRecords() throws InterruptedException {
         String topic = topicConfig.getName();
