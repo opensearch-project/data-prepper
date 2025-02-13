@@ -210,14 +210,6 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        // TODO tlongo is this test still relevant?
-        public void testParseExportTraceServiceRequest_ScopeSpansTakesPrecedenceOverInstrumentationLibrarySpans() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
-            validateSpans(spans);
-        }
-
-        @Test
         public void testParseExportTraceServiceRequest_NoSpans() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_NO_SPANS_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());

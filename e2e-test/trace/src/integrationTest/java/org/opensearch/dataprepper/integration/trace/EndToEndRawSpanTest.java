@@ -263,8 +263,8 @@ public class EndToEndRawSpanTest {
         for(int i=0; i<exportTraceServiceRequests.length; i++) {
             exportTraceServiceRequests[i].getResourceSpansList().forEach( resourceSpans -> {
                 final String resourceName = getServiceName(resourceSpans);
-                resourceSpans.getScopeSpansList().forEach( instrumentationLibrarySpans -> {
-                    instrumentationLibrarySpans.getSpansList().forEach(span -> {
+                resourceSpans.getScopeSpansList().forEach( scopeSpans -> {
+                    scopeSpans.getSpansList().forEach(span -> {
                         expectedDocuments.add(getExpectedEsDocumentSource(span, resourceName));
                     });
                 });
