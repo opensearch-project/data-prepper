@@ -229,6 +229,7 @@ public class LogicalReplicationEventProcessor {
                 .withSchemaName(schemaName)
                 .withTableName(tableName)
                 .withColumnNames(columnNames)
+                .withColumnTypes(columnTypes)
                 .withPrimaryKeys(primaryKeys)
                 .build();
 
