@@ -98,6 +98,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         try {
             if (buffer.isByteBuffer()) {
                 Map<String, ExportTraceServiceRequest> requestsMap = oTelProtoDecoder.splitExportTraceServiceRequestByTraceId(request);
+                // TODO tlongo remove
                 ExportTraceServiceRequest tmp;
                 for (Map.Entry<String, ExportTraceServiceRequest> entry: requestsMap.entrySet()) {
                     buffer.writeBytes(entry.getValue().toByteArray(), entry.getKey(), bufferWriteTimeoutInMillis);
