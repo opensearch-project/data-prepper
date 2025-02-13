@@ -135,6 +135,7 @@ public class AggregateProcessorITWithAcks {
         when(pipeline.isStopRequested()).thenReturn(false).thenReturn(true);
         when(source.areAcknowledgementsEnabled()).thenReturn(true);
         when(pipeline.getSource()).thenReturn(source);
+        when(pipeline.getBuffer()).thenReturn(buffer);
         when(buffer.isEmpty()).thenReturn(true);
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(100));
         when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(500);
