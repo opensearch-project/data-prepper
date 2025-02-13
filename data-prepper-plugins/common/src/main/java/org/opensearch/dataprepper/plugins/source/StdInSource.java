@@ -6,8 +6,9 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
@@ -25,7 +26,7 @@ import static java.lang.String.format;
  * A simple source which reads data from console each line at a time. It exits when it reads case insensitive "exit"
  * from console or if Pipeline notifies to stop.
  */
-@DataPrepperPlugin(name = "stdin", pluginType = Source.class)
+@DataPrepperPlugin(name = "stdin", pluginType = Source.class, pluginConfigurationType = StdInSourceConfig.class)
 public class StdInSource implements Source<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(StdInSource.class);
     private static final String ATTRIBUTE_TIMEOUT = "write_timeout";
@@ -37,16 +38,16 @@ public class StdInSource implements Source<Record<Event>> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
-     * runtime engine to construct an instance of {@link StdInSource} using an instance of {@link PluginSetting} which
-     * has access to pluginSetting metadata from pipeline
-     * pluginSetting file.
+     * runtime engine to construct an instance of {@link StdInSource} using an instance of {@link StdInSourceConfig}
      *
-     * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
+     * @param stdInSourceConfig The configuration instance for {@link StdInSource}
+     * @param pipelineDescription The pipeline description which has access to pipeline Name
      */
-    public StdInSource(final PluginSetting pluginSetting) {
-        this(checkNotNull(pluginSetting, "PluginSetting cannot be null")
-                        .getIntegerOrDefault(ATTRIBUTE_TIMEOUT, WRITE_TIMEOUT),
-                pluginSetting.getPipelineName());
+    @DataPrepperPluginConstructor
+    public StdInSource(final StdInSourceConfig stdInSourceConfig, final PipelineDescription pipelineDescription) {
+        this(checkNotNull(stdInSourceConfig, "StdInSourceConfig cannot be null")
+                        .getWriteTimeout(),
+                pipelineDescription.getPipelineName());
     }
 
     public StdInSource(final int writeTimeout, final String pipelineName) {
