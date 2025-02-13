@@ -231,7 +231,7 @@ public class DataFileLoader implements Runnable {
             }
         } catch (Exception e) {
             if (acknowledgementSet != null) {
-                acknowledgementSet.shutdown();
+                acknowledgementSet.cancel();
             }
             checkpointer.checkpoint(lineCount);
             String errorMessage = String.format("Loading of s3://%s/%s completed with Exception: %s", bucketName, key, e.getMessage());

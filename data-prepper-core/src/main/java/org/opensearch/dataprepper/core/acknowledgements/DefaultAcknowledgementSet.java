@@ -73,7 +73,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     }
 
     @Override
-    public void shutdown() {
+    public void cancel() {
         if (progressCheckFuture != null) {
             progressCheckFuture.cancel(true);
         }

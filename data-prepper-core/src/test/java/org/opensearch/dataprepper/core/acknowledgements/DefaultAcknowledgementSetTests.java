@@ -304,7 +304,7 @@ class DefaultAcknowledgementSetTests {
         ReflectivelySetField.setField(DefaultAcknowledgementSet.class, objectUnderTest, "progressCheckFuture", progressCheck);
         ReflectivelySetField.setField(DefaultAcknowledgementSet.class, objectUnderTest, "callbackFuture", callbackFuture);
 
-        objectUnderTest.shutdown();
+        objectUnderTest.cancel();
 
         verify(callbackFuture).cancel(false);
         verify(progressCheck).cancel(true);

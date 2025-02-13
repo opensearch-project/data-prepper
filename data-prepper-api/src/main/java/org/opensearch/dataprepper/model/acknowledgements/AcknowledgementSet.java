@@ -89,5 +89,5 @@ public interface AcknowledgementSet {
 
     Instant getExpirationTime();
 
-    void shutdown();
+    void cancel();
 }

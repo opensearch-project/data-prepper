@@ -260,6 +260,43 @@ class ShardConsumerTest {
     }
 
     @Test
+    void test_run_shardConsumer_with_acknowledgments_and_error_cancels_acknowledgment_set() throws Exception {
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+
+        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
+
+        ShardConsumer shardConsumer;
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
+        ) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                    .shardIterator(shardIterator)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
+                    .acknowledgmentSet(acknowledgementSet)
+                    .waitForExport(false)
+                    .build();
+        }
+
+        assertThrows(RuntimeException.class, shardConsumer::run);
+
+        final ArgumentCaptor<Consumer> progressCheckConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(acknowledgementSet).addProgressCheck(progressCheckConsumerArgumentCaptor.capture(), any(Duration.class));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckConsumerArgumentCaptor.getValue();
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+
+        verify(acknowledgementSet).increaseExpiry(any(Duration.class));
+
+        verify(acknowledgementSet).cancel();
+    }
+
+    @Test
     void test_run_shardConsumer_catches_5xx_exception_and_increments_metric() {
         ShardConsumer shardConsumer;
         when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);

@@ -333,7 +333,7 @@ public class ShardConsumer implements Runnable {
             }
         } catch (final Exception exc) {
             if (acknowledgementSet != null) {
-                acknowledgementSet.shutdown();
+                acknowledgementSet.cancel();
             }
             throw exc;
         }
