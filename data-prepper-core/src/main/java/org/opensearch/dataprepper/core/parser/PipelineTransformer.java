@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
+import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
@@ -227,6 +229,11 @@ public class PipelineTransformer {
                     eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
+
+            if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+                ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline));
+            }
+
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
