@@ -40,9 +40,11 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.zip.GZIPOutputStream;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -97,7 +99,7 @@ class DataFileLoaderTest {
     private final int total = random.nextInt(10) + 1;
 
     @BeforeEach
-    void setup() throws IOException {
+    void setup() {
 
         DataFileProgressState state = new DataFileProgressState();
         state.setLoaded(0);
@@ -114,7 +116,6 @@ class DataFileLoaderTest {
                 .build();
         tableInfo = new TableInfo(tableArn, metadata);
 
-        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(generateGzipInputStream(total));
         objectReader = new S3ObjectReader(s3Client);
     }
 
@@ -148,7 +149,8 @@ class DataFileLoaderTest {
     }
 
     @Test
-    void test_run_loadFile_correctly() {
+    void test_run_loadFile_correctly() throws IOException {
+        lenient().when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(generateGzipInputStream(total));
         DataFileLoader loader;
         try (
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
@@ -176,8 +178,8 @@ class DataFileLoaderTest {
     }
 
     @Test
-    void run_loadFile_with_acknowledgments_processes_correctly() {
-
+    void run_loadFile_with_acknowledgments_processes_correctly() throws IOException {
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(generateGzipInputStream(total));
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
 
@@ -210,6 +212,35 @@ class DataFileLoaderTest {
 
 
         verify(acknowledgementSet).complete();
+    }
+
+    @Test
+    void run_loadFile_with_acknowledgments_and_error_cancels_acknowledgment_set() {
+
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenThrow(RuntimeException.class);
+
+        DataFileLoader loader;
+        try (
+                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class);
+                final MockedConstruction<ExportRecordConverter> recordConverterMockedConstruction = mockConstruction(ExportRecordConverter.class, (mock, context) -> {
+                    exportRecordConverter = mock;
+                })) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            loader = DataFileLoader.builder(objectReader, pluginMetrics, buffer)
+                    .bucketName(bucketName)
+                    .key(manifestKey)
+                    .checkpointer(checkpointer)
+                    .tableInfo(tableInfo)
+                    .acknowledgmentSet(acknowledgementSet)
+                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
+                    .build();
+        }
+
+        assertThrows(RuntimeException.class, loader::run);
+
+        verify(acknowledgementSet).cancel();
     }
 
 }
