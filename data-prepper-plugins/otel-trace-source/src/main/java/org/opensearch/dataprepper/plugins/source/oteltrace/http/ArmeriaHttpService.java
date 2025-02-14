@@ -60,8 +60,6 @@ public class ArmeriaHttpService {
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
-    // todo tlongo healthcheck?
-
     // todo tlongo make path configurable
     @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
     @Consumes(value = "application/json")
@@ -74,7 +72,6 @@ public class ArmeriaHttpService {
         return ExportTraceServiceResponse.newBuilder().build();
     }
 
-    // todo tlongo exract in order to be used by http and grpc?
     private void processRequest(final ExportTraceServiceRequest request) {
         final Collection<Span> spans;
 
