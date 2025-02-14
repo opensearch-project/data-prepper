@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
@@ -40,9 +39,6 @@ public class StreamRecordConverter extends RecordConverter {
     static final String BYTES_PROCESSED = "bytesProcessed";
 
     private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
-
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
-    };
 
     private final StreamConfig streamConfig;
 
@@ -127,44 +123,43 @@ public class StreamRecordConverter extends RecordConverter {
 
         data.forEach(((attributeName, attributeValue) -> {
             //dealing with all dynamo db attribute types
-            if (attributeValue.type() == AttributeValue.Type.N) {
-                // N for number
-                result.put(attributeName, new BigDecimal(attributeValue.n()));
-            } else if (attributeValue.type() == AttributeValue.Type.B) {
-                // B for Binary
-                result.put(attributeName, BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
-            } else if (attributeValue.type() == AttributeValue.Type.S) {
-                // S for String
-                result.put(attributeName, attributeValue.s());
-            } else if (attributeValue.type() == AttributeValue.Type.BOOL) {
-                // BOOL for Boolean
-                result.put(attributeName, attributeValue.bool());
-            } else if (attributeValue.type() == AttributeValue.Type.NS) {
-                // NS for Number Set
-                result.put(attributeName,
-                        attributeValue.ns().stream()
-                                .map(BigDecimal::new)
-                                .collect(Collectors.toSet())
-                );
-            } else if (attributeValue.type() == AttributeValue.Type.BS) {
-                // BS for Binary Set
-                result.put(attributeName, attributeValue.bs().stream()
-                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
-                        .collect(Collectors.toSet()));
-            } else if (attributeValue.type() == AttributeValue.Type.SS) {
-                // SS for String Set
-                result.put(attributeName, attributeValue.ss());
-            } else if (attributeValue.type() == AttributeValue.Type.L) {
-                // L for List
-                result.put(attributeName, convertListData(attributeValue.l()));
-            } else if (attributeValue.type() == AttributeValue.Type.M) {
-                // M for Map
-                result.put(attributeName, convertData(attributeValue.m()));
-            } else if (attributeValue.type() == AttributeValue.Type.NUL) {
-                // NUL for Null
-                result.put(attributeName, null);
-            } else {
-                throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
+            switch (attributeValue.type()){
+                case N:     // N for number
+                    result.put(attributeName, new BigDecimal(attributeValue.n()));
+                    break;
+                case B:     // B for Binary
+                    result.put(attributeName, BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
+                    break;
+                case S:     // S for String
+                    result.put(attributeName, attributeValue.s());
+                    break;
+                case BOOL:  // BOOL for Boolean
+                    result.put(attributeName, attributeValue.bool());
+                    break;
+                case NS:    // NS for Number Set
+                    result.put(attributeName,
+                            attributeValue.ns().stream()
+                                    .map(BigDecimal::new).collect(Collectors.toSet()));
+                    break;
+                case BS:    // BS for Binary Set
+                    result.put(attributeName, attributeValue.bs().stream()
+                            .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                            .collect(Collectors.toSet()));
+                    break;
+                case SS:    // SS for String Set
+                    result.put(attributeName, attributeValue.ss());
+                    break;
+                case L:     // L for List
+                    result.put(attributeName, convertListData(attributeValue.l()));
+                    break;
+                case M:     // M for Map
+                    result.put(attributeName, convertData(attributeValue.m()));
+                    break;
+                case NUL:  // NUL for Null
+                    result.put(attributeName, null);
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
             }
         }));
         return result;
@@ -175,43 +170,42 @@ public class StreamRecordConverter extends RecordConverter {
 
         data.forEach(((attributeValue) -> {
             //dealing with all dynamo db attribute types
-            if (attributeValue.type() == AttributeValue.Type.N) {
-                // N for number
-                result.add(new BigDecimal(attributeValue.n()));
-            } else if (attributeValue.type() == AttributeValue.Type.B) {
-                // B for Binary
-                result.add(BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
-            } else if (attributeValue.type() == AttributeValue.Type.S) {
-                // S for String
-                result.add(attributeValue.s());
-            } else if (attributeValue.type() == AttributeValue.Type.BOOL) {
-                // BOOL for Boolean
-                result.add(attributeValue.bool());
-            } else if (attributeValue.type() == AttributeValue.Type.NS) {
-                // NS for Number Set
-                result.add(attributeValue.ns().stream()
-                                .map(BigDecimal::new)
-                                .collect(Collectors.toSet())
-                );
-            } else if (attributeValue.type() == AttributeValue.Type.BS) {
-                // BS for Binary Set
-                result.add(attributeValue.bs().stream()
-                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
-                        .collect(Collectors.toSet()));
-            } else if (attributeValue.type() == AttributeValue.Type.SS) {
-                // SS for String Set
-                result.add(attributeValue.ss());
-            } else if (attributeValue.type() == AttributeValue.Type.L) {
-                // L for List
-                result.add(convertListData(attributeValue.l()));
-            } else if (attributeValue.type() == AttributeValue.Type.M) {
-                // M for Map
-                result.add(convertData(attributeValue.m()));
-            } else if (attributeValue.type() == AttributeValue.Type.NUL) {
-                // NUL for Null
-                result.add(null);
-            } else {
-                throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
+            switch (attributeValue.type()) {
+                case N:     // N for number
+                    result.add(new BigDecimal(attributeValue.n()));
+                    break;
+                case B:     // B for Binary
+                    result.add(BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
+                    break;
+                case S:      // S for String
+                    result.add(attributeValue.s());
+                    break;
+                case BOOL:   // BOOL for Boolean
+                    result.add(attributeValue.bool());
+                    break;
+                case NS:     // NS for Number Set
+                    result.add(attributeValue.ns().stream()
+                            .map(BigDecimal::new).collect(Collectors.toSet()));
+                    break;
+                case BS:    // BS for Binary Set
+                    result.add(attributeValue.bs().stream()
+                            .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                            .collect(Collectors.toSet()));
+                    break;
+                case SS:    // SS for String Set
+                    result.add(attributeValue.ss());
+                    break;
+                case L:     // L for List
+                    result.add(convertListData(attributeValue.l()));
+                    break;
+                case M:     // M for Map
+                    result.add(convertData(attributeValue.m()));
+                    break;
+                case NUL:   // NUL for Null
+                    result.add(null);
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
             }
         }));
         return result;
