@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class LogicalReplicationEventProcessor {
+
     enum TupleDataType {
         NEW('N'),
         KEY('K'),
@@ -76,6 +77,7 @@ public class LogicalReplicationEventProcessor {
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
+    static final String DOT_DELIMITER_REGEX = "\\.";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -222,14 +224,16 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        final List<String> primaryKeys = getPrimaryKeys(schemaName, tableName);
-        final TableMetadata tableMetadata = TableMetadata.builder().
-                withTableName(tableName).
-                withDatabaseName(schemaName).
-                withColumnNames(columnNames).
-                withColumnTypes(columnTypes).
-                withPrimaryKeys(primaryKeys).
-                build();
+        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
+        final List<String> primaryKeys = getPrimaryKeys(databaseName, schemaName, tableName);
+        final TableMetadata tableMetadata = TableMetadata.builder()
+                .withDatabaseName(databaseName)
+                .withSchemaName(schemaName)
+                .withTableName(tableName)
+                .withColumnNames(columnNames)
+                .withColumnTypes(columnTypes)
+                .withPrimaryKeys(primaryKeys)
+                .build();
 
         tableMetadataMap.put((long) tableId, tableMetadata);
 
@@ -375,6 +379,7 @@ public class LogicalReplicationEventProcessor {
         final Event pipelineEvent = recordConverter.convert(
                 dataPrepperEvent,
                 tableMetadata.getDatabaseName(),
+                tableMetadata.getSchemaName(),
                 tableMetadata.getTableName(),
                 bulkAction,
                 primaryKeys,
@@ -432,11 +437,14 @@ public class LogicalReplicationEventProcessor {
         return sb.toString();
     }
 
-    private List<String> getPrimaryKeys(String schemaName, String tableName) {
-        final String databaseName = sourceConfig.getTableNames().get(0).split("\\.")[0];
+    private List<String> getPrimaryKeys(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
 
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
+    }
+
+    private String getDatabaseName(List<String> tableNames) {
+        return tableNames.get(0).split(DOT_DELIMITER_REGEX)[0];
     }
 
     private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {

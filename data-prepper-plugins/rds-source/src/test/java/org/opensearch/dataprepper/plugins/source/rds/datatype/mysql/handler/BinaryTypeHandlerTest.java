@@ -22,11 +22,11 @@ public class BinaryTypeHandlerTest {
         final MySQLDataType columnType = MySQLDataType.BINARY;
         final String columnName = "binaryColumn";
         final String testData = UUID.randomUUID().toString();
-        final TableMetadata metadata = TableMetadata.builder().
-                withTableName(UUID.randomUUID().toString()).
-                withDatabaseName(UUID.randomUUID().toString()).
-                withColumnNames(List.of(columnName)).
-                withPrimaryKeys(List.of(columnName))
+        final TableMetadata metadata = TableMetadata.builder()
+                .withTableName(UUID.randomUUID().toString())
+                .withDatabaseName(UUID.randomUUID().toString())
+                .withColumnNames(List.of(columnName))
+                .withPrimaryKeys(List.of(columnName))
                 .build();
         final Object result = handler.handle(columnType, columnName, testData.getBytes(), metadata);
 

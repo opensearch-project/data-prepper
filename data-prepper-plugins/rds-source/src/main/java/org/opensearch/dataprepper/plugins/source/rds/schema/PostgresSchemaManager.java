@@ -102,19 +102,19 @@ public class PostgresSchemaManager implements SchemaManager {
                         primaryKeys.add(rs.getString(COLUMN_NAME));
                     }
                     if (primaryKeys.isEmpty()) {
-                        throw new NoSuchElementException("No primary keys found for table " + table);
+                        throw new NoSuchElementException("No primary keys found for table " + fullTableName);
                     }
                     return primaryKeys;
                 }
             } catch (NoSuchElementException e) {
                 throw e;
             } catch (Exception e) {
-                LOG.error("Failed to get primary keys for table {}, retrying", table, e);
+                LOG.error("Failed to get primary keys for table {}, retrying", fullTableName, e);
             }
             applyBackoff();
             retry++;
         }
-        throw new RuntimeException("Failed to get primary keys for table " + table);
+        throw new RuntimeException("Failed to get primary keys for table " + fullTableName);
     }
 
     private void applyBackoff() {
