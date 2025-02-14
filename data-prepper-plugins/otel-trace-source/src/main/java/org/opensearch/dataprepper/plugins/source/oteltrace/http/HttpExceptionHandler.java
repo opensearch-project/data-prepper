@@ -4,7 +4,7 @@ package org.opensearch.dataprepper.plugins.source.oteltrace.http;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
-import org.opensearch.dataprepper.GrpcRetryInfoCalculator;
+import org.opensearch.dataprepper.RetryInfoCalculator;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
@@ -43,14 +43,14 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
     private final Counter badRequestsCounter;
     private final Counter requestsTooLargeCounter;
     private final Counter internalServerErrorCounter;
-    private final GrpcRetryInfoCalculator retryInfoCalculator;
+    private final RetryInfoCalculator retryInfoCalculator;
 
     public HttpExceptionHandler(final PluginMetrics pluginMetrics, Duration retryInfoMinDelay, Duration retryInfoMaxDelay) {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
         requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
         internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
-        this.retryInfoCalculator = new GrpcRetryInfoCalculator(retryInfoMinDelay, retryInfoMaxDelay);
+        this.retryInfoCalculator = new RetryInfoCalculator(retryInfoMinDelay, retryInfoMaxDelay);
     }
 
     @Override

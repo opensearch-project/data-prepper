@@ -6,8 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
-// todo tlongo rename
-public class GrpcRetryInfoCalculator {
+public class RetryInfoCalculator {
 
     private final Duration minimumDelay;
     private final Duration maximumDelay;
@@ -15,7 +14,7 @@ public class GrpcRetryInfoCalculator {
     private final AtomicReference<Instant> lastTimeCalled;
     private final AtomicReference<Duration> nextDelay;
 
-    public GrpcRetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
+    public RetryInfoCalculator(Duration minimumDelay, Duration maximumDelay) {
         this.minimumDelay = minimumDelay;
         this.maximumDelay = maximumDelay;
         // Create a cushion so that the calculator treats a first quick exception (after prepper startup) as normal request (e.g. does not calculate a backoff)
