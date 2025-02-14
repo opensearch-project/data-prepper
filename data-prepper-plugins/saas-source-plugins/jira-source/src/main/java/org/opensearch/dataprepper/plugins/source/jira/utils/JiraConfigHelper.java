@@ -47,6 +47,7 @@ public class JiraConfigHelper {
     /**
      * Get Issue Types Filter from repository configuration.
      *
+     * @param repositoryConfiguration repo config
      * @return List Issue Type Filter.
      */
     public static List<String> getIssueTypeIncludeFilter(JiraSourceConfig repositoryConfiguration) {
@@ -67,6 +68,7 @@ public class JiraConfigHelper {
      * Get Project Filter Types from repository configuration.
      * public static final String ST = "status";
      *
+     * @param repositoryConfiguration repo config
      * @return List Project Filter.
      */
     public static List<String> getProjectNameIncludeFilter(JiraSourceConfig repositoryConfiguration) {

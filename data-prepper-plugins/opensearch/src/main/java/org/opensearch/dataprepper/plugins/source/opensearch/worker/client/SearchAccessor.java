@@ -40,7 +40,7 @@ public interface SearchAccessor {
     /**
      * Searches using a PIT context
      * @param searchPointInTimeRequest payload for searching with PIT context
-     * @return
+     * @return SearchWithSearchAfterResults seach results
      * @since 2.4
      */
     SearchWithSearchAfterResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest);
@@ -55,7 +55,7 @@ public interface SearchAccessor {
     /**
      * Creates scroll context
      * @param createScrollRequest payload for creating the scroll context
-     * @return
+     * @return CreateScrollResponse create scroll response
      * @since 2.4
      */
     CreateScrollResponse createScroll(CreateScrollRequest createScrollRequest);
@@ -63,7 +63,7 @@ public interface SearchAccessor {
     /**
      * Search with scroll context.
      * @param searchScrollRequest payload for searching with scroll context
-     * @return
+     * @return SearchScrollResponse search scroll response
      */
     SearchScrollResponse searchWithScroll(SearchScrollRequest searchScrollRequest);
 
@@ -75,6 +75,8 @@ public interface SearchAccessor {
 
     /**
      * Searches with sort and search_after without using any search contexts (Point-in-Time or Scroll)
+     * @param noSearchContextSearchRequest nosearch context request
+     * @return SearchWithSearchAfterResults search results
      */
     SearchWithSearchAfterResults searchWithoutSearchContext(NoSearchContextSearchRequest noSearchContextSearchRequest);
 }

@@ -5,6 +5,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.util.CustomLambdaRetryCondition;
 import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -48,19 +49,20 @@ public final class LambdaClientFactory {
             .maxBackoffTime(clientOptions.getMaxBackoff())
             .build();
 
-    final RetryPolicy retryPolicy = RetryPolicy.builder()
+    final RetryPolicy customRetryPolicy = RetryPolicy.builder()
+            .retryCondition(new CustomLambdaRetryCondition())
             .numRetries(clientOptions.getMaxConnectionRetries())
             .backoffStrategy(backoffStrategy)
             .build();
 
     return ClientOverrideConfiguration.builder()
-            .retryPolicy(retryPolicy)
+            .retryPolicy(customRetryPolicy)
             .addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics))
             .apiCallTimeout(clientOptions.getApiCallTimeout())
             .build();
   }
 
-  private static AwsCredentialsOptions convertToCredentialsOptions(
+  public static AwsCredentialsOptions convertToCredentialsOptions(
           final AwsAuthenticationOptions awsAuthenticationOptions) {
     return AwsCredentialsOptions.builder()
             .withRegion(awsAuthenticationOptions.getAwsRegion())

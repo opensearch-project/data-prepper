@@ -35,6 +35,10 @@ public class ShardConsumer implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ShardConsumer.class);
 
+    private static final Duration ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME = Duration.ofMinutes(10);
+
+    private static final Duration ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL = Duration.ofMinutes(3);
+
     /**
      * A flag to interrupt the process
      */
@@ -74,7 +78,7 @@ public class ShardConsumer implements Runnable {
     /**
      * Default number of times in the wait for export to do regular checkpoint.
      */
-    private static final int DEFAULT_WAIT_COUNT_TO_CHECKPOINT = 5;
+    private static final int DEFAULT_WAIT_COUNT_TO_CHECKPOINT = 3;
 
     /**
      * Default regular checkpoint interval
@@ -245,78 +249,93 @@ public class ShardConsumer implements Runnable {
             return;
         }
 
+        if (acknowledgementSet != null) {
+            addProgressCheck(acknowledgementSet);
+        }
+
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
         int interval;
         List<software.amazon.awssdk.services.dynamodb.model.Record> records;
 
-        while (!shouldStop) {
-            if (shardIterator == null) {
-                // End of Shard
-                LOG.debug("Reached end of shard");
-                checkpointer.checkpoint(sequenceNumber);
-                break;
-            }
-
-            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
-                checkpointer.checkpoint(sequenceNumber);
-                lastCheckpointTime = System.currentTimeMillis();
-            }
-
-            GetRecordsResponse response = callGetRecords(shardIterator);
-            shardIterator = response.nextShardIterator();
-            if (!response.records().isEmpty()) {
-                // Always use the last sequence number for checkpoint
-                sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
-                Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
-
-                if (lastEventTime.isBefore(startTime)) {
-                    LOG.debug("Get {} events before start time, ignore...", response.records().size());
-                    continue;
-                }
-                if (waitForExport) {
+        try {
+            while (!shouldStop) {
+                if (shardIterator == null) {
+                    // End of Shard
+                    LOG.debug("Reached end of shard");
                     checkpointer.checkpoint(sequenceNumber);
-                    waitForExport();
-                    waitForExport = false;
+                    break;
                 }
-                records = response.records().stream()
-                        .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
-                        .collect(Collectors.toList());
-                recordConverter.writeToBuffer(acknowledgementSet, records);
-                shardProgress.increment();
-                recordsWrittenToBuffer += records.size();
-                long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
-                interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
 
-            } else {
-                interval = GET_RECORD_INTERVAL_MILLS;
-                shardProgress.increment();
+                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                    LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
+                    if (acknowledgementSet != null) {
+                        checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+                    } else {
+                        checkpointer.checkpoint(sequenceNumber);
+                    }
+                    lastCheckpointTime = System.currentTimeMillis();
+                }
+
+                GetRecordsResponse response = callGetRecords(shardIterator);
+                shardIterator = response.nextShardIterator();
+                if (!response.records().isEmpty()) {
+                    // Always use the last sequence number for checkpoint
+                    sequenceNumber = response.records().get(response.records().size() - 1).dynamodb().sequenceNumber();
+                    Instant lastEventTime = response.records().get(response.records().size() - 1).dynamodb().approximateCreationDateTime();
+
+                    if (lastEventTime.isBefore(startTime)) {
+                        LOG.debug("Get {} events before start time, ignore...", response.records().size());
+                        continue;
+                    }
+                    if (waitForExport) {
+                        checkpointer.checkpoint(sequenceNumber);
+                        waitForExport();
+                        waitForExport = false;
+                    }
+                    records = response.records().stream()
+                            .filter(record -> record.dynamodb().approximateCreationDateTime().isAfter(startTime))
+                            .collect(Collectors.toList());
+                    recordConverter.writeToBuffer(acknowledgementSet, records);
+                    shardProgress.increment();
+                    recordsWrittenToBuffer += records.size();
+                    long delay = System.currentTimeMillis() - lastEventTime.toEpochMilli();
+                    interval = delay > GET_RECORD_DELAY_THRESHOLD_MILLS ? MINIMUM_GET_RECORD_INTERVAL_MILLS : GET_RECORD_INTERVAL_MILLS;
+
+                } else {
+                    interval = GET_RECORD_INTERVAL_MILLS;
+                    shardProgress.increment();
+                }
+
+                try {
+                    // Idle between get records call.
+                    Thread.sleep(interval);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
-            try {
-                // Idle between get records call.
-                Thread.sleep(interval);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            // interrupted
+            if (shouldStop) {
+                // Do last checkpoint and then quit
+                LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
+                checkpointer.checkpoint(sequenceNumber);
+                throw new RuntimeException("Consuming shard was interrupted from shutdown");
             }
-        }
 
-        // interrupted
-        if (shouldStop) {
-            // Do last checkpoint and then quit
-            LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
-            checkpointer.checkpoint(sequenceNumber);
-            throw new RuntimeException("Consuming shard was interrupted from shutdown");
-        }
+            if (acknowledgementSet != null) {
+                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
+                acknowledgementSet.complete();
+            }
 
-        if (acknowledgementSet != null) {
-            checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
-            acknowledgementSet.complete();
-        }
-
-        if (waitForExport) {
-            waitForExport();
+            if (waitForExport) {
+                waitForExport();
+            }
+        } catch (final Exception exc) {
+            if (acknowledgementSet != null) {
+                acknowledgementSet.cancel();
+            }
+            throw exc;
         }
     }
 
@@ -404,5 +423,10 @@ public class ShardConsumer implements Runnable {
         shouldStop = true;
     }
 
-
+    private void addProgressCheck(final AcknowledgementSet acknowledgementSet) {
+        acknowledgementSet.addProgressCheck(
+                (ignored) -> {
+                    acknowledgementSet.increaseExpiry(ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME);
+                }, ACKNOWLEDGMENT_PROGRESS_CHECK_INTERVAL);
+    }
 }

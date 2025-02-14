@@ -14,10 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -28,6 +32,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultAcknowledgementSetTests {
@@ -273,5 +279,34 @@ class DefaultAcknowledgementSetTests {
                 .untilAsserted(() -> {
                     assertThat(acknowledgementSetResult, equalTo(true));
                 });
+    }
+
+    @Test
+    void increase_expiry_increase_acknowledgment_set_expiry_time() {
+        final AcknowledgementSet objectUnderTest = createObjectUnderTest();
+        final Instant nowPlusEightSeconds = Instant.now().plusSeconds(8);
+
+        objectUnderTest.increaseExpiry(Duration.ofSeconds(10));
+
+        assertThat(objectUnderTest.getExpirationTime().isAfter(nowPlusEightSeconds), equalTo(true));
+    }
+
+    @Test
+    void shutdown_cancels_progress_check_and_callback_future() throws NoSuchFieldException, IllegalAccessException {
+        final AcknowledgementSet objectUnderTest = createObjectUnderTest();
+
+        final ScheduledFuture<?> progressCheck = mock(ScheduledFuture.class);
+        when(progressCheck.cancel(true)).thenReturn(true);
+
+        final Future<?> callbackFuture = mock(Future.class);
+        when(callbackFuture.cancel(false)).thenReturn(true);
+
+        ReflectivelySetField.setField(DefaultAcknowledgementSet.class, objectUnderTest, "progressCheckFuture", progressCheck);
+        ReflectivelySetField.setField(DefaultAcknowledgementSet.class, objectUnderTest, "callbackFuture", callbackFuture);
+
+        objectUnderTest.cancel();
+
+        verify(callbackFuture).cancel(false);
+        verify(progressCheck).cancel(true);
     }
 }

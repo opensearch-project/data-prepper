@@ -13,7 +13,8 @@ import java.util.stream.Collectors;
 
 public enum EngineType {
 
-    MYSQL("mysql");
+    MYSQL("mysql"),
+    POSTGRES("postgres");
 
     private static final Map<String, EngineType> ENGINE_TYPE_MAP = Arrays.stream(EngineType.values())
             .collect(Collectors.toMap(
@@ -32,7 +33,7 @@ public enum EngineType {
     }
 
     @JsonCreator
-    public static EngineType fromOptionValue(final String option) {
+    public static EngineType fromString(final String option) {
         return ENGINE_TYPE_MAP.get(option);
     }
 }

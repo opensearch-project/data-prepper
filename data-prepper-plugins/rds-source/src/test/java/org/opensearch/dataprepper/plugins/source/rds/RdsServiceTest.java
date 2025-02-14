@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
@@ -92,6 +93,7 @@ class RdsServiceTest {
     @BeforeEach
     void setUp() {
         when(clientFactory.buildRdsClient()).thenReturn(rdsClient);
+        when(sourceConfig.getEngine()).thenReturn(EngineType.MYSQL);
     }
 
     @Test
