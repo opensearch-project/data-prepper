@@ -101,6 +101,7 @@ public class MySQLResyncWorker implements Runnable {
             final Event pipelineEvent = recordConverter.convert(
                     dataPrepperEvent,
                     database,
+                    database,
                     table,
                     OpenSearchBulkActions.INDEX,
                     primaryKeys,

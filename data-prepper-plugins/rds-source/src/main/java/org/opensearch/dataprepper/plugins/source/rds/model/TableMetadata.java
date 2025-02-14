@@ -13,6 +13,7 @@ public class TableMetadata {
     public static final String DOT_DELIMITER = ".";
 
     private final String databaseName;
+    private final String schemaName;
     private final String tableName;
     private final List<String> columnNames;
     private final List<String> columnTypes;
@@ -22,6 +23,7 @@ public class TableMetadata {
 
     private TableMetadata(final Builder builder) {
         this.databaseName = builder.databaseName;
+        this.schemaName = builder.schemaName != null ? builder.schemaName : builder.databaseName;
         this.tableName = builder.tableName;
         this.columnNames = builder.columnNames;
         this.columnTypes = builder.columnTypes;
@@ -32,6 +34,10 @@ public class TableMetadata {
 
     public String getDatabaseName() {
         return databaseName;
+    }
+
+    public String getSchemaName() {
+        return schemaName;
     }
 
     public String getTableName() {
@@ -68,6 +74,7 @@ public class TableMetadata {
 
     public static class Builder {
         private String databaseName;
+        private String schemaName;
         private String tableName;
         private List<String> columnNames = Collections.emptyList();
         private List<String> columnTypes = Collections.emptyList();
@@ -80,6 +87,11 @@ public class TableMetadata {
 
         public Builder withDatabaseName(String databaseName) {
             this.databaseName = databaseName;
+            return this;
+        }
+
+        public Builder withSchemaName(String schemaName) {
+            this.schemaName = schemaName;
             return this;
         }
 

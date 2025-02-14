@@ -390,6 +390,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             final Event pipelineEvent = recordConverter.convert(
                     dataPrepperEvent,
                     tableMetadata.getDatabaseName(),
+                    tableMetadata.getDatabaseName(),
                     tableMetadata.getTableName(),
                     bulkAction,
                     primaryKeys,
