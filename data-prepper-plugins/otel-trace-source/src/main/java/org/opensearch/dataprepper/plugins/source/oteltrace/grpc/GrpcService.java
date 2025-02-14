@@ -43,22 +43,18 @@ public class GrpcService {
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
-    private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
 
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final PluginMetrics pluginMetrics;
     private final String pipelineName;
-    // todo tlongo check why unused
-    private final CertificateProviderFactory certificateProviderFactory;
 
-    public GrpcService(PluginFactory pluginFactory, OTelTraceSourceConfig oTelTraceSourceConfig, PluginMetrics pluginMetrics, String pipelineName, CertificateProviderFactory certificateProviderFactory) {
+    public GrpcService(PluginFactory pluginFactory, OTelTraceSourceConfig oTelTraceSourceConfig, PluginMetrics pluginMetrics, String pipelineName) {
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.pipelineName = pipelineName;
         this.authenticationProvider = createAuthenticationProvider(pluginFactory, oTelTraceSourceConfig);
-        this.certificateProviderFactory = certificateProviderFactory;
     }
 
     public com.linecorp.armeria.server.grpc.GrpcService create(Buffer<Record<Object>> buffer, ServerBuilder serverBuilder) {
