@@ -29,7 +29,6 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.Counter;
 
-// todo tlongo add tests for metrics
 public class HttpExceptionHandler implements ExceptionHandlerFunction {
     private static final Logger LOG = LoggerFactory.getLogger(HttpExceptionHandler.class);
 
@@ -61,7 +60,6 @@ public class HttpExceptionHandler implements ExceptionHandlerFunction {
         StatusHolder statusHolder = createStatus(exceptionCause);
 
         try {
-            // todo tlongo why do we need this in the first place?
             JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder()
                     .add(RetryInfo.getDescriptor())
                     .build();
