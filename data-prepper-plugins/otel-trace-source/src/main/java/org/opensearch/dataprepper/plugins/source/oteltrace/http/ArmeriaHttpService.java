@@ -108,9 +108,5 @@ public class ArmeriaHttpService {
         }
 
         successRequestsCounter.increment();
-
-        // todo tlongo what is the responseObserver used for?
-//        responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
-//        responseObserver.onCompleted();
     }
 }
