@@ -608,66 +608,6 @@ class OTelTraceSourceTest {
     }
 
     @Test
-    @Disabled
-    void testOptionalHttpAuthServiOceInPlace() {
-        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
-
-        final Map<String, Object> settingsMap = new HashMap<>();
-        // todo tlongo: Providing this pipeline config to data prepper let's it refuse to boot right away. Why is this test green, then?
-        //              Because the it's the plugin factory that stumbles over the missing plugin settings. But, the plugin factory is
-        //              mocked in this whole test class, always returning a GrpcBasicAuthenticationProvider. IMO this test does not
-        //              service its purpose
-        settingsMap.put("authentication", new PluginModel("test", null));
-        settingsMap.put("unauthenticated_health_check", true);
-
-        settingsMap.put(SSL, false);
-
-        testPluginSetting = new PluginSetting(null, settingsMap);
-        testPluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-
-        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
-
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
-
-        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            source.start(buffer);
-        }
-
-        verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder).decorator(isA(String.class), isA(Function.class));
-    }
-
-    @Test
-    @Disabled // todo tlongo see testOptionalHttpAuthServiOceInPlace on why I disabled this test
-    void testOptionalHttpAuthServiceInPlaceWithUnauthenticatedDisabled() {
-        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
-
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("authentication", new PluginModel("test", null));
-        settingsMap.put("unauthenticated_health_check", false);
-
-        settingsMap.put(SSL, false);
-
-        testPluginSetting = new PluginSetting(null, settingsMap);
-        testPluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-
-        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
-
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
-
-        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
-            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            source.start(buffer);
-        }
-
-        verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder).decorator(isA(Function.class));
-    }
-
-    @Test
     void testDoubleStart() {
         // starting server
         SOURCE.start(buffer);
