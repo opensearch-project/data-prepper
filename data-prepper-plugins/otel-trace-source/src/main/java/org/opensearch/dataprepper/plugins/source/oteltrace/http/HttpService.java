@@ -6,12 +6,12 @@ import java.time.Duration;
 import java.util.Map;
 
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
-import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.RetryInfoConfig;
@@ -28,10 +28,12 @@ public class HttpService {
 
     private final PluginMetrics pluginMetrics;
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
+    private final PluginFactory pluginFactory;
 
-    public HttpService(PluginMetrics pluginMetrics, OTelTraceSourceConfig oTelTraceSourceConfig) {
+    public HttpService(PluginMetrics pluginMetrics, OTelTraceSourceConfig oTelTraceSourceConfig, PluginFactory pluginFactory) {
         this.pluginMetrics = pluginMetrics;
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
+        this.pluginFactory = pluginFactory;
     }
 
     public ArmeriaHttpService create(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
@@ -64,19 +66,6 @@ public class HttpService {
 
     private ArmeriaHttpAuthenticationProvider createAuthenticationProvider(final PluginModel authenticationConfiguration) {
         Map<String, Object> pluginSettings = authenticationConfiguration.getPluginSettings();
-
-        // controversial
-        // the world would be a nicer place, if mere configs were not be treated as plugins
-        // this method replaces the process of
-        //       yaml -> pluginmodel -> pluginsettings -> configPojo -> pluginfactory -> provider
-        // with
-        //       yaml -> configPojo -> provider (we could eliminate using Plugin* Classes all together by parsing the yaml section at startup, e.g. like retryInfo)
-        // pros:
-        //   - we can easily reason about the origins of the provider
-        //   - it becomes testable
-        // cons:
-        //   - currently tied to one impl by using 'new'.
-        // todo tlongo clarify if simplifying config handling is something worth considering in this PR
-        return new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig(pluginSettings.get("username").toString(), pluginSettings.get("password").toString()));
+        return pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, new PluginSetting(authenticationConfiguration.getPluginName(), pluginSettings));
     }
 }

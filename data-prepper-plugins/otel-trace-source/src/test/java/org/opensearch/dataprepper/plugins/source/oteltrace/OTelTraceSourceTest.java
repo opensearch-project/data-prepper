@@ -50,6 +50,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -63,6 +64,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
+import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -154,6 +156,9 @@ class OTelTraceSourceTest {
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
+    @Mock
+    private HttpBasicArmeriaHttpAuthenticationProvider armeriaHttpAuthenticationProvider;
+
     @Mock(lenient = true)
     private OTelTraceSourceConfig oTelTraceSourceConfig;
 
@@ -163,7 +168,6 @@ class OTelTraceSourceTest {
     @Mock
     private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
 
-    private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
@@ -199,6 +203,8 @@ class OTelTraceSourceTest {
 
         lenient().when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
+        lenient().when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(armeriaHttpAuthenticationProvider);
         configureObjectUnderTest();
         pipelineDescription = mock(PipelineDescription.class);
         lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);

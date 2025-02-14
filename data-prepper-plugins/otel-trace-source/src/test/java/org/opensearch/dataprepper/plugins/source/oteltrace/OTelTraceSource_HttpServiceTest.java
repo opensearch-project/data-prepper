@@ -60,6 +60,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
 import com.google.protobuf.ByteString;
@@ -243,6 +244,8 @@ class OTelTraceSource_HttpServiceTest {
     @MethodSource("generateCredentials")
     void request_with_credentials_returns_expected_status_code(AuthTestDataHolder testData) throws InvalidProtocolBufferException {
         when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic", Map.of("username", PROVIDED_CONFIG.getUsername(), "password",PROVIDED_CONFIG.getPassword())));
+        HttpBasicArmeriaHttpAuthenticationProvider authProvider = new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig(PROVIDED_CONFIG.getUsername(), PROVIDED_CONFIG.getPassword()));
+        lenient().when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class))).thenReturn(authProvider);
         SOURCE.start(buffer);
 
         makeRequestWithCredentialsAndAssertResponse("/opentelemetry.proto.collector.trace.v1.TraceService/Export",

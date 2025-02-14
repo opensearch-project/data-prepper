@@ -137,7 +137,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private void configureHttpService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
-        new HttpService(pluginMetrics, oTelTraceSourceConfig).create(serverBuilder, buffer);
+        new HttpService(pluginMetrics, oTelTraceSourceConfig, pluginFactory).create(serverBuilder, buffer);
     }
 
     private void configureHeadersAndHealthCheck(ServerBuilder serverBuilder) {
