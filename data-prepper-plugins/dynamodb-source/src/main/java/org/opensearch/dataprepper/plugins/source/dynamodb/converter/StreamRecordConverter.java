@@ -163,6 +163,8 @@ public class StreamRecordConverter extends RecordConverter {
             } else if (attributeValue.type() == AttributeValue.Type.NUL) {
                 // NUL for Null
                 result.put(attributeName, null);
+            } else {
+                throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
             }
         }));
         return result;
@@ -208,6 +210,8 @@ public class StreamRecordConverter extends RecordConverter {
             } else if (attributeValue.type() == AttributeValue.Type.NUL) {
                 // NUL for Null
                 result.add(null);
+            } else {
+                throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
             }
         }));
         return result;
