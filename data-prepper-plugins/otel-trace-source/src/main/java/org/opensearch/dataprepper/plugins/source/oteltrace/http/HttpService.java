@@ -23,7 +23,6 @@ import com.linecorp.armeria.server.encoding.DecodingService;
 
 public class HttpService {
     private static final Logger LOG = LoggerFactory.getLogger(HttpService.class);
-    // todo tlongo include in config
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
     private final PluginMetrics pluginMetrics;

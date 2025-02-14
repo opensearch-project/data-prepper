@@ -126,7 +126,7 @@ class OTelTraceSource_HttpServiceTest {
     private PipelineDescription pipelineDescription;
     private OTelTraceSource SOURCE;
 
-    private static HttpBasicAuthenticationConfig PROVIDED_CONFIG = new HttpBasicAuthenticationConfig("username", "password");
+    private static final HttpBasicAuthenticationConfig PROVIDED_CONFIG = new HttpBasicAuthenticationConfig("username", "password");
 
 
     @BeforeEach
@@ -173,6 +173,25 @@ class OTelTraceSource_HttpServiceTest {
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+    }
+
+    @Test
+    void healthcheck_is_up() {
+        when(oTelTraceSourceConfig.enableHttpHealthCheck()).thenReturn(true);
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.HEAD)
+                        .path("/health")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build())
+                .aggregate()
+                .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.OK)))
+                .join();
+
+        verifyNoInteractions(buffer);
     }
 
     @Test

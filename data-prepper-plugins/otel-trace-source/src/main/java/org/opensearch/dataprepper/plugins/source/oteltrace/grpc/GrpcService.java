@@ -19,7 +19,6 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.RetryInfoConfig;
-import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +83,6 @@ public class GrpcService {
             grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors));
         }
 
-        // todo tlongo extract into separate grpc config. Can't we have only one healthcheck for the whole server? We are already configuring one OtelTraceSource
         if (oTelTraceSourceConfig.hasHealthCheck()) {
             LOG.info("Health check is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
