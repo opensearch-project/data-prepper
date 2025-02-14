@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.netty.handler.codec.base64.Base64Encoder;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -19,16 +20,20 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
+import software.amazon.awssdk.enhanced.dynamodb.internal.converter.attribute.BigDecimalAttributeConverter;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StreamRecordConverter extends RecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(StreamRecordConverter.class);
@@ -39,7 +44,7 @@ public class StreamRecordConverter extends RecordConverter {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
     };
@@ -129,10 +134,10 @@ public class StreamRecordConverter extends RecordConverter {
             //dealing with all dynamo db attribute types
             if (attributeValue.type() == AttributeValue.Type.N) {
                 // N for number
-                result.put(attributeName, attributeValue.n());
+                result.put(attributeName, new BigDecimal(attributeValue.n()));
             } else if (attributeValue.type() == AttributeValue.Type.B) {
                 // B for Binary
-                result.put(attributeName, attributeValue.b().toString());
+                result.put(attributeName, BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
             } else if (attributeValue.type() == AttributeValue.Type.S) {
                 // S for String
                 result.put(attributeName, attributeValue.s());
@@ -141,10 +146,16 @@ public class StreamRecordConverter extends RecordConverter {
                 result.put(attributeName, attributeValue.bool());
             } else if (attributeValue.type() == AttributeValue.Type.NS) {
                 // NS for Number Set
-                result.put(attributeName, attributeValue.ns());
+                result.put(attributeName,
+                        attributeValue.ns().stream()
+                                .map(BigDecimal::new)
+                                .collect(Collectors.toSet())
+                );
             } else if (attributeValue.type() == AttributeValue.Type.BS) {
                 // BS for Binary Set
-                result.put(attributeName, attributeValue.bs().toString());
+                result.put(attributeName, attributeValue.bs().stream()
+                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                        .collect(Collectors.toSet()));
             } else if (attributeValue.type() == AttributeValue.Type.SS) {
                 // SS for String Set
                 result.put(attributeName, attributeValue.ss());
@@ -169,10 +180,10 @@ public class StreamRecordConverter extends RecordConverter {
             //dealing with all dynamo db attribute types
             if (attributeValue.type() == AttributeValue.Type.N) {
                 // N for number
-                result.add(attributeValue.n());
+                result.add(new BigDecimal(attributeValue.n()));
             } else if (attributeValue.type() == AttributeValue.Type.B) {
                 // B for Binary
-                result.add(attributeValue.b().toString());
+                result.add(BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
             } else if (attributeValue.type() == AttributeValue.Type.S) {
                 // S for String
                 result.add(attributeValue.s());
@@ -181,10 +192,15 @@ public class StreamRecordConverter extends RecordConverter {
                 result.add(attributeValue.bool());
             } else if (attributeValue.type() == AttributeValue.Type.NS) {
                 // NS for Number Set
-                result.add(attributeValue.ns());
+                result.add(attributeValue.ns().stream()
+                                .map(BigDecimal::new)
+                                .collect(Collectors.toSet())
+                );
             } else if (attributeValue.type() == AttributeValue.Type.BS) {
                 // BS for Binary Set
-                result.add(attributeValue.bs().toString());
+                result.add(attributeValue.bs().stream()
+                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                        .collect(Collectors.toSet()));
             } else if (attributeValue.type() == AttributeValue.Type.SS) {
                 // SS for String Set
                 result.add(attributeValue.ss());
