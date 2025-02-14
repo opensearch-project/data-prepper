@@ -188,7 +188,9 @@ class StreamRecordConverterTest {
             "and/or",
             "c:\\Home",
             "I take\nup multiple\nlines",
-            "String with some \"backquotes\"."
+            "String with some \"backquotes\".",
+            "\u0003 \u0002 \u0001 \u0000 control characters",
+            "\b control characters"
     })
     void test_writeSingleRecordToBuffer_with_other_data(final String additionalString) throws Exception {
 
