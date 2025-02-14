@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +25,7 @@ import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +68,6 @@ public class StreamRecordConverter extends RecordConverter {
         this.bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         this.streamConfig = streamConfig;
 
-        MAPPER.configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true);
     }
 
     @Override
@@ -123,9 +122,84 @@ public class StreamRecordConverter extends RecordConverter {
     /**
      * Convert the DynamoDB attribute map to a normal map for data
      */
-    private Map<String, Object> convertData(Map<String, AttributeValue> data) throws JsonProcessingException {
-        String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
-        return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
+    private Map<String, Object> convertData(Map<String, AttributeValue> data) {
+        Map<String, Object> result = new HashMap<>();
+
+        data.forEach(((attributeName, attributeValue) -> {
+            //dealing with all dynamo db attribute types
+            if (attributeValue.type() == AttributeValue.Type.N) {
+                // N for number
+                result.put(attributeName, attributeValue.n());
+            } else if (attributeValue.type() == AttributeValue.Type.B) {
+                // B for Binary
+                result.put(attributeName, attributeValue.b().toString());
+            } else if (attributeValue.type() == AttributeValue.Type.S) {
+                // S for String
+                result.put(attributeName, attributeValue.s());
+            } else if (attributeValue.type() == AttributeValue.Type.BOOL) {
+                // BOOL for Boolean
+                result.put(attributeName, attributeValue.bool());
+            } else if (attributeValue.type() == AttributeValue.Type.NS) {
+                // NS for Number Set
+                result.put(attributeName, attributeValue.ns());
+            } else if (attributeValue.type() == AttributeValue.Type.BS) {
+                // BS for Binary Set
+                result.put(attributeName, attributeValue.bs().toString());
+            } else if (attributeValue.type() == AttributeValue.Type.SS) {
+                // SS for String Set
+                result.put(attributeName, attributeValue.ss());
+            } else if (attributeValue.type() == AttributeValue.Type.L) {
+                // L for List
+                result.put(attributeName, convertListData(attributeValue.l()));
+            } else if (attributeValue.type() == AttributeValue.Type.M) {
+                // M for Map
+                result.put(attributeName, convertData(attributeValue.m()));
+            } else if (attributeValue.type() == AttributeValue.Type.NUL) {
+                // NUL for Null
+                result.put(attributeName, null);
+            }
+        }));
+        return result;
+    }
+
+    private List<Object> convertListData(List<AttributeValue> data) {
+        List<Object> result = new ArrayList<>();
+
+        data.forEach(((attributeValue) -> {
+            //dealing with all dynamo db attribute types
+            if (attributeValue.type() == AttributeValue.Type.N) {
+                // N for number
+                result.add(attributeValue.n());
+            } else if (attributeValue.type() == AttributeValue.Type.B) {
+                // B for Binary
+                result.add(attributeValue.b().toString());
+            } else if (attributeValue.type() == AttributeValue.Type.S) {
+                // S for String
+                result.add(attributeValue.s());
+            } else if (attributeValue.type() == AttributeValue.Type.BOOL) {
+                // BOOL for Boolean
+                result.add(attributeValue.bool());
+            } else if (attributeValue.type() == AttributeValue.Type.NS) {
+                // NS for Number Set
+                result.add(attributeValue.ns());
+            } else if (attributeValue.type() == AttributeValue.Type.BS) {
+                // BS for Binary Set
+                result.add(attributeValue.bs().toString());
+            } else if (attributeValue.type() == AttributeValue.Type.SS) {
+                // SS for String Set
+                result.add(attributeValue.ss());
+            } else if (attributeValue.type() == AttributeValue.Type.L) {
+                // L for List
+                result.add(convertListData(attributeValue.l()));
+            } else if (attributeValue.type() == AttributeValue.Type.M) {
+                // M for Map
+                result.add(convertData(attributeValue.m()));
+            } else if (attributeValue.type() == AttributeValue.Type.NUL) {
+                // NUL for Null
+                result.add(null);
+            }
+        }));
+        return result;
     }
 
     /**
