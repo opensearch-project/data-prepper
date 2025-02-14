@@ -22,6 +22,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -174,7 +175,24 @@ class OTelTraceSource_HttpServiceTest {
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
-    // todo tlongo add test for invalid payload
+    @Test
+    void request_fails_because_of_invalid_payload() throws Exception {
+        ExportTraceServiceRequest request = createInvalidExportTraceRequest();
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(), HttpData.copyOf(JsonFormat.printer().print(request).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertThat(response.status(), is(HttpStatus.BAD_REQUEST)))
+                .join();
+
+        verifyNoInteractions(buffer);
+    }
 
     @Test
     void request_that_is_successful() throws Exception {
@@ -305,6 +323,22 @@ class OTelTraceSource_HttpServiceTest {
                 .aggregate()
                 .whenComplete(assertionFunction)
                 .join();
+    }
+
+    private ExportTraceServiceRequest createInvalidExportTraceRequest() {
+        final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
+//                .setTraceId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
+//                .setSpanId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
+                .setName(UUID.randomUUID().toString())
+                .setKind(Span.SpanKind.SPAN_KIND_SERVER)
+                .setStartTimeUnixNano(100)
+                .setEndTimeUnixNano(101)
+                .setTraceState("SUCCESS").build();
+
+        return ExportTraceServiceRequest.newBuilder()
+                .addResourceSpans(ResourceSpans.newBuilder()
+                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
+                .build();
     }
 
     private ExportTraceServiceRequest createExportTraceRequest() {

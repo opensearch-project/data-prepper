@@ -127,7 +127,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     }
 
     private void configureGrpcService(ServerBuilder serverBuilder, Buffer<Record<Object>> buffer) {
-        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, oTelTraceSourceConfig, pluginMetrics, pipelineName, certificateProviderFactory).create(buffer, serverBuilder);
+        com.linecorp.armeria.server.grpc.GrpcService grpcService = new GrpcService(pluginFactory, oTelTraceSourceConfig, pluginMetrics, pipelineName).create(buffer, serverBuilder);
 
         if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
             serverBuilder.service(grpcService);

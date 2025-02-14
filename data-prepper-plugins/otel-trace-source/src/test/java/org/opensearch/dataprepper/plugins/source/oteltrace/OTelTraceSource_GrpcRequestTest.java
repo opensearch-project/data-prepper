@@ -169,8 +169,7 @@ class OTelTraceSource_GrpcRequestTest {
         lenient().when(grpcServiceBuilder.addService(any(BindableService.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
-        lenient().when(grpcServiceBuilder.exceptionHandler(any(
-                GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);
+        lenient().when(grpcServiceBuilder.exceptionHandler(any(GrpcRequestExceptionHandler.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
