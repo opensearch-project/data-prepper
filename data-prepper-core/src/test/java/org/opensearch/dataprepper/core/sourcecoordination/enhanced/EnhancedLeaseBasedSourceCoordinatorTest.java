@@ -237,4 +237,14 @@ class EnhancedLeaseBasedSourceCoordinatorTest {
         Optional<EnhancedSourcePartition> sourcePartition = coordinator.getPartition(partitionKey);
         assertThat(sourcePartition.isPresent(), equalTo(true));
     }
+
+    @Test
+    void getPartition_with_custom_partition_type() {
+        String partitionKey = UUID.randomUUID().toString();
+        String partitionType = UUID.randomUUID().toString();
+        given(sourceCoordinationStore.getSourcePartitionItem(eq(sourceIdentifier + "|" + partitionType), eq(partitionKey))).willReturn(Optional.of(sourcePartitionStoreItem));
+        coordinator = createObjectUnderTest();
+        Optional<EnhancedSourcePartition> sourcePartition = coordinator.getPartition(partitionKey, partitionType);
+        assertThat(sourcePartition.isPresent(), equalTo(true));
+    }
 }
