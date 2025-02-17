@@ -247,7 +247,6 @@ class StreamRecordConverterTest {
         final Map<String, AttributeValue> data = Map.of("Data", attributeValue);
         List<software.amazon.awssdk.services.dynamodb.model.Record> records = buildRecords(1, Instant.now(), data);
         final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
-        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
         final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
         doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
 
