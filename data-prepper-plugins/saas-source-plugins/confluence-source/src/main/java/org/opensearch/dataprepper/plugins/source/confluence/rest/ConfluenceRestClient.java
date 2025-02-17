@@ -17,12 +17,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestClient;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_FIELD;
@@ -38,7 +40,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     //public static final String REST_API_SPACES = "/rest/api/api/spaces";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
-    public static final String MAX_RESULT = "maxResults";
+    public static final String MAX_RESULT = "limit";
     private static final String PAGE_FETCH_LATENCY_TIMER = "pageFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String SPACES_FETCH_LATENCY_TIMER = "spacesFetchLatency";
@@ -70,16 +72,24 @@ public class ConfluenceRestClient extends AtlassianRestClient {
      * @return InputStream input stream
      */
     @Timed(SEARCH_CALL_LATENCY_TIMER)
-    public ConfluenceSearchResults getAllContent(StringBuilder cql, int startAt) {
+    public ConfluenceSearchResults getAllContent(StringBuilder cql, int startAt,
+                                                 ConfluencePaginationLinks paginationLinks) {
 
-        String url = authConfig.getUrl() + REST_API_SEARCH;
-
-        URI uri = UriComponentsBuilder.fromHttpUrl(url)
-                .queryParam(MAX_RESULT, FIFTY)
-                .queryParam(START_AT, startAt)
-                .queryParam(CQL_FIELD, cql)
-                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
-                .buildAndExpand().toUri();
+        URI uri;
+        if (null != paginationLinks && null != paginationLinks.getNext()) {
+            try {
+                uri = new URI(paginationLinks.getBase() + paginationLinks.getNext());
+            } catch (URISyntaxException e) {
+                throw new RuntimeException("Failed to construct pagination url.", e);
+            }
+        } else {
+            uri = UriComponentsBuilder.fromHttpUrl(authConfig.getUrl() + REST_API_SEARCH)
+                    .queryParam(MAX_RESULT, FIFTY)
+                    .queryParam(START_AT, startAt)
+                    .queryParam(CQL_FIELD, cql)
+                    .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                    .buildAndExpand().toUri();
+        }
         return invokeRestApi(uri, ConfluenceSearchResults.class).getBody();
     }
 
