@@ -40,7 +40,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     //public static final String REST_API_SPACES = "/rest/api/api/spaces";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
-    public static final String MAX_RESULT = "limit";
+    public static final String LIMIT = "limit";
     private static final String PAGE_FETCH_LATENCY_TIMER = "pageFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String SPACES_FETCH_LATENCY_TIMER = "spacesFetchLatency";
@@ -84,7 +84,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
             }
         } else {
             uri = UriComponentsBuilder.fromHttpUrl(authConfig.getUrl() + REST_API_SEARCH)
-                    .queryParam(MAX_RESULT, FIFTY)
+                    .queryParam(LIMIT, FIFTY)
                     .queryParam(START_AT, startAt)
                     .queryParam(CQL_FIELD, cql)
                     .queryParam(EXPAND_FIELD, EXPAND_VALUE)
