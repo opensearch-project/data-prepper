@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -24,25 +25,32 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableMetadata;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.Identity;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
-import software.amazon.awssdk.services.dynamodb.model.Identity;
 
-
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.BDDMockito.given;
@@ -52,14 +60,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_IS_TTL_DELETE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_NAME_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_NAME_BULK_ACTION_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PARTITION_KEY_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.SORT_KEY_METADATA_ATTRIBUTE;
-import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.MetadataKeyAttributes.DDB_STREAM_EVENT_IS_TTL_DELETE;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_PROCESSED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.BYTES_RECEIVED;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter.CHANGE_EVENTS_PROCESSED_COUNT;
@@ -68,6 +76,7 @@ import static org.opensearch.dataprepper.plugins.source.dynamodb.converter.Strea
 @ExtendWith(MockitoExtension.class)
 class StreamRecordConverterTest {
     private static final Random RANDOM = new Random();
+    private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -227,6 +236,36 @@ class StreamRecordConverterTest {
         verifyNoInteractions(changeEventErrorCounter);
         verify(bytesReceivedSummary).record(record.dynamodb().sizeBytes());
         verify(bytesProcessedSummary).record(record.dynamodb().sizeBytes());
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideAttributeValues")
+    void test_dynamodb_datatypes_are_handled_correctly(final AttributeTestCase attributeTestCase) throws Exception{
+        AttributeValue attributeValue = attributeTestCase.getAttributeValue();
+        Object expectedOutput = attributeTestCase.getExpectedOutput();
+
+        final Map<String, AttributeValue> data = Map.of("Data", attributeValue);
+        List<software.amazon.awssdk.services.dynamodb.model.Record> records = buildRecords(1, Instant.now(), data);
+        final ArgumentCaptor<Record> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        software.amazon.awssdk.services.dynamodb.model.Record record = records.get(0);
+        final StreamRecordConverter objectUnderTest = new StreamRecordConverter(bufferAccumulator, tableInfo, pluginMetrics, streamConfig);
+        doNothing().when(bufferAccumulator).add(recordArgumentCaptor.capture());
+
+        objectUnderTest.writeToBuffer(null, records);
+
+        verify(bufferAccumulator, times(1)).add(any(Record.class));
+
+        Record capturedRecord = recordArgumentCaptor.getValue();
+        JacksonEvent event = (JacksonEvent) capturedRecord.getData();
+        Object actualData = event.get("Data", Object.class);
+        if (actualData instanceof Collection && expectedOutput instanceof Collection) {
+            Collection<?> actual = (Collection<?>) actualData;
+            Collection<?> expected = (Collection<?>) expectedOutput;
+            assertEquals(actual.size(), expected.size());
+            assertTrue(actual.containsAll(expected) && expected.containsAll(actual));
+        } else {
+            assertEquals(expectedOutput, actualData);
+        }
     }
 
     @Test
@@ -554,6 +593,39 @@ class StreamRecordConverterTest {
         return buildRecords(count, creationTime, Collections.emptyMap());
     }
 
+    private static Stream<AttributeTestCase> provideAttributeValues() {
+        return Stream.of(
+                new AttributeTestCase(AttributeValue.builder().s("testString").build(), "testString"),
+                new AttributeTestCase(AttributeValue.builder().n("123").build(), new BigDecimal("123")),
+                new AttributeTestCase(AttributeValue.builder().bool(true).build(), true),
+                new AttributeTestCase(AttributeValue.builder().nul(true).build(), null),
+                new AttributeTestCase(AttributeValue.builder().b(SdkBytes.fromUtf8String("0000")).build(),
+                        BASE64_ENCODER.encodeToString(SdkBytes.fromUtf8String("0000").asByteArray())),
+                new AttributeTestCase(AttributeValue.builder().bs(Arrays.asList(
+                        SdkBytes.fromUtf8String("0000"),
+                        SdkBytes.fromUtf8String("0101")
+                )).build(),
+                        new ArrayList<>(Arrays.asList(
+                                BASE64_ENCODER.encodeToString(SdkBytes.fromUtf8String("0000").asByteArray()),
+                                BASE64_ENCODER.encodeToString(SdkBytes.fromUtf8String("0101").asByteArray())
+                        ))),
+                new AttributeTestCase(AttributeValue.builder().ss(Arrays.asList("string1", "string2")).build(),
+                        new ArrayList<>(Arrays.asList("string1", "string2"))),  // Using ArrayList instead of Set
+                new AttributeTestCase(AttributeValue.builder().ns(Arrays.asList("1", "2")).build(),
+                        new ArrayList<>(Arrays.asList(new BigDecimal("1"), new BigDecimal("2")))),  // Using ArrayList
+                new AttributeTestCase(AttributeValue.builder().l(Arrays.asList(
+                        AttributeValue.builder().s("listItem1").build(),
+                        AttributeValue.builder().n("2").build()
+                )).build(), Arrays.asList("listItem1", new BigDecimal("2"))),
+                new AttributeTestCase(
+                        AttributeValue.builder().m(
+                                Map.of("key1", AttributeValue.builder().s("value1").build(),
+                                        "key2", AttributeValue.builder().n("2").build())).build(),
+                        Map.of("key1", "value1", "key2", new BigDecimal("2"))
+                )
+        );
+    }
+
     private List<software.amazon.awssdk.services.dynamodb.model.Record> buildRecords(
             int count,
             final Instant creationTime,
@@ -619,4 +691,21 @@ class StreamRecordConverterTest {
         return record;
     }
 
+    private static class AttributeTestCase {
+        private final AttributeValue attributeValue;
+        private final Object expectedOutput;
+
+        private AttributeTestCase(AttributeValue attributeValue, Object expectedOutput) {
+            this.attributeValue = attributeValue;
+            this.expectedOutput = expectedOutput;
+        }
+
+        public AttributeValue getAttributeValue() {
+            return attributeValue;
+        }
+
+        public Object getExpectedOutput() {
+            return expectedOutput;
+        }
+    }
 }

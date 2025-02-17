@@ -22,7 +22,6 @@ import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -114,101 +113,56 @@ public class StreamRecordConverter extends RecordConverter {
         }
     }
 
+    /**
+     * Process the DynamoDB attributes to be formatted correctly
+     */
+    private Object processAttributeValue(AttributeValue attributeValue){
+        switch (attributeValue.type()){
+            case N:     // N for number
+                return new BigDecimal(attributeValue.n());
+            case B:     // B for Binary
+                return BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray());
+            case S:     // S for String
+                return attributeValue.s();
+            case BOOL:  // BOOL for Boolean
+                return attributeValue.bool();
+            case NS:    // NS for Number Set
+                return attributeValue.ns().stream()
+                        .map(BigDecimal::new).collect(Collectors.toSet());
+            case BS:    // BS for Binary Set
+                return attributeValue.bs().stream()
+                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                        .collect(Collectors.toSet());
+            case SS:    // SS for String Set
+                return attributeValue.ss();
+            case L:     // L for List
+                return convertListData(attributeValue.l());
+            case M:     // M for Map
+                return convertData(attributeValue.m());
+            case NUL:  // NUL for Null
+                return null;
+            default:
+                throw new IllegalArgumentException("Unsupported attribute type: " + attributeValue.type());
+        }
+    }
 
     /**
      * Convert the DynamoDB attribute map to a normal map for data
      */
     private Map<String, Object> convertData(Map<String, AttributeValue> data) {
-        Map<String, Object> result = new HashMap<>();
-
-        data.forEach(((attributeName, attributeValue) -> {
-            //dealing with all dynamo db attribute types
-            switch (attributeValue.type()){
-                case N:     // N for number
-                    result.put(attributeName, new BigDecimal(attributeValue.n()));
-                    break;
-                case B:     // B for Binary
-                    result.put(attributeName, BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
-                    break;
-                case S:     // S for String
-                    result.put(attributeName, attributeValue.s());
-                    break;
-                case BOOL:  // BOOL for Boolean
-                    result.put(attributeName, attributeValue.bool());
-                    break;
-                case NS:    // NS for Number Set
-                    result.put(attributeName,
-                            attributeValue.ns().stream()
-                                    .map(BigDecimal::new).collect(Collectors.toSet()));
-                    break;
-                case BS:    // BS for Binary Set
-                    result.put(attributeName, attributeValue.bs().stream()
-                            .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
-                            .collect(Collectors.toSet()));
-                    break;
-                case SS:    // SS for String Set
-                    result.put(attributeName, attributeValue.ss());
-                    break;
-                case L:     // L for List
-                    result.put(attributeName, convertListData(attributeValue.l()));
-                    break;
-                case M:     // M for Map
-                    result.put(attributeName, convertData(attributeValue.m()));
-                    break;
-                case NUL:  // NUL for Null
-                    result.put(attributeName, null);
-                    break;
-                default:
-                    throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
-            }
-        }));
-        return result;
+        return data.entrySet().stream()
+                .collect(HashMap::new,
+                        (map, entry) -> map.put(entry.getKey(), processAttributeValue(entry.getValue())),
+                        HashMap::putAll);
     }
 
+    /**
+     * Convert the DynamoDB attribute List to a normal list for data
+     */
     private List<Object> convertListData(List<AttributeValue> data) {
-        List<Object> result = new ArrayList<>();
-
-        data.forEach(((attributeValue) -> {
-            //dealing with all dynamo db attribute types
-            switch (attributeValue.type()) {
-                case N:     // N for number
-                    result.add(new BigDecimal(attributeValue.n()));
-                    break;
-                case B:     // B for Binary
-                    result.add(BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray()));
-                    break;
-                case S:      // S for String
-                    result.add(attributeValue.s());
-                    break;
-                case BOOL:   // BOOL for Boolean
-                    result.add(attributeValue.bool());
-                    break;
-                case NS:     // NS for Number Set
-                    result.add(attributeValue.ns().stream()
-                            .map(BigDecimal::new).collect(Collectors.toSet()));
-                    break;
-                case BS:    // BS for Binary Set
-                    result.add(attributeValue.bs().stream()
-                            .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
-                            .collect(Collectors.toSet()));
-                    break;
-                case SS:    // SS for String Set
-                    result.add(attributeValue.ss());
-                    break;
-                case L:     // L for List
-                    result.add(convertListData(attributeValue.l()));
-                    break;
-                case M:     // M for Map
-                    result.add(convertData(attributeValue.m()));
-                    break;
-                case NUL:   // NUL for Null
-                    result.add(null);
-                    break;
-                default:
-                    throw new IllegalStateException("Unsupported attribute type: " + attributeValue.type());
-            }
-        }));
-        return result;
+        return data.stream()
+                .map(this::processAttributeValue)
+                .collect(Collectors.toList());
     }
 
     /**
