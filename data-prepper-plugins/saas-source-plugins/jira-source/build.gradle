@@ -5,6 +5,7 @@ plugins {
 dependencies {
 
     implementation project(path: ':data-prepper-plugins:saas-source-plugins:source-crawler')
+    implementation project(path: ':data-prepper-plugins:saas-source-plugins:atlassian-commons')
     implementation project(path: ':data-prepper-api')
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
