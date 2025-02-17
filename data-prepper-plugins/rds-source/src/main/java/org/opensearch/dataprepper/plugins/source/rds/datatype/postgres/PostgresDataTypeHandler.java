@@ -6,6 +6,8 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres;
  * to appropriate object representations based on their data types.
  */
 public interface PostgresDataTypeHandler {
+    String BYTES_KEY = "bytes";
+
     default Object process(final PostgresDataType columnType, final String columnName, final Object value) {
         if(value == null)
             return null;
