@@ -69,8 +69,16 @@ public class StreamWorker {
             try {
                 replicationLogClient.disconnect();
             } catch (Exception e) {
-                LOG.error("Binary log client failed to disconnect.", e);
+                LOG.error("Replication log client failed to disconnect.", e);
             }
+        }
+    }
+
+    public void shutdown() {
+        try {
+            replicationLogClient.disconnect();
+        } catch (Exception e) {
+            LOG.error("Replication log client failed to disconnect.", e);
         }
     }
 
