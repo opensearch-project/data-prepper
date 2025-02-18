@@ -34,12 +34,12 @@ import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.SLASH;
 
 /**
- * The type Jira service.
+ * The type Atlassian OAuth2 service.
  */
 
 public class AtlassianOauthConfig implements AtlassianAuthConfig {
 
-    public static final String OAuth2_URL = "https://api.atlassian.com/ex/jira/";
+    public static final String OAuth2_URL = "https://api.atlassian.com/ex/";
     public static final String ACCESSIBLE_RESOURCES = "https://api.atlassian.com/oauth/token/accessible-resources";
     public static final String TOKEN_LOCATION = "https://auth.atlassian.com/oauth/token";
 
@@ -60,22 +60,22 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
     private String cloudId = null;
     private final String clientId;
     private final String clientSecret;
-    private final AtlassianSourceConfig confluenceSourceConfig;
+    private final AtlassianSourceConfig atlassianSourceConfig;
     private final Object cloudIdFetchLock = new Object();
     private final Object tokenRenewLock = new Object();
 
-    public AtlassianOauthConfig(AtlassianSourceConfig confluenceSourceConfig) {
-        this.confluenceSourceConfig = confluenceSourceConfig;
-        this.accessToken = (String) confluenceSourceConfig.getAuthenticationConfig().getOauth2Config()
+    public AtlassianOauthConfig(AtlassianSourceConfig atlassianSourceConfig) {
+        this.atlassianSourceConfig = atlassianSourceConfig;
+        this.accessToken = (String) atlassianSourceConfig.getAuthenticationConfig().getOauth2Config()
                 .getAccessToken().getValue();
-        this.refreshToken = (String) confluenceSourceConfig.getAuthenticationConfig()
+        this.refreshToken = (String) atlassianSourceConfig.getAuthenticationConfig()
                 .getOauth2Config().getRefreshToken().getValue();
-        this.clientId = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
-        this.clientSecret = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
+        this.clientId = atlassianSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId();
+        this.clientSecret = atlassianSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret();
     }
 
-    public String getJiraAccountCloudId() {
-        log.info("Getting Jira Account Cloud ID");
+    public String getAtlassianAccountCloudId() {
+        log.info("Getting Atlassian Account Cloud ID");
         synchronized (cloudIdFetchLock) {
             if (this.cloudId != null) {
                 //Someone else must have initialized it
@@ -120,14 +120,14 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
                 return;
             }
 
-            log.info("Renewing access token and refresh token pair for Jira Connector.");
+            log.info("Renewing access token and refresh token pair for Atlassian Connector.");
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             String payloadTemplate = "{\"grant_type\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"refresh_token\": \"%s\"}";
             String payload = String.format(payloadTemplate, "refresh_token", clientId, clientSecret, refreshToken);
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
-            Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
+            Oauth2Config oauth2Config = atlassianSourceConfig.getAuthenticationConfig().getOauth2Config();
             try {
                 ResponseEntity<Map> responseEntity = restTemplate.postForEntity(TOKEN_LOCATION, entity, Map.class);
                 Map<String, Object> oauthClientResponse = responseEntity.getBody();
@@ -172,12 +172,12 @@ public class AtlassianOauthConfig implements AtlassianAuthConfig {
     }
 
     /**
-     * Method for getting Jira url based on auth type.
+     * Method for getting source url based on auth type.
      */
     @Override
     public void initCredentials() {
-        //For OAuth based flow, we use a different Jira url
-        this.cloudId = getJiraAccountCloudId();
-        this.url = OAuth2_URL + this.cloudId + SLASH;
+        //For OAuth based flow, we use a different source url
+        this.cloudId = getAtlassianAccountCloudId();
+        this.url = OAuth2_URL + atlassianSourceConfig.getOauth2UrlContext() + SLASH + this.cloudId + SLASH;
     }
 }

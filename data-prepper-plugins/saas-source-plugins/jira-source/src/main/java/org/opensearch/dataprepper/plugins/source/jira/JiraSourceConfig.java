@@ -38,4 +38,9 @@ public class JiraSourceConfig extends AtlassianSourceConfig implements CrawlerSo
         return hosts != null && hosts.size() == 1;
     }
 
+    @Override
+    public String getOauth2UrlContext() {
+        return "jira";
+    }
+
 }

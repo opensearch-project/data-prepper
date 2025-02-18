@@ -124,7 +124,7 @@ public class AtlassianOauthConfigTest {
 
 
     @Test
-    void testGetJiraAccountCloudId() throws InterruptedException {
+    void testGetTestAccountCloudId() throws InterruptedException {
         Map<String, Object> mockGetCallResponse = new HashMap<>();
         mockGetCallResponse.put("id", "test_cloud_id");
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
@@ -141,8 +141,8 @@ public class AtlassianOauthConfigTest {
         }
         executor.shutdown();
 
-        assertEquals("test_cloud_id", jiraOauthConfig.getJiraAccountCloudId());
-        assertEquals("https://api.atlassian.com/ex/jira/test_cloud_id/", jiraOauthConfig.getUrl());
+        assertEquals("test_cloud_id", jiraOauthConfig.getAtlassianAccountCloudId());
+        assertEquals("https://api.atlassian.com/ex/test/test_cloud_id/", jiraOauthConfig.getUrl());
         //calling second time shouldn't trigger rest call
         jiraOauthConfig.getUrl();
         verify(restTemplateMock, times(1))
@@ -150,7 +150,7 @@ public class AtlassianOauthConfigTest {
     }
 
     @Test
-    void testGetJiraAccountCloudIdUnauthorizedCase() {
+    void testGetAtlassianAccountCloudIdUnauthorizedCase() {
 
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
                 .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));

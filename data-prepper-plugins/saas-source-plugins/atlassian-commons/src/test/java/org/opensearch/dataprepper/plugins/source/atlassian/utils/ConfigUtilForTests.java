@@ -26,7 +26,7 @@ public class ConfigUtilForTests {
     public static AtlassianSourceConfig createJiraConfigurationFromYaml(String fileName) {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         try (InputStream inputStream = getResourceAsStream(fileName)) {
-            AtlassianSourceConfig confluenceSourceConfig = objectMapper.readValue(inputStream, AtlassianSourceConfig.class);
+            AtlassianSourceConfig confluenceSourceConfig = objectMapper.readValue(inputStream, AtlassianSourceConfigTest.class);
             Oauth2Config oauth2Config = confluenceSourceConfig.getAuthenticationConfig().getOauth2Config();
             if (oauth2Config != null) {
                 ReflectivelySetField.setField(Oauth2Config.class, oauth2Config, "accessToken",
