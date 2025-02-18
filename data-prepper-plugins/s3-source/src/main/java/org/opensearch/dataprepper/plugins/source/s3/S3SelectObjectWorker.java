@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -114,6 +115,45 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             throw new IOException(e);
         }
+    }
+
+    public void processS3ObjectMetadata(final S3ObjectReference s3ObjectReference,
+                                        final AcknowledgementSet acknowledgementSet,
+                                        final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                                        final String partitionKey) throws IOException {
+        try{
+            LOG.info("Read S3 object: {}", s3ObjectReference);
+            processSelectObject(s3ObjectReference, acknowledgementSet);
+        } catch (Exception e){
+            LOG.error("Unable to process object reference: {}", s3ObjectReference, e);
+            s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
+            throw new IOException(e);
+        }
+    }
+
+    private void processSelectObject(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
+        final HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
+                .bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey())
+                .build();
+        final HeadObjectResponse headObjectResponse = s3AsyncClient.headObject(headObjectRequest).join();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("bucket", s3ObjectReference.getBucketName());
+        data.put("key", s3ObjectReference.getKey());
+        data.put("time", headObjectResponse.lastModified());
+        data.put("length", headObjectResponse.contentLength());
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(data)
+                .build();
+        Record<Event> eventRecord = new Record<>(event);
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(event);
+        }
+        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(1);
+        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
     @Override
