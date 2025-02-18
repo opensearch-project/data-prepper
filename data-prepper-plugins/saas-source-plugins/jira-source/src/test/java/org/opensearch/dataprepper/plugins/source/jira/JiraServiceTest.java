@@ -19,9 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -55,7 +55,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraOauthConfig.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
@@ -258,7 +258,8 @@ public class JiraServiceTest {
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
 
-        assertThrows(BadRequestException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
+        assertThrows(InvalidPluginConfigurationException.class,
+                () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
     }
 
     @Test

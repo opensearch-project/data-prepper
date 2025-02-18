@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -201,14 +201,14 @@ public class JiraService {
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
             log.error("One or more invalid project keys found in filter configuration: {}", badFilters);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Invalid project key found in filter configuration for "
                     + filters);
         }
         if (!includedAndExcludedProjects.isEmpty()) {
             String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
             log.error("One or more project keys found in both include and exclude: {}", includedAndExcludedProjects);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Project filters is invalid because the following projects are listed in both include and exclude"
                     + filters);
         }

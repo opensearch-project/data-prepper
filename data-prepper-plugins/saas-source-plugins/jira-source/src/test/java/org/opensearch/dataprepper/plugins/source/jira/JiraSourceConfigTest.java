@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -28,6 +28,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BAS
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
 
 public class JiraSourceConfigTest {
+    private JiraSourceConfig jiraSourceConfig;
     private final PluginConfigVariable accessToken = new MockPluginConfigVariableImpl("access token test");
     private final PluginConfigVariable refreshToken = new MockPluginConfigVariableImpl("refresh token test");
     private final String clientId = "client id test";
@@ -38,7 +39,6 @@ public class JiraSourceConfigTest {
     private final List<String> projectList = new ArrayList<>();
     private final List<String> issueTypeList = new ArrayList<>();
     private final List<String> statusList = new ArrayList<>();
-    private JiraSourceConfig jiraSourceConfig;
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws Exception {
         PluginConfigVariable pcvAccessToken = null;
