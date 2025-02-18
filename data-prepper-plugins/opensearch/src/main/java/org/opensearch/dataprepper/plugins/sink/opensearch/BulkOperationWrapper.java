@@ -46,19 +46,23 @@ public class BulkOperationWrapper {
     private final BulkOperation bulkOperation;
     private final SerializedJson jsonNode;
 
+    private final String queryTerm;
+
     public BulkOperationWrapper(final BulkOperation bulkOperation) {
-        this(bulkOperation, null, null);
+        this(bulkOperation, null, null, null);
     }
 
-    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode) {
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode,
+                                final String queryTerm) {
         checkNotNull(bulkOperation);
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
         this.jsonNode = jsonNode;
+        this.queryTerm = queryTerm;
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
-        this(bulkOperation, eventHandle, null);
+        this(bulkOperation, eventHandle, null, null);
     }
 
     public BulkOperation getBulkOperation() {
@@ -78,6 +82,10 @@ public class BulkOperationWrapper {
             return jsonNode;
         }
         return getValueFromConverter(BULK_OPERATION_TO_DOCUMENT_CONVERTERS);
+    }
+
+    public String getTermValue() {
+        return queryTerm;
     }
 
     public String getIndex() {
