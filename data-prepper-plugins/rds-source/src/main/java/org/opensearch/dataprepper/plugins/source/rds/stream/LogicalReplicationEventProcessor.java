@@ -294,25 +294,19 @@ public class LogicalReplicationEventProcessor {
         TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
         if (tupleDataType == TupleDataType.NEW) {
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {}", tableId);
-        } else if (tupleDataType == TupleDataType.KEY) {
-            // Primary keys were changed
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
-            msg.get();  // should be a char 'N'
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {} and primary key(s) were changed", tableId);
-
-        } else if (tupleDataType == TupleDataType.OLD) {
+        } else if (tupleDataType == TupleDataType.OLD || tupleDataType == TupleDataType.KEY) {
             // Replica Identity is set to full, containing both old and new row data
             Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
             msg.get();  // should be a char 'N'
             Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
 
             if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
+                LOG.debug("Primary keys were changed");
                 createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
             }
             createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
         }
+        LOG.debug("Processed an UPDATE message with table id: {}", tableId);
     }
 
     private boolean isPrimaryKeyChanged(Map<String, Object> oldRowDataMap, Map<String, Object> newRowDataMap, List<String> primaryKeys) {
