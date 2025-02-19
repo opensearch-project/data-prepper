@@ -34,7 +34,7 @@ import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constant
 import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constants.SLASH;
 
 /**
- * The type Atlassian OAuth2 service.
+ * The type Atlassian OAuth2 Service Config.
  */
 
 public class AtlassianOauthConfig implements AtlassianAuthConfig {

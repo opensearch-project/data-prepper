@@ -134,4 +134,10 @@ public class JiraSourceConfigTest {
         assertEquals(clientId, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId());
         assertEquals(clientSecret, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret());
     }
+
+    @Test
+    void testGetOauth2UrlContext() throws Exception {
+        jiraSourceConfig = createJiraSourceConfig(OAUTH2, false);
+        assertEquals("jira", jiraSourceConfig.getOauth2UrlContext());
+    }
 }
