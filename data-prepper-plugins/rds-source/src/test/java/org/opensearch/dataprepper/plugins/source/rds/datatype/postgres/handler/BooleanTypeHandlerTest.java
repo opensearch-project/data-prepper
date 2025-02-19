@@ -3,7 +3,12 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
+
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -18,12 +23,12 @@ public class BooleanTypeHandlerTest {
         handler = new BooleanTypeHandler();
     }
 
-    @Test
-    void test_handle_true_values() {
-        String value = "t";
+    @ParameterizedTest
+    @MethodSource("provideTrueData")
+    void test_handle_true_values(String value, Boolean expected) {
         Object result = handler.process(PostgresDataType.BOOLEAN, "testColumn", value);
         assertThat(result, is(instanceOf(Boolean.class)));
-        assertThat(result, is(Boolean.TRUE));
+        assertThat(result, is(expected));
     }
 
     @Test
@@ -37,6 +42,13 @@ public class BooleanTypeHandlerTest {
     void test_handle_non_boolean_type() {
         assertThrows(IllegalArgumentException.class, () ->
                 handler.process(PostgresDataType.INTEGER, "testColumn", 123)
+        );
+    }
+
+    private static Stream<Arguments> provideTrueData() {
+        return Stream.of(
+                Arguments.of("t", Boolean.TRUE),
+                Arguments.of("true",  Boolean.TRUE)
         );
     }
 

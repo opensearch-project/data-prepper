@@ -134,7 +134,7 @@ class MySqlSchemaManagerTest {
         when(connection.getMetaData()).thenReturn(databaseMetaData);
         when(databaseMetaData.getColumns(database, null, tableName, null)).thenThrow(new SQLException("Test exception"));
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database, tableName));
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database + "." + tableName));
     }
 
     @Test
@@ -144,7 +144,7 @@ class MySqlSchemaManagerTest {
 
         when(connectionManager.getConnection()).thenThrow(new SQLException("Connection failed"));
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database, tableName));
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database + "." + tableName));
     }
 
     @Test
@@ -171,7 +171,7 @@ class MySqlSchemaManagerTest {
         when(resultSet.getString(TYPE_NAME))
                 .thenReturn("INTEGER", "VARCHAR", "TIMESTAMP");
 
-        Map<String, String> result = schemaManager.getColumnDataTypes(database, tableName);
+        Map<String, String> result = schemaManager.getColumnDataTypes(database + "." + tableName);
 
         assertThat(result, notNullValue());
         assertThat(result.size(), is(expectedColumnTypes.size()));

@@ -74,7 +74,9 @@ public class MySqlSchemaManager implements SchemaManager {
         return List.of();
     }
 
-    public Map<String, String> getColumnDataTypes(final String database, final String tableName) {
+    public Map<String, String> getColumnDataTypes(final String fullTableName) {
+        final String database = fullTableName.split("\\.")[0];
+        final String tableName = fullTableName.split("\\.")[1];
         final Map<String, String> columnsToDataType =  new HashMap<>();
         for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
             try (Connection connection = connectionManager.getConnection()) {

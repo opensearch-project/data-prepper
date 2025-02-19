@@ -5,14 +5,14 @@ import java.util.Map;
 
 public enum PostgresDataType {
     // Numeric types
-    SMALLINT("smallint", DataCategory.NUMERIC),
-    INTEGER("integer", DataCategory.NUMERIC),
-    BIGINT("bigint", DataCategory.NUMERIC),
-    SMALLSERIAL("small", DataCategory.NUMERIC),
-    SERIAL("mediumint unsigned", DataCategory.NUMERIC),
-    BIGSERIAL("int", DataCategory.NUMERIC),
-    REAL("real", DataCategory.NUMERIC),
-    DOUBLE_PRECISION("double precision", DataCategory.NUMERIC),
+    SMALLINT("int2", DataCategory.NUMERIC),
+    INTEGER("int4", DataCategory.NUMERIC),
+    BIGINT("int8", DataCategory.NUMERIC),
+    SMALLSERIAL("smallserial", DataCategory.NUMERIC),
+    SERIAL("serial", DataCategory.NUMERIC),
+    BIGSERIAL("bigserial", DataCategory.NUMERIC),
+    REAL("float4", DataCategory.NUMERIC),
+    DOUBLE_PRECISION("float8", DataCategory.NUMERIC),
     NUMERIC("numeric", DataCategory.NUMERIC),
     MONEY("money", DataCategory.NUMERIC),
 
@@ -30,7 +30,7 @@ public enum PostgresDataType {
     JSONB("jsonb",DataCategory.JSON),
 
     //Boolean data type
-    BOOLEAN("boolean", DataCategory.BOOLEAN),
+    BOOLEAN("bool", DataCategory.BOOLEAN),
 
     //Date-time data types
     DATE("date", DataCategory.TEMPORAL),

@@ -14,12 +14,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum ColumnType {
-    BOOLEAN(16, "boolean"),
-    SMALLINT(21, "smallint"),
-    INTEGER(23, "integer"),
-    BIGINT(20, "bigint"),
-    REAL(700, "real"),
-    DOUBLE_PRECISION(701, "double precision"),
+    BOOLEAN(16, "bool"),
+    SMALLINT(21, "int2"),
+    INTEGER(23, "int4"),
+    BIGINT(20, "int8"),
+    REAL(700, "float4"),
+    DOUBLE_PRECISION(701, "float8"),
     NUMERIC(1700, "numeric"),
     TEXT(25, "text"),
     BPCHAR(1042, "bpchar"),
