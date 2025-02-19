@@ -18,12 +18,14 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 
 @Getter
 public class ConfluenceSourceConfig extends AtlassianSourceConfig implements CrawlerSourceConfig {
+
+    private static final int DEFAULT_BATCH_SIZE = 50;
+
     /**
      * Filter Config to filter what tickets get ingested
      */
     @JsonProperty("filter")
     private FilterConfig filterConfig;
-
 
     /**
      * Boolean property indicating end to end acknowledgments state
