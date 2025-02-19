@@ -36,6 +36,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -64,7 +67,7 @@ public class AtlassianOauthConfigTest {
     }
 
     @Test
-    void testRenewToken() throws InterruptedException {
+    void testRenewToken() {
         Instant testStartTime = Instant.now();
         Map<String, Object> firstMockResponseMap = Map.of("access_token", "first_mock_access_token",
                 "refresh_token", "first_mock_refresh_token",
@@ -76,10 +79,11 @@ public class AtlassianOauthConfigTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         Future<?> firstCall = executor.submit(jiraOauthConfig::renewCredentials);
         Future<?> secondCall = executor.submit(jiraOauthConfig::renewCredentials);
-        while (!firstCall.isDone() || !secondCall.isDone()) {
-            // Do nothing. Wait for the calls to complete
-            Thread.sleep(10);
-        }
+
+        await()
+                .atMost(10, SECONDS)
+                .pollInterval(10, MILLISECONDS)
+                .until(() -> firstCall.isDone() && secondCall.isDone());
         executor.shutdown();
         assertNotNull(jiraOauthConfig.getAccessToken());
         assertNotNull(jiraOauthConfig.getExpireTime());
@@ -124,7 +128,7 @@ public class AtlassianOauthConfigTest {
 
 
     @Test
-    void testGetTestAccountCloudId() throws InterruptedException {
+    void testGetTestAccountCloudId() {
         Map<String, Object> mockGetCallResponse = new HashMap<>();
         mockGetCallResponse.put("id", "test_cloud_id");
         when(restTemplateMock.exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
@@ -135,12 +139,12 @@ public class AtlassianOauthConfigTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         Future<?> firstCall = executor.submit(jiraOauthConfig::getUrl);
         Future<?> secondCall = executor.submit(jiraOauthConfig::getUrl);
-        while (!firstCall.isDone() || !secondCall.isDone()) {
-            // Do nothing. Wait for the calls to complete
-            Thread.sleep(10);
-        }
-        executor.shutdown();
 
+        await().atMost(10, SECONDS)
+                .pollInterval(10, MILLISECONDS)
+                .until(() -> firstCall.isDone() && secondCall.isDone());
+
+        executor.shutdown();
         assertEquals("test_cloud_id", jiraOauthConfig.getAtlassianAccountCloudId());
         assertEquals("https://api.atlassian.com/ex/test/test_cloud_id/", jiraOauthConfig.getUrl());
         //calling second time shouldn't trigger rest call
@@ -163,7 +167,7 @@ public class AtlassianOauthConfigTest {
         jiraOauthConfig.restTemplate = restTemplateMock;
 
 
-        assertThrows(UnauthorizedException.class, () -> jiraOauthConfig.initCredentials());
+        assertThrows(UnauthorizedException.class, jiraOauthConfig::initCredentials);
         verify(restTemplateMock, times(6))
                 .exchange(any(String.class), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
         verify(restTemplateMock, times(1))
