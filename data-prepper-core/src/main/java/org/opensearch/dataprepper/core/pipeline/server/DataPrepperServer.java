@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ public class DataPrepperServer {
     private final ListPipelinesHandler listPipelinesHandler;
     private final GetPipelinesHandler getPipelinesHandler;
     private final ShutdownHandler shutdownHandler;
+    private final EncryptionHttpHandler encryptionHttpHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
     private final ExecutorService executorService;
@@ -43,13 +45,15 @@ public class DataPrepperServer {
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
-            @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
+            final EncryptionHttpHandler encryptionHttpHandler,
+            @Autowired(required = false)@Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
     ) {
         this.serverProvider = serverProvider;
         this.listPipelinesHandler = listPipelinesHandler;
         this.shutdownHandler = shutdownHandler;
         this.getPipelinesHandler = getPipelinesHandler;
+        this.encryptionHttpHandler = encryptionHttpHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
         executorService = Executors.newFixedThreadPool(3);
@@ -71,6 +75,7 @@ public class DataPrepperServer {
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
+        createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
 
         if (prometheusMeterRegistry != null) {
             final PrometheusMetricsHandler prometheusMetricsHandler = new PrometheusMetricsHandler(prometheusMeterRegistry);

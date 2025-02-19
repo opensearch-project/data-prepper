@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +53,9 @@ public class DataPrepperServerTest {
     private GetPipelinesHandler getPipelinesHandler;
 
     @Mock
+    private EncryptionHttpHandler encryptionHttpHandler;
+
+    @Mock
     private PrometheusMeterRegistry prometheusMeterRegistry;
 
     @Mock
@@ -85,7 +89,7 @@ public class DataPrepperServerTest {
         verifyServerStart();
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
-        verify(context, times(5)).setAuthenticator(eq(authenticator));
+        verify(context, times(6)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -96,7 +100,7 @@ public class DataPrepperServerTest {
         dataPrepperServer.start();
 
         verifyServerStart();
-        verify(context, times(3)).setAuthenticator(eq(authenticator));
+        verify(context, times(4)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -162,6 +166,7 @@ public class DataPrepperServerTest {
     }
 
     private DataPrepperServer createObjectUnderTest(final PrometheusMeterRegistry prometheusMeterRegistry, final Authenticator authenticator) {
-        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, prometheusMeterRegistry, authenticator);
+        return new DataPrepperServer(
+                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, encryptionHttpHandler, prometheusMeterRegistry, authenticator);
     }
 }

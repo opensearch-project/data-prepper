@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 
 import org.opensearch.dataprepper.model.encryption.EncryptionEngine;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -31,6 +32,14 @@ public class EncryptionSupplier {
 
     public EncryptedDataKeySupplier getEncryptedDataKeySupplier(final String encryptionId) {
         return encryptedDataKeySupplierMap.get(encryptionId);
+    }
+
+    public Map<String, EncryptionEngine> getEncryptionEngineMap() {
+        return Collections.unmodifiableMap(encryptionEngineMap);
+    }
+
+    public Map<String, EncryptedDataKeySupplier> getEncryptedDataKeySupplierMap() {
+        return Collections.unmodifiableMap(encryptedDataKeySupplierMap);
     }
 
     private Map<String, EncryptedDataKeySupplier> toEncryptedDataKeySupplierMap(
