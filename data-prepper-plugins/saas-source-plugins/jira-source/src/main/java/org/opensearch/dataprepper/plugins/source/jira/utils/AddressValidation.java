@@ -12,7 +12,7 @@ package org.opensearch.dataprepper.plugins.source.jira.utils;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;

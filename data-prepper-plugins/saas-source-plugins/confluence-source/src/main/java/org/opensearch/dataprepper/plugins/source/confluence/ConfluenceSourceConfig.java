@@ -33,4 +33,8 @@ public class ConfluenceSourceConfig extends AtlassianSourceConfig implements Cra
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
 
+    @Override
+    public String getOauth2UrlContext() {
+        return "confluence";
+    }
 }

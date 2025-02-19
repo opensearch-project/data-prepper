@@ -20,13 +20,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthFactory;
 import org.opensearch.dataprepper.plugins.source.jira.JiraServiceTest;
 import org.opensearch.dataprepper.plugins.source.jira.JiraSourceConfig;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
-import org.opensearch.dataprepper.plugins.source.jira.exception.UnAuthorizedException;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthFactory;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -55,12 +55,12 @@ public class JiraRestClientTest {
     private RestTemplate restTemplate;
 
     @Mock
-    private JiraAuthConfig authConfig;
+    private AtlassianAuthConfig authConfig;
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("JiraRestClientTest", "jira");
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
-                Arguments.of(HttpStatus.FORBIDDEN, UnAuthorizedException.class),
+                Arguments.of(HttpStatus.FORBIDDEN, UnauthorizedException.class),
                 Arguments.of(HttpStatus.UNAUTHORIZED, RuntimeException.class),
                 Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
                 Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)
@@ -73,7 +73,7 @@ public class JiraRestClientTest {
         String exampleTicketResponse = "{\"id\":\"123\",\"key\":\"key\",\"self\":\"https://example.com/rest/api/2/issue/123\"}";
         doReturn(new ResponseEntity<>(exampleTicketResponse, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
         JiraSourceConfig jiraSourceConfig = JiraServiceTest.createJiraConfigurationFromYaml(configFileName);
-        JiraAuthConfig authConfig = new JiraAuthFactory(jiraSourceConfig).getObject();
+        AtlassianAuthConfig authConfig = new AtlassianAuthFactory(jiraSourceConfig).getObject();
         JiraRestClient jiraRestClient = new JiraRestClient(restTemplate, authConfig, pluginMetrics);
         String ticketDetails = jiraRestClient.getIssue("key");
         assertEquals(exampleTicketResponse, ticketDetails);
