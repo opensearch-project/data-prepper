@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.models.SpaceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
@@ -188,11 +189,15 @@ public class ConfluenceServiceTest {
         mockPages.add(item2);
         ConfluenceItem item3 = createConfluenceItemBean();
         mockPages.add(item3);
+        ConfluencePaginationLinks paginationLinks = mock(ConfluencePaginationLinks.class);
 
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(mockConfluenceSearchResults.getResults()).thenReturn(mockPages);
+        when(mockConfluenceSearchResults.getLinks()).thenReturn(paginationLinks);
+        //End the pagination.
+        when(paginationLinks.getNext()).thenReturn(null);
 
-        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
+        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -217,7 +222,7 @@ public class ConfluenceServiceTest {
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(mockConfluenceSearchResults.getResults()).thenReturn(mockIssues);
 
-        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
+        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
