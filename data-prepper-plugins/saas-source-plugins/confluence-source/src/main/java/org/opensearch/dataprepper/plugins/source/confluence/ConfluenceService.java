@@ -111,8 +111,8 @@ public class ConfluenceService {
             addItemsToQueue(contentList, itemInfoQueue);
             log.debug("Content items fetched so far: {}", total);
             paginationLinks = searchContentItems.getLinks();
+            searchResultsFoundCounter.increment(searchContentItems.getSize());
         } while (paginationLinks != null && paginationLinks.getNext() != null);
-        searchResultsFoundCounter.increment(total);
         log.info("Number of content items found in search api call: {}", total);
     }
 
