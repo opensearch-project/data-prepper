@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
@@ -99,15 +100,18 @@ public class ConfluenceService {
                                                   Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder cql = createContentFilterCriteria(configuration, timestamp);
-        int total;
+        int total = 0;
         int startAt = 0;
+        ConfluencePaginationLinks paginationLinks = null;
         do {
-            ConfluenceSearchResults searchContentItems = confluenceRestClient.getAllContent(cql, startAt);
+            ConfluenceSearchResults searchContentItems = confluenceRestClient.getAllContent(cql, startAt, paginationLinks);
             List<ConfluenceItem> contentList = new ArrayList<>(searchContentItems.getResults());
-            total = searchContentItems.getSize();
+            total += searchContentItems.getSize();
             startAt += searchContentItems.getResults().size();
             addItemsToQueue(contentList, itemInfoQueue);
-        } while (startAt < total);
+            log.debug("Content items fetched so far: {}", total);
+            paginationLinks = searchContentItems.getLinks();
+        } while (paginationLinks != null && paginationLinks.getNext() != null);
         searchResultsFoundCounter.increment(total);
         log.info("Number of content items found in search api call: {}", total);
     }

@@ -37,4 +37,7 @@ public class ConfluenceSearchResults {
     @JsonProperty("results")
     private List<ConfluenceItem> results = null;
 
+    @JsonProperty("_links")
+    private ConfluencePaginationLinks links = null;
+
 }

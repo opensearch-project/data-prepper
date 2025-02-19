@@ -118,7 +118,7 @@ public class ConfluenceRestClientTest {
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0);
+        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, null);
         assertNotNull(results);
     }
 
@@ -130,7 +130,7 @@ public class ConfluenceRestClientTest {
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
         doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK)).when(restTemplate).getForEntity(any(URI.class), any(Class.class));
-        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0);
+        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, null);
         assertNotNull(results);
     }
 
