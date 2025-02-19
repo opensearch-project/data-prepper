@@ -23,12 +23,16 @@ import org.postgresql.replication.fluent.ChainedCreateReplicationSlotBuilder;
 import org.postgresql.replication.fluent.logical.ChainedLogicalCreateSlotBuilder;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,6 +41,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
 
 @ExtendWith(MockitoExtension.class)
 class PostgresSchemaManagerTest {
@@ -46,6 +52,12 @@ class PostgresSchemaManagerTest {
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Connection connection;
+
+    @Mock
+    private DatabaseMetaData databaseMetaData;
+
+    @Mock
+    private ResultSet resultSet;
 
     private PostgresSchemaManager schemaManager;
 
@@ -158,6 +170,63 @@ class PostgresSchemaManagerTest {
         when(resultSet.next()).thenThrow(RuntimeException.class);
 
         assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(fullTableName));
+    }
+
+    @Test
+    public void getColumnDataTypes_whenFailedToRetrieveColumns_shouldThrowException() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(databaseMetaData);
+        when(databaseMetaData.getColumns(database, schema, tableName, null)).thenThrow(new SQLException("Test exception"));
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(fullTableName));
+    }
+
+    @Test
+    public void getColumnDataTypes_whenFailedToGetConnection_shouldThrowException() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+        when(connectionManager.getConnection()).thenThrow(new SQLException("Connection failed"));
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(fullTableName));
+    }
+
+    @Test
+    void getColumnDataTypes_whenColumnsExist_shouldReturnValidMapping() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+        final Map<String, String> expectedColumnTypes = Map.of(
+                "id", "serial",
+                "name", "char",
+                "created_at", "timestamp"
+        );
+
+        // Setup the mocks
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(databaseMetaData);
+        when(databaseMetaData.getColumns(database, schema, tableName, null))
+                .thenReturn(resultSet);
+
+        // Setup ResultSet to return our expected columns
+        when(resultSet.next())
+                .thenReturn(true, true, true, false); // Three columns, then done
+        when(resultSet.getString(COLUMN_NAME))
+                .thenReturn("id", "name", "created_at");
+        when(resultSet.getString(TYPE_NAME))
+                .thenReturn("serial", "char", "timestamp");
+
+        Map<String, String> result = schemaManager.getColumnDataTypes(fullTableName);
+
+        assertThat(result, notNullValue());
+        assertThat(result.size(), is(expectedColumnTypes.size()));
+        assertThat(result, equalTo(expectedColumnTypes));
     }
 
     private PostgresSchemaManager createObjectUnderTest() {
