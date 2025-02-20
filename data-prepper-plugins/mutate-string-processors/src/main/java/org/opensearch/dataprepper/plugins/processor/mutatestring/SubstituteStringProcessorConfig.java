@@ -17,9 +17,6 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>substitute_string</code> processor matches a key’s value against a regular expression and " +
