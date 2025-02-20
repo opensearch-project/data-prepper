@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -20,10 +21,9 @@ class SplitEventProcessorConfigTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private SplitEventProcessorConfig createObjectUnderTest(final String field, final String delimiterRegex) {
-        final Map<String, Object> map = Map.of(
-                "field", field,
-                "delimiter_regex", delimiterRegex
-        );
+        final Map<String, Object> map = new HashMap<>();
+        map.put("field", field);
+        map.put("delimiter_regex", delimiterRegex);
         return OBJECT_MAPPER.convertValue(map, SplitEventProcessorConfig.class);
     }
 
