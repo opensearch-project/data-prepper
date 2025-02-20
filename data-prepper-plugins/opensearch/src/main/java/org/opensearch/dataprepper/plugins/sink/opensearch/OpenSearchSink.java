@@ -43,6 +43,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdater;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessNetworkPolicyUpdaterFactory;
 import org.opensearch.dataprepper.plugins.common.opensearch.ServerlessOptionsFactory;
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
@@ -143,7 +144,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
-  private S3DlqProvider s3DlqProvider;
+  private DlqProvider dlqProvider;
   private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
   private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
   private final PluginConfigObservable pluginConfigObservable;
@@ -192,7 +193,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     final Optional<DlqConfiguration> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
-      s3DlqProvider = new S3DlqProvider(dlqConfig.get().getS3DlqWriterConfig());
+      dlqProvider = new S3DlqProvider(dlqConfig.get().getS3DlqWriterConfig());
     }
   }
 
@@ -244,8 +245,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-    } else if (s3DlqProvider != null) {
-      Optional<DlqWriter> potentialDlq = s3DlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
+    } else if (dlqProvider != null) {
+      Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
           .add(pipeline)
           .add(PLUGIN_NAME).toString());
       dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
