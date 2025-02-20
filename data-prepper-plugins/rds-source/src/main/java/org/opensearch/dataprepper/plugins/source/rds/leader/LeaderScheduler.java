@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.source.rds.leader;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
@@ -169,7 +168,7 @@ public class LeaderScheduler implements Runnable {
         progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             final MySqlStreamState mySqlStreamState = new MySqlStreamState();
             getCurrentBinlogPosition().ifPresent(mySqlStreamState::setCurrentPosition);
             mySqlStreamState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));

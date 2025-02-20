@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -122,7 +121,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
 
         final ReplicationLogClient replicationLogClient = replicationLogClientFactory.create(streamPartition);
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             final BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.registerEventListener(BinlogEventListener.create(
                     streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
