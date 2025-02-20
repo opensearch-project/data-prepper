@@ -24,10 +24,6 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenEl
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
-import java.util.Objects;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-
 @ConditionalRequired(value = {
         @IfThenElse(
                 ifFulfilled = {@SchemaProperty(field = "delimiter", value = "null")},
