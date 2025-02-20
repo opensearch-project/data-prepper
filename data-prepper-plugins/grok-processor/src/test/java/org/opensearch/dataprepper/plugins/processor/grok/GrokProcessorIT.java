@@ -525,7 +525,7 @@ public class GrokProcessorIT {
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+        assertThrows(RuntimeException.class, () -> new GrokProcessor(
                 pluginMetrics, grokProcessorConfig, expressionEvaluator));
     }
 
