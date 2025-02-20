@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
 import java.util.Objects;
@@ -68,19 +69,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
 
         @AssertTrue(message = "The value of from is not a valid regex string")
         boolean isFromValid() {
-            return validateRegex(from);
-        }
-
-        private boolean validateRegex(final String pattern) {
-            if (pattern != null && !Objects.equals(pattern, "")) {
-                try {
-                    Pattern.compile(pattern);
-                } catch (PatternSyntaxException e) {
-                    return false;
-                }
-            }
-
-            return true;
+            return RegexValueValidator.validateRegex(from);
         }
 
         public Entry(final EventKey source, final String from, final String to, final String substituteWhen) {

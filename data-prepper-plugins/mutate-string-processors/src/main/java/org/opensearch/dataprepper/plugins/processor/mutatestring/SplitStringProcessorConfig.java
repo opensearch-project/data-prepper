@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaPr
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
 import java.util.Objects;
@@ -97,19 +98,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
 
         @AssertTrue(message = "The value of delimiter_regex is not a valid regex string")
         boolean isDelimiterRegexValid() {
-            return validateRegex(delimiterRegex);
-        }
-
-        private boolean validateRegex(final String pattern) {
-            if (pattern != null && !Objects.equals(pattern, "")) {
-                try {
-                    Pattern.compile(pattern);
-                } catch (PatternSyntaxException e) {
-                    return false;
-                }
-            }
-
-            return true;
+            return RegexValueValidator.validateRegex(delimiterRegex);
         }
 
         public Entry(final EventKey source, final String delimiterRegex, final String delimiter, final String splitWhen) {

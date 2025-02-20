@@ -33,6 +33,7 @@ class SubstituteStringProcessorConfigTest {
 
     private static Stream<Arguments> provideFromAndIsValid() {
         return Stream.of(
+                Arguments.of(null, true),
                 Arguments.of("", true),
                 Arguments.of("abc", true),
                 Arguments.of("(abc", false)

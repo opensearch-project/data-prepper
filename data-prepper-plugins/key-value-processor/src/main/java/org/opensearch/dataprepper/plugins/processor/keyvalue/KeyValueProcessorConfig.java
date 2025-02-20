@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -283,34 +284,22 @@ public class KeyValueProcessorConfig {
 
     @AssertTrue(message = "The value of key_value_delimiter_regex is not a valid regex string")
     boolean isKeyValueDelimiterRegexValid() {
-        return validateRegex(keyValueDelimiterRegex);
+        return RegexValueValidator.validateRegex(keyValueDelimiterRegex);
     }
 
     @AssertTrue(message = "The value of delete_key_regex is not a valid regex string")
     boolean isDeleteKeyRegexValid() {
-        return validateRegex(deleteKeyRegex);
+        return RegexValueValidator.validateRegex(deleteKeyRegex);
     }
 
     @AssertTrue(message = "The value of delete_value_regex is not a valid regex string")
     boolean isDeleteValueRegexValid() {
-        return validateRegex(deleteValueRegex);
+        return RegexValueValidator.validateRegex(deleteValueRegex);
     }
 
     @AssertTrue(message = "The value of field_delimiter_regex is not a valid regex string")
     boolean isFieldDelimiterRegexValid() {
-        return validateRegex(fieldDelimiterRegex);
-    }
-
-    private boolean validateRegex(final String pattern) {
-        if (pattern != null && !Objects.equals(pattern, "")) {
-            try {
-                Pattern.compile(pattern);
-            } catch (PatternSyntaxException e) {
-                return false;
-            }
-        }
-
-        return true;
+        return RegexValueValidator.validateRegex(fieldDelimiterRegex);
     }
 
     public String getSource() {

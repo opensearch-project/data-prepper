@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
 import java.util.Objects;
@@ -106,19 +107,7 @@ public class RenameKeyProcessorConfig {
 
         @AssertTrue(message = "The value of from_key_regex is not a valid regex string")
         boolean isFromKeyRegexValid() {
-            return validateRegex(fromKeyRegex);
-        }
-
-        private boolean validateRegex(final String pattern) {
-            if (pattern != null && !Objects.equals(pattern, "")) {
-                try {
-                    Pattern.compile(pattern);
-                } catch (PatternSyntaxException e) {
-                    return false;
-                }
-            }
-
-            return true;
+            return RegexValueValidator.validateRegex(fromKeyRegex);
         }
 
         public Entry(final EventKey fromKey, final String fromKeyPattern, final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {

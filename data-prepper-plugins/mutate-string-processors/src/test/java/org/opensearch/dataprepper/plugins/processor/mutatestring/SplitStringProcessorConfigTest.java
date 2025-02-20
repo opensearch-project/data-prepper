@@ -30,6 +30,7 @@ class SplitStringProcessorConfigTest {
 
     private static Stream<Arguments> provideDelimiterRegexAndIsValid() {
         return Stream.of(
+                Arguments.of(null, true),
                 Arguments.of("", true),
                 Arguments.of("abc", true),
                 Arguments.of("(abc", false)
