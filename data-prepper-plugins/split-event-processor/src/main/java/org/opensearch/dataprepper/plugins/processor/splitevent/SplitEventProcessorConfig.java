@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,6 +22,10 @@ import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @ConditionalRequired(value = {
         @IfThenElse(
@@ -68,5 +73,22 @@ public class SplitEventProcessorConfig {
 
     public String getDelimiter() {
         return delimiter;
+    }
+
+    @AssertTrue(message = "The value of delimiter_regex is not a valid regex string")
+    boolean isDelimiterRegexValid() {
+        return validateRegex(delimiterRegex);
+    }
+
+    private boolean validateRegex(final String pattern) {
+        if (pattern != null && !Objects.equals(pattern, "")) {
+            try {
+                Pattern.compile(pattern);
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

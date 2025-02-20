@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -453,9 +454,11 @@ public class GrokProcessorIT {
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfigWithPatterns2Pattern);
         grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+        Throwable throwable = assertThrows(RuntimeException.class, () -> new GrokProcessor(
                 pluginMetrics, grokProcessorConfig, expressionEvaluator));
-        assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable.getMessage()));
+        assertThat(throwable.getCause(), instanceOf(IllegalArgumentException.class));
+        assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable
+                .getCause().getMessage()));
     }
 
     @Test

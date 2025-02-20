@@ -20,6 +20,9 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @JsonPropertyOrder
 @JsonClassDescription("You can use the <code>key_value</code> processor to create structured data by parsing key-value pairs from strings.")
@@ -276,6 +279,38 @@ public class KeyValueProcessorConfig {
                 (!stringLiteralCharacter.equals("'"))))
             return false;
         return valueGrouping;
+    }
+
+    @AssertTrue(message = "The value of key_value_delimiter_regex is not a valid regex string")
+    boolean isKeyValueDelimiterRegexValid() {
+        return validateRegex(keyValueDelimiterRegex);
+    }
+
+    @AssertTrue(message = "The value of delete_key_regex is not a valid regex string")
+    boolean isDeleteKeyRegexValid() {
+        return validateRegex(deleteKeyRegex);
+    }
+
+    @AssertTrue(message = "The value of delete_value_regex is not a valid regex string")
+    boolean isDeleteValueRegexValid() {
+        return validateRegex(deleteValueRegex);
+    }
+
+    @AssertTrue(message = "The value of field_delimiter_regex is not a valid regex string")
+    boolean isFieldDelimiterRegexValid() {
+        return validateRegex(fieldDelimiterRegex);
+    }
+
+    private boolean validateRegex(final String pattern) {
+        if (pattern != null && !Objects.equals(pattern, "")) {
+            try {
+                Pattern.compile(pattern);
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public String getSource() {

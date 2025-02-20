@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
@@ -21,7 +22,9 @@ import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>rename_keys</code> processor renames keys in an event.")
@@ -99,6 +102,23 @@ public class RenameKeyProcessorConfig {
                 fromKeyCompiledPattern = Pattern.compile(fromKeyRegex);
             }
             return fromKeyCompiledPattern;
+        }
+
+        @AssertTrue(message = "The value of from_key_regex is not a valid regex string")
+        boolean isFromKeyRegexValid() {
+            return validateRegex(fromKeyRegex);
+        }
+
+        private boolean validateRegex(final String pattern) {
+            if (pattern != null && !Objects.equals(pattern, "")) {
+                try {
+                    Pattern.compile(pattern);
+                } catch (PatternSyntaxException e) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public Entry(final EventKey fromKey, final String fromKeyPattern, final EventKey toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
