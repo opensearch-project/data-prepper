@@ -21,9 +21,6 @@ import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 @JsonPropertyOrder
 @JsonClassDescription("You can use the <code>key_value</code> processor to create structured data by parsing key-value pairs from strings.")
