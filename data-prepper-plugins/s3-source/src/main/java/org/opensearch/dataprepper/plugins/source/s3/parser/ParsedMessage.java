@@ -37,7 +37,8 @@ public class ParsedMessage {
          // S3EventNotification contains only one S3EventNotificationRecord
         this.bucketName = notificationRecords.get(0).getS3().getBucket().getName();
         this.objectKey = notificationRecords.get(0).getS3().getObject().getUrlDecodedKey();
-        this.objectSize = notificationRecords.get(0).getS3().getObject().getSizeAsLong();
+        Long size = notificationRecords.get(0).getS3().getObject().getSizeAsLong();
+        this.objectSize = (size != null) ? size : 0L;
         this.eventName = notificationRecords.get(0).getEventName();
         this.eventTime = notificationRecords.get(0).getEventTime();
         this.failedParsing = false;
