@@ -9,10 +9,12 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
 
@@ -25,6 +27,7 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         @JsonPropertyDescription("The key of the field to modify.")
         private EventKey source;
 
+        @NotNull
         @JsonPropertyDescription("The regular expression to match on for replacement. Special regex characters such as <code>[</code> and <code>]</code> must " +
                 "be escaped using <code>\\\\</code> when using double quotes and <code>\\</code> when using single quotes. " +
                 "See <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html\">Java Patterns</a> " +
@@ -60,6 +63,11 @@ public class SubstituteStringProcessorConfig implements StringProcessorConfig<Su
         }
 
         public String getSubstituteWhen() { return substituteWhen; }
+
+        @AssertTrue(message = "The value of from is not a valid regex string")
+        boolean isFromValid() {
+            return RegexValueValidator.validateRegex(from);
+        }
 
         public Entry(final EventKey source, final String from, final String to, final String substituteWhen) {
             this.source = source;
