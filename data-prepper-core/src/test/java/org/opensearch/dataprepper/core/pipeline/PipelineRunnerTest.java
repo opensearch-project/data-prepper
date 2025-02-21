@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.core.pipeline;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,6 +17,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
-import org.opensearch.dataprepper.core.pipeline.exceptions.InvalidEventHandleException;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -81,9 +82,7 @@ class PipelineRunnerTest {
     DefaultEventHandle defaultEventHandle;
 
     private void setupPipeline(boolean shouldEnableAcknowledgements) {
-        when(pipeline.getSource()).thenReturn(source);
-        when(pipeline.getBuffer()).thenReturn(buffer);
-        when(source.areAcknowledgementsEnabled()).thenReturn(shouldEnableAcknowledgements);
+        lenient().when(pipeline.areAcknowledgementsEnabled()).thenReturn(shouldEnableAcknowledgements);
     }
 
     private PipelineRunnerImpl createObjectUnderTest() {
@@ -142,13 +141,23 @@ class PipelineRunnerTest {
         }
 
         @Test
-        public void testProcessAcknowledgementsThrowsInvalidEventHandleException() {
+        void testProcessAcknowledgementsInvalidEventHandleIncrementsCounter() {
             List<Event> inputEvents = List.of(event);
             Collection<Record<Event>> outputRecords = List.of(record);
             when(event.getEventHandle()).thenReturn(eventHandle);
 
-            PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
-            assertThrows(InvalidEventHandleException.class, () -> pipelineRunner.processAcknowledgements(inputEvents, outputRecords));
+            try (MockedStatic<PluginMetrics> pluginMetricsStatic = mockStatic(PluginMetrics.class)) {
+                final PluginMetrics pluginMetrics = mock(PluginMetrics.class);
+                final Counter counter = mock(Counter.class);
+                when(pluginMetrics.counter(any())).thenReturn(counter);
+                pluginMetricsStatic.when(() -> PluginMetrics.fromNames("PipelineRunner", pipeline.getName()))
+                        .thenReturn(pluginMetrics);
+
+                PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
+                assertDoesNotThrow(() -> pipelineRunner.processAcknowledgements(inputEvents, outputRecords));
+
+                verify(counter, atLeastOnce()).increment();
+            }
         }
     }
 
@@ -215,8 +224,6 @@ class PipelineRunnerTest {
             final List<Record<String>> records = new ArrayList<>();
             final Map.Entry<Collection, CheckpointState> readResult = Map.entry(records, checkpointState);
             when(buffer.read(pipeline.getReadBatchTimeoutInMillis())).thenReturn(readResult);
-            when(source.areAcknowledgementsEnabled()).thenReturn(false);
-            when(buffer.areAcknowledgementsEnabled()).thenReturn(false);
 
             PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
             final Map.Entry<Collection, CheckpointState> firstReadResult = pipelineRunner.readFromBuffer(buffer, pipeline);
@@ -357,9 +364,10 @@ class PipelineRunnerTest {
             recordsList.add(record);
             setupPipeline(true);
             // Set up additional pipeline behavior
+            when(pipeline.getBuffer()).thenReturn(buffer);
+            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
-            when(pipeline.getProcessorSets()).thenReturn(Collections.singletonList(Collections.singletonList(processor)));
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
 
@@ -381,9 +389,10 @@ class PipelineRunnerTest {
             recordsList.add(record);
             setupPipeline(false);
             // Set up additional pipeline behavior
+            when(pipeline.getBuffer()).thenReturn(buffer);
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
-            when(pipeline.getProcessorSets()).thenReturn(Collections.singletonList(Collections.singletonList(processor)));
+            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
 
