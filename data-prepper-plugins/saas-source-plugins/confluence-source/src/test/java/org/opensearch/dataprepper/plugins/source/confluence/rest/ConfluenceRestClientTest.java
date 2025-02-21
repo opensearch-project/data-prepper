@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAu
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthFactory;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceServiceTest;
 import org.opensearch.dataprepper.plugins.source.confluence.ConfluenceSourceConfig;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
@@ -32,6 +33,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -112,8 +114,8 @@ public class ConfluenceRestClientTest {
 
     @Test
     public void testGetAllContentOauth2() {
-        List<String> issueType = new ArrayList<>();
-        issueType.add("Task");
+        List<String> pageType = new ArrayList<>();
+        pageType.add("page");
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         doReturn("http://mock-service.jira.com/").when(authConfig).getUrl();
@@ -123,9 +125,28 @@ public class ConfluenceRestClientTest {
     }
 
     @Test
+    public void testGetAllContentOauth2Pagination() throws URISyntaxException {
+        List<String> pageType = new ArrayList<>();
+        pageType.add("page");
+        ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
+        ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
+        String oauthUrlHost = "http://mock-service.jira.com/cloud-id/";
+        String paginationNextLink = "/Search?next-token=adsflkajdsflakdjflkasfdmdsfad";
+        ConfluencePaginationLinks paginationLinks = new ConfluencePaginationLinks();
+        paginationLinks.setNext(paginationNextLink);
+        paginationLinks.setBase("http://base-host-name/");
+        doReturn(oauthUrlHost).when(authConfig).getUrl();
+        doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK))
+                .when(restTemplate)
+                .getForEntity(new URI(oauthUrlHost + paginationNextLink), ConfluenceSearchResults.class);
+        ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, paginationLinks);
+        assertNotNull(results);
+    }
+
+    @Test
     public void testGetAllContentBasic() {
-        List<String> issueType = new ArrayList<>();
-        issueType.add("Task");
+        List<String> pageType = new ArrayList<>();
+        pageType.add("page");
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         when(authConfig.getUrl()).thenReturn("https://example.com/");
