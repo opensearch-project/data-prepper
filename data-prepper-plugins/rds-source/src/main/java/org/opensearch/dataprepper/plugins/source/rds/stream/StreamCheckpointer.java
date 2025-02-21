@@ -41,9 +41,9 @@ public class StreamCheckpointer {
     }
 
     public void checkpoint(final EngineType engineType, final ChangeEventStatus changeEventStatus) {
-        if (engineType == EngineType.MYSQL) {
+        if (engineType.isMySql()) {
             checkpoint(changeEventStatus.getBinlogCoordinate());
-        } else if (engineType == EngineType.POSTGRES) {
+        } else if (engineType.isPostgres()) {
             checkpoint(changeEventStatus.getLogSequenceNumber());
         } else {
             throw new IllegalArgumentException("Unsupported engine type " + engineType);

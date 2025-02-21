@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -69,6 +70,9 @@ class StreamSchedulerTest {
     @Mock
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
+    @Mock
+    private SchemaManager schemaManager;
+
     private String s3Prefix;
     private StreamScheduler objectUnderTest;
 
@@ -101,7 +105,7 @@ class StreamSchedulerTest {
         executorService.submit(() -> {
             try (MockedStatic<StreamWorkerTaskRefresher> streamWorkerTaskRefresherMockedStatic = mockStatic(StreamWorkerTaskRefresher.class)) {
                 streamWorkerTaskRefresherMockedStatic.when(() -> StreamWorkerTaskRefresher.create(eq(sourceCoordinator), eq(streamPartition), any(StreamCheckpointer.class),
-                                eq(s3Prefix), eq(replicationLogClientFactory), eq(buffer), any(Supplier.class), eq(acknowledgementSetManager), eq(pluginMetrics)))
+                                eq(s3Prefix), eq(replicationLogClientFactory), eq(buffer), any(Supplier.class), eq(acknowledgementSetManager), eq(pluginMetrics), eq(schemaManager)))
                         .thenReturn(streamWorkerTaskRefresher);
                 objectUnderTest.run();
             }
@@ -131,6 +135,7 @@ class StreamSchedulerTest {
 
     private StreamScheduler createObjectUnderTest() {
         return new StreamScheduler(
-                sourceCoordinator, sourceConfig, s3Prefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+                sourceCoordinator, sourceConfig, s3Prefix, replicationLogClientFactory, buffer, pluginMetrics,
+                acknowledgementSetManager, pluginConfigObservable, schemaManager);
     }
 }

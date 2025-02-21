@@ -177,7 +177,7 @@ public class DataFileLoader implements Runnable {
     }
 
     private void transformEvent(final Event event, final String fullTableName, final EngineType engineType) {
-        if (engineType == EngineType.MYSQL) {
+        if (engineType.isMySql()) {
             Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
             for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
                 final Object data = MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
@@ -185,7 +185,7 @@ public class DataFileLoader implements Runnable {
                 event.put(entry.getKey(), data);
             }
         }
-        if (engineType == EngineType.POSTGRES) {
+        if (engineType.isPostgres()) {
             Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
             for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
                 final Object data = PostgresDataTypeHelper.getDataByColumnType(PostgresDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
