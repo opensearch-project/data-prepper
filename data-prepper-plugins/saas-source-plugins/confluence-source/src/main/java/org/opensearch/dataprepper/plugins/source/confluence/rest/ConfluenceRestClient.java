@@ -78,7 +78,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         URI uri;
         if (null != paginationLinks && null != paginationLinks.getNext()) {
             try {
-                uri = new URI(paginationLinks.getBase() + paginationLinks.getNext());
+                uri = new URI(authConfig.getUrl() + paginationLinks.getNext());
             } catch (URISyntaxException e) {
                 throw new RuntimeException("Failed to construct pagination url.", e);
             }
