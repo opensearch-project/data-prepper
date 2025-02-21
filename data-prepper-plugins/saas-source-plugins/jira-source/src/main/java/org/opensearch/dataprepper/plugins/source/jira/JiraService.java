@@ -185,7 +185,7 @@ public class JiraService {
         JiraConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             includedProjects.add(projectFilter);
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 100) {
                 badFilters.add(projectFilter);
             }
         });
@@ -194,7 +194,7 @@ public class JiraService {
             if (includedProjects.contains(projectFilter)) {
                 includedAndExcludedProjects.add(projectFilter);
             }
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 100) {
                 badFilters.add(projectFilter);
             }
         });
