@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,7 @@ public class StreamScheduler implements Runnable {
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final SchemaManager schemaManager;
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
     private volatile boolean shutdownRequested = false;
@@ -50,7 +52,8 @@ public class StreamScheduler implements Runnable {
                            final Buffer<Record<Event>> buffer,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager,
-                           final PluginConfigObservable pluginConfigObservable) {
+                           final PluginConfigObservable pluginConfigObservable,
+                           final SchemaManager schemaManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
@@ -59,6 +62,7 @@ public class StreamScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.schemaManager = schemaManager;
     }
 
     @Override
@@ -82,7 +86,7 @@ public class StreamScheduler implements Runnable {
                     streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
                             sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
                             () -> Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-worker")),
-                            acknowledgementSetManager, pluginMetrics);
+                            acknowledgementSetManager, pluginMetrics, schemaManager);
 
                     streamWorkerTaskRefresher.initialize(sourceConfig);
 

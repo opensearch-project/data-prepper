@@ -18,8 +18,11 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +46,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     private final Supplier<ExecutorService> executorServiceSupplier;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final SchemaManager schemaManager;
     private final Counter credentialsChangeCounter;
     private final Counter taskRefreshErrorsCounter;
 
@@ -57,7 +61,8 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                      final Buffer<Record<Event>> buffer,
                                      final Supplier<ExecutorService> executorServiceSupplier,
                                      final AcknowledgementSetManager acknowledgementSetManager,
-                                     final PluginMetrics pluginMetrics) {
+                                     final PluginMetrics pluginMetrics,
+                                     final SchemaManager schemaManager) {
         this.sourceCoordinator = sourceCoordinator;
         this.streamPartition = streamPartition;
         this.streamCheckpointer = streamCheckpointer;
@@ -68,6 +73,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.replicationLogClientFactory = replicationLogClientFactory;
+        this.schemaManager = schemaManager;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         this.taskRefreshErrorsCounter = pluginMetrics.counter(TASK_REFRESH_ERRORS);
     }
@@ -80,9 +86,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                                    final Buffer<Record<Event>> buffer,
                                                    final Supplier<ExecutorService> executorServiceSupplier,
                                                    final AcknowledgementSetManager acknowledgementSetManager,
-                                                   final PluginMetrics pluginMetrics) {
+                                                   final PluginMetrics pluginMetrics,
+                                                   final SchemaManager schemaManager) {
         return new StreamWorkerTaskRefresher(sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix,
-                binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+                binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics, schemaManager);
     }
 
     public void initialize(RdsSourceConfig sourceConfig) {
@@ -113,6 +120,15 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     }
 
     public void shutdown() {
+        // Clean up publication and replication slot for Postgres
+        if (schemaManager instanceof PostgresSchemaManager) {
+            Optional<StreamProgressState> progressState = streamPartition.getProgressState();
+            progressState.ifPresent(state -> {
+                final String publicationName = state.getPostgresStreamState().getPublicationName();
+                final String replicationSlotName = state.getPostgresStreamState().getReplicationSlotName();
+                ((PostgresSchemaManager) schemaManager).deleteLogicalReplicationSlot(publicationName, replicationSlotName);
+            });
+        }
         executorService.shutdownNow();
     }
 

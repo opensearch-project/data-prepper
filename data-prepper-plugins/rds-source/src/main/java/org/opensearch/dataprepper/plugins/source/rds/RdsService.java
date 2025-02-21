@@ -133,7 +133,7 @@ public class RdsService {
             }
 
             streamScheduler = new StreamScheduler(
-                    sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+                    sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable, schemaManager);
             runnableList.add(streamScheduler);
 
             if (sourceConfig.getEngine().isMySql()) {
