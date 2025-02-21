@@ -230,7 +230,7 @@ public class ConfluenceService {
         ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(spaceFilter -> {
             Matcher matcher = regex.matcher(spaceFilter);
             includedSpaces.add(spaceFilter);
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });
@@ -239,7 +239,7 @@ public class ConfluenceService {
             if (includedSpaces.contains(spaceFilter)) {
                 includedAndExcludedSpaces.add(spaceFilter);
             }
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });
