@@ -1,9 +1,10 @@
 package org.opensearch.dataprepper.core.pipeline;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
-import org.opensearch.dataprepper.core.pipeline.exceptions.InvalidEventHandleException;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
@@ -25,18 +26,16 @@ import java.util.stream.Collectors;
 
 public class PipelineRunnerImpl implements PipelineRunner {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineRunnerImpl.class);
-    private final boolean acknowledgementsEnabled;
-    private boolean isEmptyRecordsLogged = false;
-    private final Buffer readBuffer;
-    private final List<Processor> processors;
+    private static final String INVALID_EVENT_HANDLES = "invalidEventHandles";
     private final Pipeline pipeline;
+    private final PluginMetrics pluginMetrics;
+    private boolean isEmptyRecordsLogged = false;
+    @VisibleForTesting final Counter invalidEventHandlesCounter;
 
     public PipelineRunnerImpl(Pipeline pipeline) {
-        List<Processor> processors = pipeline.getProcessorSets().stream().flatMap(Collection::stream).collect(Collectors.toList());
-        this.readBuffer = pipeline.getBuffer();
-        this.processors = processors;
         this.pipeline = pipeline;
-        this.acknowledgementsEnabled = pipeline.getSource().areAcknowledgementsEnabled() || readBuffer.areAcknowledgementsEnabled();
+        this.pluginMetrics = PluginMetrics.fromNames("PipelineRunner", pipeline.getName());
+        this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
     }
 
     @Override
@@ -78,7 +77,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
                     eventHandle.release(true);
                 }
             } else if (eventHandle != null) {
-                throw new InvalidEventHandleException("Unexpected EventHandle");
+                invalidEventHandlesCounter.increment();
             }
         });
     }
@@ -89,7 +88,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         for (final Processor processor : processors) {
 
             List<Event> inputEvents = null;
-            if (acknowledgementsEnabled) {
+            if (getPipeline().areAcknowledgementsEnabled()) {
                 inputEvents = ((List<Record<Event>>) records).stream().map(Record::getData).collect(Collectors.toList());
             }
 
@@ -126,18 +125,18 @@ public class PipelineRunnerImpl implements PipelineRunner {
         return futureResults.getFailedReasons().size() == 0;
     }
 
+    @Override
+    public Pipeline getPipeline() {
+        return pipeline;
+    }
+
     @VisibleForTesting
     List<Processor> getProcessors() {
-        return processors;
+        return getPipeline().getProcessors();
     }
 
     @VisibleForTesting
     Buffer getBuffer() {
-        return readBuffer;
-    }
-
-    @VisibleForTesting
-    Pipeline getPipeline() {
-        return pipeline;
+        return getPipeline().getBuffer();
     }
 }

@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
-import io.micrometer.core.instrument.Counter;
-import org.opensearch.dataprepper.core.pipeline.exceptions.InvalidEventHandleException;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 
@@ -19,32 +16,28 @@ import java.util.List;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class ProcessWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessWorker.class);
-    private static final String INVALID_EVENT_HANDLES = "invalidEventHandles";
+
     private final Buffer readBuffer;
     private final List<Processor> processors;
     private final Pipeline pipeline;
-    private PluginMetrics pluginMetrics;
-    private final Counter invalidEventHandlesCounter;
+
     private final PipelineRunner pipelineRunner;
 
     public ProcessWorker(
             final Buffer readBuffer,
             final List<Processor> processors,
             final Pipeline pipeline) {
-        this(readBuffer, processors, pipeline, new PipelineRunnerImpl(pipeline));
-    }
-
-    public ProcessWorker(
-            final Buffer readBuffer,
-            final List<Processor> processors,
-            final Pipeline pipeline,
-            final PipelineRunner pipelineRunner) {
         this.readBuffer = readBuffer;
         this.processors = processors;
         this.pipeline = pipeline;
-        this.pluginMetrics = PluginMetrics.fromNames("ProcessWorker", pipeline.getName());
-        this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
+        this.pipelineRunner = new PipelineRunnerImpl(pipeline);
+    }
+
+    public ProcessWorker(PipelineRunner pipelineRunner) {
         this.pipelineRunner = pipelineRunner;
+        this.readBuffer = pipelineRunner.getPipeline().getBuffer();
+        this.processors = pipelineRunner.getPipeline().getProcessors();
+        this.pipeline = pipelineRunner.getPipeline();
     }
 
     @Override
@@ -92,11 +85,7 @@ public class ProcessWorker implements Runnable {
     }
 
     private void doRun() {
-        try {
-            pipelineRunner.runAllProcessorsAndPublishToSinks();
-        } catch (InvalidEventHandleException exception) {
-            invalidEventHandlesCounter.increment();
-        }
+        pipelineRunner.runAllProcessorsAndPublishToSinks();
     }
 
     private boolean areComponentsReadyForShutdown() {
