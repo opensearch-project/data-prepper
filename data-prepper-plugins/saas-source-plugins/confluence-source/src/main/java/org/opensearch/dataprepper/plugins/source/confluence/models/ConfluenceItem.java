@@ -52,14 +52,17 @@ public class ConfluenceItem {
     @JsonProperty("space")
     private SpaceItem spaceItem;
 
+    @JsonProperty("history")
+    private ContentHistory history;
+
     @JsonIgnore
     public long getCreatedTimeMillis() {
-        return 0L;
+        return history.getCreatedDateInMillis();
     }
 
     @JsonIgnore
     public long getUpdatedTimeMillis() {
-        return 0L;
+        return history.getLastUpdatedInMillis();
     }
 
 }

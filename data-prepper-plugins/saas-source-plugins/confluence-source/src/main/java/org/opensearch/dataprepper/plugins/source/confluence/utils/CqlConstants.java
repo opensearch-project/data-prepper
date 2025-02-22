@@ -23,5 +23,5 @@ public class CqlConstants {
     public static final String CONTENT_TYPE_NOT_IN = " AND type not in (";
     public static final String CQL_FIELD = "cql";
     public static final String EXPAND_FIELD = "expand";
-    public static final String EXPAND_VALUE = "all,space";
+    public static final String EXPAND_VALUE = "all,space,history.lastUpdated";
 }
