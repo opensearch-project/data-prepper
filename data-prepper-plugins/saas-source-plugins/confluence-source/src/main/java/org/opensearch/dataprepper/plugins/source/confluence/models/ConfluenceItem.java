@@ -57,11 +57,17 @@ public class ConfluenceItem {
 
     @JsonIgnore
     public long getCreatedTimeMillis() {
+        if (history == null) {
+            return 0L;
+        }
         return history.getCreatedDateInMillis();
     }
 
     @JsonIgnore
     public long getUpdatedTimeMillis() {
+        if (history == null) {
+            return 0L;
+        }
         return history.getLastUpdatedInMillis();
     }
 
