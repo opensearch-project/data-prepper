@@ -26,12 +26,9 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
-import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,9 +67,6 @@ class StreamWorkerTaskRefresherTest {
 
     @Mock
     private ReplicationLogClientFactory replicationLogClientFactory;
-
-    @Mock
-    private ReplicationLogClient replicationLogClient;
 
     @Mock
     private BinlogClientWrapper binaryLogClientWrapper;
@@ -121,12 +115,6 @@ class StreamWorkerTaskRefresherTest {
 
     @Mock
     private GlobalState globalState;
-
-    @Mock
-    private MySqlSchemaManager mySqlSchemaManager;
-
-    @Mock
-    private PostgresSchemaManager postgresSchemaManager;
 
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
@@ -253,7 +241,7 @@ class StreamWorkerTaskRefresherTest {
 
             return new StreamWorkerTaskRefresher(
                     sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
-                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics, mySqlSchemaManager);
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
         }
     }
 
@@ -357,16 +345,7 @@ class StreamWorkerTaskRefresherTest {
 
         @Test
         void test_shutdown() {
-            final StreamProgressState streamProgressState = mock(StreamProgressState.class, RETURNS_DEEP_STUBS);
-            final String publicationName = UUID.randomUUID().toString();
-            final String replicationSlotName = UUID.randomUUID().toString();
-            when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
-            when(streamProgressState.getPostgresStreamState().getPublicationName()).thenReturn(publicationName);
-            when(streamProgressState.getPostgresStreamState().getReplicationSlotName()).thenReturn(replicationSlotName);
-
             streamWorkerTaskRefresher.shutdown();
-
-            verify(postgresSchemaManager).deleteLogicalReplicationSlot(publicationName, replicationSlotName);
             verify(executorService).shutdownNow();
         }
 
@@ -375,7 +354,7 @@ class StreamWorkerTaskRefresherTest {
 
             return new StreamWorkerTaskRefresher(
                     sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
-                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics, postgresSchemaManager);
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
         }
     }
 
