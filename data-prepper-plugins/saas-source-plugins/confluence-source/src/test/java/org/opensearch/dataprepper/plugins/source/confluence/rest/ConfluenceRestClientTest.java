@@ -138,7 +138,7 @@ public class ConfluenceRestClientTest {
         doReturn(oauthUrlHost).when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK))
                 .when(restTemplate)
-                .getForEntity(new URI(oauthUrlHost + paginationNextLink), ConfluenceSearchResults.class);
+                .getForEntity(new URI(oauthUrlHost + ConfluenceRestClient.WIKI_PARAM + paginationNextLink), ConfluenceSearchResults.class);
         ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, paginationLinks);
         assertNotNull(results);
     }

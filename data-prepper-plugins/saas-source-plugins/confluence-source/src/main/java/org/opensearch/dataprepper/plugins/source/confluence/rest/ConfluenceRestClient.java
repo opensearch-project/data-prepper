@@ -38,6 +38,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     public static final String REST_API_FETCH_CONTENT = "wiki/rest/api/content/";
     public static final String REST_API_CONTENT_EXPAND_PARAM = "?expand=body.view";
     //public static final String REST_API_SPACES = "/rest/api/api/spaces";
+    public static final String WIKI_PARAM = "wiki";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String LIMIT_PARAM = "limit";
@@ -78,7 +79,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         URI uri;
         if (null != paginationLinks && null != paginationLinks.getNext()) {
             try {
-                uri = new URI(authConfig.getUrl() + paginationLinks.getNext());
+                uri = new URI(authConfig.getUrl() + WIKI_PARAM + paginationLinks.getNext());
             } catch (URISyntaxException e) {
                 throw new RuntimeException("Failed to construct pagination url.", e);
             }
