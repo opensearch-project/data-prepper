@@ -100,11 +100,13 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     @Override
     public <T> boolean createPartition(EnhancedSourcePartition<T> partition) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
+
+        final String fullSourceIdentifier = this.sourceIdentifier + "|" + partitionType;
         // Don't need the status for Global state which is not for lease.
         SourcePartitionStatus status = partition.getPartitionType() == null ? null : SourcePartitionStatus.UNASSIGNED;
 
         final boolean created = coordinationStore.tryCreatePartitionItem(
-                this.sourceIdentifier + "|" + partitionType,
+                fullSourceIdentifier,
                 partition.getPartitionKey(),
                 status,
                 0L,
@@ -114,7 +116,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
 
         if (created) {
             LOG.info("Created partition item with source identifier {} and partition key {}",
-                    this.sourceIdentifier + "|" + partitionType, partition.getPartitionKey());
+                    fullSourceIdentifier, partition.getPartitionKey());
         }
 
         return created;
