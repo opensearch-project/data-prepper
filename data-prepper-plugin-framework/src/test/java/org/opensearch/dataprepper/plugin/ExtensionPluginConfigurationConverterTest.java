@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 
@@ -43,7 +44,8 @@ class ExtensionPluginConfigurationConverterTest {
     @Mock
     private ConstraintViolation<Object> constraintViolation;
 
-    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().extensionPluginConfigObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapperConfiguration()
+            .extensionPluginConfigObjectMapper(new DataPrepperDeserializationProblemHandler());
     private ExtensionPluginConfigurationConverter objectUnderTest;
 
     @BeforeEach
