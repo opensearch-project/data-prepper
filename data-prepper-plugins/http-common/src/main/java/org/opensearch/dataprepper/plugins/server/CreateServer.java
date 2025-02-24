@@ -60,7 +60,7 @@ public class CreateServer {
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
-    public CreateServer(final ServerConfiguration serverConfiguration, Logger LOG, PluginMetrics pluginMetrics, String sourceName, String pipelineName) {
+    public CreateServer(final ServerConfiguration serverConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
         this.serverConfiguration = serverConfiguration;
         this.LOG = LOG;
         this.pluginMetrics = pluginMetrics;
@@ -68,7 +68,7 @@ public class CreateServer {
         this.pipelineName = pipelineName;
     }
 
-    public <K, V> Server createGRPCServer(final GrpcAuthenticationProvider authenticationProvider, BindableService grpcService, CertificateProvider certificateProvider, MethodDescriptor<K, V> methodDescriptor) {
+    public <K, V> Server createGRPCServer(final GrpcAuthenticationProvider authenticationProvider, final BindableService grpcService, final CertificateProvider certificateProvider, final MethodDescriptor<K, V> methodDescriptor) {
         final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor(authenticationProvider);
 
         final GrpcServiceBuilder grpcServiceBuilder = GrpcService
@@ -151,7 +151,7 @@ public class CreateServer {
         return sb.build();
     }
 
-    public Server createHTTPServer(Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler) {
+    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler) {
         final ServerBuilder sb = Server.builder();
 
         sb.disableServerHeader();
@@ -221,7 +221,7 @@ public class CreateServer {
         return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
     }
 
-    private List<ServerInterceptor> getAuthenticationInterceptor(GrpcAuthenticationProvider authenticationProvider) {
+    private List<ServerInterceptor> getAuthenticationInterceptor(final GrpcAuthenticationProvider authenticationProvider) {
         final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
         if (authenticationInterceptor == null) {
             return Collections.emptyList();

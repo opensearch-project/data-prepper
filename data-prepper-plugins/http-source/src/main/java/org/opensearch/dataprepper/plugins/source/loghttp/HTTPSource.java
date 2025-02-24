@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
 public class HTTPSource implements Source<Record<Log>> {
+    private static final String PLUGIN_NAME = "http";
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
     private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
@@ -83,7 +84,7 @@ public class HTTPSource implements Source<Record<Log>> {
         }
         if (server == null) {
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
-            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, "http", pipelineName);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
             server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }

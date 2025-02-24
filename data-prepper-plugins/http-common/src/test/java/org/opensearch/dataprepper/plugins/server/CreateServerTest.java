@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.server.Server;
-import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
-import io.grpc.ServerServiceDefinition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -19,11 +17,13 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,6 @@ public class CreateServerTest {
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
     private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
-    private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
     private String TEST_PIPELINE_NAME = "test-pipeline";
     private String TEST_SOURCE_NAME = "test-source";
 
@@ -73,13 +72,6 @@ public class CreateServerTest {
     ServerInterceptor authenticationInterceptor;
 
     @Mock
-    private ServerServiceDefinition serviceDef;
-
-    @Mock
-    private BindableService basicService;
-
-
-    @Mock
     private Certificate certificate;
 
     private BlockingBuffer<Record<Log>> getBuffer() {
@@ -91,20 +83,25 @@ public class CreateServerTest {
         return new BlockingBuffer<>(pluginSetting);
     }
 
-    //Me when idk how to mock a grpc service.  Tested in otel logs, metrics and trace i guess :(
-//    @Test
-//    void createGrpcServerTest() throws JsonProcessingException {
-//        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
-//        MockedStatic<ServerInterceptors> mockedStatic = mockStatic(ServerInterceptors.class);
-//        mockedStatic.when(() -> ServerInterceptors.intercept(
-//                        any(ServerServiceDefinition.class),
-//                        any(ServerInterceptor[].class)))
-//                .thenReturn(serviceDef);
-//        final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
-//        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
-//        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
-//        createServer.createGRPCServer(authenticationProvider, basicService, certificateProvider, null);
-//    }
+    private BlockingBuffer<Record<? extends Metric>> getBufferGrpc() {
+        final HashMap<String, Object> integerHashMap = new HashMap<>();
+        integerHashMap.put("buffer_size", 1);
+        integerHashMap.put("batch_size", 1);
+        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
+        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
+        return new BlockingBuffer<>(pluginSetting);
+    }
+
+    @Test
+    void createGrpcServerTest() throws JsonProcessingException {
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        Buffer<Record<? extends Metric>> buffer = getBufferGrpc();
+        TestService testService = getTestService(buffer);
+        createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+    }
 
     @Test
     void createHttpServerTest() throws IOException {
@@ -159,5 +156,15 @@ public class CreateServerTest {
         objectMapper.registerModule(new JavaTimeModule());
         String json = new ObjectMapper().writeValueAsString(metadata);
         return objectMapper.readValue(json, ServerConfiguration.class);
+    }
+
+    private TestService getTestService(Buffer<Record<? extends Metric>> buffer){
+        TestService testService = new TestService(
+                80,
+                new OTelProtoCodec.OTelProtoDecoder(),
+                buffer,
+                pluginMetrics
+        );
+        return testService;
     }
 }

@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutionException;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
+    private static final String PLUGIN_NAME = "otel_trace_source";
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     static final String SERVER_CONNECTIONS = "serverConnections";
 
@@ -86,7 +87,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
             );
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelTraceSourceConfig);
-            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, "otel_trace_source", pipelineName);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
             CertificateProvider certificateProvider = null;
             if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();
