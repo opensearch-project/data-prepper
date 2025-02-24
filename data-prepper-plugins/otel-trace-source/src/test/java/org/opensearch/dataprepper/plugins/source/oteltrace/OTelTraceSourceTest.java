@@ -38,8 +38,8 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -144,11 +144,11 @@ class OTelTraceSourceTest {
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
-                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                    .addScopeSpans(ScopeSpans.newBuilder()
                             .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
     private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
-                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                    .addScopeSpans(ScopeSpans.newBuilder()
                             .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
 
     @Mock
@@ -1248,7 +1248,7 @@ class OTelTraceSourceTest {
                 .setTraceState("SUCCESS").build();
         final ExportTraceServiceRequest successRequest = ExportTraceServiceRequest.newBuilder()
                 .addResourceSpans(ResourceSpans.newBuilder()
-                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
                 .build();
 
         return successRequest;
@@ -1266,7 +1266,7 @@ class OTelTraceSourceTest {
 
         return ExportTraceServiceRequest.newBuilder()
                 .addResourceSpans(ResourceSpans.newBuilder()
-                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
                 .build();
     }
 

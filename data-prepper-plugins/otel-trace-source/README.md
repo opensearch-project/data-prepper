@@ -119,12 +119,12 @@ Make sure to replace the paths for the `sslKeyCertChainFile` and `sslKeyFile` fo
 Send a sample span with the following https curl command:
 
 ```
-curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export
+curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"scopeSpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export
 ```
 
 If `path` option is configured, you can send a sample span to the custom path with the following https curl command:
 ```
-curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/<path>
+curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"scopeSpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/<path>
 ```
 
 ## Metrics

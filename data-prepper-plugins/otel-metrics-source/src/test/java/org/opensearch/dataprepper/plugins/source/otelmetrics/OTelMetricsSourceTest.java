@@ -36,14 +36,14 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.metrics.v1.Gauge;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -1186,9 +1186,9 @@ class OTelMetricsSourceTest {
                 .setUnit("seconds")
                 .setName("name")
                 .setDescription("description");
-        InstrumentationLibraryMetrics isntLib = InstrumentationLibraryMetrics.newBuilder()
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
                 .addMetrics(metric)
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
+                .setScope(InstrumentationScope.newBuilder()
                         .setName("ilname")
                         .setVersion("ilversion")
                         .build())
@@ -1197,7 +1197,7 @@ class OTelMetricsSourceTest {
 
         final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(isntLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
 
         return ExportMetricsServiceRequest.newBuilder()
