@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
-import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySinkAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySourceAccessor;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 
 import java.util.ArrayList;
@@ -33,6 +33,10 @@ import static org.hamcrest.Matchers.empty;
 
 class Router_ThreeRoutesDefaultIT {
     private static final String TESTING_KEY = "ConditionalRoutingIT";
+    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper/";
+    private static final String DATA_PREPPER_CONFIG_FILE = BASE_PATH + "configuration/data-prepper-config.yaml";
+    private static final String PIPELINE_BASE_PATH = BASE_PATH + "pipeline/route/";
+    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = PIPELINE_BASE_PATH + "three-route-with-default-route.yaml";
     private static final String ALL_SOURCE_KEY = TESTING_KEY + "_all";
     private static final String ALPHA_SOURCE_KEY = TESTING_KEY + "_alpha";
     private static final String BETA_SOURCE_KEY = TESTING_KEY + "_beta";
@@ -51,7 +55,8 @@ class Router_ThreeRoutesDefaultIT {
     @BeforeEach
     void setUp() {
         dataPrepperTestRunner = DataPrepperTestRunner.builder()
-                .withPipelinesDirectoryOrFile("route/three-route-with-default-route.yaml")
+                .withPipelinesDirectoryOrFile(PIPELINE_CONFIGURATION_UNDER_TEST)
+                .withDataPrepperConfigFile(DATA_PREPPER_CONFIG_FILE)
                 .build();
 
         dataPrepperTestRunner.start();
