@@ -131,7 +131,7 @@ public class StreamAcknowledgementManager {
     private void checkpoint(final String resumeToken, final long recordCount) {
         LOG.debug("Perform regular checkpointing for resume token {} at record count {}", resumeToken, recordCount);
         partitionCheckpoint.checkpoint(resumeToken, recordCount);
-        this.recordsCheckpointed.increment(recordCount);
+        this.recordsCheckpointed.increment();
     }
 
     Optional<AcknowledgementSet> createAcknowledgementSet(final String resumeToken, final long recordNumber) {

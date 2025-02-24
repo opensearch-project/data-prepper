@@ -111,7 +111,7 @@ public class StreamAcknowledgementManagerTest {
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
         verify(positiveAcknowledgementSets).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment();
     }
 
     @Test
@@ -151,7 +151,7 @@ public class StreamAcknowledgementManagerTest {
 
         verify(positiveAcknowledgementSets, atLeastOnce()).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment();
     }
 
     @Test
