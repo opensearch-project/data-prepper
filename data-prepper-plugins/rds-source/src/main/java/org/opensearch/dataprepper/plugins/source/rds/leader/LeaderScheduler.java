@@ -48,6 +48,7 @@ public class LeaderScheduler implements Runnable {
     private final DbTableMetadata dbTableMetadataMetadata;
 
     private LeaderPartition leaderPartition;
+    private StreamPartition streamPartition = null;
     private volatile boolean shutdownRequested = false;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
@@ -112,6 +113,21 @@ public class LeaderScheduler implements Runnable {
 
     public void shutdown() {
         shutdownRequested = true;
+
+        // Clean up publication and replication slot for Postgres
+        if (streamPartition != null) {
+            streamPartition.getProgressState().ifPresent(progressState -> {
+                if (EngineType.fromString(progressState.getEngineType()).isPostgres()) {
+                    final PostgresStreamState postgresStreamState = progressState.getPostgresStreamState();
+                    final String publicationName = postgresStreamState.getPublicationName();
+                    final String replicationSlotName = postgresStreamState.getReplicationSlotName();
+                    LOG.info("Cleaned up logical replication slot {} and publication {}",
+                            replicationSlotName, publicationName);
+                    ((PostgresSchemaManager) schemaManager).deleteLogicalReplicationSlot(
+                            publicationName, replicationSlotName);
+                }
+            });
+        }
     }
 
     private void init() {
@@ -169,7 +185,7 @@ public class LeaderScheduler implements Runnable {
         progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             final MySqlStreamState mySqlStreamState = new MySqlStreamState();
             getCurrentBinlogPosition().ifPresent(mySqlStreamState::setCurrentPosition);
             mySqlStreamState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(sourceConfig.getTableNames()));
@@ -185,7 +201,7 @@ public class LeaderScheduler implements Runnable {
             postgresStreamState.setReplicationSlotName(slotName);
             progressState.setPostgresStreamState(postgresStreamState);
         }
-        StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
+        streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
     }
 

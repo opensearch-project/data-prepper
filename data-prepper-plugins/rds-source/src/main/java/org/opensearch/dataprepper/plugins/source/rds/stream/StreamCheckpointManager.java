@@ -174,7 +174,7 @@ public class StreamCheckpointManager {
     }
 
     private void checkpoint(final EngineType engineType, final ChangeEventStatus changeEventStatus) {
-        LOG.debug("Checkpoint at {} with record count {}. ", engineType == EngineType.MYSQL ?
+        LOG.debug("Checkpoint at {} with record count {}. ", engineType.isMySql() ?
                 changeEventStatus.getBinlogCoordinate() : changeEventStatus.getLogSequenceNumber(),
                 changeEventStatus.getRecordCount());
         streamCheckpointer.checkpoint(engineType, changeEventStatus);

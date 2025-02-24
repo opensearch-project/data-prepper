@@ -144,6 +144,18 @@ public class LogicalReplicationEventProcessor {
         eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
+    public static LogicalReplicationEventProcessor create(final StreamPartition streamPartition,
+                                                          final RdsSourceConfig sourceConfig,
+                                                          final Buffer<Record<Event>> buffer,
+                                                          final String s3Prefix,
+                                                          final PluginMetrics pluginMetrics,
+                                                          final LogicalReplicationClient logicalReplicationClient,
+                                                          final StreamCheckpointer streamCheckpointer,
+                                                          final AcknowledgementSetManager acknowledgementSetManager) {
+        return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+    }
+
     public void process(ByteBuffer msg) {
         // Message processing logic:
         // If it's a BEGIN, note its LSN
@@ -294,25 +306,19 @@ public class LogicalReplicationEventProcessor {
         TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
         if (tupleDataType == TupleDataType.NEW) {
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {}", tableId);
-        } else if (tupleDataType == TupleDataType.KEY) {
-            // Primary keys were changed
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
-            msg.get();  // should be a char 'N'
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {} and primary key(s) were changed", tableId);
-
-        } else if (tupleDataType == TupleDataType.OLD) {
+        } else if (tupleDataType == TupleDataType.OLD || tupleDataType == TupleDataType.KEY) {
             // Replica Identity is set to full, containing both old and new row data
             Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
             msg.get();  // should be a char 'N'
             Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
 
             if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
+                LOG.debug("Primary keys were changed");
                 createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
             }
             createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
         }
+        LOG.debug("Processed an UPDATE message with table id: {}", tableId);
     }
 
     private boolean isPrimaryKeyChanged(Map<String, Object> oldRowDataMap, Map<String, Object> newRowDataMap, List<String> primaryKeys) {

@@ -87,9 +87,9 @@ public class DataFileProgressState {
 
     @JsonIgnore
     public String getFullSourceTableName() {
-        if (EngineType.fromString(engineType) == EngineType.MYSQL) {
+        if (EngineType.fromString(engineType).isMySql()) {
             return sourceDatabase + "." + sourceTable;
-        } else if (EngineType.fromString(engineType) == EngineType.POSTGRES) {
+        } else if (EngineType.fromString(engineType).isPostgres()) {
             return sourceDatabase + "." + sourceSchema + "." + sourceTable;
         } else {
             throw new RuntimeException("Unsupported engine type: " + engineType);

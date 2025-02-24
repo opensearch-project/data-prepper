@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.rds;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 
 import java.util.UUID;
@@ -18,13 +17,11 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 class RdsSourceConfigTest {
 
     @Test
-    void test_default_RdsSrouceConfig_returns_default_values() {
+    void test_default_RdsSourceConfig_returns_default_values() {
         final RdsSourceConfig objectUnderTest = createObjectUnderTest();
 
-        assertThat(objectUnderTest.getEngine(), equalTo(EngineType.MYSQL));
-        assertThat(objectUnderTest.isCluster(), equalTo(false));
-        assertThat(objectUnderTest.isAurora(), equalTo(false));
-        assertThat(objectUnderTest.isAcknowledgmentsEnabled(), equalTo(false));
+        assertThat(objectUnderTest.isAcknowledgmentsEnabled(), equalTo(true));
+        assertThat(objectUnderTest.isDisableS3ReadForLeader(), equalTo(false));
     }
 
     @Test

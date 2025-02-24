@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,8 @@ public class PostgresSchemaManager implements SchemaManager {
     static final String COLUMN_NAME = "COLUMN_NAME";
     static final String TYPE_NAME = "TYPE_NAME";
     static final String PGOUTPUT = "pgoutput";
+    static final String DROP_PUBLICATION_SQL = "DROP PUBLICATION IF EXISTS ";
+    static final String DROP_SLOT_SQL = "SELECT pg_drop_replication_slot(?)";
 
     public PostgresSchemaManager(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
@@ -89,6 +92,31 @@ public class PostgresSchemaManager implements SchemaManager {
             }
         } catch (Exception e) {
             LOG.error("Exception when creating replication slot. ", e);
+        }
+    }
+
+    public void deleteLogicalReplicationSlot(final String publicationName, final String slotName) {
+        try (Connection conn = connectionManager.getConnection()) {
+            if (slotName != null) {
+                try (PreparedStatement dropSlotStatement = conn.prepareStatement(DROP_SLOT_SQL)) {
+                    dropSlotStatement.setString(1, slotName);
+                    dropSlotStatement.execute();
+                    LOG.info("Replication slot {} dropped successfully.", slotName);
+                } catch (Exception e) {
+                    LOG.warn("Failed to drop replication slot: {}", e.getMessage());
+                }
+            }
+
+            if (publicationName != null) {
+                try (Statement dropPublicationStatement = conn.createStatement()) {
+                    dropPublicationStatement.execute(DROP_PUBLICATION_SQL + publicationName);
+                    LOG.info("Publication {} dropped successfully.", publicationName);
+                } catch (Exception e) {
+                    LOG.warn("Failed to drop publication: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Exception when connecting to database to drop replication slot. ", e);
         }
     }
 
