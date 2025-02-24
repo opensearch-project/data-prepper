@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -180,6 +181,14 @@ public class LeaderScheduler implements Runnable {
                 ));
     }
 
+    private Map<String, Set<String>> getPostgresEnumColumnsByTable() {
+        return sourceConfig.getTableNames().stream()
+                .collect(Collectors.toMap(
+                        fullTableName -> fullTableName,
+                        fullTableName -> ((PostgresSchemaManager)schemaManager).getEnumColumns(fullTableName)
+                ));
+    }
+
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
         progressState.setEngineType(sourceConfig.getEngine().toString());
@@ -199,6 +208,7 @@ public class LeaderScheduler implements Runnable {
             final PostgresStreamState postgresStreamState = new PostgresStreamState();
             postgresStreamState.setPublicationName(publicationName);
             postgresStreamState.setReplicationSlotName(slotName);
+            postgresStreamState.setEnumColumnsByTable(getPostgresEnumColumnsByTable());
             progressState.setPostgresStreamState(postgresStreamState);
         }
         streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
