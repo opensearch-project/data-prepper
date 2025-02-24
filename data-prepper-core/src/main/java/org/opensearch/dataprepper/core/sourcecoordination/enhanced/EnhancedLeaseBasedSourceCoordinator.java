@@ -34,11 +34,6 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     private static final Logger LOG = LoggerFactory.getLogger(EnhancedLeaseBasedSourceCoordinator.class);
 
     /**
-     * Default time out duration for lease.
-     */
-    private static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
-
-    /**
      * Default identifier For global state
      */
     private static final String DEFAULT_GLOBAL_STATE_PARTITION_TYPE = "GLOBAL";
@@ -77,6 +72,8 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         }
     }
 
+    private final Duration leaseTimeout;
+
 
     public EnhancedLeaseBasedSourceCoordinator(final SourceCoordinationStore coordinationStore,
                                                final SourceCoordinationConfig sourceCoordinationConfig,
@@ -87,6 +84,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
                 sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier :
                 sourceIdentifier;
+        leaseTimeout = sourceCoordinationConfig.getLeaseTimeout();
         this.pluginMetrics = pluginMetrics;
         this.partitionFactory = partitionFactory;
         this.partitionPrefix = sourceCoordinationConfig.getPartitionPrefix();
@@ -120,7 +118,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Not available for global state.
         Objects.requireNonNull(partitionType);
         LOG.debug("Try to acquire an available {} partition", partitionType);
-        Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, DEFAULT_LEASE_TIMEOUT);
+        Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.tryAcquireAvailablePartition(this.sourceIdentifier + "|" + partitionType, hostName, leaseTimeout);
         if (sourceItem.isEmpty()) {
             LOG.debug("Partition owner {} failed to acquire a partition, no available {} partitions now", hostName, partitionType);
             return Optional.empty();
@@ -178,7 +176,7 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         final SourcePartitionStoreItem updateItem = partition.getSourcePartitionStoreItem();
         // Also extend the timeout of the lease (ownership)
         if (updateItem.getPartitionOwnershipTimeout() != null) {
-            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? DEFAULT_LEASE_TIMEOUT : ownershipTimeoutRenewal));
+            updateItem.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeoutRenewal == null ? leaseTimeout : ownershipTimeoutRenewal));
         }
         updateItem.setPartitionProgressState(partition.convertPartitionProgressStatetoString(partition.getProgressState()));
 
