@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.parser;
 
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
@@ -100,6 +102,8 @@ class PipelineTransformerTests {
     @Mock
     private PluginErrorsHandler pluginErrorsHandler;
     @Mock
+    private PipelineConfigurationErrorHandler pipelineConfigurationErrorHandler;
+    @Mock
     private DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler;
     @Mock
     private ExpressionEvaluator expressionEvaluator;
@@ -135,6 +139,8 @@ class PipelineTransformerTests {
         coreContext.registerBean(PluginErrorsHandler.class, () -> pluginErrorsHandler);
         coreContext.registerBean(DataPrepperDeserializationProblemHandler.class,
                 () -> dataPrepperDeserializationProblemHandler);
+        coreContext.registerBean(LevenshteinDistance.class, () -> new LevenshteinDistance());
+        coreContext.registerBean(PipelineConfigurationErrorHandler.class, () -> pipelineConfigurationErrorHandler);
         coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
@@ -151,7 +157,8 @@ class PipelineTransformerTests {
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
-                new PipelineConfigurationFileReader(pipelineConfigurationFileLocation)).parseConfiguration();
+                new PipelineConfigurationFileReader(pipelineConfigurationFileLocation),
+                pipelineConfigurationErrorHandler).parseConfiguration();
         return new PipelineTransformer(
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
                 routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,

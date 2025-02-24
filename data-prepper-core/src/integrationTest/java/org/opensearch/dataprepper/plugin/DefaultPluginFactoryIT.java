@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugin;
 
 import io.micrometer.core.instrument.Counter;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,6 +84,7 @@ class DefaultPluginFactoryIT {
         coreContext.register(PluginBeanFactoryProvider.class);
         coreContext.registerBean(PluginErrorCollector.class, PluginErrorCollector::new);
         coreContext.registerBean(PluginErrorsHandler.class, LoggingPluginErrorsHandler::new);
+        coreContext.registerBean(LevenshteinDistance.class, () -> new LevenshteinDistance());
         coreContext.registerBean(DataPrepperDeserializationProblemHandler.class, DataPrepperDeserializationProblemHandler::new);
         coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
