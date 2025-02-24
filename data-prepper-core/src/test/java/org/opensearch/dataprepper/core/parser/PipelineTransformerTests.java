@@ -40,6 +40,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
@@ -98,7 +99,8 @@ class PipelineTransformerTests {
     private CircuitBreakerManager circuitBreakerManager;
     @Mock
     private PluginErrorsHandler pluginErrorsHandler;
-
+    @Mock
+    private DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler;
     @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Captor
@@ -131,6 +133,8 @@ class PipelineTransformerTests {
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.registerBean(PluginErrorCollector.class, () -> pluginErrorCollector);
         coreContext.registerBean(PluginErrorsHandler.class, () -> pluginErrorsHandler);
+        coreContext.registerBean(DataPrepperDeserializationProblemHandler.class,
+                () -> dataPrepperDeserializationProblemHandler);
         coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();

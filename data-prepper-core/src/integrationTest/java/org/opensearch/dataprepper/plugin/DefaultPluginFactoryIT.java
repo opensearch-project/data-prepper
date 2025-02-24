@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
 import org.opensearch.dataprepper.plugins.configtest.TestDISourceWithConfig;
@@ -82,6 +83,7 @@ class DefaultPluginFactoryIT {
         coreContext.register(PluginBeanFactoryProvider.class);
         coreContext.registerBean(PluginErrorCollector.class, PluginErrorCollector::new);
         coreContext.registerBean(PluginErrorsHandler.class, LoggingPluginErrorsHandler::new);
+        coreContext.registerBean(DataPrepperDeserializationProblemHandler.class, DataPrepperDeserializationProblemHandler::new);
         coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.registerBean(ExperimentalConfigurationContainer.class, () -> experimentalConfigurationContainer);

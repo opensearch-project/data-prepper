@@ -20,14 +20,19 @@ import java.util.regex.Pattern;
 public class DataPrepperDurationParser {
     private static final String SIMPLE_DURATION_REGEX = "^(0|[1-9]\\d*)(s|ms)$";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
+    private static final String INVALID_DURATION_ERROR_MESSAGE =
+            "Durations must use either ISO 8601 notation or simple notations for seconds (60s) or milliseconds (100ms). Whitespace is ignored.";
 
     public static Duration parse(final String durationString) {
+        if (durationString == null) {
+            throw new IllegalArgumentException(INVALID_DURATION_ERROR_MESSAGE);
+        }
         try {
             return Duration.parse(durationString);
         } catch (final DateTimeParseException e) {
             final Duration duration = parseSimpleDuration(durationString);
             if (duration == null) {
-                throw new IllegalArgumentException("Durations must use either ISO 8601 notation or simple notations for seconds (60s) or milliseconds (100ms). Whitespace is ignored.");
+                throw new IllegalArgumentException(INVALID_DURATION_ERROR_MESSAGE);
             }
             return duration;
         }

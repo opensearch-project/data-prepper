@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -38,10 +39,14 @@ class ObjectMapperConfigurationTest {
     @Mock
     private EventKeyFactory eventKeyFactory;
 
+    @Mock
+    private DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler;
+
     @Test
     void test_duration_with_pluginConfigObjectMapper() {
         final String durationTestString = "10s";
-        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(
+                variableExpander, eventKeyFactory, dataPrepperDeserializationProblemHandler);
         final Duration duration = objectMapper.convertValue(durationTestString, Duration.class);
         assertThat(duration, equalTo(Duration.ofSeconds(10)));
     }
@@ -49,7 +54,8 @@ class ObjectMapperConfigurationTest {
     @Test
     void test_enum_with_pluginConfigObjectMapper() throws JsonProcessingException {
         final String testModelAsString = "{ \"name\": \"my-name\", \"test_type\": \"test\" }";
-        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(
+                variableExpander, eventKeyFactory, dataPrepperDeserializationProblemHandler);
         final TestModel testModel = objectMapper.readValue(testModelAsString, TestModel.class);
         assertThat(testModel, notNullValue());
         assertThat(testModel.getTestType(), equalTo(TestType.TEST));
@@ -58,7 +64,8 @@ class ObjectMapperConfigurationTest {
     @Test
     void test_duration_with_extensionPluginConfigObjectMapper() {
         final String durationTestString = "10s";
-        final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper();
+        final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper(
+                dataPrepperDeserializationProblemHandler);
         final Duration duration = objectMapper.convertValue(durationTestString, Duration.class);
         assertThat(duration, equalTo(Duration.ofSeconds(10)));
     }
@@ -66,7 +73,8 @@ class ObjectMapperConfigurationTest {
     @Test
     void test_enum_with_extensionPluginConfigObjectMapper() throws JsonProcessingException {
         final String testModelAsString = "{ \"name\": \"my-name\", \"test_type\": \"test\" }";
-        final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper();
+        final ObjectMapper objectMapper = objectMapperConfiguration.extensionPluginConfigObjectMapper(
+                dataPrepperDeserializationProblemHandler);
         final TestModel testModel = objectMapper.readValue(testModelAsString, TestModel.class);
         assertThat(testModel, notNullValue());
         assertThat(testModel.getTestType(), equalTo(TestType.TEST));
@@ -77,7 +85,8 @@ class ObjectMapperConfigurationTest {
         final String testKey = "test";
         final EventKey eventKey = mock(EventKey.class);
         when(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.ALL)).thenReturn(eventKey);
-        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(variableExpander, eventKeyFactory);
+        final ObjectMapper objectMapper = objectMapperConfiguration.pluginConfigObjectMapper(
+                variableExpander, eventKeyFactory, dataPrepperDeserializationProblemHandler);
         final EventKey actualEventKey = objectMapper.convertValue(testKey, EventKey.class);
         assertThat(actualEventKey, equalTo(eventKey));
     }
