@@ -86,7 +86,7 @@ public class CreateServerTest {
         integerHashMap.put("batch_size", 1);
         final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
         pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<>(pluginSetting);
+        return new BlockingBuffer<Record<Log>>(pluginSetting);
     }
 
     private BlockingBuffer<Record<? extends Metric>> getBufferGrpc() {
@@ -95,7 +95,7 @@ public class CreateServerTest {
         integerHashMap.put("batch_size", 1);
         final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
         pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<>(pluginSetting);
+        return new BlockingBuffer<Record<? extends Metric>>(pluginSetting);
     }
 
     @Test
