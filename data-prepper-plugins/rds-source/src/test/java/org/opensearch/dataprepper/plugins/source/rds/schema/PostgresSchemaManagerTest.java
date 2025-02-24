@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -36,6 +37,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -58,6 +60,9 @@ class PostgresSchemaManagerTest {
 
     @Mock
     private ResultSet resultSet;
+
+    @Mock
+    private PreparedStatement preparedStatement;
 
     private PostgresSchemaManager schemaManager;
 
@@ -228,6 +233,88 @@ class PostgresSchemaManagerTest {
         assertThat(result.size(), is(expectedColumnTypes.size()));
         assertThat(result, equalTo(expectedColumnTypes));
     }
+
+    @Test
+    void getEnumColumns_successfully_returns_enum_columns() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+        final Set<String> expectedEnumColumns = Set.of("status", "category");
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, true, false);
+        when(resultSet.getString("column_name")).thenReturn("status", "category");
+
+        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+
+        assertThat(actualEnumColumns, equalTo(expectedEnumColumns));
+
+        verify(preparedStatement).setString(1, schema);
+        verify(preparedStatement).setString(2, tableName);
+        verify(preparedStatement).setString(3, database);
+    }
+
+    @Test
+    void getEnumColumns_returns_empty_set_when_no_enum_columns() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(false);
+
+        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+
+        assertTrue(actualEnumColumns.isEmpty());
+        verify(preparedStatement).setString(1, schema);
+        verify(preparedStatement).setString(2, tableName);
+        verify(preparedStatement).setString(3, database);
+    }
+
+    @Test
+    void getEnumColumns_handles_sql_exception_with_retry() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(anyString()))
+                .thenThrow(new SQLException("Database error"))
+                .thenReturn(preparedStatement);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getString("column_name")).thenReturn("status");
+
+        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+
+        assertThat(actualEnumColumns, equalTo(Set.of("status")));
+        verify(preparedStatement).setString(1, schema);
+        verify(preparedStatement).setString(2, tableName);
+        verify(preparedStatement).setString(3, database);
+    }
+
+    @Test
+    void getEnumColumns_throws_exception_after_max_retries() throws SQLException {
+        final String database = "my_db";
+        final String schema = "public";
+        final String tableName = "test";
+        final String fullTableName = database + "." + schema + "." + tableName;
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(anyString()))
+                .thenThrow(new SQLException("Database error"));
+
+        assertThrows(RuntimeException.class, () ->
+                schemaManager.getEnumColumns(fullTableName));
+    }
+
 
     private PostgresSchemaManager createObjectUnderTest() {
         return new PostgresSchemaManager(connectionManager);

@@ -20,6 +20,7 @@ public enum PostgresDataType {
     TEXT("text", DataCategory.STRING),
     VARCHAR("varchar", DataCategory.STRING),
     BPCHAR("bpchar", DataCategory.STRING),
+    ENUM("enum", DataCategory.STRING),
 
     //Bit String Data type
     BIT("bit",DataCategory.BIT_STRING),
@@ -28,6 +29,7 @@ public enum PostgresDataType {
     //Json Data type
     JSON("json",DataCategory.JSON),
     JSONB("jsonb",DataCategory.JSON),
+    JSONPATH("jsonpath", DataCategory.JSON),
 
     //Boolean data type
     BOOLEAN("bool", DataCategory.BOOLEAN),
@@ -61,6 +63,14 @@ public enum PostgresDataType {
     PG_LSN("pg_lsn", DataCategory.SPECIAL),
     TSVECTOR("tsvector", DataCategory.SPECIAL),
     TSQUERY("tsquery", DataCategory.SPECIAL),
+    PG_SNAPSHOT("pg_snapshot", DataCategory.SPECIAL),
+    TXID_SNAPSHOT("txid_snapshot", DataCategory.SPECIAL),
+
+    INT4RANGE("int4range", DataCategory.RANGE),
+    INT8RANGE("int8range", DataCategory.RANGE),
+    TSRANGE("tsrange", DataCategory.RANGE),
+    TSTZRANGE("tstzrange", DataCategory.RANGE),
+    DATERANGE("daterange", DataCategory.RANGE),
 
     //Binary data type
     BYTEA("bytea", DataCategory.BINARY);
@@ -109,7 +119,8 @@ public enum PostgresDataType {
         SPATIAL,
         NETWORK_ADDRESS,
         SPECIAL,
-        BINARY
+        BINARY,
+        RANGE
     }
 
 
@@ -153,5 +164,10 @@ public enum PostgresDataType {
     public boolean isBinary() {
         return category == DataCategory.BINARY;
     }
+
+    public boolean isRange() {
+        return category == DataCategory.RANGE;
+    }
+
 }
 

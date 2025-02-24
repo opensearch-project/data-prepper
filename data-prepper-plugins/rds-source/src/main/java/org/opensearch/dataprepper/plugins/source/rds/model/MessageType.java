@@ -18,7 +18,8 @@ public enum MessageType {
     INSERT('I'),
     UPDATE('U'),
     DELETE('D'),
-    COMMIT('C');
+    COMMIT('C'),
+    TYPE('Y');
 
     private final char value;
 
@@ -28,7 +29,8 @@ public enum MessageType {
             INSERT.getValue(), INSERT,
             UPDATE.getValue(), UPDATE,
             DELETE.getValue(), DELETE,
-            COMMIT.getValue(), COMMIT
+            COMMIT.getValue(), COMMIT,
+            TYPE.getValue(), TYPE
     );
 
     MessageType(char value) {
