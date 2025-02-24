@@ -54,6 +54,7 @@ import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 @ExtendWith(MockitoExtension.class)
 class OTelMetricsSource_RetryInfoTest {

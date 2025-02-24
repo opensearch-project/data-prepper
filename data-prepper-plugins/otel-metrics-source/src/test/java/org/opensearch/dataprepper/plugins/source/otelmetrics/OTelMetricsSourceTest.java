@@ -79,7 +79,7 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 

@@ -53,6 +53,7 @@ import io.opentelemetry.proto.logs.v1.LogRecord;
 import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 @ExtendWith(MockitoExtension.class)
 class OtelLogsSource_RetryInfoTest {
