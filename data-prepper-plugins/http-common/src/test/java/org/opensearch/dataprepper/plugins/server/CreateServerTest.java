@@ -3,7 +3,11 @@ package org.opensearch.dataprepper.plugins.server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.ServerInterceptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,19 +35,24 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CreateServerTest {
+    private Logger LOG = LoggerFactory.getLogger(CreateServer.class);
     ObjectMapper objectMapper;
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
     private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
-
     private String TEST_PIPELINE_NAME = "test-pipeline";
     private String TEST_SOURCE_NAME = "test-source";
 
@@ -52,8 +61,6 @@ public class CreateServerTest {
 
     @Mock
     private CertificateProvider certificateProvider;
-
-    private Logger LOG = LoggerFactory.getLogger(CreateServer.class);
 
     @Mock
     private CertificateProviderFactory certificateProviderFactory;
@@ -99,7 +106,46 @@ public class CreateServerTest {
         final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<? extends Metric>> buffer = getBufferGrpc();
         TestService testService = getTestService(buffer);
-        createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+
+        Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+
+        assertNotNull(server);
+        assertDoesNotThrow(() -> server.start());
+        assertDoesNotThrow(() -> server.stop());
+    }
+
+    @Test
+    void testCustomAuthModule() throws JsonProcessingException{
+        when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
+        final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
+
+        Map<String, Object> authConfig = new HashMap<>();
+        authConfig.put("plugin", "test-auth");
+        authConfig.put("settings", Collections.singletonMap("key", "value"));
+        metadata.put("authentication", authConfig);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+
+        SimpleAuthDecorator customAuth = new SimpleAuthDecorator();
+        Logger mockLogger = mock(Logger.class);
+        customAuth.setLogger(mockLogger);
+        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(Optional.of(customAuth));
+
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        Buffer<Record<? extends Metric>> buffer = getBufferGrpc();
+        TestService testService = getTestService(buffer);
+        Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
+
+        assertNotNull(server);
+        assertDoesNotThrow(() -> server.start());
+
+        WebClient webClient = WebClient.builder(
+                String.format("http://127.0.0.1:%d", serverConfiguration.getPort())
+        ).build();
+        webClient.get("/").aggregate().join();
+
+        verify(mockLogger).info("Ensure Custom Auth Decorator is working");
+
+        assertDoesNotThrow(() -> server.stop());
     }
 
     @Test
@@ -166,4 +212,25 @@ public class CreateServerTest {
         );
         return testService;
     }
+
+    public class SimpleAuthDecorator implements Function<HttpService, HttpService> {
+        private Logger authLog = LoggerFactory.getLogger(SimpleAuthDecorator.class);
+
+        void setLogger(Logger logger) {
+            this.authLog = logger;
+        }
+
+        @Override
+        public HttpService apply(HttpService delegate) {
+            return new HttpService() {
+                @Override
+                public com.linecorp.armeria.common.HttpResponse serve(ServiceRequestContext ctx, HttpRequest request) throws Exception {
+                    authLog.info("Ensure Custom Auth Decorator is working");
+                    return delegate.serve(ctx, request);
+                }
+
+            };
+        }
+    }
+
 }
