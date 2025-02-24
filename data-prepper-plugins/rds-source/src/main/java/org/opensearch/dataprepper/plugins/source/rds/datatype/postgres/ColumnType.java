@@ -32,6 +32,7 @@ public enum ColumnType {
     INTERVAL(1186, "interval"),
     JSON(114, "json"),
     JSONB(3802, "jsonb"),
+    JSONPATH(4072, "jsonpath"),
     MONEY(790,"money"),
     BIT(1560, "bit"),
     VARBIT(1562, "varbit"),
@@ -49,11 +50,19 @@ public enum ColumnType {
     XML(142, "xml"),
     UUID(2950, "uuid"),
     PG_LSN(3220, "pg_lsn"),
+    PG_SNAPSHOT(5038, "pg_snapshot"),
+    TXID_SNAPSHOT(2970, "txid_snapshot"),
     TSVECTOR(3614, "tsvector"),
     TSQUERY(3615, "tsquery"),
-    BYTEA(17, "bytea");
+    BYTEA(17, "bytea"),
+    INT4RANGE(3904, "int4range"),
+    INT8RANGE(3926, "int8range"),
+    TSRANGE(3908, "tsrange"),
+    TSTZRANGE(3910, "tstzrange"),
+    DATERANGE(3912, "daterange"),
+    ENUM(-1,"enum");
 
-
+    public static final int ENUM_TYPE_ID = -1;
     private final int typeId;
     private final String typeName;
 

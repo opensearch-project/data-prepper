@@ -21,12 +21,12 @@ public class TemporalTypeHandler implements PostgresDataTypeHandler {
     private static final String POSTGRES_DATE_FORMAT = "yyyy-MM-dd";
     private static final String POSTGRES_TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
-    private static final String POSTGRES_DATE_MIN_INFINITY = "1970-01-01";
-    private static final String POSTGRES_DATE_MAX_INFINITY = "9999-12-31";
-    private static final String POSTGRES_TIMESTAMP_MIN_INFINITY = "1970-01-01 00:00:00";
-    private static final String POSTGRES_TIMESTAMP_MAX_INFINITY = "9999-12-31 23:59:59";
-    private static final String POSTGRES_TIMESTAMPTZ_MIN_INFINITY = "1970-01-01 00:00:00+00";
-    private static final String POSTGRES_TIMESTAMPTZ_MAX_INFINITY = "9999-12-31 23:59:59+00";
+    public static final String POSTGRES_DATE_MIN_INFINITY = "1970-01-01";
+    public static final String POSTGRES_DATE_MAX_INFINITY = "9999-12-31";
+    public static final String POSTGRES_TIMESTAMP_MIN_INFINITY = "1970-01-01 00:00:00";
+    public static final String POSTGRES_TIMESTAMP_MAX_INFINITY = "9999-12-31 23:59:59";
+    public static final String POSTGRES_TIMESTAMPTZ_MIN_INFINITY = "1970-01-01 00:00:00+00";
+    public static final String POSTGRES_TIMESTAMPTZ_MAX_INFINITY = "9999-12-31 23:59:59+00";
 
 
     @Override

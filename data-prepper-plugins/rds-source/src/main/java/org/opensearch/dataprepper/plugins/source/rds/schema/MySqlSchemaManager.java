@@ -91,6 +91,7 @@ public class MySqlSchemaManager implements SchemaManager {
                         );
                     }
                 }
+                return columnsToDataType;
             } catch (final Exception e) {
                 LOG.error("Failed to get dataTypes for database {} table {}, retrying", database, tableName, e);
                 if (retry == NUM_OF_RETRIES) {
