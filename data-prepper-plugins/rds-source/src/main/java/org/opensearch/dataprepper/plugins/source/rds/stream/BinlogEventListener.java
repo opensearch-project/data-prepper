@@ -57,6 +57,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(BinlogEventListener.class);
 
+    static final int DEFAULT_NUM_WORKERS = 1;
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String DATA_PREPPER_EVENT_TYPE = "event";
@@ -125,7 +126,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();
         binlogEventExecutorService = Executors.newFixedThreadPool(
-                sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
+                DEFAULT_NUM_WORKERS, BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
         this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
