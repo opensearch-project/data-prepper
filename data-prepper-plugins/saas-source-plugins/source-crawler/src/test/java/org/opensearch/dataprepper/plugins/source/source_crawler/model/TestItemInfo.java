@@ -17,6 +17,7 @@ public class TestItemInfo implements ItemInfo {
 
     public TestItemInfo(String itemId) {
         this.itemId = itemId;
+        this.metadata = Map.of();
     }
 
     @Override

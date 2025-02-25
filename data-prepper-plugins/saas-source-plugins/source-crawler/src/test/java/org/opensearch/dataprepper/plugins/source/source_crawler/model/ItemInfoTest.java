@@ -8,7 +8,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ItemInfoTest {
@@ -18,7 +17,7 @@ public class ItemInfoTest {
         String itemId = UUID.randomUUID().toString();
         TestItemInfo itemInfo = new TestItemInfo(itemId);
         assertEquals(itemId, itemInfo.getItemId());
-        assertNull(itemInfo.getMetadata());
+        assertEquals(0, itemInfo.getMetadata().size());
         assertEquals("partitionKey", itemInfo.getPartitionKey());
         assertEquals("id", itemInfo.getId());
         assertTrue(itemInfo.getKeyAttributes().isEmpty());
