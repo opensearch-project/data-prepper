@@ -24,6 +24,8 @@ public class ParsedMessage {
     private boolean emptyNotification;
     private String detailType;
 
+    private boolean shouldSkipProcessing;
+
     public ParsedMessage(final Message message, final boolean failedParsing) {
         this.message = Objects.requireNonNull(message);
         this.failedParsing = failedParsing;
@@ -40,6 +42,7 @@ public class ParsedMessage {
         this.eventTime = notificationRecords.get(0).getEventTime();
         this.failedParsing = false;
         this.emptyNotification = notificationRecords.isEmpty();
+        this.shouldSkipProcessing = false;
     }
 
     ParsedMessage(final Message message, final S3EventBridgeNotification eventBridgeNotification) {
@@ -49,6 +52,7 @@ public class ParsedMessage {
         this.objectSize = eventBridgeNotification.getDetail().getObject().getSize();
         this.detailType = eventBridgeNotification.getDetailType();
         this.eventTime = eventBridgeNotification.getTime();
+        this.shouldSkipProcessing = false;
     }
 
     public Message getMessage() {
@@ -85,6 +89,12 @@ public class ParsedMessage {
 
     public String getDetailType() {
         return detailType;
+    }
+
+    public boolean isShouldSkipProcessing () { return shouldSkipProcessing; }
+
+    public void setShouldSkipProcessing(final boolean shouldSkipProcessing) {
+        this.shouldSkipProcessing = shouldSkipProcessing;
     }
 
     @Override

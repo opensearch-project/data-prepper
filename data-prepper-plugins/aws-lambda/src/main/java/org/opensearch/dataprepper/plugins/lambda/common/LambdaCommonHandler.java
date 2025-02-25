@@ -36,6 +36,9 @@ public class LambdaCommonHandler {
     }
 
     public static boolean isSuccess(InvokeResponse response) {
+        if(response == null) {
+            return false;
+        }
         int statusCode = response.statusCode();
         return statusCode >= 200 && statusCode < 300;
     }
@@ -84,6 +87,11 @@ public class LambdaCommonHandler {
         List<Buffer> batchedBuffers = createBufferBatches(records, config.getBatchOptions(),
                 outputCodecContext);
 
+        Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = invokeLambdaAndGetFutureMap(config, lambdaAsyncClient, batchedBuffers);
+        return bufferToFutureMap;
+    }
+
+    public static Map<Buffer, CompletableFuture<InvokeResponse>> invokeLambdaAndGetFutureMap(LambdaCommonConfig config, LambdaAsyncClient lambdaAsyncClient, List<Buffer> batchedBuffers) {
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         LOG.debug("Batch Chunks created after threshold check: {}", batchedBuffers.size());
         for (Buffer buffer : batchedBuffers) {

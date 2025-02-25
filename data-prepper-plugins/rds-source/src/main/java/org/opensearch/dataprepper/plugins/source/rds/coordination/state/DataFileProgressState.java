@@ -5,12 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.coordination.state;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 
 import java.util.List;
 import java.util.Map;
 
 public class DataFileProgressState {
+
+    @JsonProperty("engineType")
+    private String engineType;
 
     @JsonProperty("isLoaded")
     private boolean isLoaded = false;
@@ -20,6 +25,13 @@ public class DataFileProgressState {
 
     @JsonProperty("sourceDatabase")
     private String sourceDatabase;
+
+    /**
+     * For PostgreSQL engine type, sourceSchema is the schema name.
+     * For MySQL engine type, this field will store database name, same as sourceDatabase field.
+     */
+    @JsonProperty("sourceSchema")
+    private String sourceSchema;
 
     @JsonProperty("sourceTable")
     private String sourceTable;
@@ -32,6 +44,14 @@ public class DataFileProgressState {
 
     @JsonProperty("snapshotTime")
     private long snapshotTime;
+
+    public String getEngineType() {
+        return engineType;
+    }
+
+    public void setEngineType(String engineType) {
+        this.engineType = engineType;
+    }
 
     public int getTotalRecords() {
         return totalRecords;
@@ -55,6 +75,25 @@ public class DataFileProgressState {
 
     public void setSourceDatabase(String sourceDatabase) {
         this.sourceDatabase = sourceDatabase;
+    }
+
+    public String getSourceSchema() {
+        return sourceSchema;
+    }
+
+    public void setSourceSchema(String sourceSchema) {
+        this.sourceSchema = sourceSchema;
+    }
+
+    @JsonIgnore
+    public String getFullSourceTableName() {
+        if (EngineType.fromString(engineType) == EngineType.MYSQL) {
+            return sourceDatabase + "." + sourceTable;
+        } else if (EngineType.fromString(engineType) == EngineType.POSTGRES) {
+            return sourceDatabase + "." + sourceSchema + "." + sourceTable;
+        } else {
+            throw new RuntimeException("Unsupported engine type: " + engineType);
+        }
     }
 
     public String getSourceTable() {

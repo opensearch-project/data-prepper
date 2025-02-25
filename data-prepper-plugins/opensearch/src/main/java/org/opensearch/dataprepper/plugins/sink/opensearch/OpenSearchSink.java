@@ -86,6 +86,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
@@ -399,7 +401,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
       } catch (final Exception e) {
-          LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
+          LOG.error(NOISY, "There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
           logFailureForDlqObjects(List.of(createDlqObjectFromEvent(event, indexName, e.getMessage())), e);
           continue;
@@ -558,7 +560,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                   BulkOperationWriter.dlqObjectToString(dlqObject), message));
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
-        LOG.error("Failed to write a document to the DLQ", e);
+        LOG.error(NOISY, "Failed to write a document to the DLQ", e);
           dlqObject.releaseEventHandle(false);
         }
       });
@@ -570,7 +572,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         });
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
-          LOG.error("Failed to write a document to the DLQ", e);
+          LOG.error(NOISY, "Failed to write a document to the DLQ", e);
           dlqObject.releaseEventHandle(false);
         });
       }

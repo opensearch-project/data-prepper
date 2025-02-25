@@ -12,7 +12,7 @@ package org.opensearch.dataprepper.plugins.source.jira.utils;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -33,12 +33,13 @@ public class AddressValidation {
      * Method for getInetAddress.
      *
      * @param url input parameter.
+     * @return returns inet address
      */
     public static InetAddress getInetAddress(String url) {
         try {
             return InetAddress.getByName(new URL(url).getHost());
         } catch (UnknownHostException | MalformedURLException e) {
-            log.error(INVALID_URL, e);
+            log.error("{}: {}", INVALID_URL, url);
             throw new BadRequestException(e.getMessage(), e);
         }
     }

@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.utils.MockPluginConfigVariableImpl;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -23,13 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.OAUTH2;
-import static org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS;
 
 public class JiraSourceConfigTest {
+    private JiraSourceConfig jiraSourceConfig;
     private final PluginConfigVariable accessToken = new MockPluginConfigVariableImpl("access token test");
     private final PluginConfigVariable refreshToken = new MockPluginConfigVariableImpl("refresh token test");
     private final String clientId = "client id test";
@@ -40,7 +39,6 @@ public class JiraSourceConfigTest {
     private final List<String> projectList = new ArrayList<>();
     private final List<String> issueTypeList = new ArrayList<>();
     private final List<String> statusList = new ArrayList<>();
-    private JiraSourceConfig jiraSourceConfig;
 
     private JiraSourceConfig createJiraSourceConfig(String authtype, boolean hasToken) throws Exception {
         PluginConfigVariable pcvAccessToken = null;
@@ -115,11 +113,9 @@ public class JiraSourceConfigTest {
     void testGetters() throws Exception {
         jiraSourceConfig = createJiraSourceConfig(BASIC, false);
         assertEquals(jiraSourceConfig.getFilterConfig().getIssueTypeConfig().getInclude(), issueTypeList);
-        assertEquals(jiraSourceConfig.getNumWorkers(), DEFAULT_NUMBER_OF_WORKERS);
         assertEquals(jiraSourceConfig.getFilterConfig().getProjectConfig().getNameConfig().getInclude(), projectList);
         assertEquals(jiraSourceConfig.getFilterConfig().getStatusConfig().getInclude(), statusList);
         assertEquals(jiraSourceConfig.getAccountUrl(), accountUrl);
-        assertNotNull(jiraSourceConfig.getBackOff());
         assertEquals(jiraSourceConfig.getAuthenticationConfig().getBasicConfig().getPassword(), password);
         assertEquals(jiraSourceConfig.getAuthenticationConfig().getBasicConfig().getUsername(), username);
     }
@@ -137,5 +133,11 @@ public class JiraSourceConfigTest {
         assertEquals(refreshToken, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken());
         assertEquals(clientId, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId());
         assertEquals(clientSecret, jiraSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret());
+    }
+
+    @Test
+    void testGetOauth2UrlContext() throws Exception {
+        jiraSourceConfig = createJiraSourceConfig(OAUTH2, false);
+        assertEquals("jira", jiraSourceConfig.getOauth2UrlContext());
     }
 }

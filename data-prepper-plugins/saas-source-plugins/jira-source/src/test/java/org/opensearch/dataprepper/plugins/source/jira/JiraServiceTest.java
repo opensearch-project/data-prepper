@@ -18,9 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.Oauth2Config;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2Config;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -54,7 +55,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraOauthConfig.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.CREATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.KEY;
@@ -71,11 +72,10 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 public class JiraServiceTest {
 
     private static final Logger log = LoggerFactory.getLogger(JiraServiceTest.class);
-    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
     @Mock
     private JiraRestClient jiraRestClient;
-
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("JiraServiceTest", "jira");
 
     private static InputStream getResourceAsStream(String resourceName) {
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
@@ -178,7 +178,7 @@ public class JiraServiceTest {
         List<String> issueStatus = new ArrayList<>();
         List<String> projectKey = new ArrayList<>();
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient);
+        JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics);
         assertNotNull(jiraService);
         when(jiraRestClient.getIssue(anyString())).thenReturn("test String");
         assertNotNull(jiraService.getIssue("test Key"));
@@ -193,7 +193,7 @@ public class JiraServiceTest {
         issueStatus.add("Done");
         projectKey.add("KAN");
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
+        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
         List<IssueBean> mockIssues = new ArrayList<>();
         IssueBean issue1 = createIssueBean(false, false);
         mockIssues.add(issue1);
@@ -206,7 +206,7 @@ public class JiraServiceTest {
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(mockIssues.size());
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -221,7 +221,7 @@ public class JiraServiceTest {
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
+        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
         List<IssueBean> mockIssues = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
             IssueBean issue1 = createIssueBean(false, false);
@@ -232,7 +232,7 @@ public class JiraServiceTest {
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(100);
 
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -253,12 +253,13 @@ public class JiraServiceTest {
         projectKey.add("AAAAAAAAAAAAAA");
 
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient);
+        JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics);
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
 
-        assertThrows(BadRequestException.class, () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
+        assertThrows(InvalidPluginConfigurationException.class,
+                () -> jiraService.getJiraEntities(jiraSourceConfig, timestamp, itemInfoQueue));
     }
 
     @Test
@@ -268,9 +269,9 @@ public class JiraServiceTest {
         List<String> projectKey = new ArrayList<>();
         issueType.add("Task");
         JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, issueType, issueStatus, projectKey);
-        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
+        JiraService jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics));
 
-        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doThrow(RuntimeException.class).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();

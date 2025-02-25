@@ -34,7 +34,7 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final RdsSourceConfig sourceConfig;
     private final String s3Prefix;
-    private final BinlogClientFactory binlogClientFactory;
+    private ReplicationLogClientFactory replicationLogClientFactory;
     private final Buffer<Record<Event>> buffer;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -46,7 +46,7 @@ public class StreamScheduler implements Runnable {
     public StreamScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
-                           final BinlogClientFactory binlogClientFactory,
+                           final ReplicationLogClientFactory replicationLogClientFactory,
                            final Buffer<Record<Event>> buffer,
                            final PluginMetrics pluginMetrics,
                            final AcknowledgementSetManager acknowledgementSetManager,
@@ -54,7 +54,7 @@ public class StreamScheduler implements Runnable {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
-        this.binlogClientFactory = binlogClientFactory;
+        this.replicationLogClientFactory = replicationLogClientFactory;
         this.buffer = buffer;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -80,7 +80,7 @@ public class StreamScheduler implements Runnable {
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
 
                     streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
-                            sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer,
+                            sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
                             () -> Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-worker")),
                             acknowledgementSetManager, pluginMetrics);
 

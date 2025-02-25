@@ -26,4 +26,9 @@ public class ThresholdCheck {
                     currentBuffer.getSize() > maxBytes.getBytes();
         }
     }
+
+    //add threshold check for only timout
+    public static boolean checkTimeoutExceeded(final Buffer currentBuffer, final Duration maxCollectionDuration) {
+        return currentBuffer.getDuration().compareTo(maxCollectionDuration) > 0;
+    }
 }

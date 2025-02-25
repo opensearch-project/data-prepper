@@ -11,59 +11,36 @@
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.jira.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 
-import java.time.Duration;
-import java.util.List;
-
 @Getter
-public class JiraSourceConfig implements CrawlerSourceConfig {
+public class JiraSourceConfig extends AtlassianSourceConfig implements CrawlerSourceConfig {
 
-    private static final Duration DEFAULT_BACKOFF_MILLIS = Duration.ofMinutes(2);
-
-    /**
-     * Jira account url
-     */
-    @JsonProperty("hosts")
-    private List<String> hosts;
-
-    /**
-     * Authentication Config to Access Jira
-     */
-    @JsonProperty("authentication")
-    @Valid
-    private AuthenticationConfig authenticationConfig;
-
+    private static final int DEFAULT_BATCH_SIZE = 50;
 
     /**
      * Filter Config to filter what tickets get ingested
      */
     @JsonProperty("filter")
     private FilterConfig filterConfig;
-
-
     /**
-     * Number of worker threads to spawn to parallel source fetching
+     * Boolean property indicating end to end acknowledgments state
      */
-    @JsonProperty("workers")
-    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
+    @JsonProperty("acknowledgments")
+    private boolean acknowledgments = false;
 
-    /**
-     * Default time to wait (with exponential backOff) in the case of
-     * waiting for the source service to respond
-     */
-    @JsonProperty("backoff_time")
-    private Duration backOff = DEFAULT_BACKOFF_MILLIS;
-
-    public String getAccountUrl() {
-        return this.getHosts().get(0);
+    @AssertTrue(message = "Jira hosts must be a list of length 1")
+    boolean isValidHosts() {
+        return hosts != null && hosts.size() == 1;
     }
 
-    public String getAuthType() {
-        return this.getAuthenticationConfig().getAuthType();
+    @Override
+    public String getOauth2UrlContext() {
+        return "jira";
     }
+
 }
