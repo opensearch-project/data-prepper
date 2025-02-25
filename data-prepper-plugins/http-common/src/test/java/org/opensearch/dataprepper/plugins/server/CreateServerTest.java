@@ -19,7 +19,6 @@ import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvi
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
@@ -80,31 +79,13 @@ public class CreateServerTest {
     @Mock
     private Certificate certificate;
 
-    private BlockingBuffer<Record<Log>> getBuffer() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        integerHashMap.put("batch_size", 1);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<Record<Log>>(pluginSetting);
-    }
-
-    private BlockingBuffer<Record<? extends Metric>> getBufferGrpc() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        integerHashMap.put("batch_size", 1);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<Record<? extends Metric>>(pluginSetting);
-    }
-
     @Test
     void createGrpcServerTest() throws JsonProcessingException {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
         final ServerConfiguration serverConfiguration = createServerConfig(metadata);
         final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
-        Buffer<Record<? extends Metric>> buffer = getBufferGrpc();
+        Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
 
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
@@ -131,7 +112,7 @@ public class CreateServerTest {
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(Optional.of(customAuth));
 
         final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
-        Buffer<Record<? extends Metric>> buffer = getBufferGrpc();
+        Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
 
@@ -162,7 +143,7 @@ public class CreateServerTest {
         final Map<String, Object> metadata = createHttpMetadata(2021, "/log/ingest", 10_000, 200, 500, 1024, true, CompressionOption.NONE);
         final ServerConfiguration serverConfiguration = createServerConfig(metadata);
         final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
-        Buffer<Record<Log>> buffer = getBuffer();
+        Buffer<Record<Log>> buffer = new BlockingBuffer<Record<Log>>(TEST_PIPELINE_NAME);
         Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler);
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
