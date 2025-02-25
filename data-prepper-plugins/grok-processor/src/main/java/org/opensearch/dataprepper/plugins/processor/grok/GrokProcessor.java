@@ -272,7 +272,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                                     return grokCompiler.compile(item, grokProcessorConfig.isNamedCapturesOnly());
                                 } catch (IllegalArgumentException e) {
                                     throw new InvalidPluginConfigurationException(
-                                            String.format("Invalid regex pattern in match.%s", entry.getKey()), e);
+                                            String.format("Invalid regular expression pattern in match: %s",
+                                                    entry.getKey()), e);
                                 }
                             })
                             .collect(Collectors.toList()));

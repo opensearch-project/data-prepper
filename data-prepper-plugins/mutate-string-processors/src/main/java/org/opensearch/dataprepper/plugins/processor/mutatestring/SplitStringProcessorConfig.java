@@ -11,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,8 +20,8 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenEl
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.model.annotations.ValidRegex;
 import org.opensearch.dataprepper.model.event.EventKey;
-import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
 
 import java.util.List;
 
@@ -60,6 +59,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         )
         private String delimiter;
 
+        @ValidRegex(message = "The value of delimiter_regex is not a valid regex string")
         @JsonProperty("delimiter_regex")
         @JsonPropertyDescription("The regex string responsible for the split. Cannot be defined at the same time as <code>delimiter</code>. " +
                 "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")
@@ -92,11 +92,6 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         }
 
         public String getSplitWhen() { return splitWhen; }
-
-        @AssertTrue(message = "The value of delimiter_regex is not a valid regex string")
-        boolean isDelimiterRegexValid() {
-            return RegexValueValidator.validateRegex(delimiterRegex);
-        }
 
         public Entry(final EventKey source, final String delimiterRegex, final String delimiter, final String splitWhen) {
             this.source = source;

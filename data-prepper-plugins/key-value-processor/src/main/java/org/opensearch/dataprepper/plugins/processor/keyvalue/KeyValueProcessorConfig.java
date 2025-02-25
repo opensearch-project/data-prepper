@@ -16,7 +16,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
-import org.opensearch.dataprepper.plugins.regex.RegexValueValidator;
+import org.opensearch.dataprepper.model.annotations.ValidRegex;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,6 +66,7 @@ public class KeyValueProcessorConfig {
     })
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
+    @ValidRegex(message = "The value of field_delimiter_regex is not a valid regex string")
     @JsonProperty(FIELD_DELIMITER_REGEX_KEY)
     @JsonPropertyDescription("A regular expression specifying the delimiter that separates key-value pairs. " +
             "For example, to split on multiple <code>&amp;</code> characters use <code>&amp;+</code>. " +
@@ -94,6 +95,7 @@ public class KeyValueProcessorConfig {
     })
     private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
 
+    @ValidRegex(message = "The value of key_value_delimiter_regex is not a valid regex string")
     @JsonProperty(KEY_VALUE_DELIMITER_REGEX_KEY)
     @JsonPropertyDescription("A regular expression specifying the delimiter that separates keys from their values within a key-value pair. " +
             "For example, to split on multiple <code>=</code> characters use <code>=+</code>. " +
@@ -143,6 +145,7 @@ public class KeyValueProcessorConfig {
     })
     private String prefix = null;
 
+    @ValidRegex(message = "The value of delete_key_regex is not a valid regex string")
     @JsonProperty("delete_key_regex")
     @JsonPropertyDescription("A regular expression specifying characters to delete from the key. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
@@ -153,6 +156,7 @@ public class KeyValueProcessorConfig {
     })
     private String deleteKeyRegex;
 
+    @ValidRegex(message = "The value of delete_value_regex is not a valid regex string")
     @JsonProperty("delete_value_regex")
     @JsonPropertyDescription("A regular expression specifying characters to delete from the value. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
@@ -277,26 +281,6 @@ public class KeyValueProcessorConfig {
                 (!stringLiteralCharacter.equals("'"))))
             return false;
         return valueGrouping;
-    }
-
-    @AssertTrue(message = "The value of key_value_delimiter_regex is not a valid regex string")
-    boolean isKeyValueDelimiterRegexValid() {
-        return RegexValueValidator.validateRegex(keyValueDelimiterRegex);
-    }
-
-    @AssertTrue(message = "The value of delete_key_regex is not a valid regex string")
-    boolean isDeleteKeyRegexValid() {
-        return RegexValueValidator.validateRegex(deleteKeyRegex);
-    }
-
-    @AssertTrue(message = "The value of delete_value_regex is not a valid regex string")
-    boolean isDeleteValueRegexValid() {
-        return RegexValueValidator.validateRegex(deleteValueRegex);
-    }
-
-    @AssertTrue(message = "The value of field_delimiter_regex is not a valid regex string")
-    boolean isFieldDelimiterRegexValid() {
-        return RegexValueValidator.validateRegex(fieldDelimiterRegex);
     }
 
     public String getSource() {
