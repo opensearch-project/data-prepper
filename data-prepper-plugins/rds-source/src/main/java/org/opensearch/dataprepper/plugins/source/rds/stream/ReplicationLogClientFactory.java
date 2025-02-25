@@ -14,7 +14,6 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
@@ -45,7 +44,7 @@ public class ReplicationLogClientFactory {
     }
 
     public ReplicationLogClient create(StreamPartition streamPartition) {
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             return new BinlogClientWrapper(createBinaryLogClient());
         } else { // Postgres
             return createLogicalReplicationClient(streamPartition);

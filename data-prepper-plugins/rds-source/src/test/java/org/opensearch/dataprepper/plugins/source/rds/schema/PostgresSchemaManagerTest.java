@@ -27,6 +27,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,6 +44,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.DROP_PUBLICATION_SQL;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.DROP_SLOT_SQL;
 
 @ExtendWith(MockitoExtension.class)
 class PostgresSchemaManagerTest {
@@ -135,6 +138,24 @@ class PostgresSchemaManagerTest {
         verify(preparedStatement).executeQuery();
         verify(pgConnection).getReplicationAPI();
         verify(replicationConnection, never()).createReplicationSlot();
+    }
+
+    @Test
+    void test_deleteLogicalReplicationSlot_success() throws SQLException {
+        final String publicationName = UUID.randomUUID().toString();
+        final String slotName = UUID.randomUUID().toString();
+        final PreparedStatement dropSlotStatement = mock(PreparedStatement.class);
+        final Statement dropPublicationStatement = mock(Statement.class);
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.prepareStatement(DROP_SLOT_SQL)).thenReturn(dropSlotStatement);
+        when(connection.createStatement()).thenReturn(dropPublicationStatement);
+
+        schemaManager.deleteLogicalReplicationSlot(publicationName, slotName);
+
+        verify(dropSlotStatement).setString(1, slotName);
+        verify(dropSlotStatement).execute();
+        verify(dropPublicationStatement).execute(DROP_PUBLICATION_SQL + publicationName);
     }
 
     @Test

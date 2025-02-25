@@ -22,15 +22,16 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
@@ -41,10 +42,10 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Collections;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -53,12 +54,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.lenient;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.EXTERNAL_LATENCY;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.INTERNAL_LATENCY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.BULKREQUEST_ERRORS;
@@ -67,8 +68,8 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.DYNAMIC_INDEX_DROPPED_EVENTS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.INVALID_ACTION_ERRORS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.INVALID_VERSION_EXPRESSION_DROPPED_EVENTS;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_BULK_SIZE;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DEFAULT_FLUSH_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_BULK_SIZE;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig.DEFAULT_FLUSH_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 public class OpenSearchSinkTest {
@@ -78,9 +79,6 @@ public class OpenSearchSinkTest {
 
     @Mock
     private OpenSearchClient openSearchClient;
-
-    @Mock
-    private PluginFactory pluginFactory;
 
     @Mock
     private SinkContext sinkContext;
@@ -98,6 +96,9 @@ public class OpenSearchSinkTest {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
+    private PipelineDescription pipelineDescription;
+
+    @Mock
     private IndexConfiguration indexConfiguration;
 
     @Mock
@@ -108,6 +109,9 @@ public class OpenSearchSinkTest {
 
     @Mock
     private Timer bulkRequestTimer;
+
+    @Mock
+    private OpenSearchSinkConfig openSearchSinkConfig;
 
     @Mock
     private Counter bulkRequestErrorsCounter;
@@ -129,8 +133,7 @@ public class OpenSearchSinkTest {
 
     @BeforeEach
     void setup() {
-        when(pluginSetting.getPipelineName()).thenReturn(UUID.randomUUID().toString());
-        when(pluginSetting.getName()).thenReturn(UUID.randomUUID().toString());
+        when(pipelineDescription.getPipelineName()).thenReturn(UUID.randomUUID().toString());
 
         final RetryConfiguration retryConfiguration = mock(RetryConfiguration.class);
         when(retryConfiguration.getDlq()).thenReturn(Optional.empty());
@@ -144,9 +147,7 @@ public class OpenSearchSinkTest {
         when(indexConfiguration.getAction()).thenReturn("index");
         when(indexConfiguration.getDocumentId()).thenReturn(null);
         when(indexConfiguration.getDocumentIdField()).thenReturn(null);
-        when(indexConfiguration.getRoutingField()).thenReturn(null);
         when(indexConfiguration.getRouting()).thenReturn(null);
-        when(indexConfiguration.getPipeline()).thenReturn(null);
         when(indexConfiguration.getActions()).thenReturn(null);
         when(indexConfiguration.getDocumentRootKey()).thenReturn(null);
         lenient().when(indexConfiguration.getVersionType()).thenReturn(null);
@@ -184,10 +185,10 @@ public class OpenSearchSinkTest {
                  indexManagerFactory = mock;
              })) {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting)).thenReturn(pluginMetrics);
-            openSearchSinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readESConfig(pluginSetting, expressionEvaluator))
+            openSearchSinkConfigurationMockedStatic.when(() -> OpenSearchSinkConfiguration.readOSConfig(openSearchSinkConfig, expressionEvaluator))
                     .thenReturn(openSearchSinkConfiguration);
             return new OpenSearchSink(
-                    pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier, pluginConfigObservable);
+                    pluginSetting, sinkContext, expressionEvaluator, awsCredentialsSupplier, pipelineDescription, pluginConfigObservable, openSearchSinkConfig);
         }
     }
 
@@ -204,7 +205,7 @@ public class OpenSearchSinkTest {
 
     @Test
     void doOutput_with_invalid_version_expression_catches_NumberFormatException_and_creates_DLQObject() throws IOException {
-
+        when(pluginSetting.getName()).thenReturn("opensearch");
         final String versionExpression = UUID.randomUUID().toString();
         when(indexConfiguration.getVersionExpression()).thenReturn(versionExpression);
 
@@ -234,7 +235,7 @@ public class OpenSearchSinkTest {
         when(dlqObjectBuilder.withFailedData(failedDlqData.capture())).thenReturn(dlqObjectBuilder);
         when(dlqObjectBuilder.withPluginName(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
         when(dlqObjectBuilder.withPluginId(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
-        when(dlqObjectBuilder.withPipelineName(pluginSetting.getPipelineName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPipelineName(pipelineDescription.getPipelineName())).thenReturn(dlqObjectBuilder);
 
         when(dlqObject.getFailedData()).thenReturn(mock(FailedDlqData.class));
         doNothing().when(dlqObject).releaseEventHandle(false);
@@ -271,7 +272,6 @@ public class OpenSearchSinkTest {
                 .withData(Collections.singletonMap(routingFieldKey, routingFieldValue))
                 .build();
         assertThat(objectUnderTest.getDocument(event).getRoutingField(), equalTo(Optional.of(routingFieldValue)));
-
     }
 
     @Test
@@ -291,24 +291,9 @@ public class OpenSearchSinkTest {
     }
 
     @Test
-    void test_pipeline_in_document() throws IOException {
-        String pipelineValue = UUID.randomUUID().toString();
-        String pipelineKey = UUID.randomUUID().toString();
-        final OpenSearchSink objectUnderTest = createObjectUnderTest();
-        final Event event = JacksonEvent.builder()
-                .withEventType("event")
-                .withData(Collections.singletonMap(pipelineKey, pipelineValue))
-                .build();
-        assertThat(objectUnderTest.getDocument(event).getPipelineField(), equalTo(Optional.empty()));
-
-        when(indexConfiguration.getPipeline()).thenReturn("${"+pipelineKey+"}");
-        final OpenSearchSink objectUnderTest2 = createObjectUnderTest();
-        assertThat(objectUnderTest2.getDocument(event).getPipelineField(), equalTo(Optional.of(pipelineValue)));
-    }
-
-    @Test
     void doOutput_with_invalid_version_expression_result_catches_RuntimeException_and_creates_DLQObject() throws IOException {
 
+        when(pluginSetting.getName()).thenReturn("opensearch");
         final String versionExpression = UUID.randomUUID().toString();
         when(indexConfiguration.getVersionExpression()).thenReturn(versionExpression);
 
@@ -338,7 +323,7 @@ public class OpenSearchSinkTest {
         when(dlqObjectBuilder.withFailedData(failedDlqData.capture())).thenReturn(dlqObjectBuilder);
         when(dlqObjectBuilder.withPluginName(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
         when(dlqObjectBuilder.withPluginId(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
-        when(dlqObjectBuilder.withPipelineName(pluginSetting.getPipelineName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPipelineName(pipelineDescription.getPipelineName())).thenReturn(dlqObjectBuilder);
 
         when(dlqObject.getFailedData()).thenReturn(mock(FailedDlqData.class));
         doNothing().when(dlqObject).releaseEventHandle(false);
