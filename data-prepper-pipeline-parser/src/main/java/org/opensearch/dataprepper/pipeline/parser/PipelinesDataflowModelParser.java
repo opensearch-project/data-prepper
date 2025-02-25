@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 public class PipelinesDataflowModelParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesDataflowModelParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
-            .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+            .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
+            .addHandler(new DataPrepperDeserializationProblemHandler());
 
     private final PipelineConfigurationReader pipelineConfigurationReader;
 
