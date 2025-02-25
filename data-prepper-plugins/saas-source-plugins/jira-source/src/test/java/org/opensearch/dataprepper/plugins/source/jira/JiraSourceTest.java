@@ -21,9 +21,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.AuthenticationConfig;
-import org.opensearch.dataprepper.plugins.source.jira.configuration.BasicConfig;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 
@@ -35,47 +35,36 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraOauthConfig.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.BASIC;
 
 @ExtendWith(MockitoExtension.class)
 public class JiraSourceTest {
 
     @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
-    private JiraSourceConfig jiraSourceConfig;
-
-    @Mock
-    private JiraAuthConfig jiraOauthConfig;
-
-    @Mock
-    private PluginFactory pluginFactory;
-
-    @Mock
-    private AcknowledgementSetManager acknowledgementSetManager;
-
-    @Mock
-    private Crawler crawler;
-
-    @Mock
-    private EnhancedSourceCoordinator sourceCooridinator;
-
-    @Mock
     Buffer<Record<Event>> buffer;
-
-    @Mock
-    private PluginExecutorServiceProvider executorServiceProvider;
-
-    @Mock
-    private ExecutorService executorService;
-
     @Mock
     AuthenticationConfig authenticationConfig;
-
     @Mock
     BasicConfig basicConfig;
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private JiraSourceConfig jiraSourceConfig;
+    @Mock
+    private AtlassianAuthConfig jiraOauthConfig;
+    @Mock
+    private PluginFactory pluginFactory;
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private Crawler crawler;
+    @Mock
+    private EnhancedSourceCoordinator sourceCooridinator;
+    @Mock
+    private PluginExecutorServiceProvider executorServiceProvider;
+    @Mock
+    private ExecutorService executorService;
 
     @Test
     void initialization() {

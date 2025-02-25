@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
@@ -122,16 +121,16 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
 
         final ReplicationLogClient replicationLogClient = replicationLogClientFactory.create(streamPartition);
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             final BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.registerEventListener(BinlogEventListener.create(
                     streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                     streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
         } else {
             final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
-            logicalReplicationClient.setEventProcessor(new LogicalReplicationEventProcessor(
-                streamPartition, sourceConfig, buffer, s3Prefix
-            ));
+            logicalReplicationClient.setEventProcessor(LogicalReplicationEventProcessor.create(
+                    streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics, logicalReplicationClient,
+                    streamCheckpointer, acknowledgementSetManager));
         }
         final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));
@@ -150,4 +149,3 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         return DbTableMetadata.fromMap(globalState.getProgressState().get());
     }
 }
-

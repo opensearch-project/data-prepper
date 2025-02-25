@@ -15,6 +15,9 @@ import java.util.Map;
  */
 public class ExportProgressState {
 
+    @JsonProperty("engineType")
+    private String engineType;
+
     @JsonProperty("snapshotId")
     private String snapshotId;
 
@@ -47,6 +50,14 @@ public class ExportProgressState {
 
     @JsonProperty("status")
     private String status;
+
+    public String getEngineType() {
+        return engineType;
+    }
+
+    public void setEngineType(String engineType) {
+        this.engineType = engineType;
+    }
 
     public String getSnapshotId() {
         return snapshotId;

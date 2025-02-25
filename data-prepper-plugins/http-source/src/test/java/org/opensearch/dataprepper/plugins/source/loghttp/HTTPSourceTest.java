@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
@@ -50,6 +52,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -132,6 +135,9 @@ class HTTPSourceTest {
     @Mock
     private Certificate certificate;
 
+    @Mock
+    private PipelineDescription pipelineDescription;
+
     private BlockingBuffer<Record<Log>> testBuffer;
     private HTTPSource HTTPSourceUnderTest;
     private List<Measurement> requestsReceivedMeasurements;
@@ -146,15 +152,16 @@ class HTTPSourceTest {
     private HTTPSourceConfig sourceConfig;
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
-    private PipelineDescription pipelineDescription;
 
-    private BlockingBuffer<Record<Log>> getBuffer() {
+    private BlockingBuffer<Record<Log>> getBuffer() throws JsonProcessingException {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        return new BlockingBuffer<>(pluginSetting);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(integerHashMap);
+        BlockingBufferConfig blockingBufferConfig = objectMapper.readValue(json, BlockingBufferConfig.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        return new BlockingBuffer<>(blockingBufferConfig, pipelineDescription);
     }
 
     /**
@@ -202,7 +209,7 @@ class HTTPSourceTest {
     }
 
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws JsonProcessingException {
         lenient().when(serverBuilder.annotatedService(any())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.https(anyInt())).thenReturn(serverBuilder);
@@ -228,7 +235,6 @@ class HTTPSourceTest {
                 .thenReturn(authenticationProvider);
 
         testBuffer = getBuffer();
-        pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
@@ -692,7 +698,7 @@ class HTTPSourceTest {
 
 
     @Test
-    void testHTTPSJsonResponse() {
+    void testHTTPSJsonResponse() throws JsonProcessingException {
         reset(sourceConfig);
         when(sourceConfig.getPort()).thenReturn(2021);
         when(sourceConfig.getPath()).thenReturn(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI);
@@ -722,7 +728,7 @@ class HTTPSourceTest {
 
 
     @Test
-    void testHTTPRequestWhenSSLRequiredNoResponse() {
+    void testHTTPRequestWhenSSLRequiredNoResponse() throws JsonProcessingException {
         reset(sourceConfig);
         when(sourceConfig.getPort()).thenReturn(2021);
         when(sourceConfig.getPath()).thenReturn(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI);
@@ -758,7 +764,7 @@ class HTTPSourceTest {
     }
 
     @Test
-    void testHTTPSJsonResponse_with_custom_path_along_with_placeholder() {
+    void testHTTPSJsonResponse_with_custom_path_along_with_placeholder() throws JsonProcessingException {
         reset(sourceConfig);
         when(sourceConfig.getPort()).thenReturn(2021);
         when(sourceConfig.getPath()).thenReturn("/${pipelineName}/test");

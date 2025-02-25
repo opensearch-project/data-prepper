@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.converter.KinesisRecordConverter;
+import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisStreamNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.kinesis.common.StreamIdentifier;
@@ -111,7 +112,11 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     }
 
     private KinesisStreamConfig getStreamConfig(final KinesisSourceConfig kinesisSourceConfig) {
-        return kinesisSourceConfig.getStreams().stream().filter(streamConfig -> streamConfig.getName().equals(streamIdentifier.streamName())).findAny().get();
+        final Optional<KinesisStreamConfig> kinesisStreamConfig = kinesisSourceConfig.getStreams().stream().filter(streamConfig -> streamConfig.getName().equals(streamIdentifier.streamName())).findAny();
+        if (kinesisStreamConfig.isEmpty()) {
+            throw new KinesisStreamNotFoundException(String.format("Kinesis stream not found for %s", streamIdentifier.streamName()));
+        }
+        return kinesisStreamConfig.get();
     }
 
     @Override

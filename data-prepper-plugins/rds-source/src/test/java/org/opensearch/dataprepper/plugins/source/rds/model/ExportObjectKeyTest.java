@@ -15,13 +15,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ExportObjectKeyTest {
 
     @Test
-    void test_fromString_with_valid_input_string() {
+    void test_fromString_with_valid_input_string_mysql() {
         final String objectKeyString = "prefix/export-task-id/db-name/db-name.table-name/1/file-name.parquet";
         final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKeyString);
 
         assertThat(exportObjectKey.getPrefix(), equalTo("prefix"));
         assertThat(exportObjectKey.getExportTaskId(), equalTo("export-task-id"));
         assertThat(exportObjectKey.getDatabaseName(), equalTo("db-name"));
+        assertThat(exportObjectKey.getSchemaName(), equalTo("db-name"));
+        assertThat(exportObjectKey.getTableName(), equalTo("table-name"));
+        assertThat(exportObjectKey.getNumberedFolder(), equalTo("1"));
+        assertThat(exportObjectKey.getFileName(), equalTo("file-name.parquet"));
+    }
+
+    @Test
+    void test_fromString_with_valid_input_string_postgres() {
+        final String objectKeyString = "prefix/export-task-id/db-name/schema-name.table-name/1/file-name.parquet";
+        final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKeyString);
+
+        assertThat(exportObjectKey.getPrefix(), equalTo("prefix"));
+        assertThat(exportObjectKey.getExportTaskId(), equalTo("export-task-id"));
+        assertThat(exportObjectKey.getDatabaseName(), equalTo("db-name"));
+        assertThat(exportObjectKey.getSchemaName(), equalTo("schema-name"));
         assertThat(exportObjectKey.getTableName(), equalTo("table-name"));
         assertThat(exportObjectKey.getNumberedFolder(), equalTo("1"));
         assertThat(exportObjectKey.getFileName(), equalTo("file-name.parquet"));
@@ -35,6 +50,7 @@ class ExportObjectKeyTest {
         assertThat(exportObjectKey.getPrefix(), equalTo(""));
         assertThat(exportObjectKey.getExportTaskId(), equalTo("export-task-id"));
         assertThat(exportObjectKey.getDatabaseName(), equalTo("db-name"));
+        assertThat(exportObjectKey.getSchemaName(), equalTo("db-name"));
         assertThat(exportObjectKey.getTableName(), equalTo("table-name"));
         assertThat(exportObjectKey.getNumberedFolder(), equalTo("1"));
         assertThat(exportObjectKey.getFileName(), equalTo("file-name.parquet"));
@@ -48,6 +64,7 @@ class ExportObjectKeyTest {
         assertThat(exportObjectKey.getPrefix(), equalTo("prefix1/prefix2/prefix3"));
         assertThat(exportObjectKey.getExportTaskId(), equalTo("export-task-id"));
         assertThat(exportObjectKey.getDatabaseName(), equalTo("db-name"));
+        assertThat(exportObjectKey.getSchemaName(), equalTo("db-name"));
         assertThat(exportObjectKey.getTableName(), equalTo("table-name"));
         assertThat(exportObjectKey.getNumberedFolder(), equalTo("1"));
         assertThat(exportObjectKey.getFileName(), equalTo("file-name.parquet"));

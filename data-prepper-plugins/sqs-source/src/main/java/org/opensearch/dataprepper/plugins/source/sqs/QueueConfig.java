@@ -17,7 +17,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
-
+import org.opensearch.dataprepper.plugins.source.sqs.common.OnErrorOption;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -71,6 +71,9 @@ public class QueueConfig {
     @JsonProperty("codec")
     private PluginModel codec = null;
 
+    @JsonProperty("on_error")
+    private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
+
     public String getUrl() {
         return url;
     }
@@ -83,9 +86,7 @@ public class QueueConfig {
         return numWorkers;
     }
 
-    public Duration getVisibilityTimeout() {
-        return visibilityTimeout;
-    }
+    public Duration getVisibilityTimeout() {return visibilityTimeout; }
 
     public boolean getVisibilityDuplicateProtection() {
         return visibilityDuplicateProtection;
@@ -107,5 +108,8 @@ public class QueueConfig {
         return codec;
     }
 
+    public OnErrorOption getOnErrorOption() {
+        return onErrorOption;
+    }
 }
 

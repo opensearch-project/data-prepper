@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
@@ -29,7 +28,6 @@ import org.opensearch.dataprepper.plugins.source.rds.resync.ResyncScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
 import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlConnectionManager;
-import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.QueryManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManagerFactory;
@@ -42,7 +40,6 @@ import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -109,14 +106,7 @@ public class RdsService {
         final String s3PathPrefix = getS3PathPrefix();
 
         final SchemaManager schemaManager = getSchemaManager(sourceConfig, dbMetadata);
-        DbTableMetadata dbTableMetadata;
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
-            final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(
-                    (MySqlSchemaManager) schemaManager);
-            dbTableMetadata  = new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
-        } else {
-            dbTableMetadata = new DbTableMetadata(dbMetadata, Collections.emptyMap());
-        }
+        DbTableMetadata dbTableMetadata = getDbTableMetadata(dbMetadata, schemaManager);
 
         leaderScheduler = new LeaderScheduler(
                 sourceCoordinator, sourceConfig, s3PathPrefix,  schemaManager, dbTableMetadata);
@@ -146,7 +136,7 @@ public class RdsService {
                     sourceCoordinator, sourceConfig, s3PathPrefix, replicationLogClientFactory, buffer, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
             runnableList.add(streamScheduler);
 
-            if (sourceConfig.getEngine() == EngineType.MYSQL) {
+            if (sourceConfig.getEngine().isMySql()) {
                 resyncScheduler = new ResyncScheduler(
                         sourceCoordinator, sourceConfig, getQueryManager(sourceConfig, dbMetadata), s3PathPrefix, buffer, pluginMetrics, acknowledgementSetManager);
                 runnableList.add(resyncScheduler);
@@ -213,11 +203,17 @@ public class RdsService {
         return s3PathPrefix;
     }
 
-    private Map<String, Map<String, String>> getColumnDataTypeMap(final MySqlSchemaManager schemaManager) {
+    private DbTableMetadata getDbTableMetadata(final DbMetadata dbMetadata, final SchemaManager schemaManager) {
+        final Map<String, Map<String, String>> tableColumnDataTypeMap = getColumnDataTypeMap(schemaManager);
+        return new DbTableMetadata(dbMetadata, tableColumnDataTypeMap);
+    }
+
+    private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
         return sourceConfig.getTableNames().stream()
                 .collect(Collectors.toMap(
                         fullTableName -> fullTableName,
-                        fullTableName -> schemaManager.getColumnDataTypes(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
+                        fullTableName -> schemaManager.getColumnDataTypes(fullTableName)
                 ));
     }
+
 }
