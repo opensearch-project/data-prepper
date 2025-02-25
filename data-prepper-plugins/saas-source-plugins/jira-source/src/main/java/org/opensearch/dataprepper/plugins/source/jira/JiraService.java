@@ -167,6 +167,7 @@ public class JiraService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
+        jiraQl.append(" order by updated");
         log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
