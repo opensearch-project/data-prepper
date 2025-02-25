@@ -2,36 +2,35 @@ package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.GENERIC_PLUGIN_EXCEPTION_FORMAT;
 import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.JSON_MAPPING_EXCEPTION_FORMAT;
-import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.MIN_DISTANCE_TO_RECOMMEND_PROPERTY;
 import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
 public class PluginConfigurationErrorHandlerTest {
 
     @Mock
-    private LevenshteinDistance levenshteinDistance;
+    private ClosestFieldRecommender closestFieldRecommender;
 
     private PluginConfigurationErrorHandler createObjectUnderTest() {
-        return new PluginConfigurationErrorHandler(levenshteinDistance);
+        return new PluginConfigurationErrorHandler(closestFieldRecommender);
     }
 
     @Test
@@ -60,7 +59,8 @@ public class PluginConfigurationErrorHandlerTest {
 
         when(exception.getCause()).thenReturn(unrecognizedPropertyException);
 
-        when(levenshteinDistance.apply(eq(propertyName), anyString())).thenReturn(10).thenReturn(MIN_DISTANCE_TO_RECOMMEND_PROPERTY + 1);
+        when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
+                .thenReturn(Optional.empty());
 
         final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
@@ -101,7 +101,8 @@ public class PluginConfigurationErrorHandlerTest {
 
         when(exception.getCause()).thenReturn(unrecognizedPropertyException);
 
-        when(levenshteinDistance.apply(eq(propertyName), anyString())).thenReturn(10).thenReturn(MIN_DISTANCE_TO_RECOMMEND_PROPERTY - 1);
+        when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
+                .thenReturn(Optional.of(knownPropertyIds.get(1).toString()));
 
         final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 

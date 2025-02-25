@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.pipeline.parser;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.opensearch.dataprepper.model.plugin.InvalidPipelineConfigurationException;
 
 import javax.inject.Inject;
@@ -21,13 +20,11 @@ public class PipelineConfigurationErrorHandler {
     static final String UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT = "Parameter \"%s\" does not exist. Available options include %s.";
     static final String JSON_MAPPING_EXCEPTION_FORMAT = "Parameter \"%s\" is invalid: %s";
 
-    static final Integer MIN_DISTANCE_TO_RECOMMEND_PROPERTY = 3;
-
-    private final LevenshteinDistance levenshteinDistance;
+    private final ClosestFieldRecommender closestFieldRecommender;
 
     @Inject
-    public PipelineConfigurationErrorHandler(final LevenshteinDistance levenshteinDistance) {
-        this.levenshteinDistance = levenshteinDistance;
+    public PipelineConfigurationErrorHandler(final ClosestFieldRecommender closestFieldRecommender) {
+        this.closestFieldRecommender = closestFieldRecommender;
     }
 
     public RuntimeException handleException(final Exception e) {
@@ -51,33 +48,14 @@ public class PipelineConfigurationErrorHandler {
         String errorMessage = String.format(UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT,
                 getParameterPath(e.getPath()), e.getKnownPropertyIds());
 
-        final Optional<String> closestRecommendation = getClosestField(e);
+        final Optional<String> closestRecommendation = closestFieldRecommender.getClosestField(
+                e.getPropertyName(), e.getKnownPropertyIds());
 
         if (closestRecommendation.isPresent()) {
             errorMessage += " Did you mean \"" + closestRecommendation.get() + "\"?";
         }
 
         return new InvalidPipelineConfigurationException(errorMessage);
-    }
-
-    private Optional<String> getClosestField(final UnrecognizedPropertyException e) {
-        String closestMatch = null;
-        int smallestDistance = Integer.MAX_VALUE;
-
-        for (final String field : e.getKnownPropertyIds().stream().map(Object::toString).collect(Collectors.toList())) {
-            int distance = levenshteinDistance.apply(e.getPropertyName(), field);
-
-            if (distance < smallestDistance) {
-                smallestDistance = distance;
-                closestMatch = field;
-            }
-        }
-
-        if (smallestDistance <= MIN_DISTANCE_TO_RECOMMEND_PROPERTY) {
-            return Optional.ofNullable(closestMatch);
-        }
-
-        return Optional.empty();
     }
 
     private String getParameterPath(final List<JsonMappingException.Reference> path) {

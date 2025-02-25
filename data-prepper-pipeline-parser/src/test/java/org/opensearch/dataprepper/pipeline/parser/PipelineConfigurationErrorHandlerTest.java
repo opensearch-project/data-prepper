@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.pipeline.parser;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -15,25 +14,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.InvalidPipelineConfigurationException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler.JSON_MAPPING_EXCEPTION_FORMAT;
-import static org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler.MIN_DISTANCE_TO_RECOMMEND_PROPERTY;
 import static org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler.UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
 class PipelineConfigurationErrorHandlerTest {
     @Mock
-    private LevenshteinDistance levenshteinDistance;
+    private ClosestFieldRecommender closestFieldRecommender;
 
     private PipelineConfigurationErrorHandler createObjectUnderTest() {
-        return new PipelineConfigurationErrorHandler(levenshteinDistance);
+        return new PipelineConfigurationErrorHandler(closestFieldRecommender);
     }
 
     @Test
@@ -54,7 +52,8 @@ class PipelineConfigurationErrorHandlerTest {
         when(unrecognizedPropertyException.getPropertyName()).thenReturn(propertyName);
         when(unrecognizedPropertyException.getPath()).thenReturn(path);
 
-        when(levenshteinDistance.apply(eq(propertyName), anyString())).thenReturn(10).thenReturn(MIN_DISTANCE_TO_RECOMMEND_PROPERTY + 1);
+        when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
+                .thenReturn(Optional.empty());
 
         final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
@@ -86,7 +85,8 @@ class PipelineConfigurationErrorHandlerTest {
         when(unrecognizedPropertyException.getPropertyName()).thenReturn(propertyName);
         when(unrecognizedPropertyException.getPath()).thenReturn(path);
 
-        when(levenshteinDistance.apply(eq(propertyName), anyString())).thenReturn(10).thenReturn(MIN_DISTANCE_TO_RECOMMEND_PROPERTY - 1);
+        when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
+                .thenReturn(Optional.of(knownPropertyIds.get(1).toString()));
 
         final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
