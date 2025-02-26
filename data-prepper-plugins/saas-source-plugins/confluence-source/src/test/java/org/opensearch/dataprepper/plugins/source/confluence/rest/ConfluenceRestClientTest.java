@@ -131,14 +131,14 @@ public class ConfluenceRestClientTest {
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         String oauthUrlHost = "http://mock-service.jira.com/cloud-id/";
-        String paginationNextLink = "/Search?next-token=adsflkajdsflakdjflkasfdmdsfad";
+        String paginationNextLink = "/Search?cursor=adsflkajdsflakdjflkasfdmdsfad";
         ConfluencePaginationLinks paginationLinks = new ConfluencePaginationLinks();
         paginationLinks.setNext(paginationNextLink);
         paginationLinks.setBase("http://base-host-name/");
         doReturn(oauthUrlHost).when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK))
                 .when(restTemplate)
-                .getForEntity(new URI(oauthUrlHost + paginationNextLink), ConfluenceSearchResults.class);
+                .getForEntity(new URI(oauthUrlHost + ConfluenceRestClient.WIKI_PARAM + paginationNextLink), ConfluenceSearchResults.class);
         ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, paginationLinks);
         assertNotNull(results);
     }
