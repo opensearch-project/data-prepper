@@ -41,6 +41,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
@@ -139,7 +140,8 @@ class PipelineTransformerTests {
         coreContext.registerBean(PluginErrorsHandler.class, () -> pluginErrorsHandler);
         coreContext.registerBean(DataPrepperDeserializationProblemHandler.class,
                 () -> dataPrepperDeserializationProblemHandler);
-        coreContext.registerBean(LevenshteinDistance.class, () -> new LevenshteinDistance());
+        coreContext.registerBean(ClosestFieldRecommender.class, () -> new ClosestFieldRecommender(
+                new LevenshteinDistance()));
         coreContext.registerBean(PipelineConfigurationErrorHandler.class, () -> pipelineConfigurationErrorHandler);
         coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
