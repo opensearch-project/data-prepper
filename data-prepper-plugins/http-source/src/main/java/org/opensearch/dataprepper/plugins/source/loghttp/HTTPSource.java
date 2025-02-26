@@ -83,10 +83,9 @@ public class HTTPSource implements Source<Record<Log>> {
             throw new IllegalStateException("Buffer provided is null");
         }
         if (server == null) {
-            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
-            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
-            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
+            CreateServer createServer = new CreateServer(LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
+            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService, sourceConfig);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
 

@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.http.HttpServerConfig;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
@@ -48,7 +49,7 @@ import java.util.function.Function;
 
 
 public class CreateServer {
-    private final ServerConfiguration serverConfiguration;
+    private ServerConfiguration serverConfiguration;
     private final Logger LOG;
     private final PluginMetrics  pluginMetrics;
     private String sourceName;
@@ -60,8 +61,15 @@ public class CreateServer {
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
-    public CreateServer(final ServerConfiguration serverConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
-        this.serverConfiguration = serverConfiguration;
+    public CreateServer(final ServerConfiguration grpcServerConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
+        this.serverConfiguration = grpcServerConfiguration;
+        this.LOG = LOG;
+        this.pluginMetrics = pluginMetrics;
+        this.sourceName = sourceName;
+        this.pipelineName = pipelineName;
+    }
+
+    public CreateServer(final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
         this.LOG = LOG;
         this.pluginMetrics = pluginMetrics;
         this.sourceName = sourceName;
@@ -151,17 +159,16 @@ public class CreateServer {
         return sb.build();
     }
 
-    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService) {
+    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService, final HttpServerConfig httpServerConfig) {
         final ServerBuilder sb = Server.builder();
-
         sb.disableServerHeader();
 
-        if (serverConfiguration.isSsl()) {
+        if (httpServerConfig.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
             // TODO: enable encrypted key with password
-            sb.https(serverConfiguration.getPort()).tls(
+            sb.https(httpServerConfig.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
@@ -169,42 +176,42 @@ public class CreateServer {
         } else {
             LOG.warn("Creating http source without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
-            sb.http(serverConfiguration.getPort());
+            sb.http(httpServerConfig.getPort());
         }
 
-        if(serverConfiguration.getAuthentication() != null) {
+        if(httpServerConfig.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
 
-            if (serverConfiguration.isUnauthenticatedHealthCheck()) {
+            if (httpServerConfig.isUnauthenticatedHealthCheck()) {
                 optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
             } else {
                 optionalAuthDecorator.ifPresent(sb::decorator);
             }
         }
 
-        sb.maxNumConnections(serverConfiguration.getMaxConnectionCount());
-        sb.requestTimeout(Duration.ofMillis(serverConfiguration.getRequestTimeoutInMillis()));
-        if(serverConfiguration.getMaxRequestLength() != null) {
-            sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
+        sb.maxNumConnections(httpServerConfig.getMaxConnectionCount());
+        sb.requestTimeout(Duration.ofMillis(httpServerConfig.getRequestTimeoutInMillis()));
+        if(httpServerConfig.getMaxRequestLength() != null) {
+            sb.maxRequestLength(httpServerConfig.getMaxRequestLength().getBytes());
         }
-        final int threads = serverConfiguration.getThreadCount();
+        final int threads = httpServerConfig.getThreadCount();
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
-        final int maxPendingRequests = serverConfiguration.getMaxPendingRequests();
+        final int maxPendingRequests = httpServerConfig.getMaxPendingRequests();
         final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
                 maxPendingRequests, blockingTaskExecutor.getQueue());
         final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
 
-        final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+        final String httpSourcePath = httpServerConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
         sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
-        if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
+        if (CompressionOption.NONE.equals(httpServerConfig.getCompression())) {
             sb.annotatedService(httpSourcePath, logService, httpRequestExceptionHandler);
         } else {
             sb.annotatedService(httpSourcePath, logService, DecodingService.newDecorator(), httpRequestExceptionHandler);
         }
 
-        if (serverConfiguration.hasHealthCheck()) {
+        if (httpServerConfig.hasHealthCheckService()) {
             LOG.info("HTTP source health check is enabled");
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }

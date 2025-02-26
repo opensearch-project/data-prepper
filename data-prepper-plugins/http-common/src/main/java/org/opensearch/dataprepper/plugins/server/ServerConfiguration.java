@@ -11,82 +11,92 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
-public class ServerConfiguration {
-    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
-    static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
-    static final boolean DEFAULT_HEALTH_CHECK = false;
-    static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
-    static final boolean DEFAULT_SSL = true;
-    static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-    static final int DEFAULT_THREAD_COUNT = 200;
-    static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
-    static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
-    static final double BUFFER_TIMEOUT_FRACTION = 0.8;
+public abstract class ServerConfiguration {
+    int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+    boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
+    boolean DEFAULT_HEALTH_CHECK = false;
+    boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
+    boolean DEFAULT_SSL = true;
+    boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    int DEFAULT_THREAD_COUNT = 200;
+    int DEFAULT_MAX_PENDING_REQUESTS = 1024;
+    int DEFAULT_MAX_CONNECTION_COUNT = 500;
+    double BUFFER_TIMEOUT_FRACTION = 0.8;
 
     @Setter
     @Getter
-    private String path;
+    String path;
 
     @Setter
-    private boolean healthCheck = DEFAULT_HEALTH_CHECK;
+    boolean healthCheck = DEFAULT_HEALTH_CHECK;
 
     @Setter
-    private boolean protoReflectionService = DEFAULT_PROTO_REFLECTION_SERVICE;
-
-    @Getter
-    @Setter
-    private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
-
-    @Setter
-    private boolean enableUnframedRequests = DEFAULT_ENABLED_UNFRAMED_REQUESTS;
-
-    @Setter
-    @Getter
-    private CompressionOption compression = CompressionOption.NONE;
-
-    @Setter
-    @Getter
-    private PluginModel authentication;
-
-    @Setter
-    @Getter
-    private boolean ssl = DEFAULT_SSL;
-
-    @Setter
-    @Getter
-    private boolean unauthenticatedHealthCheck = false;
+    boolean protoReflectionService = DEFAULT_PROTO_REFLECTION_SERVICE;
 
     @Getter
     @Setter
-    private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
+    int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
+
+    @Setter
+    boolean enableUnframedRequests = DEFAULT_ENABLED_UNFRAMED_REQUESTS;
+
+    @Setter
+    @Getter
+    CompressionOption compression = CompressionOption.NONE;
+
+    @Setter
+    @Getter
+    PluginModel authentication;
+
+    @Setter
+    @Getter
+    boolean ssl = DEFAULT_SSL;
+
+    @Setter
+    @Getter
+    boolean unauthenticatedHealthCheck = false;
 
     @Getter
     @Setter
-    private ByteCount maxRequestLength;
+    boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
 
     @Getter
     @Setter
-    private Integer port;
+    ByteCount maxRequestLength;
 
     @Getter
     @Setter
-    private RetryInfoConfig retryInfo;
+    Integer port;
 
     @Getter
     @Setter
-    private int threadCount = DEFAULT_THREAD_COUNT;
+    RetryInfoConfig retryInfo;
 
     @Getter
     @Setter
-    private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
+    int threadCount = DEFAULT_THREAD_COUNT;
 
     @Getter
     @Setter
-    private int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
+    int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
 
     @Getter
     @Setter
-    private int bufferTimeoutInMillis;
+    int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
+
+    @Getter
+    @Setter
+    int bufferTimeoutInMillis;
+
+//    public boolean hasHealthCheck();
+//
+//    public boolean enableHttpHealthCheck();
+//
+//    public boolean hasProtoReflectionService();
+//
+//    public boolean enableUnframedRequests();
+//
+//    public boolean useAcmCertForSSL();
 
     public boolean hasHealthCheck() {
         return healthCheck;

@@ -13,8 +13,9 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 
-public class OTelTraceSourceConfig {
+public class OTelTraceSourceConfig extends ServerConfiguration {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
     static final String PATH = "path";
@@ -152,7 +153,7 @@ public class OTelTraceSourceConfig {
         return requestTimeoutInMillis;
     }
 
-    public int getPort() {
+    public Integer getPort() {
         return port;
     }
 
