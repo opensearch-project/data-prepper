@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class LogicalReplicationEventProcessor {
@@ -182,6 +183,9 @@ public class LogicalReplicationEventProcessor {
             case COMMIT:
                 handleMessageWithRetries(msg, this::processCommitMessage, messageType);
                 break;
+            case TYPE:
+                handleMessageWithRetries(msg, this::processTypeMessage, messageType);
+                break;
             default:
                 throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
         }
@@ -212,6 +216,7 @@ public class LogicalReplicationEventProcessor {
     void processRelationMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         // null terminated string
+        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
         String schemaName = getNullTerminatedString(msg);
         String tableName = getNullTerminatedString(msg);
         int replicaId = msg.get();
@@ -223,7 +228,15 @@ public class LogicalReplicationEventProcessor {
             int flag = msg.get();    // 1 indicates this column is part of the replica identity
             // null terminated string
             String columnName = getNullTerminatedString(msg);
-            ColumnType columnType = ColumnType.getByTypeId(msg.getInt());
+            ColumnType columnType;
+            try {
+                columnType = ColumnType.getByTypeId(msg.getInt());
+            } catch (IllegalArgumentException e) {
+                final Set<String> enumColumns = getEnumColumns(databaseName, schemaName, tableName);
+                if (enumColumns != null && enumColumns.contains(columnName)) {
+                    columnType = ColumnType.getByTypeId(ColumnType.ENUM_TYPE_ID);
+                } else throw e;
+            }
             String columnTypeName = columnType.getTypeName();
             columnTypes.add(columnTypeName);
             int typeModifier = msg.getInt();
@@ -236,7 +249,6 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
         final List<String> primaryKeys = getPrimaryKeys(databaseName, schemaName, tableName);
         final TableMetadata tableMetadata = TableMetadata.builder()
                 .withDatabaseName(databaseName)
@@ -343,6 +355,13 @@ public class LogicalReplicationEventProcessor {
         LOG.debug("Processed a DELETE message with table id: {}", tableId);
     }
 
+     void processTypeMessage(ByteBuffer msg) {
+        int dataTypeId = msg.getInt();
+        String schemaName = getNullTerminatedString(msg);
+        String typeName = getNullTerminatedString(msg);
+        LOG.debug("Processed a TYPE message with TypeId: {} Namespace: {} TypeName: {}", dataTypeId, schemaName, typeName);
+    }
+
     private void doProcess(ByteBuffer msg, List<String> columnNames, TableMetadata tableMetadata,
                            List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
         bytesReceived = msg.capacity();
@@ -445,8 +464,12 @@ public class LogicalReplicationEventProcessor {
 
     private List<String> getPrimaryKeys(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
-
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
+    }
+
+    private Set<String> getEnumColumns(String databaseName, String schemaName, String tableName) {
+        StreamProgressState progressState = streamPartition.getProgressState().get();
+        return progressState.getPostgresStreamState().getEnumColumnsByTable().get(databaseName + "." + schemaName + "." + tableName);
     }
 
     private String getDatabaseName(List<String> tableNames) {
