@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.health;
+package org.opensearch.dataprepper.plugins.server;
+
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -21,13 +22,13 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
-class HealthGrpcServiceTest {
+public class HealthGrpcServiceTest {
 
     private Server server;
     private ManagedChannel channel;
 
     @BeforeEach
-    void setup() throws Exception {
+    public void setup() throws Exception {
         String serverName = InProcessServerBuilder.generateName();
 
         server = InProcessServerBuilder.forName(serverName)
@@ -42,7 +43,7 @@ class HealthGrpcServiceTest {
     }
 
     @AfterEach
-    void teardown() throws Exception {
+    public void teardown() throws Exception {
         try {
             channel.shutdown();
             server.shutdown();

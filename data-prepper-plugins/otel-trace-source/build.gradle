@@ -13,6 +13,7 @@ dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:armeria-common')
     implementation project(':data-prepper-plugins:otel-proto-common')
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.commons.codec
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation libs.opentelemetry.proto

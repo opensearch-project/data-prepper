@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 public class OTelLogsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";

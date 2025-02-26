@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 import java.time.Duration;
 import java.util.HashMap;
