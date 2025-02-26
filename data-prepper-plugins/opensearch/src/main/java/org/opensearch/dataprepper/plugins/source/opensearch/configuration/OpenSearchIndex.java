@@ -30,7 +30,7 @@ public class OpenSearchIndex {
         return indexNamePattern;
     }
 
-    @AssertTrue(message = "index_name_regex is not a valid regex pattern")
+    @AssertTrue(message = "The value of index_name_regex is not a valid regex pattern")
     boolean isRegexValid() {
         try {
             indexNamePattern = Pattern.compile(indexNameRegex);

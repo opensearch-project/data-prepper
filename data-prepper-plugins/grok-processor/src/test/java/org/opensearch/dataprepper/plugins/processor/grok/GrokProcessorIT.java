@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -453,9 +455,11 @@ public class GrokProcessorIT {
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfigWithPatterns2Pattern);
         grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+        Throwable throwable = assertThrows(InvalidPluginConfigurationException.class, () -> new GrokProcessor(
                 pluginMetrics, grokProcessorConfig, expressionEvaluator));
-        assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable.getMessage()));
+        assertThat(throwable.getCause(), instanceOf(IllegalArgumentException.class));
+        assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable
+                .getCause().getMessage()));
     }
 
     @Test
@@ -522,7 +526,7 @@ public class GrokProcessorIT {
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
         grokProcessorConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), GrokProcessorConfig.class);
 
-        assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(
+        assertThrows(InvalidPluginConfigurationException.class, () -> new GrokProcessor(
                 pluginMetrics, grokProcessorConfig, expressionEvaluator));
     }
 
