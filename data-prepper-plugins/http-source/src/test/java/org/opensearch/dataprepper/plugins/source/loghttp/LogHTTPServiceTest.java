@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.server;
+package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import org.junit.jupiter.api.Nested;

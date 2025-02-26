@@ -21,7 +21,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.plugins.server.LogHTTPService;
 
 import java.io.IOException;
 import java.time.Duration;

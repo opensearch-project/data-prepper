@@ -85,7 +85,8 @@ public class HTTPSource implements Source<Record<Log>> {
         if (server == null) {
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
             CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler);
+            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
 

@@ -151,7 +151,7 @@ public class CreateServer {
         return sb.build();
     }
 
-    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler) {
+    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService) {
         final ServerBuilder sb = Server.builder();
 
         sb.disableServerHeader();
@@ -197,12 +197,11 @@ public class CreateServer {
 
         final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
         sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-        final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
 
         if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
-            sb.annotatedService(httpSourcePath, logHTTPService, httpRequestExceptionHandler);
+            sb.annotatedService(httpSourcePath, logService, httpRequestExceptionHandler);
         } else {
-            sb.annotatedService(httpSourcePath, logHTTPService, DecodingService.newDecorator(), httpRequestExceptionHandler);
+            sb.annotatedService(httpSourcePath, logService, DecodingService.newDecorator(), httpRequestExceptionHandler);
         }
 
         if (serverConfiguration.hasHealthCheck()) {
