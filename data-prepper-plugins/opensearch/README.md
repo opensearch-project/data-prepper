@@ -493,6 +493,7 @@ opensearch-source-pipeline:
         cert: "/path/to/cert.crt"
         socket_timeout: "100ms"
         connection_timeout: "100ms"
+        proxy: "https://localhost:8080"
       hosts: [ "https://localhost:9200" ]
       username: "username"
       password: "password"
@@ -684,6 +685,8 @@ and then every hour after the first time the index is processed.
 
 
 * `connection_timeout` (Optional) : A String that indicates the timeout duration used when requesting a connection from the connection manager. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). If this timeout value is either negative or not set, the underlying Apache HttpClient would rely on operating system settings for managing connection timeouts.
+
+* `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
 ### <a name="indices_configuration">Indices Configuration</a>
 
