@@ -134,6 +134,13 @@ class ParsedMessageTest {
             assertThat(actualString, containsString(messageId));
             assertThat(actualString, containsString(testDecodedObjectKey));
         }
+
+        @Test
+        void test_parsed_message_with_null_object_size_defaults_to_zero() {
+            when(s3ObjectEntity.getSizeAsLong()).thenReturn(null);
+            final ParsedMessage parsedMessage = createObjectUnderTest();
+            assertThat(parsedMessage.getObjectSize(), equalTo(0L));
+        }
     }
 
     @Nested
