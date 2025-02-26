@@ -14,8 +14,9 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,7 +70,7 @@ public class OTelTraceGrpcServiceTest {
             .setTraceState("SUCCESS").build();
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
-                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(TEST_SPAN)).build())
+                    .addScopeSpans(ScopeSpans.newBuilder().addSpans(TEST_SPAN)).build())
             .build();
 
     private static PluginSetting pluginSetting;

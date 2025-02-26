@@ -45,8 +45,6 @@ import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.metrics.v1.Gauge;
 import io.opentelemetry.proto.metrics.v1.Sum;
@@ -407,24 +405,9 @@ public class KafkaBufferOTelIT {
                             .build())
                 .build();
 
-        final InstrumentationLibrarySpans ilSpans = InstrumentationLibrarySpans.newBuilder()
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder()
-                        .setName(ilName)
-                        .setVersion(ilVersion)
-                        .build())
-                .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder()
-                            .setTraceId(ByteString.copyFrom(TraceId2.getBytes()))
-                            .setSpanId(ByteString.copyFrom(SpanId2.getBytes()))
-                            .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_INTERNAL)
-                            .setName(ilSpanName)
-                            .setStartTimeUnixNano(currentUnixTimeNano)
-                            .setEndTimeUnixNano(currentUnixTimeNano+TIME_DELTA*1000_000_000)
-                            .build())
-                .build();
         ResourceSpans resourceSpans = ResourceSpans.newBuilder()
                 .setResource(resource)
                 .addScopeSpans(scopeSpans)
-                .addInstrumentationLibrarySpans(ilSpans)
                 .build();
 
         return ExportTraceServiceRequest.newBuilder()
