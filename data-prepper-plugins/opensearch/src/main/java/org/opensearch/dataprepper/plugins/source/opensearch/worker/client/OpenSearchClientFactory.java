@@ -44,6 +44,7 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import java.nio.file.Path;
+import java.time.temporal.ValueRange;
 import java.util.List;
 import java.util.Objects;
 
@@ -53,6 +54,10 @@ public class OpenSearchClientFactory {
 
     private static final String AOS_SERVICE_NAME = "es";
     private static final String AOSS_SERVICE_NAME = "aoss";
+    /**
+     * The valid port range per https://tools.ietf.org/html/rfc6335.
+     */
+    private static final ValueRange VALID_PORT_RANGE = ValueRange.of(0, 65535);
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
@@ -182,6 +187,7 @@ public class OpenSearchClientFactory {
         restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
             httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
+            setHttpProxyIfApplicable(httpClientBuilder, openSearchSourceConfiguration);
             httpClientBuilder.addInterceptorLast(
                     (HttpResponseInterceptor)
                             (response, context) ->
@@ -200,6 +206,7 @@ public class OpenSearchClientFactory {
             }
 
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
+            setHttpProxyIfApplicable(httpClientBuilder, openSearchSourceConfiguration);
             return httpClientBuilder;
         });
     }
@@ -214,6 +221,7 @@ public class OpenSearchClientFactory {
                 LOG.warn("Authentication was explicitly disabled for the OpenSearch source");
             }
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
+            setHttpProxyIfApplicable(httpClientBuilder, openSearchSourceConfiguration);
             httpClientBuilder.addInterceptorLast(
                     (HttpResponseInterceptor)
                             (response, context) ->
@@ -312,6 +320,21 @@ public class OpenSearchClientFactory {
             }
         } else {
             return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
+        }
+    }
+
+    private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        final String proxy = openSearchSourceConfiguration.getConnectionConfiguration().getProxy();
+        if (proxy != null) {
+            final HttpHost httpProxyHost = HttpHost.create(proxy);
+            checkProxyPort(httpProxyHost.getPort());
+            httpClientBuilder.setProxy(httpProxyHost);
+        }
+      }
+    
+    private void checkProxyPort(final int port) {
+        if (!VALID_PORT_RANGE.isValidIntValue(port)) {
+          throw new IllegalArgumentException("Invalid or missing proxy port.");
         }
     }
 }
