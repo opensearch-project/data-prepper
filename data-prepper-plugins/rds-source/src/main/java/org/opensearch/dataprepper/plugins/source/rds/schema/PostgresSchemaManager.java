@@ -22,9 +22,11 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 
 public class PostgresSchemaManager implements SchemaManager {
@@ -160,13 +162,21 @@ public class PostgresSchemaManager implements SchemaManager {
         for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
             try (Connection connection = connectionManager.getConnection()) {
                 final DatabaseMetaData metaData = connection.getMetaData();
+
+                // Get all enum columns for this table
+                Set<String> enumColumns = getEnumColumns(fullTableName);
+
                 // Retrieve column metadata
                 try (ResultSet columns = metaData.getColumns(database, schema, table, null)) {
                     while (columns.next()) {
-                        columnsToDataType.put(
-                                columns.getString(COLUMN_NAME),
-                                columns.getString(TYPE_NAME)
-                        );
+                        String columnName = columns.getString(COLUMN_NAME);
+                        String typeName = columns.getString(TYPE_NAME);
+                        if (enumColumns.contains(columnName)) {
+                           columnsToDataType.put(columnName, "enum");
+                        }
+                        else {
+                            columnsToDataType.put(columnName, typeName);
+                        }
                     }
                 }
                 return columnsToDataType;
@@ -180,6 +190,47 @@ public class PostgresSchemaManager implements SchemaManager {
             applyBackoff();
         }
         return columnsToDataType;
+    }
+
+    public Set<String> getEnumColumns(final String fullTableName) {
+        final String[] splits = fullTableName.split("\\.");
+        final String database = splits[0];
+        final String schema = splits[1];
+        final String table = splits[2];
+        final Set<String> enumColumns = new HashSet<>();
+        for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
+            try (Connection connection = connectionManager.getConnection()) {
+                String getEnumColumnsQuery = "SELECT a.attname AS column_name " +
+                        "FROM pg_database d " +
+                        "JOIN pg_namespace n ON n.nspname = ? " +
+                        "JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = ? " +
+                        "JOIN pg_attribute a ON a.attrelid = c.oid " +
+                        "JOIN pg_type t ON t.oid = a.atttypid " +
+                        "WHERE d.datname = ? " +
+                        "AND t.typtype = 'e'";
+
+                try (PreparedStatement getEnumStatement = connection.prepareStatement(getEnumColumnsQuery)) {
+                    getEnumStatement.setString(1, schema);
+                    getEnumStatement.setString(2, table);
+                    getEnumStatement.setString(3, database);
+
+                    try (ResultSet rs = getEnumStatement.executeQuery()) {
+                        while (rs.next()) {
+                            enumColumns.add(rs.getString("column_name"));
+                        }
+                    }
+                }
+                return enumColumns;
+            } catch (final Exception e) {
+                LOG.error("Failed to get enum columns for database {} schema {} table {}, retrying", database, schema, table, e);
+                if (retry == NUM_OF_RETRIES) {
+                    throw new RuntimeException(String.format("Failed to get enum columns for database %s schema %s table %s after " +
+                            "%d retries", database, schema, table, retry), e);
+                }
+            }
+            applyBackoff();
+        }
+        return enumColumns;
     }
 
     private void applyBackoff() {

@@ -140,6 +140,16 @@ class LogicalReplicationEventProcessorTest {
     }
 
     @Test
+    void test_correct_process_method_invoked_for_type_message() {
+        setMessageType(MessageType.TYPE);
+        doNothing().when(objectUnderTest).processTypeMessage(message);
+
+        objectUnderTest.process(message);
+
+        verify(objectUnderTest).processTypeMessage(message);
+    }
+
+    @Test
     void test_unsupported_message_type_throws_exception() {
         message = ByteBuffer.allocate(1);
         message.put((byte) 'A');
