@@ -66,7 +66,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelMetricDecoder(oTelMetricsSourceConfig.getOutputFormat());
+        this.byteDecoder = new OTelMetricDecoder();
     }
 
     @Override
