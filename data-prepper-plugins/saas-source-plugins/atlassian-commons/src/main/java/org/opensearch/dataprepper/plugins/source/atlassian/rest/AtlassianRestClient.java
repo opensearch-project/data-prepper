@@ -50,7 +50,7 @@ public class AtlassianRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("An exception has occurred while getting response from Jira search API  {}", ex.getMessage());
+                log.error("An exception has occurred while getting response from search API  {}", ex.getMessage());
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnauthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {

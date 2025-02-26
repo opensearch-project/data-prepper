@@ -42,7 +42,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_NOT_IN;
@@ -148,7 +148,7 @@ public class ConfluenceService {
 
         String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_EQUALS + "\"" + formattedTimeStamp + "\"");
+        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
@@ -169,7 +169,7 @@ public class ConfluenceService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-
+        cQl.append(" order by " + LAST_MODIFIED);
         log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
     }
