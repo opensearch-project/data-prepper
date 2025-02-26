@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.plugins.TestObjectPlugin;
 import org.opensearch.dataprepper.plugins.configtest.TestComponentWithConfigInject;
@@ -84,7 +85,8 @@ class DefaultPluginFactoryIT {
         coreContext.register(PluginBeanFactoryProvider.class);
         coreContext.registerBean(PluginErrorCollector.class, PluginErrorCollector::new);
         coreContext.registerBean(PluginErrorsHandler.class, LoggingPluginErrorsHandler::new);
-        coreContext.registerBean(LevenshteinDistance.class, () -> new LevenshteinDistance());
+        coreContext.registerBean(ClosestFieldRecommender.class, () -> new ClosestFieldRecommender(
+                new LevenshteinDistance()));
         coreContext.registerBean(DataPrepperDeserializationProblemHandler.class, DataPrepperDeserializationProblemHandler::new);
         coreContext.registerBean(ExtensionsConfiguration.class, () -> extensionsConfiguration);
         coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
