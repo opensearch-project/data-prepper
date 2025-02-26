@@ -10,13 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.Metric;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.metrics.v1.Sum;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,8 +84,8 @@ class MetricsPluginSumTest {
                 .setDescription("description")
                 .build();
 
-        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
+                .setScope(InstrumentationScope.newBuilder().setVersion("v1").setName("name").build())
                 .addMetrics(metric).build();
 
         Resource resource = Resource.newBuilder()
@@ -96,7 +96,7 @@ class MetricsPluginSumTest {
 
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
 
         ExportMetricsServiceRequest exportMetricRequest = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
@@ -153,12 +153,12 @@ class MetricsPluginSumTest {
                 .setDescription("description")
                 .build();
 
-        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
+        ScopeMetrics scopeMetrics = ScopeMetrics.newBuilder()
+                .setScope(InstrumentationScope.newBuilder().setVersion("v1").setName("name").build())
                 .addMetrics(metric).build();
 
-        InstrumentationLibraryMetrics instLibWithInvalidMetric = InstrumentationLibraryMetrics.newBuilder()
-                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
+        ScopeMetrics scopeMetricsWithInvalidMetric = ScopeMetrics.newBuilder()
+                .setScope(InstrumentationScope.newBuilder().setVersion("v1").setName("name").build())
                 .addMetrics(metricWithNameMissing).build();
 
         Resource resource = Resource.newBuilder()
@@ -169,12 +169,12 @@ class MetricsPluginSumTest {
 
         ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLib)
+                .addScopeMetrics(scopeMetrics)
                 .build();
 
         ResourceMetrics resourceMetricsWithInvalidMetric = ResourceMetrics.newBuilder()
                 .setResource(resource)
-                .addInstrumentationLibraryMetrics(instLibWithInvalidMetric)
+                .addScopeMetrics(scopeMetricsWithInvalidMetric)
                 .build();
 
         ExportMetricsServiceRequest exportMetricRequest = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
@@ -204,8 +204,8 @@ class MetricsPluginSumTest {
         assertThat(map).contains(entry("metric.attributes.db@details", "{\"statement@params\":\"us-east-1\",\"statement\":1000}"));
         assertThat(map).contains(entry("startTime","1970-01-01T00:00:00Z"));
         assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("instrumentationLibrary.version", "v1"));
-        assertThat(map).contains(entry("instrumentationLibrary.name", "name"));
+        assertThat(map).contains(entry("instrumentationScope.version", "v1"));
+        assertThat(map).contains(entry("instrumentationScope.name", "name"));
         assertThat(map).contains(entry("metric.attributes.aws@details", "[\"asdf\",2000.123,\"{\\\"statement@params\\\":\\\"us-east-1\\\",\\\"statement\\\":1000}\"]"));
         assertThat(map).contains(entry("flags", 0));
 
