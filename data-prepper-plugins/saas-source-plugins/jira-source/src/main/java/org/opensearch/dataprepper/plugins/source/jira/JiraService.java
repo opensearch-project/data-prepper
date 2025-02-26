@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PREFIX;
@@ -136,7 +136,7 @@ public class JiraService {
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
             validateProjectFilters(configuration);
         }
-        StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
+        StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN + ts.toEpochMilli());
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration))) {
             jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
