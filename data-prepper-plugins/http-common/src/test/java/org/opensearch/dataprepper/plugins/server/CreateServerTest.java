@@ -144,7 +144,8 @@ public class CreateServerTest {
         final ServerConfiguration serverConfiguration = createServerConfig(metadata);
         final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<Log>> buffer = new BlockingBuffer<Record<Log>>(TEST_PIPELINE_NAME);
-        Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler);
+        String logService = "placeholder";
+        Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler, logService);
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
         assertDoesNotThrow(() -> server.stop());
