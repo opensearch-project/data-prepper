@@ -13,9 +13,8 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.server.GrpcServerConfiguration;
 
-public class OTelMetricsSourceConfig extends GrpcServerConfiguration {
+public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
     static final String PATH = "path";
@@ -153,7 +152,7 @@ public class OTelMetricsSourceConfig extends GrpcServerConfiguration {
         return requestTimeoutInMillis;
     }
 
-    public Integer getPort() {
+    public int getPort() {
         return port;
     }
 

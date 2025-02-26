@@ -21,5 +21,4 @@ public class HTTPSourceConfig extends BaseHttpServerConfig {
     public String getDefaultPath() {
         return DEFAULT_LOG_INGEST_URI;
     }
-
 }

@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import org.opensearch.dataprepper.http.BaseHttpServerConfig;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -33,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -83,8 +83,8 @@ public class CreateServerTest {
     void createGrpcServerTest() throws JsonProcessingException {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
-        final GrpcServerConfiguration grpcServerConfiguration = createServerConfig(metadata);
-        final CreateServer createServer = new CreateServer(grpcServerConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
 
@@ -104,14 +104,14 @@ public class CreateServerTest {
         authConfig.put("plugin", "test-auth");
         authConfig.put("settings", Collections.singletonMap("key", "value"));
         metadata.put("authentication", authConfig);
-        final GrpcServerConfiguration grpcServerConfiguration = createServerConfig(metadata);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
 
         SimpleAuthDecorator customAuth = new SimpleAuthDecorator();
         Logger mockLogger = mock(Logger.class);
         customAuth.setLogger(mockLogger);
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(Optional.of(customAuth));
 
-        final CreateServer createServer = new CreateServer(grpcServerConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
@@ -120,7 +120,7 @@ public class CreateServerTest {
         assertDoesNotThrow(() -> server.start());
 
         WebClient webClient = WebClient.builder(
-                String.format("http://127.0.0.1:%d", grpcServerConfiguration.getPort())
+                String.format("http://127.0.0.1:%d", serverConfiguration.getPort())
         ).build();
         webClient.get("/").aggregate().join();
 
@@ -133,13 +133,19 @@ public class CreateServerTest {
     void createHttpServerTest() throws IOException {
         final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
         final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
+        final String certAsString = Files.readString(certFilePath);
+        final String keyAsString = Files.readString(keyFilePath);
 
+        when(certificate.getCertificate()).thenReturn(certAsString);
+        when(certificate.getPrivateKey()).thenReturn(keyAsString);
+        when(certificateProvider.getCertificate()).thenReturn(certificate);
+        when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
         final Map<String, Object> metadata = createHttpMetadata(2021, "/log/ingest", 10_000, 200, 500, 1024, true, CompressionOption.NONE);
-        final BaseHttpServerConfig serverConfiguration = createHttpServerConfig(metadata);
-        final CreateServer createServer = new CreateServer(LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<Log>> buffer = new BlockingBuffer<Record<Log>>(TEST_PIPELINE_NAME);
         String logService = "placeholder";
-        Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler, logService, serverConfiguration);
+        Server server = createServer.createHTTPServer(buffer, certificateProviderFactory, armeriaAuthenticationProvider, httpRequestExceptionHandler, logService);
         assertNotNull(server);
         assertDoesNotThrow(() -> server.start());
         assertDoesNotThrow(() -> server.stop());
@@ -163,30 +169,20 @@ public class CreateServerTest {
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put("port", port);
         metadata.put("path", path);
-        metadata.put("request_timeout", requestTimeoutInMillis);
-        metadata.put("thread_count", threadCount);
-        metadata.put("max_connection_count", maxConnectionCount);
-        metadata.put("max_pending_requests", maxPendingRequests);
-        metadata.put("health_check_service", hasHealthCheckService);
+        metadata.put("requestTimeoutInMillis", requestTimeoutInMillis);
+        metadata.put("threadCount", threadCount);
+        metadata.put("maxConnectionCount", maxConnectionCount);
+        metadata.put("maxPendingRequests", maxPendingRequests);
+        metadata.put("healthCheck", hasHealthCheckService);
         metadata.put("compression", compressionOption);
         return metadata;
     }
 
-    private BaseHttpServerConfig createHttpServerConfig(final Map<String, Object> metadata) throws JsonProcessingException {
+    private ServerConfiguration createServerConfig(final Map<String, Object> metadata) throws JsonProcessingException {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         String json = new ObjectMapper().writeValueAsString(metadata);
-        return objectMapper.readValue(json, BaseHttpServerConfig.class);
-    }
-
-    private GrpcServerConfiguration createServerConfig(final Map<String, Object> metadata) throws JsonProcessingException {
-        objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        String json = new ObjectMapper().writeValueAsString(metadata);
-        return objectMapper.readValue(json, GRPCServer.class);
-    }
-
-    private static class GRPCServer extends GrpcServerConfiguration {
+        return objectMapper.readValue(json, ServerConfiguration.class);
     }
 
     private TestService getTestService(Buffer<Record<? extends Metric>> buffer){

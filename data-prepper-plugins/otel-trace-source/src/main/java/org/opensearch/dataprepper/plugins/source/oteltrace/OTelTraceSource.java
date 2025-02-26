@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
+import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     pluginMetrics
             );
 
-            CreateServer createServer = new CreateServer(oTelTraceSourceConfig, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelTraceSourceConfig);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
             CertificateProvider certificateProvider = null;
             if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
                 certificateProvider = certificateProviderFactory.getCertificateProvider();

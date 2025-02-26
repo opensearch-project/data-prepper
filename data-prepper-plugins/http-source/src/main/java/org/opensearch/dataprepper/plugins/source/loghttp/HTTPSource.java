@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
+import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,9 +83,10 @@ public class HTTPSource implements Source<Record<Log>> {
             throw new IllegalStateException("Buffer provided is null");
         }
         if (server == null) {
-            CreateServer createServer = new CreateServer(LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
-            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService, sourceConfig);
+            ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
+            CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
+            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+            server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
 

@@ -25,7 +25,6 @@ import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import org.opensearch.dataprepper.http.HttpServerConfig;
 import org.opensearch.dataprepper.http.LogThrottlingRejectHandler;
 import org.opensearch.dataprepper.http.LogThrottlingStrategy;
 import org.opensearch.dataprepper.http.certificate.CertificateProviderFactory;
@@ -49,7 +48,7 @@ import java.util.function.Function;
 
 
 public class CreateServer {
-    private GrpcServerConfiguration grpcServerConfiguration;
+    private final ServerConfiguration serverConfiguration;
     private final Logger LOG;
     private final PluginMetrics  pluginMetrics;
     private String sourceName;
@@ -61,15 +60,8 @@ public class CreateServer {
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
-    public CreateServer(final GrpcServerConfiguration grpcServerConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
-        this.grpcServerConfiguration = grpcServerConfiguration;
-        this.LOG = LOG;
-        this.pluginMetrics = pluginMetrics;
-        this.sourceName = sourceName;
-        this.pipelineName = pipelineName;
-    }
-
-    public CreateServer(final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
+    public CreateServer(final ServerConfiguration serverConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
+        this.serverConfiguration = serverConfiguration;
         this.LOG = LOG;
         this.pluginMetrics = pluginMetrics;
         this.sourceName = sourceName;
@@ -85,7 +77,7 @@ public class CreateServer {
                 .useBlockingTaskExecutor(true)
                 .exceptionHandler(createGrpExceptionHandler());
 
-        final String sourcePath = grpcServerConfiguration.getPath();
+        final String sourcePath = serverConfiguration.getPath();
         if (sourcePath != null) {
             final String transformedSourcePath = sourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             grpcServiceBuilder.addService(transformedSourcePath,
@@ -94,35 +86,35 @@ public class CreateServer {
             grpcServiceBuilder.addService(ServerInterceptors.intercept(grpcService, serverInterceptors));
         }
 
-        if (grpcServerConfiguration.hasHealthCheck()) {
+        if (serverConfiguration.hasHealthCheck()) {
             LOG.info("Health check is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
-        if (grpcServerConfiguration.hasProtoReflectionService()) {
+        if (serverConfiguration.hasProtoReflectionService()) {
             LOG.info("Proto reflection service is enabled");
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }
 
-        grpcServiceBuilder.enableUnframedRequests(grpcServerConfiguration.enableUnframedRequests());
+        grpcServiceBuilder.enableUnframedRequests(serverConfiguration.enableUnframedRequests());
 
         final ServerBuilder sb = Server.builder();
         sb.disableServerHeader();
-        if (CompressionOption.NONE.equals(grpcServerConfiguration.getCompression())) {
+        if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
             sb.service(grpcServiceBuilder.build());
         } else {
             sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
         }
 
-        if (grpcServerConfiguration.enableHttpHealthCheck()) {
+        if (serverConfiguration.enableHttpHealthCheck()) {
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        if(grpcServerConfiguration.getAuthentication() != null) {
+        if(serverConfiguration.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
 
-            if(grpcServerConfiguration.isUnauthenticatedHealthCheck()) {
+            if(serverConfiguration.isUnauthenticatedHealthCheck()) {
                 optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
                         sb.decorator(REGEX_HEALTH, httpAuthenticationService));
             } else {
@@ -130,16 +122,16 @@ public class CreateServer {
             }
         }
 
-        sb.requestTimeoutMillis(grpcServerConfiguration.getRequestTimeoutInMillis());
-        if(grpcServerConfiguration.getMaxRequestLength() != null) {
-            sb.maxRequestLength(grpcServerConfiguration.getMaxRequestLength().getBytes());
+        sb.requestTimeoutMillis(serverConfiguration.getRequestTimeoutInMillis());
+        if(serverConfiguration.getMaxRequestLength() != null) {
+            sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
         }
 
         // ACM Cert for SSL takes preference
-        if (grpcServerConfiguration.isSsl() || grpcServerConfiguration.useAcmCertForSSL()) {
+        if (serverConfiguration.isSsl() || serverConfiguration.useAcmCertForSSL()) {
             LOG.info("SSL/TLS is enabled.");
             final Certificate certificate = certificateProvider.getCertificate();
-            sb.https(grpcServerConfiguration.getPort()).tls(
+            sb.https(serverConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
@@ -147,11 +139,11 @@ public class CreateServer {
         } else {
             LOG.warn("Creating " + sourceName + " without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the " + sourceName + ", go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#ssl");
-            sb.http(grpcServerConfiguration.getPort());
+            sb.http(serverConfiguration.getPort());
         }
 
         final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
-                .numThreads(grpcServerConfiguration.getThreadCount())
+                .numThreads(serverConfiguration.getThreadCount())
                 .threadNamePrefix(pipelineName + sourceName)
                 .build();
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
@@ -159,16 +151,17 @@ public class CreateServer {
         return sb.build();
     }
 
-    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService, final HttpServerConfig httpServerConfig) {
+    public Server createHTTPServer(final Buffer<Record<Log>> buffer, final CertificateProviderFactory certificateProviderFactory, final ArmeriaHttpAuthenticationProvider authenticationProvider, final HttpRequestExceptionHandler httpRequestExceptionHandler, final Object logService) {
         final ServerBuilder sb = Server.builder();
+
         sb.disableServerHeader();
 
-        if (httpServerConfig.isSsl()) {
+        if (serverConfiguration.isSsl()) {
             LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
             // TODO: enable encrypted key with password
-            sb.https(httpServerConfig.getPort()).tls(
+            sb.https(serverConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
@@ -176,42 +169,42 @@ public class CreateServer {
         } else {
             LOG.warn("Creating http source without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
-            sb.http(httpServerConfig.getPort());
+            sb.http(serverConfiguration.getPort());
         }
 
-        if(httpServerConfig.getAuthentication() != null) {
+        if(serverConfiguration.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
 
-            if (httpServerConfig.isUnauthenticatedHealthCheck()) {
+            if (serverConfiguration.isUnauthenticatedHealthCheck()) {
                 optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
             } else {
                 optionalAuthDecorator.ifPresent(sb::decorator);
             }
         }
 
-        sb.maxNumConnections(httpServerConfig.getMaxConnectionCount());
-        sb.requestTimeout(Duration.ofMillis(httpServerConfig.getRequestTimeoutInMillis()));
-        if(httpServerConfig.getMaxRequestLength() != null) {
-            sb.maxRequestLength(httpServerConfig.getMaxRequestLength().getBytes());
+        sb.maxNumConnections(serverConfiguration.getMaxConnectionCount());
+        sb.requestTimeout(Duration.ofMillis(serverConfiguration.getRequestTimeoutInMillis()));
+        if(serverConfiguration.getMaxRequestLength() != null) {
+            sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
         }
-        final int threads = httpServerConfig.getThreadCount();
+        final int threads = serverConfiguration.getThreadCount();
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
-        final int maxPendingRequests = httpServerConfig.getMaxPendingRequests();
+        final int maxPendingRequests = serverConfiguration.getMaxPendingRequests();
         final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
                 maxPendingRequests, blockingTaskExecutor.getQueue());
         final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
 
-        final String httpSourcePath = httpServerConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+        final String httpSourcePath = serverConfiguration.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
         sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
 
-        if (CompressionOption.NONE.equals(httpServerConfig.getCompression())) {
+        if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
             sb.annotatedService(httpSourcePath, logService, httpRequestExceptionHandler);
         } else {
             sb.annotatedService(httpSourcePath, logService, DecodingService.newDecorator(), httpRequestExceptionHandler);
         }
 
-        if (httpServerConfig.hasHealthCheckService()) {
+        if (serverConfiguration.hasHealthCheck()) {
             LOG.info("HTTP source health check is enabled");
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
@@ -220,8 +213,8 @@ public class CreateServer {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = grpcServerConfiguration.getRetryInfo() != null
-                ? grpcServerConfiguration.getRetryInfo()
+        RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
+                ? serverConfiguration.getRetryInfo()
                 : DEFAULT_RETRY_INFO;
 
         return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());
