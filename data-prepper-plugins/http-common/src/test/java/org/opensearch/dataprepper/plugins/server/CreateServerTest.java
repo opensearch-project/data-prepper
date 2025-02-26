@@ -83,8 +83,8 @@ public class CreateServerTest {
     void createGrpcServerTest() throws JsonProcessingException {
         when(authenticationProvider.getAuthenticationInterceptor()).thenReturn(authenticationInterceptor);
         final Map<String, Object> metadata = createGrpcMetadata(21890, false, 10000, 10, 5, CompressionOption.NONE, null);
-        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
-        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        final GrpcServerConfiguration grpcServerConfiguration = createServerConfig(metadata);
+        final CreateServer createServer = new CreateServer(grpcServerConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
 
@@ -104,14 +104,14 @@ public class CreateServerTest {
         authConfig.put("plugin", "test-auth");
         authConfig.put("settings", Collections.singletonMap("key", "value"));
         metadata.put("authentication", authConfig);
-        final ServerConfiguration serverConfiguration = createServerConfig(metadata);
+        final GrpcServerConfiguration grpcServerConfiguration = createServerConfig(metadata);
 
         SimpleAuthDecorator customAuth = new SimpleAuthDecorator();
         Logger mockLogger = mock(Logger.class);
         customAuth.setLogger(mockLogger);
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(Optional.of(customAuth));
 
-        final CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
+        final CreateServer createServer = new CreateServer(grpcServerConfiguration, LOG, pluginMetrics, TEST_SOURCE_NAME, TEST_PIPELINE_NAME);
         Buffer<Record<? extends Metric>> buffer = new BlockingBuffer<Record<? extends Metric>>(TEST_PIPELINE_NAME);
         TestService testService = getTestService(buffer);
         Server server = createServer.createGRPCServer(authenticationProvider, testService, certificateProvider, null);
@@ -120,7 +120,7 @@ public class CreateServerTest {
         assertDoesNotThrow(() -> server.start());
 
         WebClient webClient = WebClient.builder(
-                String.format("http://127.0.0.1:%d", serverConfiguration.getPort())
+                String.format("http://127.0.0.1:%d", grpcServerConfiguration.getPort())
         ).build();
         webClient.get("/").aggregate().join();
 
@@ -179,14 +179,14 @@ public class CreateServerTest {
         return objectMapper.readValue(json, BaseHttpServerConfig.class);
     }
 
-    private ServerConfiguration createServerConfig(final Map<String, Object> metadata) throws JsonProcessingException {
+    private GrpcServerConfiguration createServerConfig(final Map<String, Object> metadata) throws JsonProcessingException {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         String json = new ObjectMapper().writeValueAsString(metadata);
         return objectMapper.readValue(json, GRPCServer.class);
     }
 
-    private static class GRPCServer extends ServerConfiguration {
+    private static class GRPCServer extends GrpcServerConfiguration {
     }
 
     private TestService getTestService(Buffer<Record<? extends Metric>> buffer){

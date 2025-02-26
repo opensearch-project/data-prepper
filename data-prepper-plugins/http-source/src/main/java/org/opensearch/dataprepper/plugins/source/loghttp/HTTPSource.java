@@ -24,7 +24,6 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
-import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

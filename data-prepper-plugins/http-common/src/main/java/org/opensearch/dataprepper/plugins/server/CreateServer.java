@@ -49,7 +49,7 @@ import java.util.function.Function;
 
 
 public class CreateServer {
-    private ServerConfiguration serverConfiguration;
+    private GrpcServerConfiguration grpcServerConfiguration;
     private final Logger LOG;
     private final PluginMetrics  pluginMetrics;
     private String sourceName;
@@ -61,8 +61,8 @@ public class CreateServer {
 
     private static final RetryInfoConfig DEFAULT_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100), Duration.ofMillis(2000));
 
-    public CreateServer(final ServerConfiguration grpcServerConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
-        this.serverConfiguration = grpcServerConfiguration;
+    public CreateServer(final GrpcServerConfiguration grpcServerConfiguration, final Logger LOG, final PluginMetrics pluginMetrics, final String sourceName, final String pipelineName) {
+        this.grpcServerConfiguration = grpcServerConfiguration;
         this.LOG = LOG;
         this.pluginMetrics = pluginMetrics;
         this.sourceName = sourceName;
@@ -85,7 +85,7 @@ public class CreateServer {
                 .useBlockingTaskExecutor(true)
                 .exceptionHandler(createGrpExceptionHandler());
 
-        final String sourcePath = serverConfiguration.getPath();
+        final String sourcePath = grpcServerConfiguration.getPath();
         if (sourcePath != null) {
             final String transformedSourcePath = sourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             grpcServiceBuilder.addService(transformedSourcePath,
@@ -94,35 +94,35 @@ public class CreateServer {
             grpcServiceBuilder.addService(ServerInterceptors.intercept(grpcService, serverInterceptors));
         }
 
-        if (serverConfiguration.hasHealthCheck()) {
+        if (grpcServerConfiguration.hasHealthCheck()) {
             LOG.info("Health check is enabled");
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
-        if (serverConfiguration.hasProtoReflectionService()) {
+        if (grpcServerConfiguration.hasProtoReflectionService()) {
             LOG.info("Proto reflection service is enabled");
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }
 
-        grpcServiceBuilder.enableUnframedRequests(serverConfiguration.enableUnframedRequests());
+        grpcServiceBuilder.enableUnframedRequests(grpcServerConfiguration.enableUnframedRequests());
 
         final ServerBuilder sb = Server.builder();
         sb.disableServerHeader();
-        if (CompressionOption.NONE.equals(serverConfiguration.getCompression())) {
+        if (CompressionOption.NONE.equals(grpcServerConfiguration.getCompression())) {
             sb.service(grpcServiceBuilder.build());
         } else {
             sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
         }
 
-        if (serverConfiguration.enableHttpHealthCheck()) {
+        if (grpcServerConfiguration.enableHttpHealthCheck()) {
             sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
         }
 
-        if(serverConfiguration.getAuthentication() != null) {
+        if(grpcServerConfiguration.getAuthentication() != null) {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
 
-            if(serverConfiguration.isUnauthenticatedHealthCheck()) {
+            if(grpcServerConfiguration.isUnauthenticatedHealthCheck()) {
                 optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
                         sb.decorator(REGEX_HEALTH, httpAuthenticationService));
             } else {
@@ -130,16 +130,16 @@ public class CreateServer {
             }
         }
 
-        sb.requestTimeoutMillis(serverConfiguration.getRequestTimeoutInMillis());
-        if(serverConfiguration.getMaxRequestLength() != null) {
-            sb.maxRequestLength(serverConfiguration.getMaxRequestLength().getBytes());
+        sb.requestTimeoutMillis(grpcServerConfiguration.getRequestTimeoutInMillis());
+        if(grpcServerConfiguration.getMaxRequestLength() != null) {
+            sb.maxRequestLength(grpcServerConfiguration.getMaxRequestLength().getBytes());
         }
 
         // ACM Cert for SSL takes preference
-        if (serverConfiguration.isSsl() || serverConfiguration.useAcmCertForSSL()) {
+        if (grpcServerConfiguration.isSsl() || grpcServerConfiguration.useAcmCertForSSL()) {
             LOG.info("SSL/TLS is enabled.");
             final Certificate certificate = certificateProvider.getCertificate();
-            sb.https(serverConfiguration.getPort()).tls(
+            sb.https(grpcServerConfiguration.getPort()).tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
@@ -147,11 +147,11 @@ public class CreateServer {
         } else {
             LOG.warn("Creating " + sourceName + " without SSL/TLS. This is not secure.");
             LOG.warn("In order to set up TLS for the " + sourceName + ", go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#ssl");
-            sb.http(serverConfiguration.getPort());
+            sb.http(grpcServerConfiguration.getPort());
         }
 
         final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
-                .numThreads(serverConfiguration.getThreadCount())
+                .numThreads(grpcServerConfiguration.getThreadCount())
                 .threadNamePrefix(pipelineName + sourceName)
                 .build();
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
@@ -220,8 +220,8 @@ public class CreateServer {
     }
 
     private GrpcExceptionHandlerFunction createGrpExceptionHandler() {
-        RetryInfoConfig retryInfo = serverConfiguration.getRetryInfo() != null
-                ? serverConfiguration.getRetryInfo()
+        RetryInfoConfig retryInfo = grpcServerConfiguration.getRetryInfo() != null
+                ? grpcServerConfiguration.getRetryInfo()
                 : DEFAULT_RETRY_INFO;
 
         return new GrpcRequestExceptionHandler(pluginMetrics, retryInfo.getMinDelay(), retryInfo.getMaxDelay());

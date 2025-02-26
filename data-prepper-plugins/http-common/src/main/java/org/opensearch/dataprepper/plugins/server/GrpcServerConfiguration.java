@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
-public abstract class ServerConfiguration {
+public abstract class GrpcServerConfiguration {
     int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
     boolean DEFAULT_HEALTH_CHECK = false;
