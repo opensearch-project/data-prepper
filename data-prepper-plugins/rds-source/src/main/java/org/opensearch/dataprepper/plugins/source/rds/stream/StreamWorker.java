@@ -66,11 +66,7 @@ public class StreamWorker {
             sourceCoordinator.giveUpPartition(streamPartition);
             throw new RuntimeException(e);
         } finally {
-            try {
-                replicationLogClient.disconnect();
-            } catch (Exception e) {
-                LOG.error("Replication log client failed to disconnect.", e);
-            }
+            shutdown();
         }
     }
 
