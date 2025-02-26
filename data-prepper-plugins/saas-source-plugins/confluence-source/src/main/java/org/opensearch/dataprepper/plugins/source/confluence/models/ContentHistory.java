@@ -20,37 +20,22 @@ import java.time.Instant;
 public class ContentHistory {
 
     // Example format "createdDate": "2025-02-17T23:34:44.633Z"
+    // Jackson converts to Instant type
     @JsonProperty("createdDate")
-    String createdDate;
+    Instant createdDate;
 
     @JsonProperty("lastUpdated")
     LastUpdated lastUpdated;
 
     /**
-     * Converts the createdDate ISO 8601 timestamp to milliseconds since epoch
-     *
      * @return milliseconds since epoch, or 0 if createdDate is null or invalid
      */
     public long getCreatedDateInMillis() {
-        try {
-            if (createdDate != null) {
-                return Instant.parse(createdDate).toEpochMilli();
-            }
-        } catch (Exception e) {
-            return 0L;
-        }
-        return 0L;
+        return (createdDate != null) ? createdDate.toEpochMilli() : 0L;
     }
 
     public long getLastUpdatedInMillis() {
-        try {
-            if (lastUpdated != null && lastUpdated.when != null) {
-                return Instant.parse(lastUpdated.when).toEpochMilli();
-            }
-        } catch (Exception e) {
-            return 0L;
-        }
-        return 0L;
+        return (lastUpdated != null && lastUpdated.when != null) ? lastUpdated.when.toEpochMilli() : 0L;
     }
 
     @Setter
@@ -58,7 +43,7 @@ public class ContentHistory {
     public static class LastUpdated {
         // Example format  "when": "2025-02-17T23:34:44.633Z"
         @JsonProperty("when")
-        String when;
+        Instant when;
     }
 
 
