@@ -23,9 +23,11 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceNextLinkValidator.validateAndSanitizeURL;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_VALUE;
@@ -79,8 +81,10 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         URI uri;
         if (null != paginationLinks && null != paginationLinks.getNext()) {
             try {
-                uri = new URI(authConfig.getUrl() + WIKI_PARAM + paginationLinks.getNext());
-            } catch (URISyntaxException e) {
+                String urlString = authConfig.getUrl() + WIKI_PARAM + paginationLinks.getNext();
+                urlString = validateAndSanitizeURL(urlString);
+                uri = new URI(urlString);
+            } catch (URISyntaxException | MalformedURLException e) {
                 throw new RuntimeException("Failed to construct pagination url.", e);
             }
         } else {
