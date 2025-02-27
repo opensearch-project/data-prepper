@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -22,6 +23,8 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,6 +65,81 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.s3Client = s3ObjectRequest.getS3Client();
         this.lastModified = Instant.now();
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
+    }
+
+    private void processObjectMetadata(final AcknowledgementSet acknowledgementSet,
+                               final S3ObjectReference s3ObjectReference,
+                               final BufferAccumulator<Record<Event>> bufferAccumulator,
+                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                               final String partitionKey) throws IOException {
+        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
+        final String BUCKET = "bucket";
+        final String KEY = "key";
+        final String TIME = "time";
+        final String LENGTH = "length";
+        Map<String, Object> data = new HashMap<>();
+        data.put(BUCKET, s3ObjectReference.getBucketName());
+        data.put(KEY, s3ObjectReference.getKey());
+        data.put(TIME, inputFile.getLastModified());
+        data.put(LENGTH, inputFile.getLength());
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(data)
+                .build();
+        final long s3ObjectSize = event.toJsonString().length();
+        if (acknowledgementSet != null) {
+            acknowledgementSet.add(event);
+        }
+        AtomicLong lastCheckpointTime = new AtomicLong(System.currentTimeMillis());
+        final AtomicInteger saveStateCounter = new AtomicInteger();
+        final Instant lastModifiedTime = inputFile.getLastModified();
+        final Instant now = Instant.now();
+        final Instant originationTime = (lastModifiedTime == null || lastModifiedTime.isAfter(now)) ? now : lastModifiedTime;
+        event.getMetadata().setExternalOriginationTime(originationTime);
+        event.getEventHandle().setExternalOriginationTime(originationTime);
+        try {
+            bufferAccumulator.add(new Record<>(event));
+        } catch (final Exception e) {
+            LOG.error("Failed writing S3 objects to buffer.", e);
+        }
+        if (acknowledgementSet != null && sourceCoordinator != null && partitionKey != null &&
+                (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
+            LOG.debug("Renew partition ownership for the object {}", partitionKey);
+            sourceCoordinator.saveProgressStateForPartition(partitionKey, null);
+            lastCheckpointTime.set(System.currentTimeMillis());
+            saveStateCounter.getAndIncrement();
+        }
+
+        try {
+            bufferAccumulator.flush();
+        } catch (final Exception e) {
+            LOG.error("Failed writing S3 objects to buffer.", e);
+        }
+
+        final int recordsWritten = bufferAccumulator.getTotalWritten();
+
+        if (recordsWritten == 0) {
+            LOG.warn("Failed to get metadata for S3 object: s3ObjectReference={}.", s3ObjectReference);
+            s3ObjectPluginMetrics.getS3ObjectNoRecordsFound().increment();
+        }
+        s3ObjectPluginMetrics.getS3ObjectSizeSummary().record(s3ObjectSize);
+        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(recordsWritten);
+    }
+
+    public void processS3ObjectMetadata(final S3ObjectReference s3ObjectReference,
+                                        final AcknowledgementSet acknowledgementSet,
+                                        final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                                        final String partitionKey) throws IOException {
+        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
+        try {
+            s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
+                processObjectMetadata(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
+                return null;
+            });
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
+        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
     public void parseS3Object(final S3ObjectReference s3ObjectReference,

@@ -28,5 +28,24 @@ public interface S3ObjectHandler {
                        final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                        final String partitionKey) throws IOException;
 
+    /**
+     * delete S3 object using S3 object reference
+     * @param s3ObjectReference Contains bucket and s3 object details
+     */
     void deleteS3Object(final S3ObjectReference s3ObjectReference);
+
+    /**
+     * process S3 object metadata using S3 object reference and pushing to buffer
+     * @param s3ObjectReference Contains bucket and s3 object details
+     * @param acknowledgementSet acknowledgement set for the object
+     * @param sourceCoordinator source coordinator
+     * @param partitionKey partition key
+     *
+     * @throws IOException exception is thrown every time because this is not supported
+     */
+    default void processS3ObjectMetadata(final S3ObjectReference s3ObjectReference,
+                       final AcknowledgementSet acknowledgementSet,
+                       final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                       final String partitionKey) throws IOException {
+    }
 }
