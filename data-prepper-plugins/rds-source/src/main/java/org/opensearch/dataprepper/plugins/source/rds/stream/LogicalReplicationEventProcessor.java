@@ -163,7 +163,16 @@ public class LogicalReplicationEventProcessor {
         // If it's a RELATION, update table metadata map
         // If it's INSERT/UPDATE/DELETE, prepare events
         // If it's a COMMIT, convert all prepared events and send to buffer
-        MessageType messageType = MessageType.from((char) msg.get());
+        MessageType messageType;
+        char typeChar = '\0';
+        try {
+            typeChar = (char) msg.get();
+            messageType = MessageType.from(typeChar);
+        } catch (IllegalArgumentException e) {
+            LOG.warn("Unknown message type {} received from stream. Skipping.", typeChar);
+            return;
+        }
+
         switch (messageType) {
             case BEGIN:
                 handleMessageWithRetries(msg, this::processBeginMessage, messageType);
@@ -187,7 +196,7 @@ public class LogicalReplicationEventProcessor {
                 handleMessageWithRetries(msg, this::processTypeMessage, messageType);
                 break;
             default:
-                throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
+                LOG.debug("Replication message type '{}' is not supported. Skipping.", messageType);
         }
     }
 

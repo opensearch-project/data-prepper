@@ -14,6 +14,8 @@ import io.micrometer.core.instrument.Metrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
@@ -149,13 +151,21 @@ class LogicalReplicationEventProcessorTest {
         verify(objectUnderTest).processTypeMessage(message);
     }
 
+    @ParameterizedTest
+    @ValueSource(chars = {'M', 'O', 'T'})
+    void test_unsupported_message_type_not_throw_exception(char typeChar) {
+        setMessageType(MessageType.from(typeChar));
+
+        assertDoesNotThrow(() -> objectUnderTest.process(message));
+    }
+
     @Test
-    void test_unsupported_message_type_throws_exception() {
+    void test_unknown_message_type_not_throw_exception() {
         message = ByteBuffer.allocate(1);
         message.put((byte) 'A');
         message.flip();
 
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.process(message));
+        assertDoesNotThrow(() -> objectUnderTest.process(message));
     }
 
     @Test

@@ -48,6 +48,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private ExecutorService executorService;
     private RdsSourceConfig currentSourceConfig;
+    private StreamWorker streamWorker;
 
     public StreamWorkerTaskRefresher(final EnhancedSourceCoordinator sourceCoordinator,
                                      final StreamPartition streamPartition,
@@ -96,10 +97,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             LOG.info("Database credentials were updated. Refreshing stream worker...");
             credentialsChangeCounter.increment();
             try {
+                streamWorker.shutdown();
                 executorService.shutdownNow();
                 executorService = executorServiceSupplier.get();
-                replicationLogClientFactory.setCredentials(
-                        sourceConfig.getAuthenticationConfig().getUsername(), sourceConfig.getAuthenticationConfig().getPassword());
+                replicationLogClientFactory.updateCredentials(sourceConfig);
 
                 refreshTask(sourceConfig);
 
@@ -132,7 +133,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                     streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics, logicalReplicationClient,
                     streamCheckpointer, acknowledgementSetManager));
         }
-        final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
+        streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));
     }
 

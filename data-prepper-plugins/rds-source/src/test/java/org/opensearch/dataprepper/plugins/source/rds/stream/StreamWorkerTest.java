@@ -89,6 +89,12 @@ class StreamWorkerTest {
         verify(binlogClientWrapper).connect();
     }
 
+    @Test
+    void test_shutdown() throws IOException {
+        streamWorker.shutdown();
+        verify(binlogClientWrapper).disconnect();
+    }
+
     private StreamWorker createObjectUnderTest() {
         return new StreamWorker(sourceCoordinator, binlogClientWrapper, pluginMetrics);
     }
