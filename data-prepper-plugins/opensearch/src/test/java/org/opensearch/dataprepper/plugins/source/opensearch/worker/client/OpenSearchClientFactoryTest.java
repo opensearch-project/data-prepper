@@ -9,6 +9,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -36,6 +38,7 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -246,6 +249,39 @@ public class OpenSearchClientFactoryTest {
     }
 
     @Test
+    void provideElasticSearchClient_with_proxy() {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+        when(connectionConfiguration.getProxy()).thenReturn("http://example.com:4350");
+
+        final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
+        assertThat(elasticsearchClient, notNullValue());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "example.com:888888",
+            "socket://example.com:port",
+            "example.com:port",
+            "example.com"
+    })
+    void provideElasticSearchClient_with_invalid_proxy(final String proxy) {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+        when(connectionConfiguration.getProxy()).thenReturn(proxy);
+
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration));
+    }
+
+    @Test
     void provideOpenSearchClient_with_auth_disabled() {
         when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
 
@@ -341,6 +377,39 @@ public class OpenSearchClientFactoryTest {
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createSSLContext(TEST_CERTIFICATE));
             assertThat(openSearchClient, notNullValue());
         }
+    }
+
+    @Test
+    void provideOpenSearchClient_with_proxy() {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+        when(connectionConfiguration.getProxy()).thenReturn("http://example.com:4350");
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "example.com:888888",
+            "socket://example.com:port",
+            "example.com:port",
+            "example.com"
+    })
+    void provideOpenSearchClient_with_invalid_proxy(final String proxy) {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+        when(connectionConfiguration.getProxy()).thenReturn(proxy);
+
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration));
     }
 
     @Test
