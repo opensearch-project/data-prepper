@@ -13,7 +13,18 @@
       },
       "scopeMetrics": [
         {
-          "scope": {},
+          "scope": {
+            "name": "my.library",
+            "version": "1.0.0",
+            "attributes": [
+              {
+                "key": "my.scope.attribute",
+                "value": {
+                  "stringValue": "sum scope attribute"
+                }
+              }
+            ]
+          },
           "metrics": [
             {
               "name": "sum-int",

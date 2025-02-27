@@ -99,6 +99,7 @@ public class OTelProtoCodec {
     private static final String EXEMPLAR_ATTRIBUTES = "exemplar.attributes";
     static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
     static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
+    static final String INSTRUMENTATION_SCOPE_ATTRIBUTES = "instrumentationScope.attributes";
 
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
     /**
@@ -331,7 +332,7 @@ public class OTelProtoCodec {
         }
 
         protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final Map<String, Object> instrumentationScopeAttributes,
-                                     final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
+                                    final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
             return JacksonSpan.builder()
                     .withSpanId(convertByteStringToString(sp.getSpanId()))
                     .withTraceId(convertByteStringToString(sp.getTraceId()))
@@ -653,7 +654,7 @@ public class OTelProtoCodec {
                         .withQuantilesValueCount(dp.getQuantileValuesCount())
                         .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                 Arrays.asList(
-                                        OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                        OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
                                         resourceAttributes,
                                         ils
                                 )
@@ -693,7 +694,7 @@ public class OTelProtoCodec {
                             .withExplicitBoundsList(dp.getExplicitBoundsList())
                             .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                     Arrays.asList(
-                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
                                             resourceAttributes,
                                             ils
                                     )
@@ -754,7 +755,7 @@ public class OTelProtoCodec {
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
                             .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                     Arrays.asList(
-                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
+                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
                                             resourceAttributes,
                                             ils
                                     )
@@ -843,12 +844,20 @@ public class OTelProtoCodec {
             return result;
         }
 
-        protected InstrumentationScope constructInstrumentationScope(final Map<String, Object> attributes) {
+        protected InstrumentationScope constructInstrumentationScope(final Map<String, Object> attributes) throws UnsupportedEncodingException, DecoderException {
             final InstrumentationScope.Builder builder = InstrumentationScope.newBuilder();
-            final Optional<String> instrumentationScopeName = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_SCOPE_NAME));
-            final Optional<String> instrumentationScopeVersion = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_SCOPE_VERSION));
-            instrumentationScopeName.ifPresent(builder::setName);
-            instrumentationScopeVersion.ifPresent(builder::setVersion);
+            final List<KeyValue> attributeKeyValueList = new ArrayList<>();
+            for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+                if (entry.getKey().equals(INSTRUMENTATION_SCOPE_NAME)) {
+                    builder.setName((String)entry.getValue());
+                } else if (entry.getKey().equals(INSTRUMENTATION_SCOPE_VERSION)) {
+                    builder.setVersion((String)entry.getValue());
+                } else if (entry.getKey().startsWith(INSTRUMENTATION_SCOPE_ATTRIBUTES)) {
+                    KeyValue.Builder setValue = KeyValue.newBuilder().setKey(entry.getKey().substring(INSTRUMENTATION_SCOPE_ATTRIBUTES.length()+1)).setValue(objectToAnyValue(entry.getValue()));
+                    attributeKeyValueList.add(setValue.build());
+                }
+            }
+            builder.addAllAttributes(attributeKeyValueList);
             return builder.build();
         }
 
@@ -1013,9 +1022,14 @@ public class OTelProtoCodec {
      * @param attributesList The list of {@link KeyValue} objects to process
      * @return A Map containing unpacked {@link KeyValue} data
      */
-    public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
+    public static Map<String, Object> unpackKeyValueListMetric(List<KeyValue> attributesList) {
         return attributesList.stream()
                 .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    }
+
+    public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
+        return attributesList.stream()
+                .collect(Collectors.toMap(i -> DOT+(i.getKey()).replace(DOT, AT), i -> convertAnyValue(i.getValue())));
     }
 
     /**
@@ -1100,6 +1114,11 @@ public class OTelProtoCodec {
         }
         if (!instrumentationScope.getVersion().isEmpty()) {
             instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationScope.getVersion());
+        }
+        if (!instrumentationScope.getAttributesList().isEmpty()) {
+            for (Map.Entry<String, Object> entry: OTelProtoCodec.unpackKeyValueList(instrumentationScope.getAttributesList()).entrySet()) {
+                instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_ATTRIBUTES+entry.getKey(), entry.getValue());
+            }
         }
         return instrumentationScopeAttr;
     }
