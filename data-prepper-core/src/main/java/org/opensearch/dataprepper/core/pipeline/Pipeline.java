@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
@@ -194,6 +195,14 @@ public class Pipeline {
         return processorSets;
     }
 
+    /**
+     * @return a flat list of {@link Processor} of this pipeline or an empty list.
+     */
+    @VisibleForTesting
+    public List<Processor> getProcessors() {
+        return getProcessorSets().stream().flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
     public int getReadBatchTimeoutInMillis() {
         return readBatchTimeoutInMillis;
     }
@@ -364,5 +373,9 @@ public class Pipeline {
                 }, null))
             );
         return sinkFutures;
+    }
+
+    public boolean areAcknowledgementsEnabled() {
+        return source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled();
     }
 }
