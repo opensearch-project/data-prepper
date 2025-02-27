@@ -9,6 +9,18 @@
       }]
     },
     "scopeLogs": [{
+      "scope": {
+        "name": "my.library",
+        "version": "1.0.0",
+        "attributes": [
+          {
+            "key": "my.scope.attribute",
+            "value": {
+              "stringValue": "log scope attribute"
+            }
+          }
+        ]
+      },
       "logRecords": [{
         "timeUnixNano": "1590328800000000000",
         "severityNumber": "SEVERITY_NUMBER_DEBUG",

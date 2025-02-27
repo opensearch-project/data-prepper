@@ -234,6 +234,7 @@ public class OTelProtoCodecTest {
                 Map<String, Object> attributes = span.getAttributes();
                 assertThat(attributes.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")), is(true));
                 assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is(true));
+                assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is(true));
                 assertThat(attributes.containsKey(OTelProtoCodec.STATUS_CODE), is(true));
             }
         }
@@ -470,9 +471,12 @@ public class OTelProtoCodecTest {
             assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));
             assertThat(logRecord.getSpanId(), is("2cc83ac90ebc469c"));
             Map<String, Object> mergedAttributes = logRecord.getAttributes();
-            assertThat(mergedAttributes.keySet().size(), is(2));
+            assertThat(mergedAttributes.keySet().size(), is(5));
             assertThat(mergedAttributes.get("log.attributes.statement@params"), is("us-east-1"));
             assertThat(mergedAttributes.get("resource.attributes.service@name"), is("service"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("log scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         @Test
@@ -517,6 +521,10 @@ public class OTelProtoCodecTest {
             assertThat(metric.getName(), equalTo("counter-int"));
             JacksonGauge gauge = (JacksonGauge)metric;
             assertThat(gauge.getValue(), equalTo(123.0));
+            Map<String, Object> mergedAttributes = gauge.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("gauge scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateSumMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -528,6 +536,10 @@ public class OTelProtoCodecTest {
             assertThat(metric.getName(), equalTo("sum-int"));
             JacksonSum sum = (JacksonSum)metric;
             assertThat(sum.getValue(), equalTo(456.0));
+            Map<String, Object> mergedAttributes = sum.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("sum scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateHistogramMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -546,6 +558,10 @@ public class OTelProtoCodecTest {
             assertThat(histogram.getBucketCountsList(), equalTo(List.of(3L, 5L, 15L, 6L, 1L)));
             assertThat(histogram.getBucketCount(), equalTo(5));
             assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
+            Map<String, Object> mergedAttributes = histogram.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("histogram scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateHistogramMetricRequestNoExplicitBounds(Collection<Record<? extends Metric>> metrics) {
@@ -564,6 +580,10 @@ public class OTelProtoCodecTest {
             assertThat(histogram.getBucketCountsList(), equalTo(List.of(10L)));
             assertThat(histogram.getBucketCount(), equalTo(1));
             assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
+            Map<String, Object> mergedAttributes = histogram.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("histogram scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
 
@@ -687,7 +707,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationScopeComplete() {
+        public void testEncodeInstrumentationScopeComplete() throws UnsupportedEncodingException, DecoderException {
             final String testName = "test name";
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
@@ -701,7 +721,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationScopeMissingName() {
+        public void testEncodeInstrumentationScopeMissingName() throws UnsupportedEncodingException, DecoderException {
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -712,7 +732,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationScopeMissingVersion() {
+        public void testEncodeInstrumentationScopeMissingVersion() throws UnsupportedEncodingException, DecoderException {
             final String testName = "test name";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -723,7 +743,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationScopeMissingAll() {
+        public void testEncodeInstrumentationScopeMissingAll() throws UnsupportedEncodingException, DecoderException {
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(testKeyIrrelevant, 2);
             final InstrumentationScope instrumentationScope = encoderUnderTest.constructInstrumentationScope(testAllAttributes);
