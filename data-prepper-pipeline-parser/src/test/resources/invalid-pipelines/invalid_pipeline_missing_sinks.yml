@@ -1,0 +1,4 @@
+version: "2"
+invalid-pipeline-missing-sink:
+  source:
+    stdin:

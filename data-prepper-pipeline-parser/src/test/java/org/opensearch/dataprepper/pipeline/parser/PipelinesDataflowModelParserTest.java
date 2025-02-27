@@ -8,11 +8,14 @@ package org.opensearch.dataprepper.pipeline.parser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.plugin.InvalidPipelineConfigurationException;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -25,10 +28,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,13 +42,19 @@ class PipelinesDataflowModelParserTest {
     @Mock
     private PipelineConfigurationReader pipelineConfigurationReader;
 
+    @Mock
+    private PipelineConfigurationErrorHandler pipelineConfigurationErrorHandler;
+
+    @Mock
+    private InvalidPipelineConfigurationException invalidPipelineConfigurationException;
+
     @Test
     void parseConfiguration_with_multiple_valid_pipelines() throws FileNotFoundException {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams())
                 .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE)));
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -81,7 +92,7 @@ class PipelinesDataflowModelParserTest {
                 .thenReturn(List.of(new ByteArrayInputStream(configurationYamlString.getBytes())));
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -95,7 +106,7 @@ class PipelinesDataflowModelParserTest {
                 .thenReturn(List.of(new FileInputStream(filePath)));
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -111,12 +122,26 @@ class PipelinesDataflowModelParserTest {
                 .thenReturn(List.of(new FileInputStream(TestConfigurationProvider.INCOMPATIBLE_VERSION_CONFIG_FILE)));
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         final RuntimeException actualException = assertThrows(
                 RuntimeException.class, pipelinesDataflowModelParser::parseConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo(String.format("The version: 3005.0 is not compatible with the current version: %s", DataPrepperVersion.getCurrentVersion())));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidPipelinesFile")
+    void parseConfiguration_from_directory_with_invalid_pipelines(final File file) throws FileNotFoundException {
+        when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(
+                List.of(new FileInputStream(file)));
+        when(pipelineConfigurationErrorHandler.handleException(any())).thenReturn(
+                invalidPipelineConfigurationException);
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
+        final ParseException exception = assertThrows(
+                ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
+        assertThat(exception.getCause(), instanceOf(InvalidPipelineConfigurationException.class));
     }
 
     @Test
@@ -135,7 +160,7 @@ class PipelinesDataflowModelParserTest {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -158,7 +183,7 @@ class PipelinesDataflowModelParserTest {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final ParseException actualException = assertThrows(
                 ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
@@ -182,7 +207,7 @@ class PipelinesDataflowModelParserTest {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -204,9 +229,15 @@ class PipelinesDataflowModelParserTest {
         when(pipelineConfigurationReader.getPipelineConfigurationInputStreams()).thenReturn(fileInputStreams);
 
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestConfigurationProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    private static Stream<Arguments> invalidPipelinesFile() {
+        final File directoryLocation = new File(TestConfigurationProvider.INVALID_PIPELINES_DIRECTORY);
+        return Stream.of(directoryLocation.listFiles())
+                .map(Arguments::of);
     }
 }
