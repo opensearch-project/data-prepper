@@ -33,6 +33,7 @@ import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Filters.or;
+import static org.bson.BsonBinarySubType.UUID_STANDARD;
 
 public class BsonHelper {
     static final String PARTITION_FORMAT = "%s-%s";
@@ -107,7 +108,7 @@ public class BsonHelper {
         .build();
 
     private static String getStringFromBsonBinary(final BsonBinary bsonBinary) {
-        if (bsonBinary.getType() == 4) {
+        if (bsonBinary.getType() == UUID_STANDARD.getValue()) {
             return bsonBinary.asUuid().toString();
         } else {
             return Base64.getEncoder().encodeToString(bsonBinary.getData());
