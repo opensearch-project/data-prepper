@@ -7,9 +7,12 @@ package org.opensearch.dataprepper.pipeline.parser.transformer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
+import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
@@ -36,6 +39,9 @@ class DynamicConfigTransformerTest {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory()
             .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER));
+    private final ClosestFieldRecommender closestFieldRecommender = new ClosestFieldRecommender(new LevenshteinDistance());
+    private final PipelineConfigurationErrorHandler pipelineConfigurationErrorHandler = new PipelineConfigurationErrorHandler(
+            closestFieldRecommender);
 
     TransformersFactory transformersFactory;
     RuleEvaluator ruleEvaluator;
@@ -49,7 +55,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
         InputStream ruleStream = new FileInputStream(ruleDocDBFilePath);
@@ -82,7 +88,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
         Path ruleFile = mock(Path.class);
@@ -116,7 +122,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -153,7 +159,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -187,7 +193,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -223,7 +229,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -259,7 +265,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -294,7 +300,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
@@ -335,7 +341,7 @@ class DynamicConfigTransformerTest {
         String pluginName = "documentdb";
         PipelineConfigurationReader pipelineConfigurationReader = new PipelineConfigurationFileReader(docDBUserConfig);
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(pipelineConfigurationReader);
+                new PipelinesDataflowModelParser(pipelineConfigurationReader, pipelineConfigurationErrorHandler);
 
         TransformersFactory transformersFactory = mock(TransformersFactory.class);
 
