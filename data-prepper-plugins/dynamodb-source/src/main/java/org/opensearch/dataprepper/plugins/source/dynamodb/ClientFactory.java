@@ -13,8 +13,12 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
+
+import java.net.URI;
 
 public class ClientFactory {
 
@@ -37,18 +41,28 @@ public class ClientFactory {
 
 
     public DynamoDbStreamsClient buildDynamoDbStreamClient() {
-        return DynamoDbStreamsClient.builder()
+        DynamoDbStreamsClientBuilder clientBuilder = DynamoDbStreamsClient.builder()
                 .credentialsProvider(awsCredentialsProvider)
-                .region(awsAuthenticationConfig.getAwsRegion())
-                .build();
+                .region(awsAuthenticationConfig.getAwsRegion());
+
+        if (awsAuthenticationConfig.getEndpointUrl() != null && !awsAuthenticationConfig.getEndpointUrl().isEmpty()) {
+            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointUrl()));
+        }
+
+        return clientBuilder.build();
     }
 
 
     public DynamoDbClient buildDynamoDBClient() {
-        return DynamoDbClient.builder()
+        DynamoDbClientBuilder clientBuilder = DynamoDbClient.builder()
                 .region(awsAuthenticationConfig.getAwsRegion())
-                .credentialsProvider(awsCredentialsProvider)
-                .build();
+                .credentialsProvider(awsCredentialsProvider);
+
+        if (awsAuthenticationConfig.getEndpointUrl() != null && !awsAuthenticationConfig.getEndpointUrl().isEmpty()) {
+            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointUrl()));
+        }
+
+        return clientBuilder.build();
     }
 
 
