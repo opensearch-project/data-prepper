@@ -91,7 +91,7 @@ public class BsonHelper {
     public static final JsonWriterSettings JSON_WRITER_SETTINGS = JsonWriterSettings.builder()
         .outputMode(JsonMode.RELAXED)
         .objectIdConverter((value, writer) -> writer.writeString(value.toHexString()))
-        .binaryConverter((value, writer) ->  writer.writeString(Base64.getEncoder().encodeToString(value.getData())))
+        .binaryConverter((value, writer) ->  writer.writeString(getStringFromBsonBinary(value)))
         .dateTimeConverter((value, writer) -> writer.writeNumber(String.valueOf(value.longValue())))
         .decimal128Converter((value, writer) -> writer.writeString(value.bigDecimalValue().toPlainString()))
         .maxKeyConverter((value, writer) -> writer.writeNull())
@@ -106,6 +106,14 @@ public class BsonHelper {
         .undefinedConverter((value, writer) -> writer.writeNull())
         .build();
 
+    private static String getStringFromBsonBinary(final BsonBinary bsonBinary) {
+        if (bsonBinary.getType() == 4) {
+            return bsonBinary.asUuid().toString();
+        } else {
+            return Base64.getEncoder().encodeToString(bsonBinary.getData());
+        }
+    }
+
     public static String getPartitionStringFromMongoDBId(Object id, String className) {
         switch (className) {
             case "org.bson.Document":
@@ -114,7 +122,7 @@ public class BsonHelper {
                 final byte type = ((Binary) id).getType();
                 final byte[] data = ((Binary) id).getData();
                 final String typeString = String.valueOf(type);
-                final String dataString = new String(data);
+                final String dataString = Base64.getEncoder().encodeToString(data);
                 return String.format(PARTITION_FORMAT, typeString, dataString);
             case "java.util.Date":
                 return String.valueOf(((Date) id).getTime());
@@ -158,7 +166,8 @@ public class BsonHelper {
                 return function.apply(Document.parse(value));
             case "org.bson.types.Binary":
                 String[] binaryString = value.split(PARTITION_SPLITTER, 2);
-                return function.apply(new Binary(Byte.parseByte(binaryString[0]), binaryString[1].getBytes()));
+                return function.apply(new Binary(Byte.parseByte(binaryString[0]), Base64.getDecoder()
+                        .decode(binaryString[1])));
             case "org.bson.types.ObjectId":
                 return function.apply(new ObjectId(value));
             case "java.lang.Boolean":
