@@ -246,11 +246,21 @@ public class BsonHelperTest {
         ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
         bb.putLong(uuid.getMostSignificantBits());
         bb.putLong(uuid.getLeastSignificantBits());
-        String base64String = Base64.getEncoder().encodeToString(bb.array());
-        System.out.println(base64String);
+        final String base64String = Base64.getEncoder().encodeToString(bb.array());
         final Document document = Document.parse(String.format("{\"_id\": {\"$binary\": {\"base64\": \"%s\", \"subType\": \"%s\"}}}", base64String, "04"));
         final String record = document.toJson(JSON_WRITER_SETTINGS);
         assertThat(record, is(String.format("{\"_id\": \"%s\"}", uuid)));
+    }
+
+    @Test
+    public void buildAndQueryForBinaryNonUUIDClass() {
+        final String base64String = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+        int value = new Random().nextInt(10);
+        if (value == 4) value++;
+        final String bytesType = String.format("%02x",(Math.abs(value)));
+        final Document document = Document.parse(String.format("{\"_id\": {\"$binary\": {\"base64\": \"%s\", \"subType\": \"%s\"}}}", base64String, bytesType));
+        final String record = document.toJson(JSON_WRITER_SETTINGS);
+        assertThat(record, is(String.format("{\"_id\": \"%s\"}", base64String)));
     }
 
     @Test
