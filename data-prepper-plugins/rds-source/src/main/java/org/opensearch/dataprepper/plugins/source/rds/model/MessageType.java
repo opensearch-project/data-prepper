@@ -10,28 +10,29 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.model;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public enum MessageType {
     BEGIN('B'),
-    RELATION('R'),
-    INSERT('I'),
-    UPDATE('U'),
-    DELETE('D'),
     COMMIT('C'),
-    TYPE('Y');
+    DELETE('D'),
+    INSERT('I'),
+    MESSAGE('M'),
+    ORIGIN('O'),
+    RELATION('R'),
+    TRUNCATE('T'),
+    TYPE('Y'),
+    UPDATE('U');
 
     private final char value;
 
-    private static final Map<Character, MessageType> MESSAGE_TYPE_MAP = Map.of(
-            BEGIN.getValue(), BEGIN,
-            RELATION.getValue(), RELATION,
-            INSERT.getValue(), INSERT,
-            UPDATE.getValue(), UPDATE,
-            DELETE.getValue(), DELETE,
-            COMMIT.getValue(), COMMIT,
-            TYPE.getValue(), TYPE
-    );
+    private static final Map<Character, MessageType> MESSAGE_TYPE_MAP = Arrays.stream(values())
+            .collect(Collectors.toMap(
+                    messageType -> messageType.value,
+                    messageType -> messageType
+            ));
 
     MessageType(char value) {
         this.value = value;
