@@ -26,9 +26,9 @@ import java.util.NoSuchElementException;
 
 public class ReplicationLogClientFactory {
 
-    private final RdsSourceConfig sourceConfig;
     private final RdsClient rdsClient;
     private final DbMetadata dbMetadata;
+    private RdsSourceConfig sourceConfig;
     private String username;
     private String password;
     private SSLMode sslMode = SSLMode.REQUIRED;
@@ -82,9 +82,10 @@ public class ReplicationLogClientFactory {
         this.sslMode = sslMode;
     }
 
-    public void setCredentials(String username, String password) {
-        this.username = username;
-        this.password = password;
+    public void updateCredentials(RdsSourceConfig sourceConfig) {
+        this.sourceConfig = sourceConfig;
+        this.username = sourceConfig.getAuthenticationConfig().getUsername();
+        this.password = sourceConfig.getAuthenticationConfig().getPassword();
     }
 
     private String getDatabaseName(List<String> tableNames) {
