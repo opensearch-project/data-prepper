@@ -127,12 +127,9 @@ public class LambdaProcessorIT {
 
     @BeforeEach
     public void setup() {
-//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-//        functionName = System.getProperty("tests.lambda.processor.functionName");
-//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
-        lambdaRegion = "us-west-2";
-        functionName = "lambdaNoReturn";
-        role = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
+        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+        functionName = System.getProperty("tests.lambda.processor.functionName");
+        role = System.getProperty("tests.lambda.processor.sts_role_arn");
 
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
@@ -723,5 +720,4 @@ public class LambdaProcessorIT {
                 .build();
         return new Record<>(event);
     }
-
 }

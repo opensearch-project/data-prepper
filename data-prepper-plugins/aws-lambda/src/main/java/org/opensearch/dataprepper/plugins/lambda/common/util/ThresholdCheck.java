@@ -18,21 +18,6 @@ import java.time.Duration;
  */
 public class ThresholdCheck {
 
-    public static boolean checkThresholdExceed(final Buffer currentBuffer, final int maxEvents,
-                                               final ByteCount maxBytes, final Duration maxCollectionDuration,
-                                               Record<Event> nextRecord) {
-        int estimatedRecordSize = estimateRecordSize(nextRecord);
-
-        if (maxEvents > 0) {
-            return currentBuffer.getEventCount() + 1 > maxEvents ||
-                    currentBuffer.getDuration().compareTo(maxCollectionDuration) > 0 ||
-                    currentBuffer.getSize() + estimatedRecordSize > maxBytes.getBytes();
-        } else {
-            return currentBuffer.getDuration().compareTo(maxCollectionDuration) > 0 ||
-                    currentBuffer.getSize() > maxBytes.getBytes();
-        }
-    }
-
       public static boolean checkTimeoutExceeded(final Buffer currentBuffer, final Duration maxCollectionDuration) {
         return currentBuffer.getDuration().compareTo(maxCollectionDuration) > 0;
     }
