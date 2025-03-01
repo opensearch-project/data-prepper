@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
@@ -179,9 +180,7 @@ class LambdaSinkTest {
     @Test
     void testNoFlushIfThresholdNotReached() {
         // threshold=2, only pass 1 record => no flush
-        final List<Record<Event>> records = Collections.singletonList(
-                new Record<>(mock(Event.class))
-        );
+        final List<Record<Event>> records = getRecords(1);
 
         // We expect no call to invokeLambdaAndGetFutureMap(...) since threshold not hit
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
@@ -205,10 +204,7 @@ class LambdaSinkTest {
     @Test
     void testFlushWhenThresholdReached() {
         // threshold=2, pass 2 => flush
-        final List<Record<Event>> records = List.of(
-                new Record<>(mock(Event.class)),
-                new Record<>(mock(Event.class))
-        );
+        final List<Record<Event>> records = getRecords(2);
 
         // Mock static calls
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
@@ -255,12 +251,25 @@ class LambdaSinkTest {
         }
     }
 
+    private static List<Record<Event>> getRecords(int numberOfRecords) {
+        final Map<String, Object> data = new HashMap<>();
+        data.put("payload", "a");
+        final Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("test")
+                .build();
+        Record<Event> record = new Record<>(event);
+        List<Record<Event>> records = new ArrayList();
+        for(int i=0;i<numberOfRecords;i++){
+            records.add(record);
+        }
+        return records;
+    }
+
     @Test
     void testShutdownFlushesPartialIfAny() {
         // threshold=2, pass only 1 => partial
-        final List<Record<Event>> records = Collections.singletonList(
-                new Record<>(mock(Event.class))
-        );
+        final List<Record<Event>> records = getRecords(1);
 
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
             mockedHandler.when(() -> LambdaCommonHandler.isSuccess(any()))
@@ -307,10 +316,7 @@ class LambdaSinkTest {
     @Test
     void testFailureDuringInvokeLambdaAndGetFutureMap() {
         // pass 2 => threshold => flush => but an exception is thrown
-        final List<Record<Event>> records = List.of(
-                new Record<>(mock(Event.class)),
-                new Record<>(mock(Event.class))
-        );
+        final List<Record<Event>> records = getRecords(2);
 
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
             // cause the method to throw an exception
@@ -330,10 +336,7 @@ class LambdaSinkTest {
     @Test
     void testFailureInFutureJoin() {
         // pass 2 => threshold => flush => future join fails
-        final List<Record<Event>> records = List.of(
-                new Record<>(mock(Event.class)),
-                new Record<>(mock(Event.class))
-        );
+        final List<Record<Event>> records = getRecords(2);
 
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
             final CompletableFuture<InvokeResponse> failingFuture = new CompletableFuture<>();
@@ -399,7 +402,7 @@ class LambdaSinkTest {
         }).when(spySink).flushBuffers(anyList());
 
         // First call: add one record so that the buffer is non-empty.
-        List<Record<Event>> records = Collections.singletonList(new Record<>(mock(Event.class)));
+        List<Record<Event>> records = getRecords(1);
         spySink.doOutput(records);
 
         // Wait briefly to allow the buffer's duration to exceed maxCollectTime.
@@ -433,10 +436,12 @@ class LambdaSinkTest {
         int iterations = 1000;
         List<Future<?>> futures = new ArrayList<>();
 
+        // Add one record to the sink so that the buffer is non-empty.
+        List<Record<Event>> records = getRecords(1);
         // Each task calls doOutput() with one record.
         for (int i = 0; i < iterations; i++) {
             futures.add(executor.submit(() -> {
-                spySink.doOutput(Collections.singletonList(new Record<>(mock(Event.class))));
+                spySink.doOutput(records);
             }));
         }
 

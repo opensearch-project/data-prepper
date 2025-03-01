@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
@@ -38,11 +39,13 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.model.LambdaException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -616,63 +619,6 @@ public class LambdaProcessorTest {
         }
     }
 
-    //NOTE: This test will not pass as invoke failure is handled internally through sdk.
-    // The first attempt will fail and the second attempt will not even be considered for execution.
-//    @Test
-//    public void testDoExecute_retryScenario_successOnSecondAttempt() throws Exception {
-//        // Arrange
-//        final List<Record<Event>> records = getSampleEventRecords(2);
-//
-//        // First attempt throws TooManyRequestsException => no valid payload
-//        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-//                .thenReturn(CompletableFuture.failedFuture(
-//                        TooManyRequestsException.builder()
-//                                .message("First attempt throttled")
-//                                .build()
-//                ))
-//                // Second attempt => success with 200
-//                .thenReturn(CompletableFuture.completedFuture(
-//                        InvokeResponse.builder()
-//                                .statusCode(200)
-//                                .payload(SdkBytes.fromUtf8String(
-//                                        "[{\"successKey1\":\"successValue1\"},{\"successKey2\":\"successValue2\"}]"))
-//                                .build()
-//                ));
-//
-//        // Create a config which has at least 1 maxConnectionRetries so we can retry once.
-//        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
-//
-//        // Instantiate the processor
-//        final LambdaProcessor processor = new LambdaProcessor(
-//                pluginFactory,
-//                pluginSetting,
-//                config,
-//                awsCredentialsSupplier,
-//                expressionEvaluator
-//        );
-//        populatePrivateFields(processor);
-//
-//        // Act
-//        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
-//
-//        // Assert
-//        // Because the second invocation is successful (200),
-//        // we expect the final records to NOT have the "lambda_failure" tag
-//        assertEquals(records.size(), resultRecords.size());
-//        for (Record<Event> record : resultRecords) {
-//            assertFalse(
-//                    record.getData().getMetadata().getTags().contains("lambda_failure"),
-//                    "Record should NOT have a failure tag after a successful retry"
-//            );
-//        }
-//
-//        // We invoked the lambda client 2 times total: first attempt + one retry
-//        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
-//
-//        // Second attempt is success => increment success counters
-//        verify(numberOfRequestsSuccessCounter, times(1)).increment();
-//    }
-
     @Test
     public void testDoExecute_retryScenario_failsAfterMaxRetries() throws Exception {
         // Arrange
@@ -782,5 +728,107 @@ public class LambdaProcessorTest {
         // Attempted only once
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
         verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-large-payload.yaml"})
+    public void testPayloadSizeBasedBatching(String configFileName) throws Exception {
+        AwsServiceException lambdaException = LambdaException.builder()
+                .statusCode(413)
+                .message("Status Code: 413")
+                .build();
+
+        // Create a successful InvokeResponse instance
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        // Create three distinct futures:
+        CompletableFuture<InvokeResponse> future1 = CompletableFuture.completedFuture(successfulResponse);
+        // Batch 2: fails with an exception (simulate payload too large)
+        CompletableFuture<InvokeResponse> future2 = CompletableFuture.failedFuture(lambdaException);
+        CompletableFuture<InvokeResponse> future3 = CompletableFuture.completedFuture(successfulResponse);
+
+        // Mock the invoke method to return a completed future
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(future1)
+                .thenReturn(future2)
+                .thenReturn(future3);
+
+        int oneMB = 1 * 1024 * 1024;
+        int sevenMB = 7 * 1024 * 1024;
+
+        Record<Event> oneMbRecord = createLargeRecord(oneMB);
+        Record<Event> sevenMbRecord = createLargeRecord(sevenMB);
+        List<Record<Event>> records = List.of(oneMbRecord, sevenMbRecord, oneMbRecord);
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+        assertEquals(3, results.size());
+        // Expect 2 successful invocations (i.e. batches) based on payload size accumulation
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-large-payload.yaml"})
+    public void testPayloadEventBasedBatching(String configFileName) throws Exception {
+        AwsServiceException lambdaException = LambdaException.builder()
+                .statusCode(413)
+                .message("Status Code: 413")
+                .build();
+
+        // Create a successful InvokeResponse instance
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        // Create three distinct futures:
+        CompletableFuture<InvokeResponse> future1 = CompletableFuture.completedFuture(successfulResponse);
+        // Batch 2: fails with an exception (simulate payload too large)
+        CompletableFuture<InvokeResponse> future2 = CompletableFuture.failedFuture(lambdaException);
+        CompletableFuture<InvokeResponse> future3 = CompletableFuture.completedFuture(successfulResponse);
+
+        // Mock the invoke method to return a completed future
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(future1)
+                .thenReturn(future2)
+                .thenReturn(future3);
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        // Create 2000 events
+        List<Record<Event>> records = getSampleEventRecords(2000);
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+        // Expect 20 batches (thus 20 successful invocations)
+        verify(numberOfRequestsSuccessCounter, times(19)).increment();
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+
+    private Record<Event> createLargeRecord(final int sizeInBytes) {
+        StringBuilder sb = new StringBuilder(sizeInBytes);
+        for (int i = 0; i < sizeInBytes; i++) {
+            sb.append("a");
+        }
+        String payload = sb.toString();
+        // Create a simple map for event data
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("payload", payload);
+        Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("test")
+                .build();
+        return new Record<>(event);
+    }
+
+    private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
+        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
     }
 }
