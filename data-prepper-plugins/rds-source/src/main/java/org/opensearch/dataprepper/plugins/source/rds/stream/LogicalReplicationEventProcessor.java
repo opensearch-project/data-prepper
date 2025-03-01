@@ -225,7 +225,7 @@ public class LogicalReplicationEventProcessor {
     void processRelationMessage(ByteBuffer msg) {
         int tableId = msg.getInt();
         // null terminated string
-        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
+        final String databaseName = sourceConfig.getTables().getDatabase();
         String schemaName = getNullTerminatedString(msg);
         String tableName = getNullTerminatedString(msg);
         int replicaId = msg.get();

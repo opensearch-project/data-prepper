@@ -40,7 +40,7 @@ public class ConnectionManagerFactory {
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled(),
-                getDatabaseName(sourceConfig.getTableNames()));
+                sourceConfig.getTables().getDatabase());
     }
 
     private String getDatabaseName(List<String> tableNames) {

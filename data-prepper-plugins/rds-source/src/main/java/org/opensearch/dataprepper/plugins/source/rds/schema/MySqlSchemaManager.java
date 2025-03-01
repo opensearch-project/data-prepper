@@ -18,13 +18,17 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class MySqlSchemaManager implements SchemaManager {
     private static final Logger LOG = LoggerFactory.getLogger(MySqlSchemaManager.class);
@@ -50,14 +54,27 @@ public class MySqlSchemaManager implements SchemaManager {
         this.connectionManager = connectionManager;
     }
 
+
     @Override
-    public List<String> getPrimaryKeys(final String fullTableName) {
+    public Map<String, List<String>> getPrimaryKeys(final List<String> fullTableNames) {
+        final Map<String, List<String>> tableToPrimaryKeysMap = new HashMap<>();
+        try (final Connection connection = connectionManager.getConnection()) {
+            for (final String fullTableName : fullTableNames) {
+                tableToPrimaryKeysMap.put(fullTableName, getPrimaryKeysForTable(connection, fullTableName));
+            }
+            return tableToPrimaryKeysMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get primary keys for tables. ", e);
+        }
+    }
+
+    private List<String> getPrimaryKeysForTable(final Connection connection, final String fullTableName) {
         final String database = fullTableName.split("\\.")[0];
         final String table = fullTableName.split("\\.")[1];
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             final List<String> primaryKeys = new ArrayList<>();
-            try (final Connection connection = connectionManager.getConnection()) {
+            try {
                 try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, null, table)) {
                     while (rs.next()) {
                         primaryKeys.add(rs.getString(COLUMN_NAME));
@@ -74,16 +91,26 @@ public class MySqlSchemaManager implements SchemaManager {
         return List.of();
     }
 
-    public Map<String, String> getColumnDataTypes(final String fullTableName) {
+    @Override
+    public Map<String, Map<String, String>> getColumnDataTypes(final List<String> fullTableNames) {
+        final Map<String, Map<String, String>> tableToColumnDataTypesMap =  new HashMap<>();
+        try (Connection connection = connectionManager.getConnection()) {
+            for (final String fullTableName : fullTableNames) {
+                tableToColumnDataTypesMap.put(fullTableName, getColumnDataTypesForTable(connection, fullTableName));
+            }
+            return tableToColumnDataTypesMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get column data types for tables. ", e);
+        }
+    }
+
+    private Map<String, String> getColumnDataTypesForTable(final Connection connection, final String fullTableName) {
         final String database = fullTableName.split("\\.")[0];
         final String tableName = fullTableName.split("\\.")[1];
         final Map<String, String> columnsToDataType =  new HashMap<>();
         for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
-            try (Connection connection = connectionManager.getConnection()) {
-                final DatabaseMetaData metaData = connection.getMetaData();
-
-                // Retrieve column metadata
-                try (ResultSet columns = metaData.getColumns(database, null, tableName, null)) {
+            try {
+                try (ResultSet columns = connection.getMetaData().getColumns(database, null, tableName, null)) {
                     while (columns.next()) {
                         columnsToDataType.put(
                             columns.getString(COLUMN_NAME),
@@ -94,14 +121,37 @@ public class MySqlSchemaManager implements SchemaManager {
                 return columnsToDataType;
             } catch (final Exception e) {
                 LOG.error("Failed to get dataTypes for database {} table {}, retrying", database, tableName, e);
-                if (retry == NUM_OF_RETRIES) {
-                    throw new RuntimeException(String.format("Failed to get dataTypes for database %s table %s after " +
-                            "%d retries", database, tableName, retry), e);
-                }
             }
             applyBackoff();
         }
-        return columnsToDataType;
+        throw new RuntimeException(String.format("Failed to get dataTypes for database %s table %s after " +
+                "%d retries", database, tableName, NUM_OF_RETRIES));
+    }
+
+    @Override
+    public Set<String> getTableNames(final String databaseName) {
+        final Set<String> tableNames = new HashSet<>();
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try (final Connection connection = connectionManager.getConnection()) {
+                final DatabaseMetaData metaData = connection.getMetaData();
+
+                // Retrieve column metadata
+                try (ResultSet tables = metaData.getTables(databaseName, null, null, new String[]{"TABLE"})) {
+                    while (tables.next()) {
+                        tableNames.add(tables.getString("TABLE_NAME"));
+                    }
+                }
+                return tableNames;
+            } catch (Exception e) {
+                LOG.warn("Failed to get table names, retrying", e);
+                tableNames.clear();
+            }
+            applyBackoff();
+            retry++;
+        }
+        LOG.error("Failed to get table names after {} retries", retry);
+        return tableNames;
     }
 
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {

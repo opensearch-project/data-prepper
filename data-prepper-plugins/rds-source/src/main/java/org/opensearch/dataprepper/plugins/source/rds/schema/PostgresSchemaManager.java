@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 
@@ -123,51 +122,44 @@ public class PostgresSchemaManager implements SchemaManager {
     }
 
     @Override
-    public List<String> getPrimaryKeys(final String fullTableName) {
-        final String[] splits = fullTableName.split("\\.");
-        final String database = splits[0];
-        final String schema = splits[1];
-        final String table = splits[2];
-        int retry = 0;
-        while (retry <= NUM_OF_RETRIES) {
-            final List<String> primaryKeys = new ArrayList<>();
-            try (final Connection connection = connectionManager.getConnection()) {
-                try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, schema, table)) {
-                    while (rs.next()) {
-                        primaryKeys.add(rs.getString(COLUMN_NAME));
-                    }
-                    if (primaryKeys.isEmpty()) {
-                        throw new NoSuchElementException("No primary keys found for table " + fullTableName);
-                    }
-                    return primaryKeys;
-                }
-            } catch (NoSuchElementException e) {
-                throw e;
-            } catch (Exception e) {
-                LOG.error("Failed to get primary keys for table {}, retrying", fullTableName, e);
+    public Map<String, List<String>> getPrimaryKeys(final List<String> fullTableNames) {
+        final Map<String, List<String>> tableToPrimaryKeysMap = new HashMap<>();
+        try (final Connection connection = connectionManager.getConnection()) {
+            for (final String fullTableName : fullTableNames) {
+                tableToPrimaryKeysMap.put(fullTableName, getPrimaryKeysForTable(connection, fullTableName));
             }
-            applyBackoff();
-            retry++;
+            return tableToPrimaryKeysMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get primary keys for tables. ", e);
         }
-        throw new RuntimeException("Failed to get primary keys for table " + fullTableName);
     }
 
+    @Override
+    public Map<String, Map<String, String>> getColumnDataTypes(final List<String> fullTableNames) {
+        final Map<String, Map<String, String>> tableToColumnDataTypesMap =  new HashMap<>();
+        try (Connection connection = connectionManager.getConnection()) {
+            for (final String fullTableName : fullTableNames) {
+                tableToColumnDataTypesMap.put(fullTableName, getColumnDataTypesForTable(connection, fullTableName));
+            }
+            return tableToColumnDataTypesMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get column data types for tables. ", e);
+        }
+    }
 
-    public Map<String, String> getColumnDataTypes(final String fullTableName) {
+    public Map<String, String> getColumnDataTypesForTable(Connection connection, String fullTableName) {
         final String[] splits = fullTableName.split("\\.");
         final String database = splits[0];
         final String schema = splits[1];
         final String table = splits[2];
         final Map<String, String> columnsToDataType =  new HashMap<>();
         for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
-            try (Connection connection = connectionManager.getConnection()) {
-                final DatabaseMetaData metaData = connection.getMetaData();
-
+            try {
                 // Get all enum columns for this table
-                Set<String> enumColumns = getEnumColumns(fullTableName);
+                Set<String> enumColumns = getEnumColumnsForTable(connection, fullTableName);
 
                 // Retrieve column metadata
-                try (ResultSet columns = metaData.getColumns(database, schema, table, null)) {
+                try (ResultSet columns = connection.getMetaData().getColumns(database, schema, table, null)) {
                     while (columns.next()) {
                         String columnName = columns.getString(COLUMN_NAME);
                         String typeName = columns.getString(TYPE_NAME);
@@ -182,24 +174,86 @@ public class PostgresSchemaManager implements SchemaManager {
                 return columnsToDataType;
             } catch (final Exception e) {
                 LOG.error("Failed to get dataTypes for database {} schema {} table {}, retrying", database, schema, table, e);
-                if (retry == NUM_OF_RETRIES) {
-                    throw new RuntimeException(String.format("Failed to get dataTypes for database %s schema %s table %s after " +
-                            "%d retries", database, schema, table, retry), e);
-                }
             }
             applyBackoff();
         }
-        return columnsToDataType;
+        throw new RuntimeException(String.format("Failed to get dataTypes for database %s schema %s table %s after " +
+                "%d retries", database, schema, table, NUM_OF_RETRIES));
     }
 
-    public Set<String> getEnumColumns(final String fullTableName) {
+    public Map<String, Set<String>> getEnumColumns(final List<String> fullTableNames) {
+        final Map<String, Set<String>> tableToEnumColumnsMap = new HashMap<>();
+        try (final Connection connection = connectionManager.getConnection()) {
+            for (final String fullTableName : fullTableNames) {
+                tableToEnumColumnsMap.put(fullTableName, getEnumColumnsForTable(connection, fullTableName));
+            }
+            return tableToEnumColumnsMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get enum columns for tables. ", e);
+        }
+    }
+
+    @Override
+    public Set<String> getTableNames(final String databaseName) {
+        final Set<String> tableNames = new HashSet<>();
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            try (final Connection connection = connectionManager.getConnection()) {
+                final DatabaseMetaData metaData = connection.getMetaData();
+
+                // Retrieve column metadata
+                try (ResultSet tables = metaData.getTables(databaseName, null, null, new String[]{"TABLE"})) {
+                    while (tables.next()) {
+                        String schemaName = tables.getString("TABLE_SCHEM");
+                        String tableName = tables.getString("TABLE_NAME");
+                        tableNames.add(schemaName + "." + tableName);
+                    }
+                }
+                return tableNames;
+            } catch (Exception e) {
+                LOG.warn("Failed to get table names, retrying", e);
+                tableNames.clear();
+            }
+            applyBackoff();
+            retry++;
+        }
+        LOG.error("Failed to get table names after {} retries", retry);
+        return tableNames;
+    }
+
+    private List<String> getPrimaryKeysForTable(Connection connection, String fullTableName) {
+        final String[] splits = fullTableName.split("\\.");
+        final String database = splits[0];
+        final String schema = splits[1];
+        final String table = splits[2];
+        int retry = 0;
+        while (retry <= NUM_OF_RETRIES) {
+            final List<String> primaryKeys = new ArrayList<>();
+            try (final ResultSet rs = connection.getMetaData().getPrimaryKeys(database, schema, table)) {
+                while (rs.next()) {
+                    primaryKeys.add(rs.getString(COLUMN_NAME));
+                }
+                if (primaryKeys.isEmpty()) {
+                    LOG.warn("No primary keys found for table {}", fullTableName);
+                }
+                return primaryKeys;
+            } catch (Exception e) {
+                LOG.error("Failed to get primary keys for table {}, retrying", fullTableName, e);
+            }
+            applyBackoff();
+            retry++;
+        }
+        throw new RuntimeException("Failed to get primary keys for table " + fullTableName);
+    }
+
+    private Set<String> getEnumColumnsForTable(final Connection connection, final String fullTableName) {
         final String[] splits = fullTableName.split("\\.");
         final String database = splits[0];
         final String schema = splits[1];
         final String table = splits[2];
         final Set<String> enumColumns = new HashSet<>();
         for (int retry = 0; retry <= NUM_OF_RETRIES; retry++) {
-            try (Connection connection = connectionManager.getConnection()) {
+            try {
                 String getEnumColumnsQuery = "SELECT a.attname AS column_name " +
                         "FROM pg_database d " +
                         "JOIN pg_namespace n ON n.nspname = ? " +

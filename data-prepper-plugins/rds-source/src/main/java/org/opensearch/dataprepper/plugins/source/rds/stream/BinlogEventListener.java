@@ -121,7 +121,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.s3Prefix = s3Prefix;
-        tableNames = sourceConfig.getTableNames();
+        tableNames = new ArrayList<>(dbTableMetadata.getTableColumnDataTypeMap().keySet());
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();

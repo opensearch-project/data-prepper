@@ -14,18 +14,17 @@ import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
-import java.util.List;
 
 /**
  * Configuration for RDS Source
  */
 public class RdsSourceConfig {
     private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 100;
-
     /**
      * Identifier for RDS instance/cluster or Aurora cluster
      */
@@ -43,11 +42,8 @@ public class RdsSourceConfig {
     @NotNull
     private EngineType engine;
 
-    /**
-     * The table name is in the format of `database.table` for MySQL engine
-     */
-    @JsonProperty("table_names")
-    private List<String> tableNames;
+    @JsonProperty("tables")
+    private TableFilterConfig tableFilterConfig;
 
     @JsonProperty("aws")
     @NotNull
@@ -114,8 +110,8 @@ public class RdsSourceConfig {
         return engine.isAurora();
     }
 
-    public List<String> getTableNames() {
-        return tableNames;
+    public TableFilterConfig getTables() {
+        return tableFilterConfig;
     }
 
     public AwsAuthenticationConfig getAwsAuthenticationConfig() {

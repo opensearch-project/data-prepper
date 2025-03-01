@@ -42,6 +42,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -209,11 +210,7 @@ public class RdsService {
     }
 
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
-        return sourceConfig.getTableNames().stream()
-                .collect(Collectors.toMap(
-                        fullTableName -> fullTableName,
-                        fullTableName -> schemaManager.getColumnDataTypes(fullTableName)
-                ));
+        Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getTables().getDatabase());
+        return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
-
 }
