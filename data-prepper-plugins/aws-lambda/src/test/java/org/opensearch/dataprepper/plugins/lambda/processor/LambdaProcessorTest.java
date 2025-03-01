@@ -730,66 +730,6 @@ public class LambdaProcessorTest {
         verify(numberOfRequestsFailedCounter, times(1)).increment();
     }
 
-//
-//    @Test
-//    public void testLargePayloadBatching() throws Exception {
-//        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
-//        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
-//        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
-//        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
-//        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
-//
-//        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
-//        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
-//        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
-//        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-//        populatePrivateFields(lambdaProcessor);
-//
-//        List<Record<Event>> records = new ArrayList<>();
-//        int twoMB = 2 * 1024 * 1024;
-//        // With a 5MB limit, 3 records of 2MB each should create 2 separate batches.
-//        for (int i = 0; i < 3; i++){
-//            records.add(createLargeRecord(twoMB));
-//        }
-//        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
-//        assertEquals(3, results.size());
-//        // Expect 2 successful Lambda invocations (i.e. 2 batches)
-//        verify(numberOfRequestsSuccessCounter, times(2)).increment();
-//        verify(numberOfRequestsFailedCounter, never()).increment();
-//    }
-//
-//    @Test
-//    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
-//    public void testLargeMultiplePayloadBatching() throws Exception {
-//        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
-//        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
-//        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
-//        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
-//        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
-//
-//        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
-//        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
-//        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
-//        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
-//        populatePrivateFields(lambdaProcessor);
-//
-//        int oneMB = 1 * 1024 * 1024;
-//        int sevenMB = 7 * 1024 * 1024;
-//
-//        Record<Event> oneMbRecord = createLargeRecord(oneMB);
-//        Record<Event> sevenMbRecord = createLargeRecord(sevenMB);
-//        List<Record<Event>> records = List.of(oneMbRecord, sevenMbRecord, oneMbRecord);
-//        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
-//        assertEquals(3, results.size());
-//        // In this scenario, the 7MB record exceeds the threshold on its own (triggering a failure batch)
-//        // while the two 1MB records are batched together.
-//        verify(numberOfRequestsSuccessCounter, times(2)).increment();
-//        verify(numberOfRequestsFailedCounter, times(1)).increment();
-//        // Also verify that the counter for records exceeding threshold is incremented (assumed 1 time)
-//        verify(recordsExceedingThresholdCounter, times(1)).increment();
-//    }
-//
-
     @ParameterizedTest
     @ValueSource(strings = {"lambda-processor-large-payload.yaml"})
     public void testPayloadSizeBasedBatching(String configFileName) throws Exception {

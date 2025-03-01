@@ -14,151 +14,90 @@ import org.mockito.Mock;
 
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.util.ThresholdCheck;
 
-import java.io.IOException;
 import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ThresholdCheckTest {
 
-    @Mock(lenient = true)
+    @Mock
     private Buffer buffer;
     @Mock
-    Record record;
+    private Record<Event> record;
     @Mock
-    Event event;
+    private Event event;
+
     private int maxEvents;
     private ByteCount maxBytes;
     private Duration maxCollectionDuration;
-    private Boolean isBatchEnabled;
 
     @BeforeEach
     void setUp() {
-        maxEvents = 10_000;
+        maxEvents = 10;
         maxBytes = ByteCount.parse("1mb");
         maxCollectionDuration = Duration.ofMinutes(5);
-        isBatchEnabled = true;
+
+        // Configure the record mock: its event data will produce a simple JSON.
         when(record.getData()).thenReturn(event);
+        // For our tests, we assume an empty JSON object "{}" (2 bytes in UTF-8)
         when(event.toJsonString()).thenReturn("{}");
     }
 
     @Test
-    void test_exceedThreshold_true_dueTo_maxEvents_is_greater_than_buffered_event_count() throws IOException {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents + 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, record);
-
-        assertTrue(isThresholdExceed, "Threshold exceeded");
+    void testTimeoutExceededTrue() {
+        // Simulate a buffer that has been open for 6 minutes (exceeding the 5-minute limit)
+        when(buffer.getDuration()).thenReturn(Duration.ofMinutes(6));
+        assertTrue(ThresholdCheck.checkTimeoutExceeded(buffer, maxCollectionDuration),
+                "Expected timeout threshold to be exceeded.");
     }
 
     @Test
-    void test_exceedThreshold_false_dueTo_maxEvents_is_less_than_buffered_event_count() {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
+    void testTimeoutExceededFalse() {
+        // Simulate a buffer that has been open for 4 minutes (within the limit)
+        when(buffer.getDuration()).thenReturn(Duration.ofMinutes(4));
+        assertFalse(ThresholdCheck.checkTimeoutExceeded(buffer, maxCollectionDuration),
+                "Expected timeout threshold to NOT be exceeded.");
+    }
+
+
+    @Test
+    void testSizeThresholdExceedTrue() {
+        long maxBytesValue = maxBytes.getBytes();
+        when(buffer.getSize()).thenReturn(maxBytesValue - 1);
+        // The record's estimated size is 2 bytes (from "{}").
+        // So, adding the record yields: (maxBytes - 1) + 2 = maxBytes + 1 (exceeds limit).
+        assertTrue(ThresholdCheck.checkSizeThresholdExceed(buffer, maxBytes, record),
+                "Expected size threshold to be exceeded due to record size.");
+    }
+
+    @Test
+    void testSizeThresholdExceedFalse() {
+        when(buffer.getSize()).thenReturn(1000L);
+        // Estimated record size remains 2 bytes.
+        // Total after adding = 1000 + 2, which is less than 1MB.
+        assertFalse(ThresholdCheck.checkSizeThresholdExceed(buffer, maxBytes, record),
+                "Expected size threshold to NOT be exceeded.");
+    }
+
+    @Test
+    void testEventCountThresholdExceededTrue() {
+        when(buffer.getEventCount()).thenReturn(maxEvents);
+        assertTrue(ThresholdCheck.checkEventCountThresholdExceeded(buffer, maxEvents),
+                "Expected event count threshold to be reached.");
+    }
+
+    @Test
+    void testEventCountThresholdExceededFalse() {
         when(buffer.getEventCount()).thenReturn(maxEvents - 1);
-        when(buffer.getDuration()).thenReturn(this.maxCollectionDuration.minusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-        assertFalse(isThresholdExceed, "Threshold exceeded");
-    }
-
-    @Test
-    void test_exceedThreshold_true_dueTo_maxBytes_is_greater_than_buffered_byte_count() {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() + 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents - 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-        assertTrue(isThresholdExceed, "Threshold not exceeded");
-    }
-
-    @Test
-    void test_exceedThreshold_false_dueTo_maxBytes_is_less_than_buffered_byte_count() {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents - 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-        assertFalse(isThresholdExceed, "Threshold exceeded");
-    }
-
-    @Test
-    void test_exceedThreshold_true_dueTo_maxCollectionDuration_is_greater_than_buffered_event_collection_duration() {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents - 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.plusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-        assertTrue(isThresholdExceed, "Threshold not exceeded");
-    }
-
-    @Test
-    void test_exceedThreshold_false_dueTo_maxCollectionDuration_is_less_than_buffered_event_collection_duration() {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents - 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-
-        assertFalse(isThresholdExceed, "Threshold exceeded");
-    }
-
-    @Test
-    void test_exceedThreshold_when_batch_is_enabled() throws IOException {
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1000);
-        when(buffer.getEventCount()).thenReturn(maxEvents + 1);
-        when(buffer.getDuration()).thenReturn(maxCollectionDuration.minusSeconds(1));
-        Boolean isBatchEnabled = false;
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration,record);
-
-        assertTrue(isThresholdExceed);
-    }
-
-    @Test
-    void test_exceedThreshold_false_when_payload_is_within_limit() {
-        // Set up the buffer with a small size and low event count,
-        // ensuring that adding the record (which has an estimated size of 2 bytes "{}")
-        // does not exceed any of the thresholds.
-        when(buffer.getSize()).thenReturn(100L);
-        when(buffer.getEventCount()).thenReturn(5);
-        when(buffer.getDuration()).thenReturn(Duration.ofMinutes(2));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, record);
-
-        assertFalse(isThresholdExceed, "Threshold should not be exceeded when payload is within limit");
-    }
-
-    @Test
-    void test_exceedThreshold_true_when_payload_will_exceed_due_to_record_size() {
-        // Assume record estimated size is 2 bytes (from "{}").
-        // Set buffer size to maxBytes-1, so adding the record (2 bytes) exceeds the limit.
-        when(buffer.getSize()).thenReturn(maxBytes.getBytes() - 1);
-        when(buffer.getEventCount()).thenReturn(5);
-        when(buffer.getDuration()).thenReturn(Duration.ofMinutes(2));
-
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(buffer, maxEvents,
-                maxBytes, maxCollectionDuration, record);
-
-        assertTrue(isThresholdExceed, "Threshold should be exceeded due to record size pushing payload over the limit");
+        assertFalse(ThresholdCheck.checkEventCountThresholdExceeded(buffer, maxEvents),
+                "Expected event count threshold to NOT be reached.");
     }
 }
