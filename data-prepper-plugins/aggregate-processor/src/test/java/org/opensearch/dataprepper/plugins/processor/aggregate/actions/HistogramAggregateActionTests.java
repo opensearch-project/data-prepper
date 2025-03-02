@@ -46,6 +46,7 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 
 @ExtendWith(MockitoExtension.class)
 public class HistogramAggregateActionTests {
+    private static String START_TIME_KEY = "start_time";
     private AggregateAction histogramAggregateAction;
     private HistogramAggregateActionConfig histogramAggregateActionConfig;
 
@@ -209,7 +210,7 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put("explicitBoundsCount", expectedBucketCounts.length-1);
         
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k, v)));
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
         final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get(0).toMap().get("bucketCountsList");
         for (int i = 0; i < expectedBucketCounts.length; i++) {
@@ -334,7 +335,7 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put("explicitBoundsCount", expectedBucketCounts.length-1);
 
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k, v)));
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
         final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get(0).toMap().get("bucketCountsList");
         for (int i = 0; i < expectedBucketCounts.length; i++) {
@@ -368,7 +369,7 @@ public class HistogramAggregateActionTests {
             }
         }
 
-        assertThat(result.get(0).get("startTime", String.class), equalTo(testTime.toString()));
+        assertThat(result.get(0).get(START_TIME_KEY, String.class), equalTo(testTime.toString()));
         assertThat(result.get(0).get("time", String.class), equalTo(testTime.plusSeconds(100).toString()));
     }
 
@@ -436,10 +437,10 @@ public class HistogramAggregateActionTests {
         final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
 
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
 
-        final String actualStartTime = result.get(0).get("startTime", String.class);
+        final String actualStartTime = result.get(0).get(START_TIME_KEY, String.class);
         assertThat(actualStartTime, notNullValue());
         final Instant startTimeInstant = Instant.parse(actualStartTime).truncatedTo(ChronoUnit.MILLIS);
         assertThat(startTimeInstant, equalTo(expectedFirstStartTime));

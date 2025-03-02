@@ -8,8 +8,9 @@ package org.opensearch.dataprepper.model.metric;
 import com.google.common.collect.ImmutableMap;
 import io.micrometer.core.instrument.util.IOUtils;
 import org.json.JSONException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.TestObject;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
@@ -47,6 +48,8 @@ public class JacksonExponentialHistogramTest {
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", TEST_KEY1_TIME,
             "key2", TEST_KEY2);
+    private static final Map<String, Object> TEST_SCOPE = ImmutableMap.of("name", UUID.randomUUID().toString(), "version", UUID.randomUUID().toString(), "attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
+    private static final Map<String, Object> TEST_RESOURCE = ImmutableMap.of("attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
     private static final String TEST_SERVICE_NAME = "service";
     private static final String TEST_NAME = "name";
     private static final String TEST_DESCRIPTION = "description";
@@ -78,9 +81,8 @@ public class JacksonExponentialHistogramTest {
 
     private JacksonExponentialHistogram.Builder builder;
 
-    @BeforeEach
-    public void setup() {
-        builder = JacksonExponentialHistogram.builder()
+    private JacksonExponentialHistogram.Builder createBuilder(final boolean opensearchMode) {
+        builder = JacksonExponentialHistogram.builder(opensearchMode)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -91,6 +93,8 @@ public class JacksonExponentialHistogramTest {
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSum(TEST_SUM)
                 .withCount(TEST_COUNT)
+                .withScope(TEST_SCOPE)
+                .withResource(TEST_RESOURCE)
                 .withNegativeBuckets(TEST_NEGATIVE_BUCKETS)
                 .withPositiveBuckets(TEST_POSITIVE_BUCKETS)
                 .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY)
@@ -101,12 +105,18 @@ public class JacksonExponentialHistogramTest {
                 .withNegativeOffset(TEST_NEGATIVE_OFFSET)
                 .withNegative(TEST_NEGATIVE)
                 .withPositive(TEST_POSITIVE);
-
-        histogram = builder.build();
+        return builder;
     }
 
-    @Test
-    public void testGetAttributes() {
+    private JacksonExponentialHistogram createObjectUnderTest(final boolean opensearchMode) {
+        createBuilder(opensearchMode);
+        return builder.build();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetAttributes(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final Map<String, Object> attributes = histogram.getAttributes();
         TEST_ATTRIBUTES.keySet().forEach(key -> {
                     assertThat(attributes, hasKey(key));
@@ -115,8 +125,10 @@ public class JacksonExponentialHistogramTest {
         );
     }
 
-    @Test
-    public void testGetDefaultEventHandle() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetDefaultEventHandle(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         EventHandle eventHandle = new DefaultEventHandle(Instant.now());
         builder.withEventHandle(eventHandle);
         histogram = builder.build();
@@ -124,8 +136,10 @@ public class JacksonExponentialHistogramTest {
         assertThat(handle, is(sameInstance(eventHandle)));
     }
 
-    @Test
-    public void testGetAggregateEventHandle() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetAggregateEventHandle(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         EventHandle eventHandle = new AggregateEventHandle(Instant.now());
         builder.withEventHandle(eventHandle);
         histogram = builder.build();
@@ -133,59 +147,85 @@ public class JacksonExponentialHistogramTest {
         assertThat(handle, is(sameInstance(eventHandle)));
     }
 
-    @Test
-    public void testGetName() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetName(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String name = histogram.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
     }
 
-    @Test
-    public void testGetDescription() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetDescription(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String description = histogram.getDescription();
         assertThat(description, is(equalTo(TEST_DESCRIPTION)));
     }
 
-    @Test
-    public void testGetKind() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetKind(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String kind = histogram.getKind();
         assertThat(kind, is(equalTo(TEST_EVENT_KIND)));
     }
 
-    @Test
-    public void testGetSum() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetSum(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final Double sum = histogram.getSum();
         assertThat(sum, is(equalTo(TEST_SUM)));
     }
 
-    @Test
-    public void testGetCount() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetCount(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final Long count = histogram.getCount();
         assertThat(count, is(equalTo(TEST_COUNT)));
     }
 
-    @Test
-    public void testGetServiceName() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetServiceName(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String name = histogram.getServiceName();
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
     }
 
-    @Test
-    public void testGetScale() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testOpensearchMode(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
+        boolean mode = histogram.getOpensearchMode();
+        assertThat(mode, is(equalTo(opensearchMode)));
+        histogram.setOpensearchMode(!opensearchMode);
+        mode = histogram.getOpensearchMode();
+        assertThat(mode, is(equalTo(!opensearchMode)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetScale(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Integer scale = histogram.getScale();
         assertThat(scale, is(equalTo(TEST_SCALE)));
     }
 
-    @Test
-    public void testZeroCount() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testZeroCount(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Long zeroCount = histogram.getZeroCount();
         assertThat(zeroCount, is(equalTo(TEST_ZERO_COUNT)));
-        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(true));
-        ((JacksonMetric)histogram).setFlattenAttributes(false);
-        assertThat(((JacksonMetric)histogram).getFlattenAttributes(), equalTo(false));
     }
 
-    @Test
-    public void testGetNegativeBuckets() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetNegativeBuckets(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final List<? extends Bucket> buckets = histogram.getNegativeBuckets();
         assertThat(buckets.size(), is(equalTo(2)));
         Bucket firstBucket = buckets.get(0);
@@ -200,8 +240,10 @@ public class JacksonExponentialHistogramTest {
         assertThat(secondBucket.getCount(), is(equalTo(5L)));
     }
 
-    @Test
-    public void testGetPositiveBuckets() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetPositiveBuckets(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final List<? extends Bucket> buckets = histogram.getPositiveBuckets();
         assertThat(buckets.size(), is(equalTo(2)));
         Bucket firstBucket = buckets.get(0);
@@ -216,69 +258,117 @@ public class JacksonExponentialHistogramTest {
         assertThat(secondBucket.getCount(), is(equalTo(5L)));
     }
 
-    @Test
-    public void testGetNegative() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetNegative(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         List<Long> negativeBucketCounts = histogram.getNegative();
         assertThat(negativeBucketCounts.size(), is(equalTo(3)));
         assertEquals(negativeBucketCounts, TEST_NEGATIVE);
     }
 
-    @Test
-    public void testGetPositive() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetPositive(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         List<Long> negativeBucketCounts = histogram.getPositive();
         assertThat(negativeBucketCounts.size(), is(equalTo(2)));
         assertEquals(negativeBucketCounts, TEST_POSITIVE);
     }
 
-    @Test
-    public void testGetPositiveOffset() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetSchemaUrl(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
+        String schemaUrl = histogram.getSchemaUrl();
+        assertEquals(schemaUrl, TEST_SCHEMA_URL);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetStartTime(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
+        String startTime = histogram.getStartTime();
+        assertEquals(startTime, TEST_START_TIME);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetScope(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
+        Map<String, Object> scope = histogram.getScope();
+        assertEquals(scope, TEST_SCOPE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetResource(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
+        Map<String, Object> resource = histogram.getResource();
+        assertEquals(resource, TEST_RESOURCE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetPositiveOffset(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Integer positiveOffset = histogram.getPositiveOffset();
         assertThat(positiveOffset, is(TEST_POSITIVE_OFFSET));
     }
 
-    @Test
-    public void testGetNegativeOffset() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetNegativeOffset(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Integer negativeOffset = histogram.getNegativeOffset();
         assertThat(negativeOffset, is(TEST_NEGATIVE_OFFSET));
     }
 
-    @Test
-    public void testGetAggregationTemporality() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetAggregationTemporality(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String aggregationTemporality = histogram.getAggregationTemporality();
         assertThat(aggregationTemporality, is(equalTo(TEST_AGGREGATION_TEMPORALITY)));
     }
 
     @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonSum.Builder builder = JacksonSum.builder();
+        final JacksonSum.Builder builder = JacksonSum.builder(true);
         builder.withValue(null);
         assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyTime_throwsIllegalArgumentException() {
+        histogram = createObjectUnderTest(true);
         builder.withTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testGetAttributes_withNull_mustBeEmpty() {
+        histogram = createObjectUnderTest(true);
         builder.withAttributes(null);
         JacksonExponentialHistogram histogram = builder.build();
         histogram.toJsonString();
         assertThat(histogram.getAttributes(), is(anEmptyMap()));
     }
 
-    @Test
-    public void testGetTimeReceived() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetTimeReceived(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Instant now = Instant.now();
         builder.withTimeReceived(now);
         JacksonExponentialHistogram histogram = builder.build();
         assertThat(((DefaultEventHandle)histogram.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
-    @Test
-    public void testHistogramToJsonString() throws JSONException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true})
+    public void testHistogramToJsonString(final boolean opensearchMode) throws JSONException {
+        histogram = createObjectUnderTest(opensearchMode);
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));
@@ -290,19 +380,25 @@ public class JacksonExponentialHistogramTest {
         JSONAssert.assertEquals(expected, result, false);
         final Map<String, Object> attributes = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         histogram.put("attributes", attributes);
+        // For attributes test, remove resource and scope
+        histogram.delete("resource");
+        histogram.delete("scope");
         final String resultAttr = histogram.toJsonString();
         assertThat(resultAttr.indexOf("attributes"), equalTo(-1));
     }
 
     @Test
     public void testHistogramToJsonStringWithAttributes() throws JSONException {
-        histogram = builder.build(false);
+        histogram = createObjectUnderTest(false);
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));
         histogram.put("list", Arrays.asList(1, 4, 5));
         final Map<String, Object> attributes = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         histogram.put("attributes", attributes);
+        // For attributes test, remove resource and scope
+        histogram.delete("resource");
+        histogram.delete("scope");
         final String resultAttr = histogram.toJsonString();
         assertThat(resultAttr.indexOf("attributes"), not(equalTo(-1)));
     }

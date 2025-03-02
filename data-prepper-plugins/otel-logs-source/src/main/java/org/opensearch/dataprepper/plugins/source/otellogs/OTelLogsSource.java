@@ -87,7 +87,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelLogsDecoder();
+        this.byteDecoder = new OTelLogsDecoder(oTelLogsSourceConfig.getOpensearchMode());
     }
 
     @Override
@@ -107,6 +107,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
+                    oTelLogsSourceConfig.getOpensearchMode(),
                     pluginMetrics
             );
 

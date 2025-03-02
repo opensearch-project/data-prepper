@@ -221,6 +221,7 @@ class OTelTraceSourceTest {
         when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
         when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
         when(oTelTraceSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+        when(oTelTraceSourceConfig.getOpensearchMode()).thenReturn(true);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
@@ -280,6 +281,7 @@ class OTelTraceSourceTest {
         settingsMap.put("useAcmCertForSSL", false);
         settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
         settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+        settingsMap.put("opensearch_mode", "true");
         pluginSetting = new PluginSetting("otel_trace", settingsMap);
         pluginSetting.setPipelineName("pipeline");
 

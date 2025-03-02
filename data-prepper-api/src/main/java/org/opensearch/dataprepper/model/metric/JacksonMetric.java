@@ -27,32 +27,37 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String NAME_KEY = "name";
     protected static final String DESCRIPTION_KEY = "description";
     protected static final String START_TIME_KEY = "startTime";
+    protected static final String OTLP_START_TIME_KEY = "start_time";
     protected static final String TIME_KEY = "time";
     protected static final String SERVICE_NAME_KEY = "serviceName";
+    protected static final String OTLP_SERVICE_NAME_KEY = "service_name";
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
     public static final String ATTRIBUTES_KEY = "attributes";
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
+    protected static final String OTLP_SCHEMA_URL_KEY = "schema_url";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
-    private boolean flattenAttributes;
+    protected static final String SCOPE_KEY = "scope";
+    protected static final String RESOURCE_KEY = "resource";
+    private boolean opensearchMode;
 
-    protected JacksonMetric(Builder builder, boolean flattenAttributes) {
+    protected JacksonMetric(Builder builder, boolean opensearchMode) {
         super(builder);
-        this.flattenAttributes = flattenAttributes;
+        this.opensearchMode = opensearchMode;
     }
 
-    public void setFlattenAttributes(boolean flattenAttributes) {
-        this.flattenAttributes = flattenAttributes;
+    public void setOpensearchMode(boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
     }
 
-    boolean getFlattenAttributes() {
-        return flattenAttributes;
+    public boolean getOpensearchMode() {
+        return opensearchMode;
     }
 
     @Override
     public String toJsonString() {
-        if (!flattenAttributes) {
+        if (!opensearchMode) {
             return getJsonNode().toString();
         }
         final ObjectNode attributesNode = (ObjectNode) getJsonNode().get(ATTRIBUTES_KEY);
@@ -72,7 +77,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     @Override
     public String getServiceName() {
-        return this.get(SERVICE_NAME_KEY, String.class);
+        final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -97,7 +103,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     @Override
     public String getStartTime() {
-        return this.get(START_TIME_KEY, String.class);
+        final String key = (opensearchMode) ? START_TIME_KEY : OTLP_START_TIME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -111,8 +118,19 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     }
 
     @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
+    }
+
+    @Override
     public String getSchemaUrl() {
-        return this.get(SCHEMA_URL_KEY, String.class);
+        final String key = (opensearchMode) ? SCHEMA_URL_KEY : OTLP_SCHEMA_URL_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -133,18 +151,24 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     public abstract static class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
 
         private final Map<String, Object> mdata;
+        protected final boolean opensearchMode;
 
-        public Builder() {
+        public Builder(final boolean opensearchMode) {
             if (data == null) {
                 data = new HashMap<String, Object>();
             }
+            this.opensearchMode = opensearchMode;
             mdata = (HashMap<String, Object>)data;
             eventHandle = null;
         }
 
-	public void put(String key, Object value) {
+        public boolean getOpensearchMode() {
+            return opensearchMode;
+        }
+
+        public void put(String key, Object value) {
             mdata.put(key, value);
-	}
+        }
 
         public void computeIfAbsent(String key, Function<? super String,? extends Object> f) {
             mdata.computeIfAbsent(key, f);
@@ -188,6 +212,16 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             return getThis();
         }
 
+        public T withScope(final Map<String, Object> scope) {
+            put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        public T withResource(final Map<String, Object> resource) {
+            put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
         /**
          * Sets the gauge name
          * @param name the name
@@ -217,7 +251,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withStartTime(final String startTime) {
-            put(START_TIME_KEY, startTime);
+            final String key = (opensearchMode) ? START_TIME_KEY : OTLP_START_TIME_KEY;
+            put(key, startTime);
             return getThis();
         }
 
@@ -239,7 +274,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withServiceName(final String serviceName) {
-            put(SERVICE_NAME_KEY, serviceName);
+            final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+            put(key, serviceName);
             return getThis();
         }
 
@@ -250,7 +286,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * @since 1.4
          */
         public T withSchemaUrl(final String schemaUrl) {
-            put(SCHEMA_URL_KEY, schemaUrl);
+            final String key = (opensearchMode) ? SCHEMA_URL_KEY : OTLP_SCHEMA_URL_KEY;
+            put(key, schemaUrl);
             return getThis();
         }
 

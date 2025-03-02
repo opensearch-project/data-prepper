@@ -100,6 +100,9 @@ public class OTelProtoCodec {
     static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
     static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
     static final String INSTRUMENTATION_SCOPE_ATTRIBUTES = "instrumentationScope.attributes";
+    static final String OTLP_INSTRUMENTATION_SCOPE_NAME = "name";
+    static final String OTLP_INSTRUMENTATION_SCOPE_VERSION = "version";
+    static final String OTLP_INSTRUMENTATION_SCOPE_ATTRIBUTES = "attributes";
 
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
     /**
@@ -159,9 +162,9 @@ public class OTelProtoCodec {
 
     public static class OTelProtoDecoder {
 
-        public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest, final Instant timeReceived) {
+        public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest, final Instant timeReceived, final boolean opensearchMode) {
             return exportTraceServiceRequest.getResourceSpansList().stream()
-                    .flatMap(rs -> parseResourceSpans(rs, timeReceived).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceSpans(rs, timeReceived, opensearchMode).stream()).collect(Collectors.toList());
         }
 
         public Map<String, ExportTraceServiceRequest> splitExportTraceServiceRequestByTraceId(final ExportTraceServiceRequest exportTraceServiceRequest) {
@@ -184,14 +187,14 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived) {
+        public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived, final boolean opensearchMode) {
             return exportLogsServiceRequest.getResourceLogsList().stream()
-                    .flatMap(rs -> parseResourceLogs(rs, timeReceived).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceLogs(rs, timeReceived, opensearchMode).stream()).collect(Collectors.toList());
         }
 
-        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
+        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived, final boolean opensearchMode) {
             final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
-            final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
+            final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource(), opensearchMode);
             final String schemaUrl = rs.getSchemaUrl();
 
             Stream<OpenTelemetryLog> mappedScopeListLogs = rs.getScopeLogsList()
@@ -199,10 +202,10 @@ public class OTelProtoCodec {
                     .map(sls ->
                             processLogsList(sls.getLogRecordsList(),
                                     serviceName,
-                                    OTelProtoCodec.getInstrumentationScopeAttributes(sls.getScope()),
+                                    OTelProtoCodec.getInstrumentationScopeAttributes(sls.getScope(), opensearchMode),
                                     resourceAttributes,
                                     schemaUrl,
-                                    timeReceived))
+                                    timeReceived, opensearchMode))
                     .flatMap(Collection::stream);
 
             return mappedScopeListLogs.collect(Collectors.toList());
@@ -231,22 +234,28 @@ public class OTelProtoCodec {
             return result;
         }
 
-        protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
+        protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans,
+                                          final Instant timeReceived,
+                                          final boolean opensearchMode) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
-            final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
+            final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource(), opensearchMode);
 
             if (!resourceSpans.getScopeSpansList().isEmpty()) {
-                return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived);
+                return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived, opensearchMode);
             }
 
             LOG.debug("No spans found to parse from ResourceSpans object: {}", resourceSpans);
             return Collections.emptyList();
         }
 
-        private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList, final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
+        private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList,
+                                          final String serviceName,
+                                          final Map<String, Object> resourceAttributes,
+                                          final Instant timeReceived,
+                                          final boolean opensearchMode) {
             return scopeSpansList.stream()
                     .map(scopeSpans -> parseSpans(scopeSpans.getSpansList(), scopeSpans.getScope(),
-                            OTelProtoCodec::getInstrumentationScopeAttributes, serviceName, resourceAttributes, timeReceived))
+                            (v -> getInstrumentationScopeAttributes(v, opensearchMode)), serviceName, resourceAttributes, timeReceived, opensearchMode))
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
         }
@@ -291,11 +300,12 @@ public class OTelProtoCodec {
         private <T> List<Span> parseSpans(final List<io.opentelemetry.proto.trace.v1.Span> spans, final T scope,
                                           final Function<T, Map<String, Object>> scopeAttributesGetter,
                                           final String serviceName, final Map<String, Object> resourceAttributes,
-                                          final Instant timeReceived) {
+                                          final Instant timeReceived,
+                                          final boolean opensearchMode) {
             return spans.stream()
                     .map(span -> {
                         final Map<String, Object> scopeAttributes = scopeAttributesGetter.apply(scope);
-                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes, timeReceived);
+                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes, timeReceived, opensearchMode);
                     })
                     .collect(Collectors.toList());
         }
@@ -305,35 +315,68 @@ public class OTelProtoCodec {
                                                          final Map<String, Object> ils,
                                                          final Map<String, Object> resourceAttributes,
                                                          final String schemaUrl,
-                                                         final Instant timeReceived) {
+                                                         final Instant timeReceived,
+                                                         final boolean opensearchMode) {
+
             return logsList.stream()
-                    .map(log -> JacksonOtelLog.builder()
-                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getTimeUnixNano()))
-                            .withObservedTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
-                            .withServiceName(serviceName)
-                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
-                                    Arrays.asList(
-                                            OTelProtoCodec.unpackKeyValueListLog(log.getAttributesList()),
-                                            resourceAttributes,
-                                            ils
-                                    )
-                            ))
-                            .withSchemaUrl(schemaUrl)
-                            .withFlags(log.getFlags())
-                            .withTraceId(OTelProtoCodec.convertByteStringToString(log.getTraceId()))
-                            .withSpanId(OTelProtoCodec.convertByteStringToString(log.getSpanId()))
-                            .withSeverityNumber(log.getSeverityNumberValue())
-                            .withSeverityText(log.getSeverityText())
-                            .withDroppedAttributesCount(log.getDroppedAttributesCount())
-                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody()))
-                            .withTimeReceived(timeReceived)
-                            .build())
+                    .map(log -> 
+                          {
+                            Map<String, Object> attributes;
+                            if (opensearchMode) {
+                                attributes = OTelProtoCodec.mergeAllAttributes(
+                                        Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueListLog(log.getAttributesList(), opensearchMode),
+                                            resourceAttributes, ils)
+                                    );
+                            } else {
+                                attributes = OTelProtoCodec.unpackKeyValueListLog(log.getAttributesList(), opensearchMode);
+                            }
+                            JacksonOtelLog.Builder builder =
+                                JacksonOtelLog.builder(opensearchMode)
+                                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getTimeUnixNano()))
+                                .withObservedTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
+                                .withServiceName(serviceName)
+                                .withAttributes(attributes)
+                                .withSchemaUrl(schemaUrl)
+                                .withFlags(log.getFlags())
+                                .withTraceId(OTelProtoCodec.convertByteStringToString(log.getTraceId()))
+                                .withSpanId(OTelProtoCodec.convertByteStringToString(log.getSpanId()))
+                                .withSeverityNumber(log.getSeverityNumberValue())
+                                .withSeverityText(log.getSeverityText())
+                                .withDroppedAttributesCount(log.getDroppedAttributesCount())
+                                .withBody(OTelProtoCodec.convertAnyValue(log.getBody(), opensearchMode))
+                                .withTimeReceived(timeReceived);
+                            if (!opensearchMode) {
+                                Map<String, Object> scope = new HashMap();
+                                Map<String, Object> resource = new HashMap();
+                                for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                                    scope.put(entry.getKey(), entry.getValue());
+                                }
+                                for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                                    resource.put(entry.getKey(), entry.getValue());
+                                }
+                                builder = builder.withScope(scope).withResource(resource);
+                            }
+                            return builder.build();
+                          })
                     .collect(Collectors.toList());
         }
 
         protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final Map<String, Object> instrumentationScopeAttributes,
-                                    final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived) {
-            return JacksonSpan.builder()
+                                     final String serviceName, final Map<String, Object> resourceAttributes, final Instant timeReceived, final boolean opensearchMode) {
+            Map<String, Object> attributes;
+            if (opensearchMode) {
+                attributes = OTelProtoCodec.mergeAllAttributes(
+                            Arrays.asList(
+                                    getSpanAttributes(sp, opensearchMode),
+                                    resourceAttributes,
+                                    instrumentationScopeAttributes,
+                                    getSpanStatusAttributes(sp.getStatus())
+                            ));
+            } else {
+                attributes = getSpanAttributes(sp, opensearchMode);
+            }
+            JacksonSpan.Builder builder = JacksonSpan.builder(opensearchMode)
                     .withSpanId(convertByteStringToString(sp.getSpanId()))
                     .withTraceId(convertByteStringToString(sp.getTraceId()))
                     .withTraceState(sp.getTraceState())
@@ -343,27 +386,37 @@ public class OTelProtoCodec {
                     .withKind(sp.getKind().name())
                     .withStartTime(getStartTimeISO8601(sp))
                     .withEndTime(getEndTimeISO8601(sp))
-                    .withAttributes(mergeAllAttributes(
-                            Arrays.asList(
-                                    getSpanAttributes(sp),
-                                    resourceAttributes,
-                                    instrumentationScopeAttributes,
-                                    getSpanStatusAttributes(sp.getStatus())
-                            )
-                    ))
+                    .withAttributes(attributes)
                     .withDroppedAttributesCount(sp.getDroppedAttributesCount())
-                    .withEvents(sp.getEventsList().stream().map(this::getSpanEvent).collect(Collectors.toList()))
+                    .withEvents(sp.getEventsList().stream().map(v -> getSpanEvent(v, opensearchMode)).collect(Collectors.toList()))
                     .withDroppedEventsCount(sp.getDroppedEventsCount())
-                    .withLinks(sp.getLinksList().stream().map(this::getLink).collect(Collectors.toList()))
+                    .withLinks(sp.getLinksList().stream().map(v -> getLink(v, opensearchMode)).collect(Collectors.toList()))
                     .withDroppedLinksCount(sp.getDroppedLinksCount())
                     .withTraceGroup(getTraceGroup(sp))
                     .withDurationInNanos(sp.getEndTimeUnixNano() - sp.getStartTimeUnixNano())
                     .withTraceGroupFields(getTraceGroupFields(sp))
-                    .withTimeReceived(timeReceived)
-                    .build();
+                    .withTimeReceived(timeReceived);
+                if (!opensearchMode) {
+                    Map<String, Object> scope = new HashMap();
+                    Map<String, Object> resource = new HashMap();
+                    for (Map.Entry<String, Object> entry : instrumentationScopeAttributes.entrySet()) {
+                        scope.put(entry.getKey(), entry.getValue());
+                    }
+                    for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                        resource.put(entry.getKey(), entry.getValue());
+                    }
+                    Map<String, Object> status = (sp.getStatus().getCodeValue() != 0) ? getSpanStatusAttributes(sp.getStatus()) : Map.of();
+                    builder = builder.withKind(Integer.toString(sp.getKind().ordinal()))
+                                     .withScope(scope)
+                                     .withResource(resource)
+                                     .withStatus(status);
+                } else {
+                    builder = builder.withKind(sp.getKind().name());
+                }
+                return builder.build();
         }
 
-        protected Object convertAnyValue(final AnyValue value) {
+        protected Object convertAnyValue(final AnyValue value, final boolean opensearchMode) {
             switch (value.getValueCase()) {
                 case VALUE_NOT_SET:
                 case STRING_VALUE:
@@ -381,16 +434,34 @@ public class OTelProtoCodec {
                  */
                 case ARRAY_VALUE:
                     try {
-                        return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
-                                .map(this::convertAnyValue).collect(Collectors.toList()));
+                        if (opensearchMode) {
+                            return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
+                                    .map(v -> convertAnyValue(v, opensearchMode)).collect(Collectors.toList()));
+                        } else {
+                            List<Object> convertedValues = new ArrayList<>();
+                            for (AnyValue v : value.getArrayValue().getValuesList()) {
+                                convertedValues.add(convertAnyValue(v, opensearchMode));
+                            }
+                            return convertedValues;
+                        }
                     } catch (JsonProcessingException e) {
                         throw new OTelDecodingException(e);
                     }
                 case KVLIST_VALUE:
                     try {
-                        return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
+                        if (opensearchMode) {
+                            return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
                                 .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()),
-                                        i ->convertAnyValue(i.getValue()))));
+                                        i ->convertAnyValue(i.getValue(), opensearchMode))));
+                        } else {
+                            Map<String, Object> map = new HashMap<>();
+                            for (KeyValue kv : value.getKvlistValue().getValuesList()) {
+                                String key = kv.getKey();
+                                Object convertedValue = convertAnyValue(kv.getValue(), opensearchMode);
+                                map.put(key, convertedValue);
+                            }
+                            return map;
+                        }
                     } catch (JsonProcessingException e) {
                         throw new OTelDecodingException(e);
                     }
@@ -405,39 +476,56 @@ public class OTelProtoCodec {
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         }
 
-        protected SpanEvent getSpanEvent(final io.opentelemetry.proto.trace.v1.Span.Event event) {
+        protected SpanEvent getSpanEvent(final io.opentelemetry.proto.trace.v1.Span.Event event, final boolean opensearchMode) {
             return DefaultSpanEvent.builder()
                     .withTime(getTimeISO8601(event))
                     .withName(event.getName())
-                    .withAttributes(getEventAttributes(event))
+                    .withAttributes(getEventAttributes(event, opensearchMode))
                     .withDroppedAttributesCount(event.getDroppedAttributesCount())
                     .build();
         }
 
-        protected Link getLink(final io.opentelemetry.proto.trace.v1.Span.Link link) {
+        protected Link getLink(final io.opentelemetry.proto.trace.v1.Span.Link link, final boolean opensearchMode) {
             return DefaultLink.builder()
                     .withSpanId(convertByteStringToString(link.getSpanId()))
                     .withTraceId(convertByteStringToString(link.getTraceId()))
                     .withTraceState(link.getTraceState())
                     .withDroppedAttributesCount(link.getDroppedAttributesCount())
-                    .withAttributes(getLinkAttributes(link))
+                    .withAttributes(getLinkAttributes(link, opensearchMode))
                     .build();
         }
 
-        protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
-            return span.getAttributesList().stream().collect(Collectors.toMap(i -> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+        protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span, final boolean opensearchMode) {
+            if (opensearchMode) {
+                return span.getAttributesList().stream().collect(Collectors.toMap(i -> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            } else {
+                return span.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            }
         }
 
-        protected Map<String, Object> getResourceAttributes(final Resource resource) {
-            return resource.getAttributesList().stream().collect(Collectors.toMap(i -> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+        protected Map<String, Object> getResourceAttributes(final Resource resource, final boolean opensearchMode) {
+            if (opensearchMode) {
+                Map<String, Object> m = resource.getAttributesList().stream().collect(Collectors.toMap(i -> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+                return m;
+            } else {
+                return resource.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            }
         }
 
-        protected Map<String, Object> getLinkAttributes(final io.opentelemetry.proto.trace.v1.Span.Link link) {
-            return link.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+        protected Map<String, Object> getLinkAttributes(final io.opentelemetry.proto.trace.v1.Span.Link link, final boolean opensearchMode) {
+            if (opensearchMode) {
+                return link.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            } else {
+                return link.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            }
         }
 
-        protected Map<String, Object> getEventAttributes(final io.opentelemetry.proto.trace.v1.Span.Event event) {
-            return event.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+        protected Map<String, Object> getEventAttributes(final io.opentelemetry.proto.trace.v1.Span.Event event, final boolean opensearchMode) {
+            if (opensearchMode) {
+                return event.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            } else {
+                return event.getAttributesList().stream().collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+            }
         }
 
         /**
@@ -515,16 +603,16 @@ public class OTelProtoCodec {
                             final Instant timeReceived,
                             final boolean calculateHistogramBuckets,
                             final boolean calculateExponentialHistogramBuckets,
-                            final boolean flattenAttributes) {
+                            final boolean opensearchMode) {
             Collection<Record<? extends Metric>> recordsOut = new ArrayList<>();
             for (ResourceMetrics rs : request.getResourceMetricsList()) {
                 final String schemaUrl = rs.getSchemaUrl();
-                final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
+                final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource(), opensearchMode);
                 final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
-                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
-                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets, flattenAttributes));
+                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope(), opensearchMode);
+                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl, droppedCounter, exponentialHistogramMaxAllowedScale, timeReceived, calculateHistogramBuckets, calculateExponentialHistogramBuckets, opensearchMode));
                 }
             }
             return recordsOut;
@@ -541,20 +629,20 @@ public class OTelProtoCodec {
                     final Instant timeReceived,
                     final boolean calculateHistogramBuckets,
                     final boolean calculateExponentialHistogramBuckets,
-                    final boolean flattenAttributes) {
+                    final boolean opensearchMode) {
             List<Record<? extends Metric>> recordsOut = new ArrayList<>();
             for (io.opentelemetry.proto.metrics.v1.Metric metric : metricsList) {
                 try {
                     if (metric.hasGauge()) {
-                        recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
+                        recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, opensearchMode));
                     } else if (metric.hasSum()) {
-                        recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
+                        recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, opensearchMode));
                     } else if (metric.hasSummary()) {
-                        recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, flattenAttributes));
+                        recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, opensearchMode));
                     } else if (metric.hasHistogram()) {
-                        recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, calculateHistogramBuckets, flattenAttributes));
+                        recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, timeReceived, calculateHistogramBuckets, opensearchMode));
                     } else if (metric.hasExponentialHistogram()) {
-                        recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, exponentialHistogramMaxAllowedScale, timeReceived, calculateExponentialHistogramBuckets, flattenAttributes));
+                        recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl, exponentialHistogramMaxAllowedScale, timeReceived, calculateExponentialHistogramBuckets, opensearchMode));
                     }
                 } catch (Exception e) {
                     LOG.warn("Error while processing metrics", e);
@@ -571,28 +659,47 @@ public class OTelProtoCodec {
                                          final Map<String, Object> resourceAttributes,
                                          final String schemaUrl,
                                          final Instant timeReceived,
-                                         final boolean flattenAttributes) {
+                                         final boolean opensearchMode) {
             return metric.getGauge().getDataPointsList().stream()
-                .map(dp -> JacksonGauge.builder()
-                        .withUnit(metric.getUnit())
-                        .withName(metric.getName())
-                        .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
-                        .withTime(OTelProtoCodec.getTimeISO8601(dp))
-                        .withServiceName(serviceName)
-                        .withValue(OTelProtoCodec.getValueAsDouble(dp))
-                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                .map(dp ->
+                      {
+                        Map<String, Object> attributes;
+                        if (opensearchMode) {
+                            attributes = OTelProtoCodec.mergeAllAttributes(
                                 Arrays.asList(
-                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp, opensearchMode),
                                         resourceAttributes,
                                         ils
-                                )
-                        ))
-                        .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
-                        .withFlags(dp.getFlags())
-                        .withTimeReceived(timeReceived)
-                        .build(flattenAttributes))
+                                ));
+                        } else {
+                            attributes = OTelProtoCodec.convertKeysOfDataPointAttributes(dp, opensearchMode);
+                        }
+                        JacksonGauge.Builder builder = JacksonGauge.builder(opensearchMode)
+                            .withUnit(metric.getUnit())
+                            .withName(metric.getName())
+                            .withDescription(metric.getDescription())
+                            .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
+                            .withTime(OTelProtoCodec.getTimeISO8601(dp))
+                            .withServiceName(serviceName)
+                            .withValue(OTelProtoCodec.getValueAsDouble(dp))
+                            .withAttributes(attributes)
+                            .withSchemaUrl(schemaUrl)
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList(), opensearchMode))
+                            .withFlags(dp.getFlags())
+                            .withTimeReceived(timeReceived);
+                        if (!opensearchMode) {
+                            Map<String, Object> scope = new HashMap();
+                            Map<String, Object> resource = new HashMap();
+                            for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                                scope.put(entry.getKey(), entry.getValue());
+                            }
+                            for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                                resource.put(entry.getKey(), entry.getValue());
+                            }
+                            builder = builder.withScope(scope).withResource(resource);
+                        }
+                        return builder.build();
+                    })
                 .map(Record::new)
                 .collect(Collectors.toList());
         }
@@ -604,9 +711,21 @@ public class OTelProtoCodec {
                                      final Map<String, Object> resourceAttributes,
                                      final String schemaUrl,
                                      final Instant timeReceived,
-                                     final boolean flattenAttributes) {
+                                     final boolean opensearchMode) {
             return metric.getSum().getDataPointsList().stream()
-                .map(dp -> JacksonSum.builder()
+                .map(dp -> {
+                        Map<String, Object> attributes;
+                        if (opensearchMode) {
+                            attributes = OTelProtoCodec.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp, opensearchMode),
+                                        resourceAttributes,
+                                        ils
+                                ));
+                        } else {
+                            attributes = OTelProtoCodec.convertKeysOfDataPointAttributes(dp, opensearchMode);
+                        }
+                        JacksonSum.Builder builder = JacksonSum.builder(opensearchMode)
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
@@ -616,18 +735,24 @@ public class OTelProtoCodec {
                         .withIsMonotonic(metric.getSum().getIsMonotonic())
                         .withValue(OTelProtoCodec.getValueAsDouble(dp))
                         .withAggregationTemporality(metric.getSum().getAggregationTemporality().toString())
-                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
-                                Arrays.asList(
-                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
-                                        resourceAttributes,
-                                        ils
-                                )
-                        ))
+                        .withAttributes(attributes)
                         .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList(), opensearchMode))
                         .withFlags(dp.getFlags())
-                        .withTimeReceived(timeReceived)
-                        .build(flattenAttributes))
+                        .withTimeReceived(timeReceived);
+                        if (!opensearchMode) {
+                            Map<String, Object> scope = new HashMap();
+                            Map<String, Object> resource = new HashMap();
+                            for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                                scope.put(entry.getKey(), entry.getValue());
+                            }
+                            for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                                resource.put(entry.getKey(), entry.getValue());
+                            }
+                            builder = builder.withScope(scope).withResource(resource);
+                        }
+                        return builder.build();
+                    })
                 .map(Record::new)
                 .collect(Collectors.toList());
         }
@@ -639,9 +764,22 @@ public class OTelProtoCodec {
                                              final Map<String, Object> resourceAttributes,
                                              final String schemaUrl,
                                              final Instant timeReceived,
-                                             final boolean flattenAttributes) {
+                                             final boolean opensearchMode) {
             return metric.getSummary().getDataPointsList().stream()
-                .map(dp -> JacksonSummary.builder()
+                .map(dp -> {
+                        Map<String, Object> attributes;
+                        if (opensearchMode) {
+                            attributes = OTelProtoCodec.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode),
+                                        resourceAttributes,
+                                        ils
+                                ));
+                        } else {
+                            attributes = OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode);
+                        }
+                        
+                        JacksonSummary.Builder builder = JacksonSummary.builder(opensearchMode)
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
@@ -652,17 +790,24 @@ public class OTelProtoCodec {
                         .withSum(dp.getSum())
                         .withQuantiles(OTelProtoCodec.getQuantileValues(dp.getQuantileValuesList()))
                         .withQuantilesValueCount(dp.getQuantileValuesCount())
-                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
-                                Arrays.asList(
-                                        OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
-                                        resourceAttributes,
-                                        ils
-                                )
-                        ))
+                        .withAttributes(attributes)
                         .withSchemaUrl(schemaUrl)
                         .withFlags(dp.getFlags())
-                        .withTimeReceived(timeReceived)
-                        .build(flattenAttributes))
+                        .withTimeReceived(timeReceived);
+
+                        if (!opensearchMode) {
+                            Map<String, Object> scope = new HashMap();
+                            Map<String, Object> resource = new HashMap();
+                            for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                                scope.put(entry.getKey(), entry.getValue());
+                            }
+                            for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                                resource.put(entry.getKey(), entry.getValue());
+                            }
+                            builder = builder.withScope(scope).withResource(resource);
+                        }
+                        return builder.build();
+                    })
                 .map(Record::new)
                 .collect(Collectors.toList());
         }
@@ -675,10 +820,21 @@ public class OTelProtoCodec {
                                                  final String schemaUrl,
                                                  final Instant timeReceived,
                                                  final boolean calculateHistogramBuckets,
-                                                 final boolean flattenAttributes) {
+                                                 final boolean opensearchMode) {
             return metric.getHistogram().getDataPointsList().stream()
                 .map(dp -> {
-                    JacksonHistogram.Builder builder = JacksonHistogram.builder()
+                    Map<String, Object> attributes;
+                    if (opensearchMode) {
+                        attributes = OTelProtoCodec.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode),
+                                            resourceAttributes,
+                                            ils
+                                    ));
+                    } else {
+                        attributes = OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode);
+                    }
+                    JacksonHistogram.Builder builder = JacksonHistogram.builder(opensearchMode)
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
@@ -692,21 +848,26 @@ public class OTelProtoCodec {
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
                             .withBucketCountsList(dp.getBucketCountsList())
                             .withExplicitBoundsList(dp.getExplicitBoundsList())
-                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
-                                    Arrays.asList(
-                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
-                                            resourceAttributes,
-                                            ils
-                                    )
-                            ))
+                            .withAttributes(attributes)
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList(), opensearchMode))
                             .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
                     if (calculateHistogramBuckets) {
                         builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
                     }
-                    JacksonHistogram jh = builder.build(flattenAttributes);
+                    if (!opensearchMode) {
+                        Map<String, Object> scope = new HashMap();
+                        Map<String, Object> resource = new HashMap();
+                        for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                            scope.put(entry.getKey(), entry.getValue());
+                        }
+                        for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                            resource.put(entry.getKey(), entry.getValue());
+                        }
+                        builder = builder.withScope(scope).withResource(resource);
+                    }
+                    JacksonHistogram jh = builder.build();
                     return jh;
 
                 })
@@ -723,7 +884,7 @@ public class OTelProtoCodec {
                                             final Integer exponentialHistogramMaxAllowedScale,
                                             final Instant timeReceived,
                                             final boolean calculateExponentialHistogramBuckets,
-                                            final boolean flattenAttributes) {
+                                            final boolean opensearchMode) {
             return metric.getExponentialHistogram()
                 .getDataPointsList()
                 .stream()
@@ -737,7 +898,18 @@ public class OTelProtoCodec {
                     }
                 })
                 .map(dp -> {
-                    JacksonExponentialHistogram.Builder builder = JacksonExponentialHistogram.builder()
+                    Map<String, Object> attributes;
+                    if (opensearchMode) {
+                        attributes = OTelProtoCodec.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode),
+                                            resourceAttributes,
+                                            ils
+                                    ));
+                    } else {
+                        attributes = OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList(), opensearchMode);
+                    }
+                    JacksonExponentialHistogram.Builder builder = JacksonExponentialHistogram.builder(opensearchMode)
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
@@ -753,15 +925,9 @@ public class OTelProtoCodec {
                             .withNegative(dp.getNegative().getBucketCountsList())
                             .withNegativeOffset(dp.getNegative().getOffset())
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
-                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
-                                    Arrays.asList(
-                                            OTelProtoCodec.unpackKeyValueListMetric(dp.getAttributesList()),
-                                            resourceAttributes,
-                                            ils
-                                    )
-                            ))
+                            .withAttributes(attributes)
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList(), opensearchMode))
                             .withTimeReceived(timeReceived)
                             .withFlags(dp.getFlags());
 
@@ -769,8 +935,19 @@ public class OTelProtoCodec {
                         builder.withPositiveBuckets(OTelProtoCodec.createExponentialBuckets(dp.getPositive(), dp.getScale()));
                         builder.withNegativeBuckets(OTelProtoCodec.createExponentialBuckets(dp.getNegative(), dp.getScale()));
                     }
+                    if (!opensearchMode) {
+                        Map<String, Object> scope = new HashMap();
+                        Map<String, Object> resource = new HashMap();
+                        for (Map.Entry<String, Object> entry : ils.entrySet()) {
+                            scope.put(entry.getKey(), entry.getValue());
+                        }
+                        for (Map.Entry<String, Object> entry : resourceAttributes.entrySet()) {
+                            resource.put(entry.getKey(), entry.getValue());
+                        }
+                        builder = builder.withScope(scope).withResource(resource);
+                    }
 
-                    return builder.build(flattenAttributes);
+                    return builder.build();
                 })
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -966,7 +1143,7 @@ public class OTelProtoCodec {
      * @param value The value to convert
      * @return the converted value as object
      */
-    public static Object convertAnyValue(final AnyValue value) {
+    public static Object convertAnyValue(final AnyValue value, final boolean opensearchMode) {
         switch (value.getValueCase()) {
             case VALUE_NOT_SET:
             case STRING_VALUE:
@@ -984,16 +1161,35 @@ public class OTelProtoCodec {
              */
             case ARRAY_VALUE:
                 try {
-                    return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
-                            .map(OTelProtoCodec::convertAnyValue)
+                    if (opensearchMode) {
+                        return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
+                            .map(v -> convertAnyValue(v, opensearchMode))
                             .collect(Collectors.toList()));
+                    } else {
+                        List<Object> list = new ArrayList<>();
+                        for (AnyValue v : value.getArrayValue().getValuesList()) {
+                            list.add(convertAnyValue(v, opensearchMode));
+                        }
+                        return list;
+                    }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             case KVLIST_VALUE:
                 try {
-                    return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
-                            .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()))));
+                    if (opensearchMode) {
+                        return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
+                            .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)))); 
+
+                    } else {
+                        Map<String, Object> map = new HashMap<>();
+                        for (KeyValue kv : value.getKvlistValue().getValuesList()) {
+                            String key = kv.getKey();
+                            Object convertedValue = convertAnyValue(kv.getValue(), opensearchMode);
+                            map.put(key, convertedValue);
+                        }
+                        return map;
+                    }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
@@ -1009,9 +1205,14 @@ public class OTelProtoCodec {
      * @param numberDataPoint The point to process
      * @return A Map containing all attributes of `numberDataPoint` with keys converted into an OS-friendly format
      */
-    public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
-        return numberDataPoint.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint, final boolean opensearchMode) {
+        if (opensearchMode) {
+            return numberDataPoint.getAttributesList().stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+            return numberDataPoint.getAttributesList().stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
     /**
@@ -1022,14 +1223,24 @@ public class OTelProtoCodec {
      * @param attributesList The list of {@link KeyValue} objects to process
      * @return A Map containing unpacked {@link KeyValue} data
      */
-    public static Map<String, Object> unpackKeyValueListMetric(List<KeyValue> attributesList) {
-        return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> unpackKeyValueListMetric(List<KeyValue> attributesList, final boolean opensearchMode) {
+        if (opensearchMode) {
+          return attributesList.stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+          return attributesList.stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
-    public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
-        return attributesList.stream()
-                .collect(Collectors.toMap(i -> DOT+(i.getKey()).replace(DOT, AT), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList, final boolean opensearchMode) {
+        if (opensearchMode) {
+            return attributesList.stream()
+                .collect(Collectors.toMap(i -> DOT+(i.getKey()).replace(DOT, AT), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+            return attributesList.stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
     /**
@@ -1040,9 +1251,14 @@ public class OTelProtoCodec {
      * @param attributesList The list of {@link KeyValue} objects to process
      * @return A Map containing unpacked {@link KeyValue} data
      */
-    public static Map<String, Object> unpackKeyValueListLog(List<KeyValue> attributesList) {
-        return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> unpackKeyValueListLog(List<KeyValue> attributesList, final boolean opensearchMode) {
+        if (opensearchMode) {
+          return attributesList.stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_LOG_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+          return attributesList.stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
 
@@ -1054,9 +1270,14 @@ public class OTelProtoCodec {
      * @param attributesList The list of {@link KeyValue} objects to process
      * @return A Map containing unpacked {@link KeyValue} data
      */
-    public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList) {
-        return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList, final boolean opensearchMode) {
+        if (opensearchMode) {
+            return attributesList.stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+            return attributesList.stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
 
@@ -1096,9 +1317,14 @@ public class OTelProtoCodec {
         }
     }
 
-    public static Map<String, Object> getResourceAttributes(final Resource resource) {
-        return resource.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    public static Map<String, Object> getResourceAttributes(final Resource resource, final boolean opensearchMode) {
+        if (opensearchMode) {
+            return resource.getAttributesList().stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        } else {
+            return resource.getAttributesList().stream()
+                .collect(Collectors.toMap(i -> i.getKey(), i -> convertAnyValue(i.getValue(), opensearchMode)));
+        }
     }
 
     /**
@@ -1107,17 +1333,24 @@ public class OTelProtoCodec {
      * @param  instrumentationScope the instrumentation scope
      * @return A map, containing information about the instrumentation scope
      */
-    public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope) {
+    public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope, final boolean opensearchMode) {
         final Map<String, Object> instrumentationScopeAttr = new HashMap<>();
+        final String nameKey = (opensearchMode) ? INSTRUMENTATION_SCOPE_NAME : OTLP_INSTRUMENTATION_SCOPE_NAME;
+        final String versionKey = (opensearchMode) ? INSTRUMENTATION_SCOPE_VERSION : OTLP_INSTRUMENTATION_SCOPE_VERSION;
+        final String attributesKey = (opensearchMode) ? INSTRUMENTATION_SCOPE_ATTRIBUTES : OTLP_INSTRUMENTATION_SCOPE_ATTRIBUTES;
         if (!instrumentationScope.getName().isEmpty()) {
-            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_NAME, instrumentationScope.getName());
+            instrumentationScopeAttr.put(nameKey, instrumentationScope.getName());
         }
         if (!instrumentationScope.getVersion().isEmpty()) {
-            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationScope.getVersion());
+            instrumentationScopeAttr.put(versionKey, instrumentationScope.getVersion());
         }
         if (!instrumentationScope.getAttributesList().isEmpty()) {
-            for (Map.Entry<String, Object> entry: OTelProtoCodec.unpackKeyValueList(instrumentationScope.getAttributesList()).entrySet()) {
-                instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_ATTRIBUTES+entry.getKey(), entry.getValue());
+            if (opensearchMode) {
+                for (Map.Entry<String, Object> entry: OTelProtoCodec.unpackKeyValueList(instrumentationScope.getAttributesList(), opensearchMode).entrySet()) {
+                    instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_ATTRIBUTES+entry.getKey(), entry.getValue());
+                }
+            } else {
+                instrumentationScopeAttr.put(attributesKey, instrumentationScope.getAttributesList());
             }
         }
         return instrumentationScopeAttr;
@@ -1219,13 +1452,13 @@ public class OTelProtoCodec {
      * @param exemplarsList the List of Exemplars
      * @return a mapped list of DefaultExemplars
      */
-    public static List<Exemplar> convertExemplars(List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplarsList) {
+    public static List<Exemplar> convertExemplars(List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplarsList, final boolean opensearchMode) {
         return exemplarsList.stream().map(exemplar ->
                         new DefaultExemplar(convertUnixNanosToISO8601(exemplar.getTimeUnixNano()),
                                 getExemplarValueAsDouble(exemplar),
                                 convertByteStringToString(exemplar.getSpanId()),
                                 convertByteStringToString(exemplar.getTraceId()),
-                                unpackExemplarValueList(exemplar.getFilteredAttributesList())))
+                                unpackExemplarValueList(exemplar.getFilteredAttributesList(), opensearchMode)))
                 .collect(Collectors.toList());
     }
 

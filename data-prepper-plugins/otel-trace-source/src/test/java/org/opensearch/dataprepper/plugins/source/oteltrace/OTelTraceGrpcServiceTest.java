@@ -200,7 +200,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_BadRequest_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         final RuntimeException testException = new RuntimeException(testMessage);
-        when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any(), any(Instant.class))).thenThrow(testException);
+        when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any(), any(Instant.class), any(Boolean.class))).thenThrow(testException);
         objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder);
 
         try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
@@ -262,6 +262,6 @@ public class OTelTraceGrpcServiceTest {
 
     private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelTraceGrpcService(
-                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics);
+                bufferWriteTimeoutInMillis, decoder, buffer, true, mockPluginMetrics);
     }
 }

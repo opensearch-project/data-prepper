@@ -29,17 +29,28 @@ public class OTelLogsInputCodecConfig {
     @JsonPropertyDescription("Specifies if the length precedes the data in otlp_proto format")
     private boolean lengthPrefixedEncoding;
 
+    @JsonProperty(value = "opensearch_mode", defaultValue = "true")
+    @JsonPropertyDescription("Specifies if opensearch mode is enabled or not.")
+    private boolean opensearchMode = true;
+
     public OTelLogsFormatOption getFormat() {
          return format;
     }
 
-    @AssertTrue(message = "Not a valid format.")
+    @AssertTrue(message = "Not a valid format or JSON format used with length_prefixed_encoding")
     boolean isValidFormat() {
-        return format != null;
+        if (format == null)
+            return false;
+        if (format == OTelLogsFormatOption.JSON && lengthPrefixedEncoding == true)
+            return false;
+        return true;
     }    
 
     public boolean getLengthPrefixedEncoding() {
         return lengthPrefixedEncoding;
     }
 
+    public boolean getOpensearchMode() {
+        return opensearchMode;
+    }
 }

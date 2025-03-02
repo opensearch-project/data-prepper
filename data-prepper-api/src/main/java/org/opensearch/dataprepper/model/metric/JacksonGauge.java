@@ -29,13 +29,13 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(VALUE_KEY);
 
-    protected JacksonGauge(Builder builder, boolean flattenAttributes) {
-        super(builder, flattenAttributes);
+    protected JacksonGauge(Builder builder, boolean opensearchMode) {
+        super(builder, opensearchMode);
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(final boolean opensearchMode) {
+        return new Builder(opensearchMode);
     }
 
     @Override
@@ -49,6 +49,10 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
      * @since 1.4
      */
     public static class Builder extends JacksonMetric.Builder<JacksonGauge.Builder> {
+
+        public Builder(final boolean opensearchMode) {
+            super(opensearchMode);
+        }
 
         @Override
         public Builder getThis() {
@@ -86,22 +90,14 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
          * @since 1.4
          */
         public JacksonGauge build() {
-            return build(true);
-        }
-
-        /**
-         * Returns a newly created {@link JacksonGauge}
-         * @param flattenAttributes flag indicating if the attributes should be flattened or not
-         * @return a JacksonGauge
-         * @since 2.1
-         */
-        public JacksonGauge build(boolean flattenAttributes) {
             this.withEventKind(Metric.KIND.GAUGE.toString());
             this.withData(data);
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
-            return new JacksonGauge(this, flattenAttributes);
+            if (getOpensearchMode()) {
+                new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            }
+            return new JacksonGauge(this, opensearchMode);
         }
 
         private void checkAndSetDefaultValues() {

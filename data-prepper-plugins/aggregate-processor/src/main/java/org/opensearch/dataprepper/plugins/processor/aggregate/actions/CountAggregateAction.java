@@ -158,7 +158,7 @@ public class CountAggregateAction implements AggregateAction {
             long startTimeNanos = getTimeNanos(startTime);
             Map<String, Object> attr = new HashMap<String, Object>();
             groupState.forEach((k, v) -> attr.put((String)k, v));
-            JacksonSum sum = JacksonSum.builder()
+            JacksonSum sum = JacksonSum.builder(false)
                 .withName(this.metricName)
                 .withDescription(SUM_METRIC_DESCRIPTION)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
@@ -170,7 +170,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withExemplars(List.of(exemplar))
                 .withAttributes(attr)
                 .withEventHandle(aggregateActionInput.getEventHandle())
-                .build(false);
+                .build();
             event = (Event)sum;
         }
 

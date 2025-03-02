@@ -26,7 +26,7 @@ public class OTelLogsDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
     
     public OTelLogsDecoder createObjectUnderTest() {
-        return new OTelLogsDecoder();
+        return new OTelLogsDecoder(true);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {

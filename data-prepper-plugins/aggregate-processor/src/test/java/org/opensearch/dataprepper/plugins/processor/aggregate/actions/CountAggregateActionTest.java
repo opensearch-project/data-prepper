@@ -39,6 +39,7 @@ import static org.hamcrest.Matchers.hasKey;
 
 @ExtendWith(MockitoExtension.class)
 public class CountAggregateActionTest {
+    private static String START_TIME_KEY = "start_time";
     AggregateActionInput aggregateActionInput;
 
     private AggregateAction countAggregateAction;
@@ -127,7 +128,7 @@ public class CountAggregateActionTest {
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
         JacksonMetric metric = (JacksonMetric) result.get(0);
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
         List<Map<String, Object>> exemplars = (List <Map<String, Object>>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(1));
@@ -211,10 +212,10 @@ public class CountAggregateActionTest {
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
         JacksonMetric metric = (JacksonMetric) result.get(0);
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
-        assertThat(result.get(0).get("startTime", String.class), equalTo(testTime.toString()));
+        assertThat(result.get(0).get(START_TIME_KEY, String.class), equalTo(testTime.toString()));
         assertThat(result.get(0).get("time", String.class), equalTo(testTime.plusSeconds(100).toString()));
 
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
         List<Map<String, Object>> exemplars = (List <Map<String, Object>>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(1));
@@ -277,7 +278,7 @@ public class CountAggregateActionTest {
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
         JacksonMetric metric = (JacksonMetric) result.get(0);
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
-        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey(START_TIME_KEY));
         assertThat(result.get(0).toMap(), hasKey("time"));
         List<Map<String, Object>> exemplars = (List <Map<String, Object>>)result.get(0).toMap().get("exemplars");
         assertThat(exemplars.size(), equalTo(1));

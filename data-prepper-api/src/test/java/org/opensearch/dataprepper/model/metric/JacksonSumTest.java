@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.model.metric;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
@@ -47,9 +49,8 @@ public class JacksonSumTest {
 
     private JacksonSum.Builder builder;
 
-    @BeforeEach
-    public void setup() {
-        builder = JacksonSum.builder()
+    private JacksonSum createObjectUnderTest(boolean opensearchMode) {
+        builder = JacksonSum.builder(opensearchMode)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -62,9 +63,12 @@ public class JacksonSumTest {
                 .withValue(TEST_VALUE)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSchemaUrl(TEST_SCHEMA_URL);
+        return builder.build();
+    }
 
-        sum = builder.build();
-
+    @BeforeEach
+    public void setup() {
+        sum = createObjectUnderTest(true);
     }
 
     @Test
@@ -127,8 +131,10 @@ public class JacksonSumTest {
         assertThat(((DefaultEventHandle)sum.getEventHandle()).getInternalOriginationTime(), is(now));
     }
 
-    @Test
-    public void testGetAggregationTemporality() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetAggregationTemporality(final boolean opensearchMode) {
+        sum = createObjectUnderTest(opensearchMode);
         final String aggregationTemporality = sum.getAggregationTemporality();
         assertThat(aggregationTemporality, is(equalTo(TEST_AGGREGATION_TEMPORALITY)));
     }
@@ -152,8 +158,10 @@ public class JacksonSumTest {
         assertThat(unit, is(equalTo(TEST_UNIT_NAME)));
     }
 
-    @Test
-    public void testGetMonotonic() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetMonotonic(final boolean opensearchMode) {
+        sum = createObjectUnderTest(opensearchMode);
         final boolean monotonic = sum.isMonotonic();
         assertThat(monotonic, is(equalTo(TEST_IS_MONOTONIC)));
     }
@@ -166,7 +174,7 @@ public class JacksonSumTest {
 
     @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonSum.Builder builder = JacksonSum.builder();
+        final JacksonSum.Builder builder = JacksonSum.builder(true);
         builder.withValue(null);
         assertThrows(NullPointerException.class, builder::build);
     }
@@ -196,7 +204,7 @@ public class JacksonSumTest {
 
     @Test
     public void testSumJsonToStringWithAttributes() {
-        sum = builder.build(false);
+        sum = createObjectUnderTest(false);
         String attrKey = UUID.randomUUID().toString();
         String attrVal = UUID.randomUUID().toString();
         final Map<String, Object> attributes = Map.of(attrKey, attrVal);

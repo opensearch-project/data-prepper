@@ -32,6 +32,7 @@ public class OTelMetricsSourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
+    static final String OPENSEARCH_MODE = "opensearch_mode";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21891;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -60,6 +61,9 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(PROTO_REFLECTION_SERVICE)
     private boolean protoReflectionService = DEFAULT_PROTO_REFLECTION_SERVICE;
+
+    @JsonProperty(OPENSEARCH_MODE)
+    private boolean opensearchMode = true;
 
     @JsonProperty(ENABLE_UNFRAMED_REQUESTS)
     private boolean enableUnframedRequests = DEFAULT_ENABLED_UNFRAMED_REQUESTS;
@@ -155,6 +159,9 @@ public class OTelMetricsSourceConfig {
         return port;
     }
 
+    public boolean getOpensearchMode() {
+        return opensearchMode;
+    }
     public String getPath() {
         return path;
     }

@@ -37,7 +37,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
     public static final String RECORDS_DROPPED_METRICS_RAW = "recordsDroppedMetricsRaw";
 
     private final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig;
-    private final boolean flattenAttributesFlag;
+    private final boolean opensearchMode;
 
     private final Counter recordsDroppedMetricsRawCounter;
 
@@ -46,17 +46,17 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
         super(pluginSetting);
         this.otelMetricsRawProcessorConfig = otelMetricsRawProcessorConfig;
         recordsDroppedMetricsRawCounter = pluginMetrics.counter(RECORDS_DROPPED_METRICS_RAW);
-        this.flattenAttributesFlag = otelMetricsRawProcessorConfig.getFlattenAttributesFlag();
+        this.opensearchMode = otelMetricsRawProcessorConfig.getOpensearchMode();
     }
 
     private void modifyRecord(Record<? extends Metric> record,
-                              boolean flattenAttributes,
+                              boolean opensearchMode,
                               boolean calcualteHistogramBuckets,
                               boolean calcualteExponentialHistogramBuckets) {
         Event event = (Event)record.getData();
 
-        if (!flattenAttributes) {
-            ((JacksonMetric)record.getData()).setFlattenAttributes(false);
+        if (!opensearchMode) {
+            ((JacksonMetric)record.getData()).setOpensearchMode(false);
         }
         if (!calcualteHistogramBuckets && event.get(BUCKETS_KEY, List.class) != null) {
             event.delete(BUCKETS_KEY);
@@ -80,10 +80,10 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
         for (Record<?> rec : records) {
             if ((rec.getData() instanceof Event)) {
                 Record<? extends Metric> newRecord = (Record<? extends Metric>)rec;
-                if (!otelMetricsRawProcessorConfig.getFlattenAttributesFlag() ||
+                if (!otelMetricsRawProcessorConfig.getOpensearchMode() ||
                     !otelMetricsRawProcessorConfig.getCalculateHistogramBuckets() ||
                     !otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets()) {
-                    modifyRecord(newRecord, otelMetricsRawProcessorConfig.getFlattenAttributesFlag(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets());
+                    modifyRecord(newRecord, otelMetricsRawProcessorConfig.getOpensearchMode(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets());
                 }
                 recordsOut.add(newRecord);
             }
@@ -93,7 +93,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
             }
 
             ExportMetricsServiceRequest request = ((Record<ExportMetricsServiceRequest>)rec).getData();
-            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), Instant.now(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), flattenAttributesFlag));
+            recordsOut.addAll(otelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale(), Instant.now(), otelMetricsRawProcessorConfig.getCalculateHistogramBuckets(), otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets(), opensearchMode));
         }
         recordsDroppedMetricsRawCounter.increment(droppedCounter.get());
         return recordsOut;

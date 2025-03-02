@@ -23,13 +23,15 @@ import java.time.Instant;
 
 public class OTelTraceDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTelTraceDecoder() {
+    private final boolean opensearchMode;
+    public OTelTraceDecoder(final boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportTraceServiceRequest request = ExportTraceServiceRequest.parseFrom(inputStream);
         AtomicInteger droppedCounter = new AtomicInteger(0);
-        List<Span> spans = otelProtoDecoder.parseExportTraceServiceRequest(request, timeReceivedMs);
+        List<Span> spans = otelProtoDecoder.parseExportTraceServiceRequest(request, timeReceivedMs, opensearchMode);
         for (Span span: spans) {
             eventConsumer.accept(new Record<>(span));
         }

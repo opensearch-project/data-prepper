@@ -116,7 +116,7 @@ public class OTelMetricsGrpcServiceTest {
 
         when(serviceRequestContext.isTimedOut()).thenReturn(false);
 
-        sut = new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec.OTelProtoDecoder(), buffer, mockPluginMetrics);
+        sut = new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec.OTelProtoDecoder(), buffer, true, mockPluginMetrics);
     }
 
     @Test

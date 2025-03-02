@@ -9,6 +9,8 @@ import com.google.common.collect.ImmutableMap;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
@@ -55,9 +57,8 @@ public class JacksonSummaryTest {
 
     private JacksonSummary.Builder builder;
 
-    @BeforeEach
-    public void setup() {
-        builder = JacksonSummary.builder()
+    private JacksonSummary createObjectUnderTest(boolean opensearchMode) {
+        builder = JacksonSummary.builder(opensearchMode)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -71,8 +72,12 @@ public class JacksonSummaryTest {
                 .withCount(TEST_COUNT)
                 .withQuantilesValueCount(TEST_QUANTILES_COUNT)
                 .withSchemaUrl(TEST_SCHEMA_URL);
+        return builder.build();
+    }
 
-        summary = builder.build();
+    @BeforeEach
+    public void setup() {
+        summary = createObjectUnderTest(true);
     }
 
     @Test
@@ -167,16 +172,18 @@ public class JacksonSummaryTest {
         assertThat(secondQuantile.getValue(), is(equalTo(0.6)));
     }
 
-    @Test
-    public void testGetQuantilesValuesCount() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetQuantilesValuesCount(final boolean opensearchMode) {
+        summary = createObjectUnderTest(opensearchMode);
         final Integer quantilesValuesCount = summary.getQuantileValuesCount();
         assertThat(quantilesValuesCount, is(equalTo(TEST_QUANTILES_COUNT)));
     }
 
     @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonSum.Builder builder = JacksonSum.builder();
-        builder.withValue(null);
+        final JacksonSummary.Builder builder = JacksonSummary.builder(true);
+        builder.withAttributes(null);
         assertThrows(NullPointerException.class, builder::build);
     }
 
@@ -205,7 +212,7 @@ public class JacksonSummaryTest {
 
     @Test
     public void testSummaryJsonToStringWithAttributes() {
-        summary = builder.build(false);
+        summary = createObjectUnderTest(false);
         String attrKey = UUID.randomUUID().toString();
         String attrVal = UUID.randomUUID().toString();
         final Map<String, Object> attributes = Map.of(attrKey, attrVal);

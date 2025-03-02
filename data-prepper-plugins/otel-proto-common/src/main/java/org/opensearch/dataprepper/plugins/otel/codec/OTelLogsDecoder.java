@@ -21,13 +21,15 @@ import java.time.Instant;
 
 public class OTelLogsDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTelLogsDecoder() {
+    private final boolean opensearchMode;
+    public OTelLogsDecoder(final boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(inputStream);
         AtomicInteger droppedCounter = new AtomicInteger(0);
-        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
+        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs, opensearchMode);
         for (OpenTelemetryLog log: logs) {
             eventConsumer.accept(new Record<>(log));
         }

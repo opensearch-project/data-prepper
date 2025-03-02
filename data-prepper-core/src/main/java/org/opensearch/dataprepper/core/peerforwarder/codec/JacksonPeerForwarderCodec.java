@@ -67,7 +67,7 @@ public class JacksonPeerForwarderCodec implements PeerForwarderCodec {
         Event event;
 
         if (wireEvent.getEventType().equalsIgnoreCase(TRACE_EVENT_TYPE)) {
-            event = JacksonSpan.builder()
+            event = JacksonSpan.builder(false)
                     .withJsonData(wireEvent.getEventData())
                     .withEventMetadata(eventMetadata)
                     .build();

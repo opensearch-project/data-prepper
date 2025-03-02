@@ -25,9 +25,9 @@ public class OTelLogsInputCodec implements InputCodec {
     public OTelLogsInputCodec(final OTelLogsInputCodecConfig config) {
         Objects.requireNonNull(config);
         if (config.getFormat() == OTelLogsFormatOption.JSON) {
-            decoder = new OTelLogsJsonDecoder();
+            decoder = new OTelLogsJsonDecoder(config.getOpensearchMode());
         } else if (config.getFormat() == OTelLogsFormatOption.PROTOBUF) {
-            decoder = new OTelLogsProtoBufDecoder(config.getLengthPrefixedEncoding());
+            decoder = new OTelLogsProtoBufDecoder(config.getOpensearchMode(), config.getLengthPrefixedEncoding());
         } else {
             throw new RuntimeException("The codec " + config.getFormat() + " is not supported.");
         }

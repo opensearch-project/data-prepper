@@ -28,14 +28,16 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
     private static final int MAX_REQUEST_LEN = (8 * 1024 * 1024);
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
     private final boolean lengthPrefixedEncoding;
+    private final boolean opensearchMode;
     
-    public OTelLogsProtoBufDecoder(boolean lengthPrefixedEncoding) {
+    public OTelLogsProtoBufDecoder(boolean opensearchMode, boolean lengthPrefixedEncoding) {
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
         this.lengthPrefixedEncoding = lengthPrefixedEncoding;
+        this.opensearchMode = opensearchMode;
     }
 
     private void parseRequest(final ExportLogsServiceRequest request, final Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
-        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
+        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs, opensearchMode);
         for (OpenTelemetryLog log: logs) {
             eventConsumer.accept(new Record<>(log));
         }
