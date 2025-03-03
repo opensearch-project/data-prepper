@@ -120,8 +120,8 @@ public class CountAggregateActionTest {
         expectedEventMap.put("value", (double)testCount);
         expectedEventMap.put("name", "count");
         expectedEventMap.put("description", "Number of events");
-        expectedEventMap.put("isMonotonic", true);
-        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
+        expectedEventMap.put("is_monotonic", true);
+        expectedEventMap.put("aggregation_temporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
         expectedEventMap.put("name", testName);
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
@@ -205,8 +205,8 @@ public class CountAggregateActionTest {
         expectedEventMap.put("value", (double)testCount);
         expectedEventMap.put("name", testName);
         expectedEventMap.put("description", "Number of events");
-        expectedEventMap.put("isMonotonic", true);
-        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
+        expectedEventMap.put("is_monotonic", true);
+        expectedEventMap.put("aggregation_temporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
         assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
@@ -270,8 +270,8 @@ public class CountAggregateActionTest {
         double expectedCount = (testCount >= 3) ? 3 : testCount;
         expectedEventMap.put("value", expectedCount);
         expectedEventMap.put("description", "Number of events");
-        expectedEventMap.put("isMonotonic", true);
-        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
+        expectedEventMap.put("is_monotonic", true);
+        expectedEventMap.put("aggregation_temporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
         expectedEventMap.put("name", testName);
         expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
