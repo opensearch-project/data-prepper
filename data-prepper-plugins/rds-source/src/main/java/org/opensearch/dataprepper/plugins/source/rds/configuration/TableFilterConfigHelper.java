@@ -9,7 +9,9 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.configuration;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TableFilterConfigHelper {
 
@@ -21,10 +23,17 @@ public class TableFilterConfigHelper {
      */
     public static void applyTableFilter(Set<String> tableNames, TableFilterConfig tableFilterConfig) {
         if (!tableFilterConfig.getInclude().isEmpty()) {
-            tableNames.retainAll(tableFilterConfig.getInclude());
+            List<String> includeTableList = tableFilterConfig.getInclude().stream()
+                    .map(item -> tableFilterConfig.getDatabase() + "." + item)
+                    .collect(Collectors.toList());
+            tableNames.retainAll(includeTableList);
         }
+
         if (!tableFilterConfig.getExclude().isEmpty()) {
-            tableFilterConfig.getExclude().forEach(tableNames::remove);
+            List<String> excludeTableList = tableFilterConfig.getExclude().stream()
+                    .map(item -> tableFilterConfig.getDatabase() + "." + item)
+                    .collect(Collectors.toList());
+            excludeTableList.forEach(tableNames::remove);
         }
     }
 }

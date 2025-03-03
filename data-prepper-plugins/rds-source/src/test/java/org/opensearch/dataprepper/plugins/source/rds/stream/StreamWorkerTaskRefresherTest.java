@@ -265,7 +265,7 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
             }
@@ -300,7 +300,7 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig2);
@@ -333,7 +333,7 @@ class StreamWorkerTaskRefresherTest {
                 streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
                         .thenReturn(streamWorker);
                 logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
-                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager), eq(dbTableMetadata)))
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
                         .thenReturn(logicalReplicationEventProcessor);
                 streamWorkerTaskRefresher.initialize(sourceConfig);
                 streamWorkerTaskRefresher.update(sourceConfig);

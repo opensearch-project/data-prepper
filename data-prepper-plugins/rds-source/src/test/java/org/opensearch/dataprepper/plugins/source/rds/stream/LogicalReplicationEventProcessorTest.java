@@ -26,7 +26,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
 
 import java.nio.ByteBuffer;
@@ -63,9 +62,6 @@ class LogicalReplicationEventProcessorTest {
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
-
-    @Mock
-    private DbTableMetadata dbTableMetadata;
 
     private ByteBuffer message;
 
@@ -180,7 +176,7 @@ class LogicalReplicationEventProcessorTest {
 
     private LogicalReplicationEventProcessor createObjectUnderTest() {
         return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
-                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager, dbTableMetadata);
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
     }
 
     private void setMessageType(MessageType messageType) {

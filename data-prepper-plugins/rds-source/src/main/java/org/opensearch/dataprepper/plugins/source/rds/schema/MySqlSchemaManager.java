@@ -33,6 +33,7 @@ public class MySqlSchemaManager implements SchemaManager {
 
     static final String[] TABLE_TYPES = new String[]{"TABLE"};
     static final String COLUMN_NAME = "COLUMN_NAME";
+    static final String TABLE_NAME = "TABLE_NAME";
     static final String BINLOG_STATUS_QUERY = "SHOW MASTER STATUS";
     static final String BINLOG_FILE = "File";
     static final String BINLOG_POSITION = "Position";
@@ -51,7 +52,6 @@ public class MySqlSchemaManager implements SchemaManager {
     public MySqlSchemaManager(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }
-
 
     @Override
     public Map<String, List<String>> getPrimaryKeys(final List<String> fullTableNames) {
@@ -132,12 +132,9 @@ public class MySqlSchemaManager implements SchemaManager {
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             try (final Connection connection = connectionManager.getConnection()) {
-                final DatabaseMetaData metaData = connection.getMetaData();
-
-                // Retrieve column metadata
-                try (ResultSet tables = metaData.getTables(databaseName, null, null, new String[]{"TABLE"})) {
+                try (ResultSet tables = connection.getMetaData().getTables(databaseName, null, null, new String[]{"TABLE"})) {
                     while (tables.next()) {
-                        tableNames.add(tables.getString("TABLE_NAME"));
+                        tableNames.add(databaseName + "." + tables.getString(TABLE_NAME));
                     }
                 }
                 return tableNames;
@@ -148,8 +145,7 @@ public class MySqlSchemaManager implements SchemaManager {
             applyBackoff();
             retry++;
         }
-        LOG.error("Failed to get table names after {} retries", retry);
-        return tableNames;
+        throw new RuntimeException("Failed to get table names for database: " + databaseName);
     }
 
     public Optional<BinlogCoordinate> getCurrentBinaryLogPosition() {

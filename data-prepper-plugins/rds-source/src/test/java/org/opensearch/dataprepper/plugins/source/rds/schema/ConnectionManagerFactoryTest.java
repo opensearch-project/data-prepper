@@ -43,7 +43,6 @@ class ConnectionManagerFactoryTest {
     @Test
     void test_getConnectionManager_for_postgres() {
         when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
-//        when(sourceConfig.getTableNames()).thenReturn(List.of("schema1.table1", "schema1.table2"));
         final ConnectionManager connectionManager = connectionManagerFactory.getConnectionManager();
         assertThat(connectionManager, notNullValue());
         assertThat(connectionManager, instanceOf(PostgresConnectionManager.class));

@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,9 +34,10 @@ class TableFilterConfigHelperTest {
     private TableFilterConfig tableFilterConfig;
 
     @ParameterizedTest
-    @ArgumentsSource(TableFilterTestArgumentsProvider.class)
-    void test_with_include_only(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) {
-        final Set<String> allTables = new HashSet<>(Set.of("table1", "table2", "table3"));
+    @ArgumentsSource(MySqlTableFilterTestArgumentsProvider.class)
+    void test_filter_mysql(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) {
+        final Set<String> allTables = new HashSet<>(Set.of("database1.table1", "database1.table2", "database1.table3"));
+        lenient().when(tableFilterConfig.getDatabase()).thenReturn("database1");
         when(tableFilterConfig.getInclude()).thenReturn(includeTables);
         when(tableFilterConfig.getExclude()).thenReturn(excludeTables);
 
@@ -44,25 +46,59 @@ class TableFilterConfigHelperTest {
         assertThat(expectedTables, is(allTables));
     }
 
-    static class TableFilterTestArgumentsProvider implements ArgumentsProvider {
+    @ParameterizedTest
+    @ArgumentsSource(PostgresTableFilterTestArgumentsProvider.class)
+    void test_filter_postgres(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) {
+        final Set<String> allTables = new HashSet<>(Set.of("database1.schema1.table1", "database1.schema1.table2", "database1.schema1.table3"));
+        lenient().when(tableFilterConfig.getDatabase()).thenReturn("database1");
+        when(tableFilterConfig.getInclude()).thenReturn(includeTables);
+        when(tableFilterConfig.getExclude()).thenReturn(excludeTables);
+
+        TableFilterConfigHelper.applyTableFilter(allTables, tableFilterConfig);
+
+        assertThat(expectedTables, is(allTables));
+    }
+
+    static class MySqlTableFilterTestArgumentsProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            Set<String> allTables = new HashSet<>(Set.of("table1", "table2", "table3"));
             return Stream.of(
                     // Include only
-                    Arguments.of(List.of("table1", "table2"), List.of(), Set.of("table1", "table2")),
-                    Arguments.of(List.of("table1", "table4"), List.of(), Set.of("table1")),
+                    Arguments.of(List.of("table1", "table2"), List.of(), Set.of("database1.table1", "database1.table2")),
+                    Arguments.of(List.of("table1", "table4"), List.of(), Set.of("database1.table1")),
 
                     // Exclude only
-                    Arguments.of(List.of(), List.of("table1", "table2"), Set.of("table3")),
-                    Arguments.of(List.of(), List.of("table1", "table4"), Set.of("table2", "table3")),
+                    Arguments.of(List.of(), List.of("table1", "table2"), Set.of("database1.table3")),
+                    Arguments.of(List.of(), List.of("table1", "table4"), Set.of("database1.table2", "database1.table3")),
 
                     // Both include and exclude
                     Arguments.of(List.of("table1", "table2"), List.of("table1", "table2"), Set.of()),
-                    Arguments.of(List.of("table1", "table2"), List.of("table2", "table3"), Set.of("table1")),
+                    Arguments.of(List.of("table1", "table2"), List.of("table2", "table3"), Set.of("database1.table1")),
 
                     // No include or exclude
-                    Arguments.of(List.of(), List.of(), allTables)
+                    Arguments.of(List.of(), List.of(), Set.of("database1.table1", "database1.table2", "database1.table3"))
+            );
+        }
+    }
+
+    static class PostgresTableFilterTestArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+            return Stream.of(
+                    // Include only
+                    Arguments.of(List.of("schema1.table1", "schema1.table2"), List.of(), Set.of("database1.schema1.table1", "database1.schema1.table2")),
+                    Arguments.of(List.of("schema1.table1", "schema1.table4"), List.of(), Set.of("database1.schema1.table1")),
+
+                    // Exclude only
+                    Arguments.of(List.of(), List.of("schema1.table1", "schema1.table2"), Set.of("database1.schema1.table3")),
+                    Arguments.of(List.of(), List.of("schema1.table1", "schema1.table4"), Set.of("database1.schema1.table2", "database1.schema1.table3")),
+
+                    // Both include and exclude
+                    Arguments.of(List.of("schema1.table1", "schema1.table2"), List.of("schema1.table1", "schema1.table2"), Set.of()),
+                    Arguments.of(List.of("schema1.table1", "schema1.table2"), List.of("schema1.table2", "schema1.table3", "schema2.table2"), Set.of("database1.schema1.table1")),
+
+                    // No include or exclude
+                    Arguments.of(List.of(), List.of(), Set.of("database1.schema1.table1", "database1.schema1.table2", "database1.schema1.table3"))
             );
         }
     }

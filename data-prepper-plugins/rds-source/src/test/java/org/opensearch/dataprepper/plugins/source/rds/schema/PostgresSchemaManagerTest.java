@@ -46,8 +46,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
-import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.TABLE_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.TABLE_SCHEMA;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.TYPE_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.DROP_PUBLICATION_SQL;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager.DROP_SLOT_SQL;
 
@@ -386,6 +389,30 @@ class PostgresSchemaManagerTest {
                 schemaManager.getEnumColumns(List.of(fullTableName)));
     }
 
+    @Test
+    void test_getTableNames_returns_correct_result() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String schemaName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+        final String fullTableName = databaseName + DOT_DELIMITER + schemaName + DOT_DELIMITER + tableName;
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData().getTables(databaseName, null, null, new String[]{"TABLE"})).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getString(TABLE_SCHEMA)).thenReturn(schemaName);
+        when(resultSet.getString(TABLE_NAME)).thenReturn(tableName);
+
+        Set<String> tableNames = schemaManager.getTableNames(databaseName);
+
+        assertThat(tableNames, is(Set.of(fullTableName)));
+    }
+
+    @Test
+    void test_getTableNames_when_exception_then_throws() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        when(connectionManager.getConnection()).thenThrow(SQLException.class);
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getTableNames(databaseName));
+    }
 
     private PostgresSchemaManager createObjectUnderTest() {
         return new PostgresSchemaManager(connectionManager);

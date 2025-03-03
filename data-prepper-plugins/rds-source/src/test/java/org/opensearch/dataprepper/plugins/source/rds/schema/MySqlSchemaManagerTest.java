@@ -23,6 +23,7 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -39,6 +40,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaMa
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_POSITION;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_STATUS_QUERY;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TABLE_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.DELETE_RULE;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.FKCOLUMN_NAME;
@@ -93,6 +95,29 @@ class MySqlSchemaManagerTest {
 
         final String fullTableName = databaseName + "." + tableName;
         assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
+    }
+
+    @Test
+    void test_getTableNames_returns_correct_result() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+        final String fullTableName = databaseName + DOT_DELIMITER + tableName;
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData().getTables(databaseName, null, null, new String[]{"TABLE"})).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getString(TABLE_NAME)).thenReturn(tableName);
+
+        Set<String> tableNames = schemaManager.getTableNames(databaseName);
+
+        assertThat(tableNames, is(Set.of(fullTableName)));
+    }
+
+    @Test
+    void test_getTableNames_when_exception_then_throws() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        when(connectionManager.getConnection()).thenThrow(SQLException.class);
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getTableNames(databaseName));
     }
 
     @Test

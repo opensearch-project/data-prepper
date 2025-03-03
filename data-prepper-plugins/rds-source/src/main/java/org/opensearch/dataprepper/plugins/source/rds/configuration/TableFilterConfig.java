@@ -28,7 +28,7 @@ public class TableFilterConfig {
     @Size(max = 1000, message = "Table filter list should not be more than 1000")
     private List<String> include = Collections.emptyList();
 
-    @JsonProperty("include")
+    @JsonProperty("exclude")
     @Size(max = 1000, message = "Table filter list should not be more than 1000")
     private List<String> exclude = Collections.emptyList();
 }

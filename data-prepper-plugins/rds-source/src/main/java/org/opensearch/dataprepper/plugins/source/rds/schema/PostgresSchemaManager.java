@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -36,6 +35,8 @@ public class PostgresSchemaManager implements SchemaManager {
     static final int BACKOFF_IN_MILLIS = 500;
     static final String COLUMN_NAME = "COLUMN_NAME";
     static final String TYPE_NAME = "TYPE_NAME";
+    static final String TABLE_SCHEMA = "TABLE_SCHEM";
+    static final String TABLE_NAME = "TABLE_NAME";
     static final String PGOUTPUT = "pgoutput";
     static final String DROP_PUBLICATION_SQL = "DROP PUBLICATION IF EXISTS ";
     static final String DROP_SLOT_SQL = "SELECT pg_drop_replication_slot(?)";
@@ -58,11 +59,13 @@ public class PostgresSchemaManager implements SchemaManager {
         final String createPublicationStatement = createPublicationStatementBuilder.toString();
 
         try (Connection conn = connectionManager.getConnection()) {
+            LOG.debug("Connecting to create slot");
             try {
                 PreparedStatement statement = conn.prepareStatement(createPublicationStatement);
                 statement.executeUpdate();
             } catch (Exception e) {
-                LOG.warn("Failed to create publication: {}", e.getMessage());
+                LOG.error("Failed to create publication: {}", e.getMessage());
+                throw e;
             }
 
             PGConnection pgConnection = conn.unwrap(PGConnection.class);
@@ -98,6 +101,7 @@ public class PostgresSchemaManager implements SchemaManager {
 
     public void deleteLogicalReplicationSlot(final String publicationName, final String slotName) {
         try (Connection conn = connectionManager.getConnection()) {
+            LOG.debug("Connecting to delete slot");
             if (slotName != null) {
                 try (PreparedStatement dropSlotStatement = conn.prepareStatement(DROP_SLOT_SQL)) {
                     dropSlotStatement.setString(1, slotName);
@@ -125,6 +129,7 @@ public class PostgresSchemaManager implements SchemaManager {
     public Map<String, List<String>> getPrimaryKeys(final List<String> fullTableNames) {
         final Map<String, List<String>> tableToPrimaryKeysMap = new HashMap<>();
         try (final Connection connection = connectionManager.getConnection()) {
+            LOG.debug("Connecting to get primary keys");
             for (final String fullTableName : fullTableNames) {
                 tableToPrimaryKeysMap.put(fullTableName, getPrimaryKeysForTable(connection, fullTableName));
             }
@@ -138,6 +143,7 @@ public class PostgresSchemaManager implements SchemaManager {
     public Map<String, Map<String, String>> getColumnDataTypes(final List<String> fullTableNames) {
         final Map<String, Map<String, String>> tableToColumnDataTypesMap =  new HashMap<>();
         try (Connection connection = connectionManager.getConnection()) {
+            LOG.debug("Connecting to get column types");
             for (final String fullTableName : fullTableNames) {
                 tableToColumnDataTypesMap.put(fullTableName, getColumnDataTypesForTable(connection, fullTableName));
             }
@@ -184,6 +190,7 @@ public class PostgresSchemaManager implements SchemaManager {
     public Map<String, Set<String>> getEnumColumns(final List<String> fullTableNames) {
         final Map<String, Set<String>> tableToEnumColumnsMap = new HashMap<>();
         try (final Connection connection = connectionManager.getConnection()) {
+            LOG.debug("Connecting to get enums");
             for (final String fullTableName : fullTableNames) {
                 tableToEnumColumnsMap.put(fullTableName, getEnumColumnsForTable(connection, fullTableName));
             }
@@ -199,14 +206,12 @@ public class PostgresSchemaManager implements SchemaManager {
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             try (final Connection connection = connectionManager.getConnection()) {
-                final DatabaseMetaData metaData = connection.getMetaData();
-
-                // Retrieve column metadata
-                try (ResultSet tables = metaData.getTables(databaseName, null, null, new String[]{"TABLE"})) {
+                LOG.debug("Connecting to get table names");
+                try (ResultSet tables = connection.getMetaData().getTables(databaseName, null, null, new String[]{"TABLE"})) {
                     while (tables.next()) {
-                        String schemaName = tables.getString("TABLE_SCHEM");
-                        String tableName = tables.getString("TABLE_NAME");
-                        tableNames.add(schemaName + "." + tableName);
+                        String schemaName = tables.getString(TABLE_SCHEMA);
+                        String tableName = tables.getString(TABLE_NAME);
+                        tableNames.add(databaseName + "." + schemaName + "." + tableName);
                     }
                 }
                 return tableNames;
@@ -217,8 +222,7 @@ public class PostgresSchemaManager implements SchemaManager {
             applyBackoff();
             retry++;
         }
-        LOG.error("Failed to get table names after {} retries", retry);
-        return tableNames;
+        throw new RuntimeException("Failed to get table names for database: " + databaseName);
     }
 
     private List<String> getPrimaryKeysForTable(Connection connection, String fullTableName) {

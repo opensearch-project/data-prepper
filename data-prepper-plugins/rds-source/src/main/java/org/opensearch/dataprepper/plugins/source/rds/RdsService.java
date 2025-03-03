@@ -169,6 +169,7 @@ public class RdsService {
         }
     }
 
+    // Visible for testing
     SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManagerFactory(sourceConfig, dbMetadata).getConnectionManager();
         return new SchemaManagerFactory(connectionManager).getSchemaManager();
@@ -197,7 +198,9 @@ public class RdsService {
         final String s3PathPrefix;
         if (sourceCoordinator.getPartitionPrefix() != null ) {
             // The prefix will be used in RDS export, which has a limit of 60 characters.
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
+            final String uniqueIdentifier = IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
+            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
+            LOG.info("Unique identifier used in S3 path prefix is {}", uniqueIdentifier);
         } else {
             s3PathPrefix = s3UserPathPrefix;
         }
@@ -212,6 +215,7 @@ public class RdsService {
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
         Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getTables().getDatabase());
         TableFilterConfigHelper.applyTableFilter(tableNames, sourceConfig.getTables());
+        LOG.info("These tables will be include in processing: {}", tableNames);
         return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
 }

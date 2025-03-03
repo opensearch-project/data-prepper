@@ -25,6 +25,7 @@ import java.time.Duration;
  */
 public class RdsSourceConfig {
     private static final int DEFAULT_S3_FOLDER_PARTITION_COUNT = 100;
+
     /**
      * Identifier for RDS instance/cluster or Aurora cluster
      */
