@@ -13,8 +13,6 @@ package org.opensearch.dataprepper.plugins.source.rds.schema;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 
-import java.util.List;
-
 public class ConnectionManagerFactory {
     private final RdsSourceConfig sourceConfig;
     private final DbMetadata dbMetadata;
@@ -41,9 +39,5 @@ public class ConnectionManagerFactory {
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled(),
                 sourceConfig.getTables().getDatabase());
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split("\\.")[0];
     }
 }

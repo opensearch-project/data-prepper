@@ -36,9 +36,9 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -179,10 +179,10 @@ class PostgresSchemaManagerTest {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getString("COLUMN_NAME")).thenReturn(primaryKeyName);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(fullTableName);
+        final Map<String, List<String>> primaryKeys = schemaManager.getPrimaryKeys(List.of(fullTableName));
 
         assertThat(primaryKeys.size(), is(1));
-        assertThat(primaryKeys.get(0), is(primaryKeyName));
+        assertThat(primaryKeys.get(fullTableName), is(List.of(primaryKeyName)));
     }
 
     @Test
@@ -197,7 +197,7 @@ class PostgresSchemaManagerTest {
         when(connection.getMetaData().getPrimaryKeys(database, schema, table)).thenReturn(resultSet);
         when(resultSet.next()).thenThrow(RuntimeException.class);
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(fullTableName));
+        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
     }
 
     @Test
@@ -210,7 +210,7 @@ class PostgresSchemaManagerTest {
         when(connection.getMetaData()).thenReturn(databaseMetaData);
         when(databaseMetaData.getColumns(database, schema, tableName, null)).thenThrow(new SQLException("Test exception"));
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(fullTableName));
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
     }
 
     @Test
@@ -221,7 +221,7 @@ class PostgresSchemaManagerTest {
         final String fullTableName = database + "." + schema + "." + tableName;
         when(connectionManager.getConnection()).thenThrow(new SQLException("Connection failed"));
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(fullTableName));
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
     }
 
     @Test
@@ -250,11 +250,13 @@ class PostgresSchemaManagerTest {
         when(resultSet.getString(TYPE_NAME))
                 .thenReturn("serial", "char", "timestamp");
 
-        Map<String, String> result = schemaManager.getColumnDataTypes(fullTableName);
+        Map<String, Map<String, String>> result = schemaManager.getColumnDataTypes(List.of(fullTableName));
 
         assertThat(result, notNullValue());
-        assertThat(result.size(), is(expectedColumnTypes.size()));
-        assertThat(result, equalTo(expectedColumnTypes));
+        assertThat(result.size(), is(1));
+        Map<String, String> resultItem = result.get(fullTableName);
+        assertThat(resultItem.size(), is(expectedColumnTypes.size()));
+        assertThat(resultItem, is(expectedColumnTypes));
     }
 
     @Test
@@ -274,7 +276,7 @@ class PostgresSchemaManagerTest {
 
         Set<String> enumColumns = Set.of("status", "category");
         PostgresSchemaManager spySchemaManager = spy(schemaManager);
-        doReturn(enumColumns).when(spySchemaManager).getEnumColumns(fullTableName);
+        doReturn(enumColumns).when(spySchemaManager).getEnumColumnsForTable(connection, fullTableName);
 
         when(connectionManager.getConnection()).thenReturn(connection);
         when(connection.getMetaData()).thenReturn(databaseMetaData);
@@ -289,15 +291,16 @@ class PostgresSchemaManagerTest {
                 .thenReturn("serial", "user_status_enum", "varchar", "category_enum");
 
         // Execute the method
-        Map<String, String> result = spySchemaManager.getColumnDataTypes(fullTableName);
+        Map<String, Map<String, String>> result = spySchemaManager.getColumnDataTypes(List.of(fullTableName));
 
         // Verify results
         assertThat(result, notNullValue());
-        assertThat(result.size(), is(expectedColumnTypes.size()));
-        assertThat(result, equalTo(expectedColumnTypes));
+        assertThat(result.size(), is(1));
+        Map<String, String> resultItem = result.get(fullTableName);
+        assertThat(resultItem.size(), is(expectedColumnTypes.size()));
+        assertThat(resultItem, equalTo(expectedColumnTypes));
 
         // Verify the interactions
-        verify(spySchemaManager).getEnumColumns(fullTableName);
         verify(databaseMetaData).getColumns(database, schema, tableName, null);
     }
 
@@ -315,9 +318,9 @@ class PostgresSchemaManagerTest {
         when(resultSet.next()).thenReturn(true, true, false);
         when(resultSet.getString("column_name")).thenReturn("status", "category");
 
-        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+        final Map<String, Set<String>> actualEnumColumnsMap = schemaManager.getEnumColumns(List.of(fullTableName));
 
-        assertThat(actualEnumColumns, equalTo(expectedEnumColumns));
+        assertThat(actualEnumColumnsMap.get(fullTableName), equalTo(expectedEnumColumns));
 
         verify(preparedStatement).setString(1, schema);
         verify(preparedStatement).setString(2, tableName);
@@ -336,9 +339,10 @@ class PostgresSchemaManagerTest {
         when(preparedStatement.executeQuery()).thenReturn(resultSet);
         when(resultSet.next()).thenReturn(false);
 
-        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+        final Map<String, Set<String>> actualEnumColumnsMap = schemaManager.getEnumColumns(List.of(fullTableName));
 
-        assertTrue(actualEnumColumns.isEmpty());
+        final Set<String> actualEnumColumns = actualEnumColumnsMap.get(fullTableName);
+        assertThat(actualEnumColumns, empty());
         verify(preparedStatement).setString(1, schema);
         verify(preparedStatement).setString(2, tableName);
         verify(preparedStatement).setString(3, database);
@@ -359,9 +363,9 @@ class PostgresSchemaManagerTest {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getString("column_name")).thenReturn("status");
 
-        final Set<String> actualEnumColumns = schemaManager.getEnumColumns(fullTableName);
+        final Map<String, Set<String>> actualEnumColumnsMap = schemaManager.getEnumColumns(List.of(fullTableName));
 
-        assertThat(actualEnumColumns, equalTo(Set.of("status")));
+        assertThat(actualEnumColumnsMap.get(fullTableName), equalTo(Set.of("status")));
         verify(preparedStatement).setString(1, schema);
         verify(preparedStatement).setString(2, tableName);
         verify(preparedStatement).setString(3, database);
@@ -379,7 +383,7 @@ class PostgresSchemaManagerTest {
                 .thenThrow(new SQLException("Database error"));
 
         assertThrows(RuntimeException.class, () ->
-                schemaManager.getEnumColumns(fullTableName));
+                schemaManager.getEnumColumns(List.of(fullTableName)));
     }
 
 

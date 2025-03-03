@@ -246,7 +246,8 @@ public class PostgresSchemaManager implements SchemaManager {
         throw new RuntimeException("Failed to get primary keys for table " + fullTableName);
     }
 
-    private Set<String> getEnumColumnsForTable(final Connection connection, final String fullTableName) {
+    // Visible for testing
+    Set<String> getEnumColumnsForTable(final Connection connection, final String fullTableName) {
         final String[] splits = fullTableName.split("\\.");
         final String database = splits[0];
         final String schema = splits[1];

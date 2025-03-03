@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfigHelper;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
@@ -45,7 +46,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class RdsService {
     private static final Logger LOG = LoggerFactory.getLogger(RdsService.class);
@@ -169,7 +169,7 @@ public class RdsService {
         }
     }
 
-    private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
+    SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManagerFactory(sourceConfig, dbMetadata).getConnectionManager();
         return new SchemaManagerFactory(connectionManager).getSchemaManager();
     }
@@ -211,6 +211,7 @@ public class RdsService {
 
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
         Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getTables().getDatabase());
+        TableFilterConfigHelper.applyTableFilter(tableNames, sourceConfig.getTables());
         return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
 }
