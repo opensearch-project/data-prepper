@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamPr
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHelper;
+import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.postgresql.replication.LogSequenceNumber;
@@ -78,7 +79,7 @@ public class LogicalReplicationEventProcessor {
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
-    static final String DOT_DELIMITER_REGEX = "\\.";
+    static final String DOT_DELIMITER = ".";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -97,6 +98,7 @@ public class LogicalReplicationEventProcessor {
     private final LogicalReplicationClient logicalReplicationClient;
     private final StreamCheckpointer streamCheckpointer;
     private final StreamCheckpointManager streamCheckpointManager;
+    private final DbTableMetadata dbTableMetadata;
 
     private final Counter changeEventSuccessCounter;
     private final Counter changeEventErrorCounter;
@@ -108,6 +110,7 @@ public class LogicalReplicationEventProcessor {
     private long currentLsn;
     private long currentEventTimestamp;
     private long bytesReceived;
+    private Set<String> tableNames;
 
     private Map<Long, TableMetadata> tableMetadataMap;
 
@@ -118,7 +121,8 @@ public class LogicalReplicationEventProcessor {
                                             final PluginMetrics pluginMetrics,
                                             final LogicalReplicationClient logicalReplicationClient,
                                             final StreamCheckpointer streamCheckpointer,
-                                            final AcknowledgementSetManager acknowledgementSetManager) {
+                                            final AcknowledgementSetManager acknowledgementSetManager,
+                                            final DbTableMetadata dbTableMetadata) {
         this.streamPartition = streamPartition;
         this.sourceConfig = sourceConfig;
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
@@ -128,6 +132,8 @@ public class LogicalReplicationEventProcessor {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.logicalReplicationClient = logicalReplicationClient;
         this.streamCheckpointer = streamCheckpointer;
+        this.dbTableMetadata = dbTableMetadata;
+        tableNames = dbTableMetadata.getTableColumnDataTypeMap().keySet();
         streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
                 acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(),
@@ -152,9 +158,10 @@ public class LogicalReplicationEventProcessor {
                                                           final PluginMetrics pluginMetrics,
                                                           final LogicalReplicationClient logicalReplicationClient,
                                                           final StreamCheckpointer streamCheckpointer,
-                                                          final AcknowledgementSetManager acknowledgementSetManager) {
+                                                          final AcknowledgementSetManager acknowledgementSetManager,
+                                                          final DbTableMetadata dbTableMetadata) {
         return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
-                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager, dbTableMetadata);
     }
 
     public void process(ByteBuffer msg) {
@@ -223,11 +230,16 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processRelationMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
-        // null terminated string
-        final String databaseName = sourceConfig.getTables().getDatabase();
+        long tableId = msg.getInt();
+        String databaseName = sourceConfig.getTables().getDatabase();
         String schemaName = getNullTerminatedString(msg);
         String tableName = getNullTerminatedString(msg);
+        String fullTableName = databaseName + DOT_DELIMITER + schemaName + DOT_DELIMITER + tableName;
+        if (!tableNames.contains(fullTableName)) {
+            LOG.debug("Skipping relation message for table: {}", fullTableName);
+            return;
+        }
+
         int replicaId = msg.get();
         short numberOfColumns = msg.getShort();
 
@@ -235,7 +247,6 @@ public class LogicalReplicationEventProcessor {
         List<String> columnTypes = new ArrayList<>();
         for (int i = 0; i < numberOfColumns; i++) {
             int flag = msg.get();    // 1 indicates this column is part of the replica identity
-            // null terminated string
             String columnName = getNullTerminatedString(msg);
             ColumnType columnType;
             try {
@@ -268,7 +279,7 @@ public class LogicalReplicationEventProcessor {
                 .withPrimaryKeys(primaryKeys)
                 .build();
 
-        tableMetadataMap.put((long) tableId, tableMetadata);
+        tableMetadataMap.put(tableId, tableMetadata);
 
         LOG.debug("Processed an Relation message with RelationId: {} Namespace: {} RelationName: {} ReplicaId: {}", tableId, schemaName, tableName, replicaId);
     }
@@ -286,6 +297,11 @@ public class LogicalReplicationEventProcessor {
         }
 
         final long recordCount = pipelineEvents.size();
+        if (recordCount == 0) {
+            LOG.debug("No records found in current batch. Skipping.");
+            return;
+        }
+
         AcknowledgementSet acknowledgementSet = null;
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn), recordCount);
@@ -303,10 +319,14 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processInsertMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
+        if (!tableMetadataMap.containsKey(tableId)) {
+            LOG.debug("Skipping insert message for Table {}. It's likely not a target table or its metadata is missing", tableId);
+            return;
+        }
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -316,7 +336,11 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processUpdateMessage(ByteBuffer msg) {
-        final int tableId = msg.getInt();
+        final long tableId = msg.getInt();
+        if (!tableMetadataMap.containsKey(tableId)) {
+            LOG.debug("Skipping update message for Table {}. It's likely not a target table or its metadata is missing", tableId);
+            return;
+        }
 
         final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
@@ -352,7 +376,11 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processDeleteMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
+        if (!tableMetadataMap.containsKey(tableId)) {
+            LOG.debug("Skipping delete message for Table {}. It's likely not a target table or its metadata is missing", tableId);
+            return;
+        }
         char n_char = (char) msg.get();  // Skip the 'N' character
 
         final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
@@ -479,10 +507,6 @@ public class LogicalReplicationEventProcessor {
     private Set<String> getEnumColumns(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
         return progressState.getPostgresStreamState().getEnumColumnsByTable().get(databaseName + "." + schemaName + "." + tableName);
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split(DOT_DELIMITER_REGEX)[0];
     }
 
     private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
