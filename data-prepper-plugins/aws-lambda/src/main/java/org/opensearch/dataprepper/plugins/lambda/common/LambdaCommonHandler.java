@@ -64,8 +64,7 @@ public class LambdaCommonHandler {
         LOG.debug("Batch size received to lambda processor: {}", records.size());
         for (Record<Event> record : records) {
             //check size or time has exceeded threshold
-            if (ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)
-            || ThresholdCheck.checkTimeoutExceeded(currentBufferPerBatch, maxCollectionDuration)) {
+            if (ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
                 batchedBuffers.add(currentBufferPerBatch);
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
