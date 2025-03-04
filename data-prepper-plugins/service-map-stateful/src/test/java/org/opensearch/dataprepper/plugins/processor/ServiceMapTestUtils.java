@@ -62,7 +62,7 @@ public class ServiceMapTestUtils {
             spanId, final String parentId, final String traceId, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {
         final Instant endInstant = Instant.now();
         final String endTime = endInstant.toString();
-        final JacksonSpan.Builder builder = JacksonSpan.builder()
+        final JacksonSpan.Builder builder = JacksonSpan.builder(true)
                 .withSpanId(spanId)
                 .withTraceId(traceId)
                 .withTraceState("")

@@ -48,14 +48,17 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private final boolean opensearchMode;
 
 
     public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                final Buffer<Record<Object>> buffer,
+                               final boolean opensearchMode,
                                final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.opensearchMode = opensearchMode;
         this.oTelProtoDecoder = oTelProtoDecoder;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -85,7 +88,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
         final List<OpenTelemetryLog> logs;
 
         try {
-            logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now());
+            logs = oTelProtoDecoder.parseExportLogsServiceRequest(request, Instant.now(), opensearchMode);
         } catch (Exception e) {
             LOG.error("Failed to parse the request {} due to:", request, e);
             throw new BadRequestException(e.getMessage(), e);

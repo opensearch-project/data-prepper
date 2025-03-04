@@ -49,14 +49,17 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final Counter recordsDroppedCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
+    private final boolean opensearchMode;
 
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
+                                  final boolean opensearchMode,
                                   final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.opensearchMode = opensearchMode;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
@@ -91,7 +94,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
                 Collection<Record<? extends Metric>> metrics;
 
                 AtomicInteger droppedCounter = new AtomicInteger(0);
-                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, Instant.now(), true, true, true);
+                metrics = oTelProtoDecoder.parseExportMetricsServiceRequest(request, droppedCounter, DEFAULT_EXPONENTIAL_HISTOGRAM_MAX_ALLOWED_SCALE, Instant.now(), true, true, opensearchMode);
                 recordsDroppedCounter.increment(droppedCounter.get());
                 recordsCreatedCounter.increment(metrics.size());
                 buffer.writeAll(metrics, bufferWriteTimeoutInMillis);

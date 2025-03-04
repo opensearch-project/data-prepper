@@ -67,6 +67,7 @@ class MetricsPluginExponentialHistogramTest {
     void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
+        lenient().when(config.getOpensearchMode()).thenReturn(true);
         rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
     }
 

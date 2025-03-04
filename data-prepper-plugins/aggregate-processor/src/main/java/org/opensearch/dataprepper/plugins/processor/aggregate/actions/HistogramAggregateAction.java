@@ -245,7 +245,7 @@ public class HistogramAggregateAction implements AggregateAction {
             Double min = (Double)groupState.get(minKey);
             Integer count = (Integer)groupState.get(countKey);
             String description = String.format("Histogram of %s in the events", key);
-            JacksonHistogram histogram = JacksonHistogram.builder()
+            JacksonHistogram histogram = JacksonHistogram.builder(false)
                 .withName(this.metricName)
                 .withDescription(description)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
@@ -264,7 +264,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .withExemplars(exemplarList)
                 .withAttributes(attr)
                 .withEventHandle(aggregateActionInput.getEventHandle())
-                .build(false);
+                .build();
             event = (Event)histogram;
         }
 

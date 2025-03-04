@@ -24,20 +24,22 @@ public class JacksonSum extends JacksonMetric implements Sum {
 
     private static final String VALUE_KEY = "value";
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
+    private static final String OTLP_AGGREGATION_TEMPORALITY_KEY = "aggregation_temporality";
     private static final String IS_MONOTONIC_KEY = "isMonotonic";
+    private static final String OTLP_IS_MONOTONIC_KEY = "is_monotonic";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(VALUE_KEY, IS_MONOTONIC_KEY);
 
-    protected JacksonSum(JacksonSum.Builder builder, boolean flattenAttributes) {
-        super(builder, flattenAttributes);
+    protected JacksonSum(JacksonSum.Builder builder, boolean opensearchMode) {
+        super(builder, opensearchMode);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
-    public static JacksonSum.Builder builder() {
-        return new JacksonSum.Builder();
+    public static JacksonSum.Builder builder(final boolean opensearchMode) {
+        return new JacksonSum.Builder(opensearchMode);
     }
 
     @Override
@@ -47,12 +49,14 @@ public class JacksonSum extends JacksonMetric implements Sum {
 
     @Override
     public String getAggregationTemporality() {
-        return this.get(AGGREGATION_TEMPORALITY_KEY, String.class);
+        final String key = getOpensearchMode() ? AGGREGATION_TEMPORALITY_KEY : OTLP_AGGREGATION_TEMPORALITY_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public boolean isMonotonic() {
-        return this.get(IS_MONOTONIC_KEY, Boolean.class);
+        final String key = getOpensearchMode() ? IS_MONOTONIC_KEY : OTLP_IS_MONOTONIC_KEY;
+        return this.get(key, Boolean.class);
     }
 
     /**
@@ -61,6 +65,10 @@ public class JacksonSum extends JacksonMetric implements Sum {
      * @since 1.4
      */
     public static class Builder extends JacksonMetric.Builder<JacksonSum.Builder> {
+
+        public Builder(final boolean opensearchMode) {
+            super(opensearchMode);
+        }
 
         @Override
         public Builder getThis() {
@@ -87,7 +95,8 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 1.4
          */
         public Builder withAggregationTemporality(String aggregationTemporality) {
-            put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
+            final String key = getOpensearchMode() ? AGGREGATION_TEMPORALITY_KEY : OTLP_AGGREGATION_TEMPORALITY_KEY;
+            put(key, aggregationTemporality);
             return this;
         }
 
@@ -98,7 +107,8 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 1.4
          */
         public Builder withIsMonotonic(final boolean isMonotonic) {
-            put(IS_MONOTONIC_KEY, isMonotonic);
+            final String key = getOpensearchMode() ? IS_MONOTONIC_KEY : OTLP_IS_MONOTONIC_KEY;
+            put(key, isMonotonic);
             return this;
         }
 
@@ -120,23 +130,15 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 1.4
          */
         public JacksonSum build() {
-            return build(true);
-        }
-
-        /**
-         * Returns a newly created {@link JacksonSum}
-         * @param flattenAttributes flag indicating if the attributes should be flattened or not
-         * @return a JacksonSum
-         * @since 2.1
-         */
-        public JacksonSum build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventType(EventType.METRIC.toString());
             this.withEventKind(Metric.KIND.SUM.toString());
 
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
-            return new JacksonSum(this, flattenAttributes);
+            if (getOpensearchMode()) {
+                new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            }
+            return new JacksonSum(this, opensearchMode);
         }
 
         private void checkAndSetDefaultValues() {

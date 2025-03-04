@@ -17,7 +17,7 @@ public class OTelLogsJsonDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
     
     public OTelLogsJsonDecoder createObjectUnderTest() {
-        return new OTelLogsJsonDecoder();
+        return new OTelLogsJsonDecoder(true);
     }
 
     private void validateLog(OpenTelemetryLog logRecord) {
