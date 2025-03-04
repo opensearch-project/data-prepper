@@ -242,7 +242,9 @@ public class LogicalReplicationEventProcessor {
                 final Set<String> enumColumns = getEnumColumns(databaseName, schemaName, tableName);
                 if (enumColumns != null && enumColumns.contains(columnName)) {
                     columnType = ColumnType.getByTypeId(ColumnType.ENUM_TYPE_ID);
-                } else throw e;
+                } else {
+                    columnType = ColumnType.UNKNOWN;
+                }
             }
             String columnTypeName = columnType.getTypeName();
             columnTypes.add(columnTypeName);
