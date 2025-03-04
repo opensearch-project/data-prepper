@@ -45,7 +45,7 @@ public class OpenSearchSinkConfigurationTests {
         assertEquals(OpenSearchBulkActions.INDEX.toString(), openSearchSinkConfiguration.getIndexConfiguration().getAction());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidAction() throws IOException {
         OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTION_CONFIG));
     }
@@ -56,7 +56,7 @@ public class OpenSearchSinkConfigurationTests {
 
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidActionWithExpression() throws IOException {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(false);
