@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,12 +28,13 @@ public class RangeTypeHandler implements PostgresDataTypeHandler {
         if (!columnType.isRange()) {
             throw new IllegalArgumentException("ColumnType is not range: " + columnType);
         }
-
+        if(columnType.isSubCategoryArray())
+            return PgArrayParser.parseTypedArray(value.toString(), PostgresDataType.getScalarType(columnType),
+                    (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
         return parseRangeValue(columnType, columnName, value.toString());
     }
 
     private Object parseRangeValue(PostgresDataType columnType,String columnName, String rangeString) {
-
         if(rangeString.equals(EMPTY))
             return null;
 
@@ -46,24 +48,34 @@ public class RangeTypeHandler implements PostgresDataTypeHandler {
             String upperBoundInclusivity = String.valueOf(rangeString.charAt(rangeString.length() - 1));
             switch (columnType) {
                 case INT4RANGE:
-                    return handleNumericRange(PostgresDataType.INTEGER, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
+                    return handleNumericRange(PostgresDataType.INTEGER, columnName, lowerBoundInclusivity, lowerBound
+                            , upperBound, upperBoundInclusivity);
                 case INT8RANGE:
-                    return handleNumericRange(PostgresDataType.BIGINT, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
-               case TSRANGE:
-                    return handleTemporalRange(PostgresDataType.TIMESTAMP, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
+                    return handleNumericRange(PostgresDataType.BIGINT, columnName, lowerBoundInclusivity, lowerBound,
+                            upperBound, upperBoundInclusivity);
+                case NUMRANGE:
+                    return handleNumericRange(PostgresDataType.NUMERIC, columnName, lowerBoundInclusivity, lowerBound
+                            , upperBound, upperBoundInclusivity);
+                case TSRANGE:
+                    return handleTemporalRange(PostgresDataType.TIMESTAMP, columnName, lowerBoundInclusivity,
+                            lowerBound, upperBound, upperBoundInclusivity);
                 case TSTZRANGE:
-                    return handleTemporalRange(PostgresDataType.TIMESTAMPTZ, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
+                    return handleTemporalRange(PostgresDataType.TIMESTAMPTZ, columnName, lowerBoundInclusivity,
+                            lowerBound, upperBound, upperBoundInclusivity);
                 case DATERANGE:
-                    return handleTemporalRange(PostgresDataType.DATE, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
+                    return handleTemporalRange(PostgresDataType.DATE, columnName, lowerBoundInclusivity, lowerBound,
+                            upperBound, upperBoundInclusivity);
                 default:
-                    throw new IllegalArgumentException("Unsupported range type: " + columnType);
+                    return rangeString;
             }
         } else {
             throw new IllegalArgumentException("Invalid range format: " + rangeString);
         }
-
     }
-    private Map<String, Object> handleNumericRange(PostgresDataType columnType, String columnName, String lowerBoundInclusivity, String lowerBound, String upperBound, String upperBoundInclusivity) {
+
+    private Map<String, Object> handleNumericRange(PostgresDataType columnType, String columnName,
+                                                   String lowerBoundInclusivity, String lowerBound,
+                                                   String upperBound, String upperBoundInclusivity) {
         Map<String, Object> rangeMap = new HashMap<>();
 
         if(!lowerBound.isEmpty()) {
@@ -77,7 +89,9 @@ public class RangeTypeHandler implements PostgresDataTypeHandler {
         return rangeMap;
     }
 
-    private Map<String, Object> handleTemporalRange(PostgresDataType columnType, String columnName, String lowerBoundInclusivity, String lowerBound, String upperBound, String upperBoundInclusivity) {
+    private Map<String, Object> handleTemporalRange(PostgresDataType columnType, String columnName,
+                                                    String lowerBoundInclusivity, String lowerBound,
+                                                    String upperBound, String upperBoundInclusivity) {
         Map<String, Object> rangeMap = new HashMap<>();
 
         if(!lowerBound.isEmpty()) {
