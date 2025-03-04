@@ -78,7 +78,6 @@ public class LogicalReplicationEventProcessor {
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
-    static final String DOT_DELIMITER_REGEX = "\\.";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -223,11 +222,11 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processRelationMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
-        // null terminated string
-        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
+        final long tableId = msg.getInt();
+        String databaseName = sourceConfig.getTables().getDatabase();
         String schemaName = getNullTerminatedString(msg);
         String tableName = getNullTerminatedString(msg);
+
         int replicaId = msg.get();
         short numberOfColumns = msg.getShort();
 
@@ -235,7 +234,6 @@ public class LogicalReplicationEventProcessor {
         List<String> columnTypes = new ArrayList<>();
         for (int i = 0; i < numberOfColumns; i++) {
             int flag = msg.get();    // 1 indicates this column is part of the replica identity
-            // null terminated string
             String columnName = getNullTerminatedString(msg);
             ColumnType columnType;
             try {
@@ -268,7 +266,7 @@ public class LogicalReplicationEventProcessor {
                 .withPrimaryKeys(primaryKeys)
                 .build();
 
-        tableMetadataMap.put((long) tableId, tableMetadata);
+        tableMetadataMap.put(tableId, tableMetadata);
 
         LOG.debug("Processed an Relation message with RelationId: {} Namespace: {} RelationName: {} ReplicaId: {}", tableId, schemaName, tableName, replicaId);
     }
@@ -286,6 +284,11 @@ public class LogicalReplicationEventProcessor {
         }
 
         final long recordCount = pipelineEvents.size();
+        if (recordCount == 0) {
+            LOG.debug("No records found in current batch. Skipping.");
+            return;
+        }
+
         AcknowledgementSet acknowledgementSet = null;
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn), recordCount);
@@ -303,10 +306,10 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processInsertMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -316,9 +319,9 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processUpdateMessage(ByteBuffer msg) {
-        final int tableId = msg.getInt();
+        final long tableId = msg.getInt();
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final List<String> columnTypes = tableMetadata.getColumnTypes();
@@ -352,10 +355,10 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processDeleteMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -479,10 +482,6 @@ public class LogicalReplicationEventProcessor {
     private Set<String> getEnumColumns(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
         return progressState.getPostgresStreamState().getEnumColumnsByTable().get(databaseName + "." + schemaName + "." + tableName);
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split(DOT_DELIMITER_REGEX)[0];
     }
 
     private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {
