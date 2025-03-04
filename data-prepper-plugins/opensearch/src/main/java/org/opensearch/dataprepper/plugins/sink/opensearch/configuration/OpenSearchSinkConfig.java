@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class OpenSearchSinkConfig {
     public static final long DEFAULT_BULK_SIZE = 5L;
@@ -153,6 +154,13 @@ public class OpenSearchSinkConfig {
     @Getter
     @JsonProperty("action")
     private String action = OpenSearchBulkActions.INDEX.toString();
+
+    @AssertTrue(message = "action must be either one of index, create, update, upsert, delete, " +
+            "or using data prepper expression.")
+    boolean isActionValid() {
+        return (action != null && action.contains("${")) ||
+                Set.of(OpenSearchBulkActions.values()).contains(action);
+    }
 
     @Getter
     @Valid
