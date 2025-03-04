@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,12 +28,12 @@ public class RangeTypeHandler implements PostgresDataTypeHandler {
         if (!columnType.isRange()) {
             throw new IllegalArgumentException("ColumnType is not range: " + columnType);
         }
-
+        if(columnType.isSubCategoryArray())
+            return parseRangeArray(columnType, columnName, value.toString());
         return parseRangeValue(columnType, columnName, value.toString());
     }
 
     private Object parseRangeValue(PostgresDataType columnType,String columnName, String rangeString) {
-
         if(rangeString.equals(EMPTY))
             return null;
 
@@ -49,20 +50,42 @@ public class RangeTypeHandler implements PostgresDataTypeHandler {
                     return handleNumericRange(PostgresDataType.INTEGER, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
                 case INT8RANGE:
                     return handleNumericRange(PostgresDataType.BIGINT, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
-               case TSRANGE:
+                case NUMRANGE:
+                    return handleNumericRange(PostgresDataType.NUMERIC, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
+                case TSRANGE:
                     return handleTemporalRange(PostgresDataType.TIMESTAMP, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
                 case TSTZRANGE:
                     return handleTemporalRange(PostgresDataType.TIMESTAMPTZ, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
                 case DATERANGE:
                     return handleTemporalRange(PostgresDataType.DATE, columnName, lowerBoundInclusivity, lowerBound, upperBound, upperBoundInclusivity);
                 default:
-                    throw new IllegalArgumentException("Unsupported range type: " + columnType);
+                    return rangeString;
             }
         } else {
             throw new IllegalArgumentException("Invalid range format: " + rangeString);
         }
-
     }
+
+    private Object parseRangeArray(PostgresDataType columnType, String columnName, String value) {
+        switch (columnType) {
+            case INT4RANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.INT4RANGE,(elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            case INT8RANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.INT8RANGE, (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            case NUMRANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.NUMRANGE, (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            case TSRANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.TSRANGE, (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            case TSTZRANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.TSTZRANGE, (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            case DATERANGEARRAY:
+                return PgArrayParser.parseTypedArray(value, PostgresDataType.DATERANGE, (elementType, rangeStr) -> parseRangeValue(elementType, columnName, rangeStr));
+            default:
+                return value;
+        }
+    }
+
+
     private Map<String, Object> handleNumericRange(PostgresDataType columnType, String columnName, String lowerBoundInclusivity, String lowerBound, String upperBound, String upperBoundInclusivity) {
         Map<String, Object> rangeMap = new HashMap<>();
 
