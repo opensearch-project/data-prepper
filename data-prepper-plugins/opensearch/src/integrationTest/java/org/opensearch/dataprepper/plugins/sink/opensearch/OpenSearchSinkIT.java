@@ -919,7 +919,7 @@ public class OpenSearchSinkIT {
         metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
         metadata.put(IndexConfiguration.ACTION, "unknown");
         final OpenSearchSinkConfig openSearchSinkConfig = generateOpenSearchSinkConfigByMetadata(metadata);
-        assertThrows(NullPointerException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(openSearchSinkConfig, true));
     }
 
     @Test
