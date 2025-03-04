@@ -150,20 +150,9 @@ public class OpenSearchSinkConfig {
     @JsonProperty("ism_policy_file")
     private String ismPolicyFile = null;
 
+    @Getter
     @JsonProperty("action")
-    private OpenSearchBulkActions action = OpenSearchBulkActions.INDEX;
-
-    @AssertTrue(message = "action must be one of index, create, update, upsert, delete")
-    boolean isActionValid() {
-        if (action == null) {         //action will be null if the string doesn't match one of the enums
-            return false;
-        }
-        return true;
-    }
-
-    public String getAction() {
-        return action.toString();
-    }
+    private String action = OpenSearchBulkActions.INDEX.toString();
 
     @Getter
     @Valid
