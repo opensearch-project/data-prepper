@@ -43,12 +43,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -74,7 +76,7 @@ class S3ObjectWorkerTest {
 
     @Mock
     private S3Client s3Client;
-    
+
     @Mock
     private Buffer<Record<Event>> buffer;
 
@@ -122,12 +124,17 @@ class S3ObjectWorkerTest {
     @Mock
     private GetObjectResponse getObjectResponse;
 
+    private AtomicInteger recordsWritten;
+
+    private Record<Event> receivedRecord;
+
     @Mock
     private HeadObjectResponse headObjectResponse;
 
     private Exception exceptionThrownByCallable;
     private Random random;
     private long objectSize;
+    private Instant testTime;
     @Mock
     private S3ObjectPluginMetrics s3ObjectPluginMetrics;
     @Mock
@@ -168,6 +175,8 @@ class S3ObjectWorkerTest {
                 });
         lenient().when(getObjectResponse.contentLength()).thenReturn(objectSize);
         lenient().when(headObjectResponse.contentLength()).thenReturn(objectSize);
+        testTime = Instant.now();
+        lenient().when(headObjectResponse.lastModified()).thenReturn(testTime);
     }
 
     private S3ObjectWorker createObjectUnderTest(final S3ObjectPluginMetrics s3ObjectPluginMetrics) {
@@ -242,6 +251,38 @@ class S3ObjectWorkerTest {
         verify(codec).parse(inputFileArgumentCaptor.capture(), any(DecompressionEngine.class), any(Consumer.class));
         final InputFile actualInputFile = inputFileArgumentCaptor.getValue();
         assertThat(actualInputFile, instanceOf(S3InputFile.class));
+    }
+
+    @Test
+    void S3ObjectWorker_with_MetadataOnly_Test() throws Exception {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
+        recordsWritten = new AtomicInteger(0);
+        when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
+        when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        doAnswer(a -> {
+            receivedRecord = a.getArgument(0);
+            recordsWritten.incrementAndGet();
+            return null;
+        }).when(bufferAccumulator).add(any(Record.class));
+
+        doAnswer(a -> {
+            return recordsWritten.get();
+        }).when(bufferAccumulator).getTotalWritten();
+
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3ObjectMetadata(s3ObjectReference, acknowledgementSet, null, null);
+            assertThat(recordsWritten.get(), equalTo(1));
+            Event event = receivedRecord.getData();
+            assertThat(event.get("bucket", String.class), equalTo(bucketName));
+            assertThat(event.get("key", String.class), equalTo(key));
+            assertThat(event.get("length", Long.class), equalTo(objectSize));
+            assertThat(event.get("time", Instant.class), equalTo(testTime));
+        }
+        //createObjectUnderTest(s3ObjectPluginMetrics).processS3ObjectMetadata(s3ObjectReference, acknowledgementSet, null, null);
     }
 
     @Test
