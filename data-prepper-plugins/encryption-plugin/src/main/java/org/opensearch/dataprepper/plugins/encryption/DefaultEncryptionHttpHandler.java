@@ -26,7 +26,6 @@ public class DefaultEncryptionHttpHandler implements EncryptionHttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        final String path = exchange.getRequestURI().getPath();
         final String requestMethod = exchange.getRequestMethod();
         if (!requestMethod.equals(HttpMethod.POST)) {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
@@ -34,6 +33,7 @@ public class DefaultEncryptionHttpHandler implements EncryptionHttpHandler {
             return;
         }
 
+        final String path = exchange.getRequestURI().getPath();
         try {
             for (final EncryptionRotationHandler encryptionRotationHandler : encryptionRotationHandlers) {
                 final String encryptionId = encryptionRotationHandler.getEncryptionId();

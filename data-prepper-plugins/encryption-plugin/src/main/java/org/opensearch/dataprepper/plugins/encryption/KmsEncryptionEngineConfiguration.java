@@ -21,10 +21,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.opensearch.dataprepper.plugins.encryption.S3EncryptedDataKeySupplier.S3_PREFIX;
-
 @JsonTypeName(KmsEncryptionEngineConfiguration.NAME)
 public class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration, AwsCredentialsConfig {
+    static final String S3_PREFIX = "s3://";
     private static final String AWS_IAM = "iam";
     private static final String AWS_IAM_ROLE = "role";
     static final String NAME = "kms";
