@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.exception.SqlMetadataException;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
@@ -88,10 +89,21 @@ class MySqlSchemaManagerTest {
     }
 
     @Test
-    void test_getPrimaryKeys_when_exception_then_throws() throws SQLException {
+    void test_getPrimaryKeys_when_connection_fails_then_throws() throws SQLException {
         final String databaseName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
         when(connectionManager.getConnection()).thenThrow(SQLException.class);
+
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
+    }
+
+    @Test
+    void test_getPrimaryKeys_when_fails_to_get_metadata_then_throws() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenThrow(SqlMetadataException.class);
 
         final String fullTableName = databaseName + "." + tableName;
         assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
@@ -167,6 +179,17 @@ class MySqlSchemaManagerTest {
         final String tableName = UUID.randomUUID().toString();
 
         when(connectionManager.getConnection()).thenThrow(new SQLException("Connection failed"));
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
+    }
+
+    @Test
+    public void getColumnDataTypes_whenFailsToGetMetadata_shouldThrowException() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenThrow(SqlMetadataException.class);
         final String fullTableName = databaseName + "." + tableName;
         assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
     }

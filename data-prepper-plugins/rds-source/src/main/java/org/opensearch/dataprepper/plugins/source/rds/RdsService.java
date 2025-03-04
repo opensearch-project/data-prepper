@@ -14,7 +14,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfigHelper;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportTaskManager;
@@ -213,8 +213,9 @@ public class RdsService {
     }
 
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
-        Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getTables().getDatabase());
-        TableFilterConfigHelper.applyTableFilter(tableNames, sourceConfig.getTables());
+        TableFilterConfig tableFilterConfig = sourceConfig.getTables();
+        Set<String> tableNames = schemaManager.getTableNames(tableFilterConfig.getDatabase());
+        tableFilterConfig.applyTableFilter(tableNames);
         LOG.info("These tables will be include in processing: {}", tableNames);
         return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }

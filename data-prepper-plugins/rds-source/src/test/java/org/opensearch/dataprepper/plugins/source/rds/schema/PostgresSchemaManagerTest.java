@@ -17,6 +17,7 @@ import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.exception.SqlMetadataException;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.PGReplicationConnection;
 import org.postgresql.replication.fluent.ChainedCreateReplicationSlotBuilder;
@@ -189,7 +190,7 @@ class PostgresSchemaManagerTest {
     }
 
     @Test
-    void test_getPrimaryKeys_throws_exception_if_failed() throws SQLException {
+    void test_getPrimaryKeys_when_connection_fails_then_throws() throws SQLException {
         final String database = UUID.randomUUID().toString();
         final String schema = UUID.randomUUID().toString();
         final String table = UUID.randomUUID().toString();
@@ -199,6 +200,18 @@ class PostgresSchemaManagerTest {
         when(connectionManager.getConnection()).thenReturn(connection);
         when(connection.getMetaData().getPrimaryKeys(database, schema, table)).thenReturn(resultSet);
         when(resultSet.next()).thenThrow(RuntimeException.class);
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
+    }
+
+    @Test
+    void test_getPrimaryKeys_when_fails_to_get_metadata_then_throws() throws SQLException {
+        final String database = UUID.randomUUID().toString();
+        final String schema = UUID.randomUUID().toString();
+        final String table = UUID.randomUUID().toString();
+        final String fullTableName = database + "." + schema + "." + table;
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenThrow(SqlMetadataException.class);
 
         assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
     }

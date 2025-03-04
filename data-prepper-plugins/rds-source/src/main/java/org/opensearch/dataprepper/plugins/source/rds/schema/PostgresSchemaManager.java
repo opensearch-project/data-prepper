@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
+import org.opensearch.dataprepper.plugins.source.rds.exception.SqlMetadataException;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.PGReplicationConnection;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -95,7 +97,8 @@ public class PostgresSchemaManager implements SchemaManager {
                 LOG.warn("Failed to create replication slot {}: {}", slotName, e.getMessage());
             }
         } catch (Exception e) {
-            LOG.error("Exception when creating replication slot. ", e);
+            LOG.error("Exception when creating replication slot: {}", e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -135,7 +138,7 @@ public class PostgresSchemaManager implements SchemaManager {
             }
             return tableToPrimaryKeysMap;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to get primary keys for tables. ", e);
+            throw new RuntimeException("Failed to get connection while trying to get primary keys for tables. ", e);
         }
     }
 
@@ -148,12 +151,12 @@ public class PostgresSchemaManager implements SchemaManager {
                 tableToColumnDataTypesMap.put(fullTableName, getColumnDataTypesForTable(connection, fullTableName));
             }
             return tableToColumnDataTypesMap;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get column data types for tables. ", e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get connection while trying to get column data types for tables. ", e);
         }
     }
 
-    public Map<String, String> getColumnDataTypesForTable(Connection connection, String fullTableName) {
+    private Map<String, String> getColumnDataTypesForTable(Connection connection, String fullTableName) {
         final String[] splits = fullTableName.split("\\.");
         final String database = splits[0];
         final String schema = splits[1];
@@ -183,7 +186,7 @@ public class PostgresSchemaManager implements SchemaManager {
             }
             applyBackoff();
         }
-        throw new RuntimeException(String.format("Failed to get dataTypes for database %s schema %s table %s after " +
+        throw new SqlMetadataException(String.format("Failed to get dataTypes for database %s schema %s table %s after " +
                 "%d retries", database, schema, table, NUM_OF_RETRIES));
     }
 
@@ -195,8 +198,8 @@ public class PostgresSchemaManager implements SchemaManager {
                 tableToEnumColumnsMap.put(fullTableName, getEnumColumnsForTable(connection, fullTableName));
             }
             return tableToEnumColumnsMap;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get enum columns for tables. ", e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get connection while trying to get enum columns for tables. ", e);
         }
     }
 
@@ -282,14 +285,11 @@ public class PostgresSchemaManager implements SchemaManager {
                 return enumColumns;
             } catch (final Exception e) {
                 LOG.error("Failed to get enum columns for database {} schema {} table {}, retrying", database, schema, table, e);
-                if (retry == NUM_OF_RETRIES) {
-                    throw new RuntimeException(String.format("Failed to get enum columns for database %s schema %s table %s after " +
-                            "%d retries", database, schema, table, retry), e);
-                }
             }
             applyBackoff();
         }
-        return enumColumns;
+        throw new SqlMetadataException(String.format("Failed to get enum columns for database %s schema %s table %s after ",
+                database, schema, table));
     }
 
     private void applyBackoff() {

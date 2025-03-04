@@ -39,7 +39,6 @@ import software.amazon.awssdk.services.rds.model.DescribeDbInstancesResponse;
 import software.amazon.awssdk.services.rds.model.Endpoint;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -204,8 +203,6 @@ class RdsServiceTest {
         when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
         when(sourceConfig.getTables()).thenReturn(tableFilterConfig);
         when(tableFilterConfig.getDatabase()).thenReturn(databaseName);
-        when(tableFilterConfig.getInclude()).thenReturn(Collections.emptyList());
-        when(tableFilterConfig.getExclude()).thenReturn(Collections.emptyList());
         when(schemaManager.getTableNames(databaseName)).thenReturn(tableNames);
         when(schemaManager.getColumnDataTypes(new ArrayList<>(tableNames))).thenReturn(mock(Map.class));
         when(rdsClient.describeDBInstances(any(DescribeDbInstancesRequest.class))).thenReturn(describeDbInstancesResponse);

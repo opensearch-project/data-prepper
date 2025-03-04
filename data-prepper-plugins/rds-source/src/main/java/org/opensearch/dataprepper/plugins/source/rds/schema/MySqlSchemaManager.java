@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
+import org.opensearch.dataprepper.plugins.source.rds.exception.SqlMetadataException;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,8 +63,8 @@ public class MySqlSchemaManager implements SchemaManager {
                 tableToPrimaryKeysMap.put(fullTableName, getPrimaryKeysForTable(connection, fullTableName));
             }
             return tableToPrimaryKeysMap;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get primary keys for tables. ", e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get connection while trying to get primary keys for tables. ", e);
         }
     }
 
@@ -85,8 +87,7 @@ public class MySqlSchemaManager implements SchemaManager {
             applyBackoff();
             retry++;
         }
-        LOG.warn("Failed to get primary keys for table {}", table);
-        return List.of();
+        throw new SqlMetadataException("Failed to get primary keys for table " +  table);
     }
 
     @Override
@@ -97,8 +98,8 @@ public class MySqlSchemaManager implements SchemaManager {
                 tableToColumnDataTypesMap.put(fullTableName, getColumnDataTypesForTable(connection, fullTableName));
             }
             return tableToColumnDataTypesMap;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get column data types for tables. ", e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get connection while trying to get column data types for tables. ", e);
         }
     }
 
@@ -122,7 +123,7 @@ public class MySqlSchemaManager implements SchemaManager {
             }
             applyBackoff();
         }
-        throw new RuntimeException(String.format("Failed to get dataTypes for database %s table %s after " +
+        throw new SqlMetadataException(String.format("Failed to get dataTypes for database %s table %s after " +
                 "%d retries", database, tableName, NUM_OF_RETRIES));
     }
 

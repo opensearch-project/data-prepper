@@ -9,14 +9,13 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.configuration;
 
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.HashSet;
 import java.util.List;
@@ -25,36 +24,38 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class TableFilterConfigHelperTest {
-    @Mock
+
+class TableFilterConfigTest {
     private TableFilterConfig tableFilterConfig;
+
+    @BeforeEach
+    void setUp() {
+        tableFilterConfig = new TableFilterConfig();
+    }
 
     @ParameterizedTest
     @ArgumentsSource(MySqlTableFilterTestArgumentsProvider.class)
-    void test_filter_mysql(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) {
+    void test_filter_mysql(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) throws NoSuchFieldException, IllegalAccessException {
         final Set<String> allTables = new HashSet<>(Set.of("database1.table1", "database1.table2", "database1.table3"));
-        lenient().when(tableFilterConfig.getDatabase()).thenReturn("database1");
-        when(tableFilterConfig.getInclude()).thenReturn(includeTables);
-        when(tableFilterConfig.getExclude()).thenReturn(excludeTables);
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "database", "database1");
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "include", includeTables);
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "exclude", excludeTables);
 
-        TableFilterConfigHelper.applyTableFilter(allTables, tableFilterConfig);
+        tableFilterConfig.applyTableFilter(allTables);
 
         assertThat(expectedTables, is(allTables));
     }
 
     @ParameterizedTest
     @ArgumentsSource(PostgresTableFilterTestArgumentsProvider.class)
-    void test_filter_postgres(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) {
+    void test_filter_postgres(List<String> includeTables, List<String> excludeTables, Set<String> expectedTables) throws NoSuchFieldException, IllegalAccessException {
         final Set<String> allTables = new HashSet<>(Set.of("database1.schema1.table1", "database1.schema1.table2", "database1.schema1.table3"));
-        lenient().when(tableFilterConfig.getDatabase()).thenReturn("database1");
-        when(tableFilterConfig.getInclude()).thenReturn(includeTables);
-        when(tableFilterConfig.getExclude()).thenReturn(excludeTables);
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "database", "database1");
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "include", includeTables);
+        ReflectivelySetField.setField(tableFilterConfig.getClass(), tableFilterConfig, "exclude", excludeTables);
 
-        TableFilterConfigHelper.applyTableFilter(allTables, tableFilterConfig);
+        tableFilterConfig.applyTableFilter(allTables);
 
         assertThat(expectedTables, is(allTables));
     }
