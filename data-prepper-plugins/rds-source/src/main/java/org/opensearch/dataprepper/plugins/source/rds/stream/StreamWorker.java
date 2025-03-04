@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
 
@@ -62,7 +64,7 @@ public class StreamWorker {
             LOG.info("Connect to database to read change events.");
             replicationLogClient.connect();
         } catch (Exception e) {
-            LOG.warn("Error while connecting to replication stream, will retry.");
+            LOG.warn(NOISY, "Error while connecting to replication stream, will retry.", e);
             sourceCoordinator.giveUpPartition(streamPartition);
             throw new RuntimeException(e);
         } finally {

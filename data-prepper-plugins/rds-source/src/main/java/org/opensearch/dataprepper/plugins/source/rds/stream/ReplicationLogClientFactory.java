@@ -21,7 +21,6 @@ import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 public class ReplicationLogClientFactory {
@@ -86,9 +85,5 @@ public class ReplicationLogClientFactory {
         this.sourceConfig = sourceConfig;
         this.username = sourceConfig.getAuthenticationConfig().getUsername();
         this.password = sourceConfig.getAuthenticationConfig().getPassword();
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split("\\.")[0];
     }
 }
