@@ -27,8 +27,6 @@ import java.util.stream.Collectors;
 public class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
     private static final Logger LOG = LoggerFactory.getLogger(S3EncryptedDataKeySupplier.class);
 
-    static final String S3_PREFIX = "s3://";
-
     private final String encryptionKeyDirectory;
     private final S3Client s3Client;
     private final S3BucketAndPrefix s3BucketAndPrefix;

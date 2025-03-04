@@ -53,7 +53,6 @@ public class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeyS
     private Path retrieveTheLatestFileKey() {
         try {
             List<Path> keyFiles = Files.list(encryptionKeyDirectory)
-                    .filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".key"))
                     .sorted(Comparator.comparing(Path::getFileName).reversed())
                     .collect(Collectors.toList());

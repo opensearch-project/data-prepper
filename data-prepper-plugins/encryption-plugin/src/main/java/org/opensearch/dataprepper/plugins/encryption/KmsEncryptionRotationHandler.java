@@ -74,6 +74,7 @@ public class KmsEncryptionRotationHandler implements EncryptionRotationHandler {
         final GenerateDataKeyWithoutPlaintextRequest generateDataKeyWithoutPlaintextRequest =
                 GenerateDataKeyWithoutPlaintextRequest.builder()
                         .keyId(kmsEncryptionEngineConfiguration.getKeyId())
+                        .encryptionContext(kmsEncryptionEngineConfiguration.getEncryptionContext())
                         .keySpec(DataKeySpec.AES_256)
                         .build();
         final GenerateDataKeyWithoutPlaintextResponse generateDataKeyWithoutPlaintextResponse =

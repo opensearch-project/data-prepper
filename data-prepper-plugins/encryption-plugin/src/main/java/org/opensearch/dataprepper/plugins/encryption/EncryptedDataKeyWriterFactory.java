@@ -12,4 +12,9 @@ public class EncryptedDataKeyWriterFactory {
             final S3Client s3Client, final String encryptionKeyDirectory) {
         return new S3EncryptedDataKeyWriter(s3Client, encryptionKeyDirectory);
     }
+
+    public LocalDirectoryEncryptedDataKeyWriter createLocalDirectoryEncryptedDataKeyWriter(
+            final String encryptionKeyDirectory) {
+        return new LocalDirectoryEncryptedDataKeyWriter(encryptionKeyDirectory);
+    }
 }
