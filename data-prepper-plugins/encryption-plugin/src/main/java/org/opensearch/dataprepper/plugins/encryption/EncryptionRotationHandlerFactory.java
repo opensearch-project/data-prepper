@@ -41,7 +41,11 @@ public class EncryptionRotationHandlerFactory {
             return new KmsEncryptionRotationHandler(
                     encryptionId, kmsEncryptionEngineConfiguration, encryptedDataKeyWriter, pluginMetrics);
         } else {
-            throw new IllegalArgumentException("Missing proper destination for writing rotated encryption key.");
+            final EncryptedDataKeyWriter encryptedDataKeyWriter = encryptedDataKeyWriterFactory
+                    .createLocalDirectoryEncryptedDataKeyWriter(
+                            kmsEncryptionEngineConfiguration.getEncryptionKeyDirectory());
+            return new KmsEncryptionRotationHandler(
+                    encryptionId, kmsEncryptionEngineConfiguration, encryptedDataKeyWriter, pluginMetrics);
         }
     }
 }
