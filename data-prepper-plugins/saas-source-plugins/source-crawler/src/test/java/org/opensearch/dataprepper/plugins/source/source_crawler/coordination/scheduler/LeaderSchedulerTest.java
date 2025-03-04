@@ -8,7 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 
 import java.time.Duration;
@@ -31,17 +30,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
 
-    private final int batchSize = 50;
     @Mock
     private EnhancedSourceCoordinator coordinator;
-    @Mock
-    private CrawlerSourcePlugin saasSourcePlugin;
+
     @Mock
     private Crawler crawler;
+    private final int batchSize = 50;
 
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, saasSourcePlugin, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -54,7 +52,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, saasSourcePlugin, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -76,7 +74,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testExceptionWhileAcquiringLeaderPartition(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, saasSourcePlugin, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -94,7 +92,7 @@ public class LeaderSchedulerTest {
 
     @Test
     void testWhileLoopRunnningAfterTheSleep() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, saasSourcePlugin, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(false);

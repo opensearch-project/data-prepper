@@ -4,7 +4,6 @@ import lombok.Setter;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,22 +22,18 @@ public class LeaderScheduler implements Runnable {
      * Default interval to run lease check and shard discovery
      */
     private static final Duration DEFAULT_LEASE_INTERVAL = Duration.ofMinutes(1);
-
-    private final EnhancedSourceCoordinator coordinator;
-    private final CrawlerSourcePlugin sourcePlugin;
-    private final Crawler crawler;
     @Setter
     private Duration leaseInterval;
     private LeaderPartition leaderPartition;
+    private final EnhancedSourceCoordinator coordinator;
+    private final Crawler crawler;
     private final int batchSize;
 
     public LeaderScheduler(EnhancedSourceCoordinator coordinator,
-                           CrawlerSourcePlugin sourcePlugin,
                            Crawler crawler,
                            int batchSize) {
         this.coordinator = coordinator;
         this.leaseInterval = DEFAULT_LEASE_INTERVAL;
-        this.sourcePlugin = sourcePlugin;
         this.crawler = crawler;
         this.batchSize = batchSize;
     }
