@@ -299,7 +299,7 @@ class OTelTraceGroupProcessorTests {
     }
 
     private Record<Span> buildSpanRecordFromJsonFile(final String jsonFileName) throws IOException {
-        JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
+        JacksonSpan.Builder spanBuilder = JacksonSpan.builder(true);
         try (final InputStream inputStream = Objects.requireNonNull(
                 OTelTraceGroupProcessorTests.class.getClassLoader().getResourceAsStream(jsonFileName))){
             final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {});

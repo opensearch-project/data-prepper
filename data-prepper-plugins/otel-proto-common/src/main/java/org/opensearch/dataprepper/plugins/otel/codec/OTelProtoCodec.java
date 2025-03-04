@@ -1141,6 +1141,7 @@ public class OTelProtoCodec {
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
+     * @param opensearchMode opensearch mode flag
      * @return the converted value as object
      */
     public static Object convertAnyValue(final AnyValue value, final boolean opensearchMode) {
@@ -1203,6 +1204,7 @@ public class OTelProtoCodec {
      * Also, casts the underlying data into its actual type
      *
      * @param numberDataPoint The point to process
+     * @param opensearchMode opensearch mode flag
      * @return A Map containing all attributes of `numberDataPoint` with keys converted into an OS-friendly format
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint, final boolean opensearchMode) {
@@ -1221,6 +1223,7 @@ public class OTelProtoCodec {
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
+     * @param opensearchMode opensearch mode flag
      * @return A Map containing unpacked {@link KeyValue} data
      */
     public static Map<String, Object> unpackKeyValueListMetric(List<KeyValue> attributesList, final boolean opensearchMode) {
@@ -1249,6 +1252,7 @@ public class OTelProtoCodec {
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
+     * @param opensearchMode opensearch mode flag
      * @return A Map containing unpacked {@link KeyValue} data
      */
     public static Map<String, Object> unpackKeyValueListLog(List<KeyValue> attributesList, final boolean opensearchMode) {
@@ -1268,6 +1272,7 @@ public class OTelProtoCodec {
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
+     * @param opensearchMode opensearch mode flag
      * @return A Map containing unpacked {@link KeyValue} data
      */
     public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList, final boolean opensearchMode) {
@@ -1331,6 +1336,7 @@ public class OTelProtoCodec {
      * Extracts the name and version of the used instrumentation scope used
      *
      * @param  instrumentationScope the instrumentation scope
+     * @param opensearchMode opensearch mode flag
      * @return A map, containing information about the instrumentation scope
      */
     public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope, final boolean opensearchMode) {
@@ -1450,6 +1456,7 @@ public class OTelProtoCodec {
      * internal representation for Data Prepper
      *
      * @param exemplarsList the List of Exemplars
+     * @param opensearchMode opensearch mode flag
      * @return a mapped list of DefaultExemplars
      */
     public static List<Exemplar> convertExemplars(List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplarsList, final boolean opensearchMode) {

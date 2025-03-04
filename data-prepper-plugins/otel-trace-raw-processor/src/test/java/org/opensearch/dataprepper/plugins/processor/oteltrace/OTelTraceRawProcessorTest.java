@@ -299,7 +299,7 @@ class OTelTraceRawProcessorTest {
     }
 
     private static Span buildSpanFromJsonFile(final String jsonFileName) {
-        JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
+        JacksonSpan.Builder spanBuilder = JacksonSpan.builder(true);
         try (final InputStream inputStream = Objects.requireNonNull(
                 OTelTraceRawProcessorTest.class.getClassLoader().getResourceAsStream(jsonFileName))){
             final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
