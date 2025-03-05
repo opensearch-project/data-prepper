@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,6 +26,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
+import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
@@ -47,9 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
-import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
 
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -202,7 +201,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             } catch (Exception e) {
                 LOG.error(NOISY, e.getMessage(), e);
-                if (e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)) {
+                if(e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)){
                     batchExceedingThresholdCounter.increment();
                 }
                 /* fall through */
@@ -228,7 +227,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         SdkBytes payload = lambdaResponse.payload();
         // Considering "null" payload as empty response from lambda and not parsing it.
-        if (payload != null && !NO_RETURN_RESPONSE.equals(payload.asUtf8String())) {
+        if (!(NO_RETURN_RESPONSE.equals(payload.asUtf8String()))) {
             //Convert using response codec
             InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
             responseCodec.parse(inputStream, record -> {
