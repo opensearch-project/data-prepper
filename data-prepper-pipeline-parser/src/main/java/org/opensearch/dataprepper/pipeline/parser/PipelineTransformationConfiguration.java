@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.pipeline.parser;
 
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.transformer.TransformersFactory;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class PipelineTransformationConfiguration {
+    @Bean
+    public LevenshteinDistance levenshteinDistance() {
+        return new LevenshteinDistance();
+    }
 
     @Bean
     TransformersFactory transformersFactory() {

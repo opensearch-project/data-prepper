@@ -30,9 +30,12 @@ public class PipelinesDataflowModelParser {
             .addHandler(new DataPrepperDeserializationProblemHandler());
 
     private final PipelineConfigurationReader pipelineConfigurationReader;
+    private final PipelineConfigurationErrorHandler pipelineConfigurationErrorHandler;
 
-    public PipelinesDataflowModelParser(final PipelineConfigurationReader pipelineConfigurationReader) {
+    public PipelinesDataflowModelParser(final PipelineConfigurationReader pipelineConfigurationReader,
+                                        final PipelineConfigurationErrorHandler pipelineConfigurationErrorHandler) {
         this.pipelineConfigurationReader = pipelineConfigurationReader;
+        this.pipelineConfigurationErrorHandler = pipelineConfigurationErrorHandler;
     }
 
 
@@ -66,7 +69,8 @@ public class PipelinesDataflowModelParser {
 
             return pipelinesDataFlowModel;
         } catch (IOException e) {
-            throw new ParseException("Failed to parse the configuration", e);
+            final RuntimeException simplifiedException = pipelineConfigurationErrorHandler.handleException(e);
+            throw new ParseException("Failed to parse the configuration", simplifiedException);
         }
     }
 

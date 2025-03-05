@@ -1,0 +1,12 @@
+version: "2"
+invalid-pipeline-unrecognized-plugin-type:
+  unrecognized:
+  source:
+    stdin:
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        index_type: trace-analytics-raw
+        flush_timeout: 5000

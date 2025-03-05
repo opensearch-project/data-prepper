@@ -2,9 +2,9 @@ package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -19,13 +19,11 @@ public class PluginConfigurationErrorHandler {
     static final String JSON_MAPPING_EXCEPTION_FORMAT = "Parameter \"%s\" for plugin \"%s\" is invalid: %s";
     static final String GENERIC_PLUGIN_EXCEPTION_FORMAT = "Plugin \"%s\" is invalid: %s";
 
-    static final Integer MIN_DISTANCE_TO_RECOMMEND_PROPERTY = 3;
-
-    private final LevenshteinDistance levenshteinDistance;
+    private final ClosestFieldRecommender closestFieldRecommender;
 
     @Inject
-    public PluginConfigurationErrorHandler(final LevenshteinDistance levenshteinDistance) {
-        this.levenshteinDistance = levenshteinDistance;
+    public PluginConfigurationErrorHandler(final ClosestFieldRecommender closestFieldRecommender) {
+        this.closestFieldRecommender = closestFieldRecommender;
     }
 
     public RuntimeException handleException(final PluginSetting pluginSetting, final Exception e) {
@@ -53,33 +51,14 @@ public class PluginConfigurationErrorHandler {
                 pluginSetting.getName(),
                 e.getKnownPropertyIds());
 
-        final Optional<String> closestRecommendation = getClosestField(e);
+        final Optional<String> closestRecommendation = closestFieldRecommender.getClosestField(
+                e.getPropertyName(), e.getKnownPropertyIds());
 
         if (closestRecommendation.isPresent()) {
             errorMessage += " Did you mean \"" + closestRecommendation.get() + "\"?";
         }
 
         return new InvalidPluginConfigurationException(errorMessage);
-    }
-
-    private Optional<String> getClosestField(final UnrecognizedPropertyException e) {
-        String closestMatch = null;
-        int smallestDistance = Integer.MAX_VALUE;
-
-        for (final String field : e.getKnownPropertyIds().stream().map(Object::toString).collect(Collectors.toList())) {
-            int distance = levenshteinDistance.apply(e.getPropertyName(), field);
-
-            if (distance < smallestDistance) {
-                smallestDistance = distance;
-                closestMatch = field;
-            }
-        }
-
-        if (smallestDistance <= MIN_DISTANCE_TO_RECOMMEND_PROPERTY) {
-            return Optional.ofNullable(closestMatch);
-        }
-
-        return Optional.empty();
     }
 
     private String getParameterPath(final List<JsonMappingException.Reference> path) {

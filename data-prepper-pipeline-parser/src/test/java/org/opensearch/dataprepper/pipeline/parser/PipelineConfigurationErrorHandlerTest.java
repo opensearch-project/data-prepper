@@ -1,4 +1,9 @@
-package org.opensearch.dataprepper.plugin;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.pipeline.parser;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -6,9 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.pipeline.parser.ClosestFieldRecommender;
+import org.opensearch.dataprepper.model.plugin.InvalidPipelineConfigurationException;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,24 +22,21 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.GENERIC_PLUGIN_EXCEPTION_FORMAT;
-import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.JSON_MAPPING_EXCEPTION_FORMAT;
-import static org.opensearch.dataprepper.plugin.PluginConfigurationErrorHandler.UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT;
+import static org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler.JSON_MAPPING_EXCEPTION_FORMAT;
+import static org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationErrorHandler.UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
-public class PluginConfigurationErrorHandlerTest {
-
+class PipelineConfigurationErrorHandlerTest {
     @Mock
     private ClosestFieldRecommender closestFieldRecommender;
 
-    private PluginConfigurationErrorHandler createObjectUnderTest() {
-        return new PluginConfigurationErrorHandler(closestFieldRecommender);
+    private PipelineConfigurationErrorHandler createObjectUnderTest() {
+        return new PipelineConfigurationErrorHandler(closestFieldRecommender);
     }
 
     @Test
     void handle_exception_with_unrecognized_property_exception_throws_expected_exception_without_parameter_recommendation() {
         final List<Object> knownPropertyIds = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final String pluginName = UUID.randomUUID().toString();
         final String propertyName = UUID.randomUUID().toString();
 
         final JsonMappingException.Reference firstPathReference = mock(JsonMappingException.Reference.class);
@@ -47,29 +47,21 @@ public class PluginConfigurationErrorHandlerTest {
 
         final List<JsonMappingException.Reference> path = List.of(firstPathReference, secondPathReference);
 
-        final PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn(pluginName);
-
-        final RuntimeException exception = mock(RuntimeException.class);
-
         final UnrecognizedPropertyException unrecognizedPropertyException = mock(UnrecognizedPropertyException.class);
         when(unrecognizedPropertyException.getKnownPropertyIds()).thenReturn(knownPropertyIds);
         when(unrecognizedPropertyException.getPropertyName()).thenReturn(propertyName);
         when(unrecognizedPropertyException.getPath()).thenReturn(path);
 
-        when(exception.getCause()).thenReturn(unrecognizedPropertyException);
-
         when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
                 .thenReturn(Optional.empty());
 
-        final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
+        final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
-        final Exception resultingException = objectUnderTest.handleException(pluginSetting, exception);
-        assertThat(resultingException instanceof InvalidPluginConfigurationException, equalTo(true));
+        final Exception resultingException = objectUnderTest.handleException(unrecognizedPropertyException);
+        assertThat(resultingException instanceof InvalidPipelineConfigurationException, equalTo(true));
 
         final String expectedErrorMessage = String.format(UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT,
                 firstPathReference.getFieldName() + "." + secondPathReference.getFieldName(),
-                pluginName,
                 knownPropertyIds);
 
         assertThat(resultingException.getMessage(), equalTo(expectedErrorMessage));
@@ -78,7 +70,6 @@ public class PluginConfigurationErrorHandlerTest {
     @Test
     void handle_exception_with_unrecognized_property_exception_throws_expected_exception_with_parameter_recommendation() {
         final List<Object> knownPropertyIds = List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final String pluginName = UUID.randomUUID().toString();
         final String propertyName = UUID.randomUUID().toString();
 
         final JsonMappingException.Reference firstPathReference = mock(JsonMappingException.Reference.class);
@@ -89,29 +80,21 @@ public class PluginConfigurationErrorHandlerTest {
 
         final List<JsonMappingException.Reference> path = List.of(firstPathReference, secondPathReference);
 
-        final PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn(pluginName);
-
-        final RuntimeException exception = mock(RuntimeException.class);
-
         final UnrecognizedPropertyException unrecognizedPropertyException = mock(UnrecognizedPropertyException.class);
         when(unrecognizedPropertyException.getKnownPropertyIds()).thenReturn(knownPropertyIds);
         when(unrecognizedPropertyException.getPropertyName()).thenReturn(propertyName);
         when(unrecognizedPropertyException.getPath()).thenReturn(path);
 
-        when(exception.getCause()).thenReturn(unrecognizedPropertyException);
-
         when(closestFieldRecommender.getClosestField(eq(propertyName), eq(knownPropertyIds)))
                 .thenReturn(Optional.of(knownPropertyIds.get(1).toString()));
 
-        final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
+        final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
-        final Exception resultingException = objectUnderTest.handleException(pluginSetting, exception);
-        assertThat(resultingException instanceof InvalidPluginConfigurationException, equalTo(true));
+        final Exception resultingException = objectUnderTest.handleException(unrecognizedPropertyException);
+        assertThat(resultingException instanceof InvalidPipelineConfigurationException, equalTo(true));
 
         String expectedErrorMessage = String.format(UNRECOGNIZED_PROPERTY_EXCEPTION_FORMAT,
                 firstPathReference.getFieldName() + "." + secondPathReference.getFieldName(),
-                pluginName,
                 knownPropertyIds);
 
         expectedErrorMessage += " Did you mean \"" + knownPropertyIds.get(1).toString() + "\"?";
@@ -123,8 +106,6 @@ public class PluginConfigurationErrorHandlerTest {
 
     @Test
     void handle_exception_with_json_mapping_exception_returns_expected_error_message() {
-        final String pluginName = UUID.randomUUID().toString();
-
         final JsonMappingException.Reference firstPathReference = mock(JsonMappingException.Reference.class);
         when(firstPathReference.getFieldName()).thenReturn(UUID.randomUUID().toString());
 
@@ -133,51 +114,33 @@ public class PluginConfigurationErrorHandlerTest {
 
         final List<JsonMappingException.Reference> path = List.of(firstPathReference, secondPathReference);
 
-        final PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn(pluginName);
-
-        final RuntimeException exception = mock(RuntimeException.class);
-
         final JsonMappingException jsonMappingException = mock(JsonMappingException.class);
         when(jsonMappingException.getPath()).thenReturn(path);
         when(jsonMappingException.getOriginalMessage()).thenReturn(UUID.randomUUID().toString());
 
-        when(exception.getCause()).thenReturn(jsonMappingException);
+        final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
-        final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
-
-        final Exception resultingException = objectUnderTest.handleException(pluginSetting, exception);
-        assertThat(resultingException instanceof InvalidPluginConfigurationException, equalTo(true));
+        final Exception resultingException = objectUnderTest.handleException(jsonMappingException);
+        assertThat(resultingException instanceof InvalidPipelineConfigurationException, equalTo(true));
 
         final String expectedErrorMessage = String.format(JSON_MAPPING_EXCEPTION_FORMAT,
                 firstPathReference.getFieldName() + "." + secondPathReference.getFieldName(),
-                pluginName,
                 jsonMappingException.getOriginalMessage());
 
         assertThat(resultingException.getMessage(), equalTo(expectedErrorMessage));
     }
 
     @Test
-    void non_handled_exception_throws_generic_invalid_plugin_configuration_exception() {
-        final String pluginName = UUID.randomUUID().toString();
-
-        final PluginSetting pluginSetting = mock(PluginSetting.class);
-        when(pluginSetting.getName()).thenReturn(pluginName);
-
+    void non_handled_exception_throws_generic_invalid_pipeline_configuration_exception() {
         final RuntimeException exception = mock(RuntimeException.class);
         when(exception.getMessage()).thenReturn(UUID.randomUUID().toString());
 
-        final RuntimeException cause = mock(RuntimeException.class);
-        when(exception.getCause()).thenReturn(cause);
+        final PipelineConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
 
-        final PluginConfigurationErrorHandler objectUnderTest = createObjectUnderTest();
+        final Exception resultingException = objectUnderTest.handleException(exception);
+        assertThat(resultingException instanceof InvalidPipelineConfigurationException, equalTo(true));
 
-        final Exception resultingException = objectUnderTest.handleException(pluginSetting, exception);
-        assertThat(resultingException instanceof InvalidPluginConfigurationException, equalTo(true));
-
-        final String expectedErrorMessage = String.format(GENERIC_PLUGIN_EXCEPTION_FORMAT,
-                pluginName,
-                exception.getMessage());
+        final String expectedErrorMessage = exception.getMessage();
 
         assertThat(resultingException.getMessage(), equalTo(expectedErrorMessage));
     }
