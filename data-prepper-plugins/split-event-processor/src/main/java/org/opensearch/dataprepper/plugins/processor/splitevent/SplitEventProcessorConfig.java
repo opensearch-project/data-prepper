@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
+import org.opensearch.dataprepper.model.annotations.ValidRegex;
 
 @ConditionalRequired(value = {
         @IfThenElse(
@@ -51,6 +52,7 @@ public class SplitEventProcessorConfig {
     })
     private String delimiter;
 
+    @ValidRegex(message = "The value of delimiter_regex is not a valid regex string")
     @JsonProperty(DELIMITER_REGEX_KEY)
     @JsonPropertyDescription("The regular expression used as the delimiter for splitting the field. You must provide either the <code>delimiter</code> or the <code>delimiter_regex</code>.")
     @AlsoRequired(values = {

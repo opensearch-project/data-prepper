@@ -73,12 +73,11 @@ public class Crawler {
             }
 
         } while (itemInfoIterator.hasNext());
-        Instant startTimeInstant = Instant.ofEpochMilli(startTime);
-        updateLeaderProgressState(leaderPartition, startTimeInstant, coordinator);
+        updateLeaderProgressState(leaderPartition, latestModifiedTime, coordinator);
         long crawlTimeMillis = System.currentTimeMillis() - startTime;
         log.debug("Crawling completed in {} ms", crawlTimeMillis);
         crawlingTimer.record(crawlTimeMillis, TimeUnit.MILLISECONDS);
-        return startTimeInstant;
+        return latestModifiedTime;
     }
 
     public void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {

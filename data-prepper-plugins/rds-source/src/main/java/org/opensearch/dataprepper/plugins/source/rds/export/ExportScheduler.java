@@ -320,13 +320,11 @@ public class ExportScheduler implements Runnable {
         for (final String objectKey : dataFileObjectKeys) {
             final DataFileProgressState progressState = new DataFileProgressState();
             final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
-            final String database = exportObjectKey.getDatabaseName();
-            final String table = engineType == EngineType.MYSQL ?
-                    exportObjectKey.getTableName() :
-                    exportObjectKey.getSchemaName() + DOT_DELIMITER + exportObjectKey.getTableName();
 
-            progressState.setSourceDatabase(database);
-            progressState.setSourceTable(table);
+            progressState.setEngineType(engineType.toString());
+            progressState.setSourceDatabase(exportObjectKey.getDatabaseName());
+            progressState.setSourceSchema(exportObjectKey.getSchemaName());
+            progressState.setSourceTable(exportObjectKey.getTableName());
             progressState.setSnapshotTime(snapshotTime);
             progressState.setPrimaryKeyMap(primaryKeyMap);
 

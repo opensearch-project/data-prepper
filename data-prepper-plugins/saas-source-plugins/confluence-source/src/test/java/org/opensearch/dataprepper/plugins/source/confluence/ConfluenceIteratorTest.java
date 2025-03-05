@@ -59,7 +59,7 @@ public class ConfluenceIteratorTest {
         confluenceIterator = createObjectUnderTest();
         assertNotNull(confluenceIterator);
         confluenceIterator.initialize(Instant.ofEpochSecond(0));
-        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt());
+        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
         assertFalse(confluenceIterator.hasNext());
     }
 

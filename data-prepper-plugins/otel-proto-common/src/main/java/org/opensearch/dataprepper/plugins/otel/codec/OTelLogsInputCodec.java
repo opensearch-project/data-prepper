@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 
@@ -18,17 +19,20 @@ import java.util.function.Consumer;
 
 @DataPrepperPlugin(name = "otel_logs", pluginType = InputCodec.class, pluginConfigurationType = OTelLogsInputCodecConfig.class)
 public class OTelLogsInputCodec implements InputCodec {
-    private final OTelLogsInputCodecConfig config;
+    private final ByteDecoder decoder;
 
     @DataPrepperPluginConstructor
     public OTelLogsInputCodec(final OTelLogsInputCodecConfig config) {
         Objects.requireNonNull(config);
-        this.config = config;
-    }    
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
         if (config.getFormat() == OTelLogsFormatOption.JSON) {
-            OTelLogsJsonDecoder decoder = new OTelLogsJsonDecoder();
-            decoder.parse(inputStream, null, eventConsumer);
-        } 
-    }      
+            decoder = new OTelLogsJsonDecoder();
+        } else if (config.getFormat() == OTelLogsFormatOption.PROTOBUF) {
+            decoder = new OTelLogsProtoBufDecoder(config.getLengthPrefixedEncoding());
+        } else {
+            throw new RuntimeException("The codec " + config.getFormat() + " is not supported.");
+        }
+    }
+    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+        decoder.parse(inputStream, null, eventConsumer);
+    }
 }

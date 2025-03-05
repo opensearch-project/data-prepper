@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
@@ -41,7 +42,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_NOT_IN;
@@ -99,16 +100,19 @@ public class ConfluenceService {
                                                   Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for Add/Modified tickets with a Search API call");
         StringBuilder cql = createContentFilterCriteria(configuration, timestamp);
-        int total;
+        int total = 0;
         int startAt = 0;
+        ConfluencePaginationLinks paginationLinks = null;
         do {
-            ConfluenceSearchResults searchContentItems = confluenceRestClient.getAllContent(cql, startAt);
+            ConfluenceSearchResults searchContentItems = confluenceRestClient.getAllContent(cql, startAt, paginationLinks);
             List<ConfluenceItem> contentList = new ArrayList<>(searchContentItems.getResults());
-            total = searchContentItems.getSize();
+            total += searchContentItems.getSize();
             startAt += searchContentItems.getResults().size();
             addItemsToQueue(contentList, itemInfoQueue);
-        } while (startAt < total);
-        searchResultsFoundCounter.increment(total);
+            log.debug("Content items fetched so far: {}", total);
+            paginationLinks = searchContentItems.getLinks();
+            searchResultsFoundCounter.increment(searchContentItems.getSize());
+        } while (paginationLinks != null && paginationLinks.getNext() != null);
         log.info("Number of content items found in search api call: {}", total);
     }
 
@@ -144,7 +148,7 @@ public class ConfluenceService {
 
         String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_EQUALS + "\"" + formattedTimeStamp + "\"");
+        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
@@ -165,7 +169,7 @@ public class ConfluenceService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-
+        cQl.append(" order by " + LAST_MODIFIED);
         log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
     }
@@ -226,7 +230,7 @@ public class ConfluenceService {
         ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(spaceFilter -> {
             Matcher matcher = regex.matcher(spaceFilter);
             includedSpaces.add(spaceFilter);
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });
@@ -235,7 +239,7 @@ public class ConfluenceService {
             if (includedSpaces.contains(spaceFilter)) {
                 includedAndExcludedSpaces.add(spaceFilter);
             }
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 10) {
+            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });

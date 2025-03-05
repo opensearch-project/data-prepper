@@ -9,16 +9,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.StreamConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
-import java.util.List;
 
 /**
  * Configuration for RDS Source
@@ -30,6 +30,7 @@ public class RdsSourceConfig {
      * Identifier for RDS instance/cluster or Aurora cluster
      */
     @JsonProperty("db_identifier")
+    @NotBlank
     private String dbIdentifier;
 
     /**
@@ -39,19 +40,11 @@ public class RdsSourceConfig {
     private boolean isCluster = false;
 
     @JsonProperty("engine")
-    private EngineType engine = EngineType.MYSQL;
+    @NotNull
+    private EngineType engine;
 
-    /**
-     * Whether the source is an Aurora cluster
-     */
-    @JsonProperty("aurora")
-    private boolean isAurora = false;
-
-    /**
-     * The table name is in the format of `database.table` for MySQL engine
-     */
-    @JsonProperty("table_names")
-    private List<String> tableNames;
+    @JsonProperty("tables")
+    private TableFilterConfig tableFilterConfig;
 
     @JsonProperty("aws")
     @NotNull
@@ -59,7 +52,7 @@ public class RdsSourceConfig {
     private AwsAuthenticationConfig awsAuthenticationConfig;
 
     @JsonProperty("acknowledgments")
-    private boolean acknowledgments = false;
+    private boolean acknowledgments = true;
 
     @JsonProperty("s3_data_file_acknowledgment_timeout")
     private Duration dataFileAcknowledgmentTimeout = Duration.ofMinutes(30);
@@ -68,6 +61,7 @@ public class RdsSourceConfig {
     private Duration streamAcknowledgmentTimeout = Duration.ofMinutes(10);
 
     @JsonProperty("s3_bucket")
+    @NotBlank
     private String s3Bucket;
 
     @JsonProperty("s3_prefix")
@@ -89,9 +83,10 @@ public class RdsSourceConfig {
     private ExportConfig exportConfig;
 
     @JsonProperty("stream")
-    private StreamConfig streamConfig;
+    private boolean enableStream;
 
     @JsonProperty("authentication")
+    @NotNull
     private AuthenticationConfig authenticationConfig;
 
     @JsonProperty("tls")
@@ -105,7 +100,7 @@ public class RdsSourceConfig {
     }
 
     public boolean isCluster() {
-        return isCluster || isAurora;
+        return isCluster || isAurora();
     }
 
     public EngineType getEngine() {
@@ -113,11 +108,11 @@ public class RdsSourceConfig {
     }
 
     public boolean isAurora() {
-        return isAurora;
+        return engine.isAurora();
     }
 
-    public List<String> getTableNames() {
-        return tableNames;
+    public TableFilterConfig getTables() {
+        return tableFilterConfig;
     }
 
     public AwsAuthenticationConfig getAwsAuthenticationConfig() {
@@ -160,12 +155,8 @@ public class RdsSourceConfig {
         return exportConfig != null;
     }
 
-    public StreamConfig getStream() {
-        return streamConfig;
-    }
-
     public boolean isStreamEnabled() {
-        return streamConfig != null;
+        return enableStream;
     }
 
     public TlsConfig getTlsConfig() {

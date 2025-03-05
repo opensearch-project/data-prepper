@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.converter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
@@ -18,16 +15,18 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamCo
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.OperationType;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StreamRecordConverter extends RecordConverter {
     private static final Logger LOG = LoggerFactory.getLogger(StreamRecordConverter.class);
@@ -38,10 +37,7 @@ public class StreamRecordConverter extends RecordConverter {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
-    };
+    private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
 
     private final StreamConfig streamConfig;
 
@@ -117,13 +113,56 @@ public class StreamRecordConverter extends RecordConverter {
         }
     }
 
+    /**
+     * Process the DynamoDB attributes to be formatted correctly
+     */
+    private Object processAttributeValue(AttributeValue attributeValue){
+        switch (attributeValue.type()){
+            case N:     // N for number
+                return new BigDecimal(attributeValue.n());
+            case B:     // B for Binary
+                return BASE64_ENCODER.encodeToString(attributeValue.b().asByteArray());
+            case S:     // S for String
+                return attributeValue.s();
+            case BOOL:  // BOOL for Boolean
+                return attributeValue.bool();
+            case NS:    // NS for Number Set
+                return attributeValue.ns().stream()
+                        .map(BigDecimal::new).collect(Collectors.toSet());
+            case BS:    // BS for Binary Set
+                return attributeValue.bs().stream()
+                        .map(buffer -> BASE64_ENCODER.encodeToString(buffer.asByteArray()))
+                        .collect(Collectors.toSet());
+            case SS:    // SS for String Set
+                return attributeValue.ss();
+            case L:     // L for List
+                return convertListData(attributeValue.l());
+            case M:     // M for Map
+                return convertData(attributeValue.m());
+            case NUL:  // NUL for Null
+                return null;
+            default:
+                throw new IllegalArgumentException("Unsupported attribute type: " + attributeValue.type());
+        }
+    }
 
     /**
      * Convert the DynamoDB attribute map to a normal map for data
      */
-    private Map<String, Object> convertData(Map<String, AttributeValue> data) throws JsonProcessingException {
-        String jsonData = EnhancedDocument.fromAttributeValueMap(data).toJson();
-        return MAPPER.readValue(jsonData, MAP_TYPE_REFERENCE);
+    private Map<String, Object> convertData(Map<String, AttributeValue> data) {
+        return data.entrySet().stream()
+                .collect(HashMap::new,
+                        (map, entry) -> map.put(entry.getKey(), processAttributeValue(entry.getValue())),
+                        HashMap::putAll);
+    }
+
+    /**
+     * Convert the DynamoDB attribute List to a normal list for data
+     */
+    private List<Object> convertListData(List<AttributeValue> data) {
+        return data.stream()
+                .map(this::processAttributeValue)
+                .collect(Collectors.toList());
     }
 
     /**

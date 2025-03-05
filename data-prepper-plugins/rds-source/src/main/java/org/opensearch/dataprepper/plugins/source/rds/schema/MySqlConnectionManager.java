@@ -5,12 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
+import org.slf4j.Logger;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
 public class MySqlConnectionManager implements ConnectionManager {
+    private static final Logger LOG = org.slf4j.LoggerFactory.getLogger(MySqlConnectionManager.class);
+
     static final String JDBC_URL_FORMAT = "jdbc:mysql://%s:%d";
     static final String USERNAME_KEY = "user";
     static final String PASSWORD_KEY = "password";
@@ -46,6 +50,7 @@ public class MySqlConnectionManager implements ConnectionManager {
         }
         props.setProperty(TINY_INT_ONE_IS_BIT_KEY, FALSE_VALUE);
         final String jdbcUrl = String.format(JDBC_URL_FORMAT, hostName, port);
+        LOG.debug("Connecting to JDBC URL: {}", jdbcUrl);
         return doGetConnection(jdbcUrl, props);
     }
 

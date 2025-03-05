@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenEl
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.model.annotations.ValidRegex;
 import org.opensearch.dataprepper.model.event.EventKey;
 
 import java.util.List;
@@ -58,6 +59,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         )
         private String delimiter;
 
+        @ValidRegex(message = "The value of delimiter_regex is not a valid regex string")
         @JsonProperty("delimiter_regex")
         @JsonPropertyDescription("The regex string responsible for the split. Cannot be defined at the same time as <code>delimiter</code>. " +
                 "At least <code>delimiter</code> or <code>delimiter_regex</code> must be defined.")

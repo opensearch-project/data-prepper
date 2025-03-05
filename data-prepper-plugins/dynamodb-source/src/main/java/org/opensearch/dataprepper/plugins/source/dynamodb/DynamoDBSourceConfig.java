@@ -40,7 +40,7 @@ public class DynamoDBSourceConfig {
     private Duration shardAcknowledgmentTimeout = Duration.ofMinutes(10);
 
     @JsonProperty("s3_data_file_acknowledgment_timeout")
-    private Duration dataFileAcknowledgmentTimeout = Duration.ofMinutes(5);
+    private Duration dataFileAcknowledgmentTimeout = Duration.ofMinutes(15);
 
     public DynamoDBSourceConfig() {
     }

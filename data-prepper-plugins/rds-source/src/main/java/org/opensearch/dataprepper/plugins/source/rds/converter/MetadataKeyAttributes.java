@@ -18,6 +18,8 @@ public class MetadataKeyAttributes {
 
     static final String EVENT_DATABASE_NAME_METADATA_ATTRIBUTE = "database_name";
 
+    static final String EVENT_SCHEMA_NAME_METADATA_ATTRIBUTE = "schema_name";
+
     static final String EVENT_TABLE_NAME_METADATA_ATTRIBUTE = "table_name";
 
     static final String INGESTION_EVENT_TYPE_ATTRIBUTE = "ingestion_type";

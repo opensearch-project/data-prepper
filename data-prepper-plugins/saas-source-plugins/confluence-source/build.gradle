@@ -23,6 +23,7 @@ dependencies {
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
     testImplementation project(path: ':data-prepper-test-common')
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.0'
 
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'

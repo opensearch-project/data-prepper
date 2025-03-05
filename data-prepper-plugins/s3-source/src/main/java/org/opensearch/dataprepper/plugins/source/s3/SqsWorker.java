@@ -311,7 +311,7 @@ public class SqsWorker implements Runnable {
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
-                if (s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                if (deleteMessageBatchRequestEntry.isPresent() && s3SourceConfig.isDeleteS3ObjectsOnRead()) {
                     s3ObjectDeletionsWaitingForAcknowledgments.add(s3ObjectReference);
                 }
                 acknowledgementSet.complete();

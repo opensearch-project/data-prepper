@@ -15,7 +15,6 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
@@ -90,7 +89,6 @@ public class OTelProtoCodecTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Random RANDOM = new Random();
     private static final String TEST_REQUEST_TRACE_JSON_FILE = "test-request.json";
-    private static final String TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE = "test-request-instrumentation-library.json";
     private static final String TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE = "test-request-both-span-types.json";
     private static final String TEST_REQUEST_NO_SPANS_JSON_FILE = "test-request-no-spans.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
@@ -99,7 +97,6 @@ public class OTelProtoCodecTest {
     private static final String TEST_REQUEST_HISTOGRAM_METRICS_JSON_FILE = "test-histogram-metrics.json";
     private static final String TEST_REQUEST_HISTOGRAM_METRICS_NO_EXPLICIT_BOUNDS_JSON_FILE = "test-histogram-metrics-no-explicit-bounds.json";
     private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
-    private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
     private static final String TEST_REQUEST_MULTIPLE_TRACES_FILE = "test-request-multiple-traces.json";
 
 
@@ -168,7 +165,6 @@ public class OTelProtoCodecTest {
                     assertThat(request.getResourceSpansList().size(), equalTo(1));
                     ResourceSpans rs = request.getResourceSpansList().get(0);
                     assertThat(rs.getScopeSpansList().size(), equalTo(1));
-                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
                     ScopeSpans ss = rs.getScopeSpansList().get(0);
                     assertThat(ss.getSpansList().size(), equalTo(1));
                     io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
@@ -178,7 +174,6 @@ public class OTelProtoCodecTest {
                     assertThat(request.getResourceSpansList().size(), equalTo(1));
                     ResourceSpans rs = request.getResourceSpansList().get(0);
                     assertThat(rs.getScopeSpansList().size(), equalTo(2));
-                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(2));
 
                     ScopeSpans ss = rs.getScopeSpansList().get(0);
                     assertThat(ss.getSpansList().size(), equalTo(1));
@@ -196,7 +191,6 @@ public class OTelProtoCodecTest {
                     assertThat(request.getResourceSpansList().size(), equalTo(1));
                     ResourceSpans rs = request.getResourceSpansList().get(0);
                     assertThat(rs.getScopeSpansList().size(), equalTo(1));
-                    assertThat(rs.getInstrumentationLibrarySpansList().size(), equalTo(0));
                     ScopeSpans ss = rs.getScopeSpansList().get(0);
                     assertThat(ss.getSpansList().size(), equalTo(1));
                     io.opentelemetry.proto.trace.v1.Span span = ss.getSpansList().get(0);
@@ -211,20 +205,6 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
-            validateSpans(spans);
-        }
-
-        @Test
-        public void testParseExportTraceServiceRequest_InstrumentationLibrarySpans() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
-            validateSpans(spans);
-        }
-
-        @Test
-        public void testParseExportTraceServiceRequest_ScopeSpansTakesPrecedenceOverInstrumentationLibrarySpans() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
             validateSpans(spans);
         }
@@ -254,6 +234,7 @@ public class OTelProtoCodecTest {
                 Map<String, Object> attributes = span.getAttributes();
                 assertThat(attributes.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")), is(true));
                 assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is(true));
+                assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is(true));
                 assertThat(attributes.containsKey(OTelProtoCodec.STATUS_CODE), is(true));
             }
         }
@@ -395,26 +376,6 @@ public class OTelProtoCodecTest {
 
 
         @Test
-        public void testInstrumentationLibraryAttributes() {
-            final InstrumentationLibrary il1 = InstrumentationLibrary.newBuilder().setName("Jaeger").setVersion("0.6.0").build();
-            final InstrumentationLibrary il2 = InstrumentationLibrary.newBuilder().setName("Jaeger").build();
-            final InstrumentationLibrary il3 = InstrumentationLibrary.newBuilder().setVersion("0.6.0").build();
-            final InstrumentationLibrary il4 = InstrumentationLibrary.newBuilder().build();
-
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).size(), equalTo(2));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), equalTo(il1.getName()));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), equalTo(il1.getVersion()));
-
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), equalTo(il2.getName()));
-
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), equalTo(il3.getVersion()));
-
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il4).isEmpty(), is(true));
-        }
-
-        @Test
         public void testStatusAttributes() {
             final Status st1 = Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_ERROR).setMessage("Some message").build();
             final Status st2 = Status.newBuilder().setMessage("error message").build();
@@ -498,15 +459,6 @@ public class OTelProtoCodecTest {
             validateLog(logs.get(0));
         }
 
-        @Test
-        public void testParseExportLogsServiceRequest_InstrumentationLibraryLogs() throws IOException {
-            final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_IS_JSON_FILE);
-            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest, Instant.now());
-
-            assertThat(logs.size() , is(equalTo(1)));
-            validateLog(logs.get(0));
-        }
-
         private void validateLog(OpenTelemetryLog logRecord) {
             assertThat(logRecord.getServiceName(), is("service"));
             assertThat(logRecord.getTime(), is("2020-05-24T14:00:00Z"));
@@ -519,16 +471,12 @@ public class OTelProtoCodecTest {
             assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));
             assertThat(logRecord.getSpanId(), is("2cc83ac90ebc469c"));
             Map<String, Object> mergedAttributes = logRecord.getAttributes();
-            assertThat(mergedAttributes.keySet().size(), is(2));
+            assertThat(mergedAttributes.keySet().size(), is(5));
             assertThat(mergedAttributes.get("log.attributes.statement@params"), is("us-east-1"));
             assertThat(mergedAttributes.get("resource.attributes.service@name"), is("service"));
-        }
-
-        @Test
-        public void testParseExportLogsServiceRequest_InstrumentationLibrarySpans() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
-            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest, Instant.now());
-            validateSpans(spans);
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("log scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         @Test
@@ -573,6 +521,10 @@ public class OTelProtoCodecTest {
             assertThat(metric.getName(), equalTo("counter-int"));
             JacksonGauge gauge = (JacksonGauge)metric;
             assertThat(gauge.getValue(), equalTo(123.0));
+            Map<String, Object> mergedAttributes = gauge.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("gauge scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateSumMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -584,6 +536,10 @@ public class OTelProtoCodecTest {
             assertThat(metric.getName(), equalTo("sum-int"));
             JacksonSum sum = (JacksonSum)metric;
             assertThat(sum.getValue(), equalTo(456.0));
+            Map<String, Object> mergedAttributes = sum.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("sum scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateHistogramMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -602,6 +558,10 @@ public class OTelProtoCodecTest {
             assertThat(histogram.getBucketCountsList(), equalTo(List.of(3L, 5L, 15L, 6L, 1L)));
             assertThat(histogram.getBucketCount(), equalTo(5));
             assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
+            Map<String, Object> mergedAttributes = histogram.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("histogram scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
         private void validateHistogramMetricRequestNoExplicitBounds(Collection<Record<? extends Metric>> metrics) {
@@ -620,6 +580,10 @@ public class OTelProtoCodecTest {
             assertThat(histogram.getBucketCountsList(), equalTo(List.of(10L)));
             assertThat(histogram.getBucketCount(), equalTo(1));
             assertThat(histogram.getAggregationTemporality(), equalTo("AGGREGATION_TEMPORALITY_CUMULATIVE"));
+            Map<String, Object> mergedAttributes = histogram.getAttributes();
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_ATTRIBUTES+".my@scope@attribute"), is("histogram scope attribute"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_NAME), is("my.library"));
+            assertThat(mergedAttributes.get(OTelProtoCodec.INSTRUMENTATION_SCOPE_VERSION), is("1.0.0"));
         }
 
 
@@ -743,7 +707,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryComplete() {
+        public void testEncodeInstrumentationScopeComplete() throws UnsupportedEncodingException, DecoderException {
             final String testName = "test name";
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
@@ -757,7 +721,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingName() {
+        public void testEncodeInstrumentationScopeMissingName() throws UnsupportedEncodingException, DecoderException {
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -768,7 +732,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingVersion() {
+        public void testEncodeInstrumentationScopeMissingVersion() throws UnsupportedEncodingException, DecoderException {
             final String testName = "test name";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
@@ -779,7 +743,7 @@ public class OTelProtoCodecTest {
         }
 
         @Test
-        public void testEncodeInstrumentationLibraryMissingAll() {
+        public void testEncodeInstrumentationScopeMissingAll() throws UnsupportedEncodingException, DecoderException {
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(testKeyIrrelevant, 2);
             final InstrumentationScope instrumentationScope = encoderUnderTest.constructInstrumentationScope(testAllAttributes);

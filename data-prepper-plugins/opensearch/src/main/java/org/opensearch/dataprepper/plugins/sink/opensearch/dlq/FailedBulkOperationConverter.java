@@ -19,15 +19,12 @@ public class FailedBulkOperationConverter {
 
     private final String pluginName;
     private final String pipelineName;
-    private final String pluginId;
 
-    public FailedBulkOperationConverter(final String pipelineName, final String pluginName, final String pluginId) {
+    public FailedBulkOperationConverter(final String pipelineName, final String pluginName) {
         Objects.requireNonNull(pipelineName);
-        Objects.requireNonNull(pluginId);
         Objects.requireNonNull(pluginName);
         this.pluginName = pluginName;
         this.pipelineName = pipelineName;
-        this.pluginId = pluginId;
     }
 
     public DlqObject convertToDlqObject(final FailedBulkOperation failedBulkOperation) {
@@ -54,7 +51,7 @@ public class FailedBulkOperationConverter {
             .withFailedData(failedDlqDataBuilder.build())
             .withPluginName(pluginName)
             .withPipelineName(pipelineName)
-            .withPluginId(pluginId)
+            .withPluginId(pluginName)
             .withEventHandle(bulkOperationWithHandle.getEventHandle())
             .build();
     }

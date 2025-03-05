@@ -78,7 +78,6 @@ class ReplicationLogClientFactoryTest {
 
         when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
         when(sourceConfig.isTlsEnabled()).thenReturn(true);
-        when(sourceConfig.getTableNames()).thenReturn(tableNames);
         when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
         when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));

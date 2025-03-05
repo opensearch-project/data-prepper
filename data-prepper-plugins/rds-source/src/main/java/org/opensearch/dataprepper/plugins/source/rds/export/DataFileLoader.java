@@ -20,8 +20,10 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
-import static org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata.DOT_DELIMITER;
 
 public class DataFileLoader implements Runnable {
 
@@ -126,7 +127,7 @@ public class DataFileLoader implements Runnable {
 
                     DataFileProgressState progressState = dataFilePartition.getProgressState().get();
 
-                    final String fullTableName = progressState.getSourceDatabase() + DOT_DELIMITER + progressState.getSourceTable();
+                    final String fullTableName = progressState.getFullSourceTableName();
                     final List<String> primaryKeys = progressState.getPrimaryKeyMap().getOrDefault(fullTableName, List.of());
                     transformEvent(event, fullTableName, EngineType.fromString(progressState.getEngineType()));
 
@@ -135,6 +136,7 @@ public class DataFileLoader implements Runnable {
                     final Event transformedEvent = recordConverter.convert(
                             event,
                             progressState.getSourceDatabase(),
+                            progressState.getSourceSchema(),
                             progressState.getSourceTable(),
                             OpenSearchBulkActions.INDEX,
                             primaryKeys,
@@ -175,12 +177,19 @@ public class DataFileLoader implements Runnable {
     }
 
     private void transformEvent(final Event event, final String fullTableName, final EngineType engineType) {
-        // TODO: support data type mapping in Postgres
-        if (engineType == EngineType.MYSQL) {
+        if (engineType.isMySql()) {
             Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
             for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
-                final Object data = DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+                final Object data = MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
                         entry.getValue(), null);
+                event.put(entry.getKey(), data);
+            }
+        }
+        if (engineType.isPostgres()) {
+            Map<String, String> columnDataTypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(fullTableName);
+            for (Map.Entry<String, Object> entry : event.toMap().entrySet()) {
+                final Object data = PostgresDataTypeHelper.getDataByColumnType(PostgresDataType.byDataType(columnDataTypeMap.get(entry.getKey())), entry.getKey(),
+                        entry.getValue());
                 event.put(entry.getKey(), data);
             }
         }

@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.EnumDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.EventKeyDeserializer;
@@ -32,7 +33,8 @@ public class ObjectMapperConfiguration {
             Boolean.class, Character.class, PluginConfigVariable.class);
 
     @Bean(name = "extensionPluginConfigObjectMapper")
-    ObjectMapper extensionPluginConfigObjectMapper() {
+    ObjectMapper extensionPluginConfigObjectMapper(
+            final DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(Enum.class, new EnumDeserializer());
@@ -41,13 +43,15 @@ public class ObjectMapperConfiguration {
 
         return new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
+                .registerModule(simpleModule)
+                .addHandler(dataPrepperDeserializationProblemHandler);
     }
 
     @Bean(name = "pluginConfigObjectMapper")
     ObjectMapper pluginConfigObjectMapper(
             final VariableExpander variableExpander,
-            final EventKeyFactory eventKeyFactory) {
+            final EventKeyFactory eventKeyFactory,
+            final DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
@@ -58,6 +62,7 @@ public class ObjectMapperConfiguration {
 
         return new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
+                .registerModule(simpleModule)
+                .addHandler(dataPrepperDeserializationProblemHandler);
     }
 }

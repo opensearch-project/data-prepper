@@ -13,7 +13,7 @@ package org.opensearch.dataprepper.plugins.source.jira;
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPDATED;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN_EQUALS;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.GREATER_THAN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.ISSUE_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.PREFIX;
@@ -136,7 +136,7 @@ public class JiraService {
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
             validateProjectFilters(configuration);
         }
-        StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN_EQUALS + ts.toEpochMilli());
+        StringBuilder jiraQl = new StringBuilder(UPDATED + GREATER_THAN + ts.toEpochMilli());
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration))) {
             jiraQl.append(PROJECT_IN).append(JiraConfigHelper.getProjectNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
@@ -167,6 +167,7 @@ public class JiraService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
+        jiraQl.append(" order by " + UPDATED);
         log.info("Created issue filter criteria JiraQl query: {}", jiraQl);
         return jiraQl;
     }
@@ -185,7 +186,7 @@ public class JiraService {
         JiraConfigHelper.getProjectNameIncludeFilter(configuration).forEach(projectFilter -> {
             Matcher matcher = regex.matcher(projectFilter);
             includedProjects.add(projectFilter);
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 100) {
                 badFilters.add(projectFilter);
             }
         });
@@ -194,21 +195,21 @@ public class JiraService {
             if (includedProjects.contains(projectFilter)) {
                 includedAndExcludedProjects.add(projectFilter);
             }
-            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 10) {
+            if (matcher.find() || projectFilter.length() <= 1 || projectFilter.length() > 100) {
                 badFilters.add(projectFilter);
             }
         });
         if (!badFilters.isEmpty()) {
             String filters = String.join("\"" + badFilters + "\"", ", ");
             log.error("One or more invalid project keys found in filter configuration: {}", badFilters);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Invalid project key found in filter configuration for "
                     + filters);
         }
         if (!includedAndExcludedProjects.isEmpty()) {
             String filters = String.join("\"" + includedAndExcludedProjects + "\"", ", ");
             log.error("One or more project keys found in both include and exclude: {}", includedAndExcludedProjects);
-            throw new BadRequestException("Bad request exception occurred " +
+            throw new InvalidPluginConfigurationException("Bad request exception occurred " +
                     "Project filters is invalid because the following projects are listed in both include and exclude"
                     + filters);
         }

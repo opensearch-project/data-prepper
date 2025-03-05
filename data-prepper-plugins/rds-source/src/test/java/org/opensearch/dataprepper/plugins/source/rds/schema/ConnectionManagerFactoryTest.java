@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 
-import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
@@ -44,7 +43,6 @@ class ConnectionManagerFactoryTest {
     @Test
     void test_getConnectionManager_for_postgres() {
         when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
-        when(sourceConfig.getTableNames()).thenReturn(List.of("schema1.table1", "schema1.table2"));
         final ConnectionManager connectionManager = connectionManagerFactory.getConnectionManager();
         assertThat(connectionManager, notNullValue());
         assertThat(connectionManager, instanceOf(PostgresConnectionManager.class));

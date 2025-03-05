@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import java.util.List;
 
 @Getter
-public class AtlassianSourceConfig implements CrawlerSourceConfig {
+public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
 
@@ -56,4 +56,6 @@ public class AtlassianSourceConfig implements CrawlerSourceConfig {
     public String getAuthType() {
         return this.getAuthenticationConfig().getAuthType();
     }
+
+    public abstract String getOauth2UrlContext();
 }

@@ -11,10 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.schema;
 
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
-
-import java.util.List;
 
 public class ConnectionManagerFactory {
     private final RdsSourceConfig sourceConfig;
@@ -26,7 +23,7 @@ public class ConnectionManagerFactory {
     }
 
     public ConnectionManager getConnectionManager() {
-        if (sourceConfig.getEngine() == EngineType.MYSQL) {
+        if (sourceConfig.getEngine().isMySql()) {
             return new MySqlConnectionManager(
                     dbMetadata.getEndpoint(),
                     dbMetadata.getPort(),
@@ -41,10 +38,6 @@ public class ConnectionManagerFactory {
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled(),
-                getDatabaseName(sourceConfig.getTableNames()));
-    }
-
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split("\\.")[0];
+                sourceConfig.getTables().getDatabase());
     }
 }

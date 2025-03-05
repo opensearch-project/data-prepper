@@ -27,6 +27,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKe
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_DATABASE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_S3_PARTITION_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_SCHEMA_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
@@ -54,6 +55,7 @@ class StreamRecordConverterTest {
     void test_convert_returns_expected_event() {
         final Map<String, Object> rowData = Map.of("key1", "value1", "key2", "value2");
         final String databaseName = UUID.randomUUID().toString();
+        final String schemaName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
         final EventType eventType = EventType.EXT_WRITE_ROWS;
         final OpenSearchBulkActions bulkAction = OpenSearchBulkActions.INDEX;
@@ -67,11 +69,12 @@ class StreamRecordConverterTest {
                 .build();
 
         Event event = streamRecordConverter.convert(
-                testEvent, databaseName, tableName, bulkAction, primaryKeys,
+                testEvent, databaseName, schemaName, tableName, bulkAction, primaryKeys,
                 eventCreateTimeEpochMillis, eventVersionNumber, eventType);
 
         assertThat(event.toMap(), is(rowData));
         assertThat(event.getMetadata().getAttribute(EVENT_DATABASE_NAME_METADATA_ATTRIBUTE), is(databaseName));
+        assertThat(event.getMetadata().getAttribute(EVENT_SCHEMA_NAME_METADATA_ATTRIBUTE), equalTo(schemaName));
         assertThat(event.getMetadata().getAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE), is(tableName));
         assertThat(event.getMetadata().getAttribute(CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE), is(eventType.toString()));
         assertThat(event.getMetadata().getAttribute(BULK_ACTION_METADATA_ATTRIBUTE), is(bulkAction.toString()));

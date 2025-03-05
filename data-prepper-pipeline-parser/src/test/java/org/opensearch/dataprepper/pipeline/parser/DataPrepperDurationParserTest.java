@@ -17,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DataPrepperDurationParserTest {
 
+    @Test
+    void nullValueThrowIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> DataPrepperDurationParser.parse(null));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"6s1s", "60ms 100s", "20.345s", "-1s", "06s", "100m", "100sm", "100"})
     void invalidDurationStringsThrowIllegalArgumentException(final String durationString) {

@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.jira.utils;
 
 public class JqlConstants {
-    public static final String GREATER_THAN_EQUALS = ">=";
+    public static final String GREATER_THAN = ">";
     public static final String CLOSING_ROUND_BRACKET = ")";
 
     public static final String SLASH = "/";

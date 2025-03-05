@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.jira.utils;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.source.jira.exception.BadRequestException;
+import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;

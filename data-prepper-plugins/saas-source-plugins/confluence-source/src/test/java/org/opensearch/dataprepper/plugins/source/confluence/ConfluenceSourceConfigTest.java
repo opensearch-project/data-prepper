@@ -78,7 +78,6 @@ public class ConfluenceSourceConfigTest {
         Map<String, Object> filterMap = new HashMap<>();
         Map<String, Object> projectMap = new HashMap<>();
         Map<String, Object> issueTypeMap = new HashMap<>();
-        Map<String, Object> statusMap = new HashMap<>();
 
         issueTypeMap.put("include", contentTypeList);
         filterMap.put("page_type", issueTypeMap);
@@ -126,5 +125,11 @@ public class ConfluenceSourceConfigTest {
         assertEquals(refreshToken, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getRefreshToken());
         assertEquals(clientId, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getClientId());
         assertEquals(clientSecret, confluenceSourceConfig.getAuthenticationConfig().getOauth2Config().getClientSecret());
+    }
+
+    @Test
+    void testGetOauth2UrlContext() throws Exception {
+        confluenceSourceConfig = createConfluenceSourceConfig(OAUTH2, false);
+        assertEquals("confluence", confluenceSourceConfig.getOauth2UrlContext());
     }
 }

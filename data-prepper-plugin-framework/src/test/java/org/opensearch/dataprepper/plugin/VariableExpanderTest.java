@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -38,7 +39,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class VariableExpanderTest {
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapperConfiguration().extensionPluginConfigObjectMapper();
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapperConfiguration()
+            .extensionPluginConfigObjectMapper(new DataPrepperDeserializationProblemHandler());
     static final JsonFactory JSON_FACTORY = new MappingJsonFactory();
 
     @Mock

@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
@@ -18,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
@@ -27,6 +30,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class StdInSourceTests {
     private static final String SOURCE_CONTENT = "THIS IS A TEST\nexit";
@@ -56,10 +61,15 @@ class StdInSourceTests {
     }
 
     @Test
-    void testStdInSourceCreationUsingPluginSetting() {
-        final PluginSetting pluginSetting = new PluginSetting("stdin", null);
-        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-        final StdInSource stdInSource = new StdInSource(pluginSetting);
+    void testStdInSourceCreationUsingStdInSourceConfig() throws JsonProcessingException {
+        final HashMap<String, Object> configMap = new HashMap<>();
+        configMap.put("write_timeout", 5_000);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json = objectMapper.writeValueAsString(configMap);
+        StdInSourceConfig stdInSourceConfig = objectMapper.readValue(json, StdInSourceConfig.class);
+        PipelineDescription pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        final StdInSource stdInSource = new StdInSource(stdInSourceConfig, pipelineDescription);
         assertThat(stdInSource, notNullValue());
     }
 
@@ -74,10 +84,11 @@ class StdInSourceTests {
 
     @Test
     void testStdInSourceCreationWithNullPluginSetting() {
+        PipelineDescription pipelineDescription = mock(PipelineDescription.class);
         try {
-            new StdInSource(null);
+            new StdInSource(null, pipelineDescription);
         } catch (NullPointerException ex) {
-            assertThat(ex.getMessage(), is(equalTo("PluginSetting cannot be null")));
+            assertThat(ex.getMessage(), is(equalTo("StdInSourceConfig cannot be null")));
         }
     }
 

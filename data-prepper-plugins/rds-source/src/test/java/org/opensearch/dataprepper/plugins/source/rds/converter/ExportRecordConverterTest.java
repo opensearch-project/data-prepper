@@ -29,6 +29,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKe
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.CHANGE_EVENT_TYPE_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_DATABASE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_S3_PARTITION_KEY;
+import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_SCHEMA_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TABLE_NAME_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_TIMESTAMP_METADATA_ATTRIBUTE;
 import static org.opensearch.dataprepper.plugins.source.rds.converter.MetadataKeyAttributes.EVENT_VERSION_FROM_TIMESTAMP;
@@ -54,6 +55,7 @@ class ExportRecordConverterTest {
     @Test
     void test_convert() {
         final String databaseName = UUID.randomUUID().toString();
+        final String schemaName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
         final String primaryKeyName = UUID.randomUUID().toString();
         final List<String> primaryKeys = List.of(primaryKeyName);
@@ -67,11 +69,12 @@ class ExportRecordConverterTest {
                 .build();
 
         Event actualEvent = exportRecordConverter.convert(
-                testEvent, databaseName, tableName, OpenSearchBulkActions.INDEX, primaryKeys,
+                testEvent, databaseName, schemaName, tableName, OpenSearchBulkActions.INDEX, primaryKeys,
                 eventCreateTimeEpochMillis, eventVersionNumber, null);
 
         // Assert
         assertThat(actualEvent.getMetadata().getAttribute(EVENT_DATABASE_NAME_METADATA_ATTRIBUTE), equalTo(databaseName));
+        assertThat(actualEvent.getMetadata().getAttribute(EVENT_SCHEMA_NAME_METADATA_ATTRIBUTE), equalTo(schemaName));
         assertThat(actualEvent.getMetadata().getAttribute(EVENT_TABLE_NAME_METADATA_ATTRIBUTE), equalTo(tableName));
         assertThat(actualEvent.getMetadata().getAttribute(BULK_ACTION_METADATA_ATTRIBUTE), equalTo(OpenSearchBulkActions.INDEX.toString()));
         assertThat(actualEvent.getMetadata().getAttribute(PRIMARY_KEY_DOCUMENT_ID_METADATA_ATTRIBUTE), equalTo(primaryKeyValue));

@@ -15,4 +15,8 @@ public class InvalidPluginConfigurationException extends RuntimeException {
     public InvalidPluginConfigurationException(final String message) {
         super(message);
     }
+
+    public InvalidPluginConfigurationException(final String message, final Throwable cause) {
+        super(message, cause);
+    }
 }

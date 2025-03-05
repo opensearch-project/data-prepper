@@ -13,8 +13,10 @@ import java.util.stream.Collectors;
 
 public enum EngineType {
 
-    MYSQL("mysql"),
-    POSTGRES("postgres");
+    MYSQL("mysql", EngineCategory.MYSQL, EnginePlatform.RDS),
+    POSTGRES("postgresql", EngineCategory.POSTGRES, EnginePlatform.RDS),
+    AURORA_MYSQL("aurora-mysql", EngineCategory.MYSQL, EnginePlatform.AURORA),
+    AURORA_POSTGRES("aurora-postgresql", EngineCategory.POSTGRES, EnginePlatform.AURORA);
 
     private static final Map<String, EngineType> ENGINE_TYPE_MAP = Arrays.stream(EngineType.values())
             .collect(Collectors.toMap(
@@ -22,9 +24,13 @@ public enum EngineType {
                     value -> value
             ));
     private final String engine;
+    private final EngineCategory category;
+    private final EnginePlatform platform;
 
-    EngineType(String engine) {
+    EngineType(String engine, EngineCategory category, EnginePlatform platform) {
         this.engine = engine;
+        this.category = category;
+        this.platform = platform;
     }
 
     @Override
@@ -35,5 +41,31 @@ public enum EngineType {
     @JsonCreator
     public static EngineType fromString(final String option) {
         return ENGINE_TYPE_MAP.get(option);
+    }
+
+    public enum EngineCategory {
+        MYSQL,
+        POSTGRES
+    }
+
+    public enum EnginePlatform {
+        RDS,
+        AURORA
+    }
+
+    public boolean isAurora() {
+        return platform == EnginePlatform.AURORA;
+    }
+
+    public boolean isRds() {
+        return platform == EnginePlatform.RDS;
+    }
+
+    public boolean isMySql() {
+        return category == EngineCategory.MYSQL;
+    }
+
+    public boolean isPostgres() {
+        return category == EngineCategory.POSTGRES;
     }
 }
