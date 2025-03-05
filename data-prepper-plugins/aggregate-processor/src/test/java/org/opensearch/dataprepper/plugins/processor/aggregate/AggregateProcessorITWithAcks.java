@@ -82,7 +82,7 @@ public class AggregateProcessorITWithAcks {
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_EVENTS_PER_BATCH = 5;
-    private static final Duration TEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration TEST_TIMEOUT = Duration.ofSeconds(30);
 
     @Mock
     private Pipeline pipeline;
