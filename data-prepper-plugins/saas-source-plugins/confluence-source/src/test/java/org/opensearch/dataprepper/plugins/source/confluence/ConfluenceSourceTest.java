@@ -64,19 +64,22 @@ public class ConfluenceSourceTest {
     @Mock
     private PluginExecutorServiceProvider executorServiceProvider;
     @Mock
+    private ConfluenceService service;
+    @Mock
     private ExecutorService executorService;
 
     @Test
     void initialization() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
         assertNotNull(source);
     }
 
     @Test
     void testStart() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        when(service.getConfluenceServerDefaultTimezone()).thenReturn("UTC");
+        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
         when(confluenceSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
@@ -92,7 +95,8 @@ public class ConfluenceSourceTest {
     @Test
     void testStop() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        when(service.getConfluenceServerDefaultTimezone()).thenReturn("UTC");
+        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
         when(confluenceSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
         when(confluenceSourceConfig.getAuthenticationConfig()).thenReturn(authenticationConfig);
@@ -109,7 +113,7 @@ public class ConfluenceSourceTest {
     @Test
     void testStop_WhenNotStarted() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
 
         source.stop();
 

@@ -28,7 +28,7 @@ class TimezoneHelperTest {
     @Test
     @DisplayName("Test UTC to PST offset")
     void testUtcToPstOffset() {
-        int offset = TimezoneHelper.getUTCTimezoneOffset("America/Los_Angeles");
+        int offset = TimezoneHelper.getUTCTimezoneOffsetSeconds("America/Los_Angeles");
         // UTC to PST is either -7 or -8 hours depending on DST
         assertTrue(offset == -28800 || offset == -25200);  // -8 hours or -7 hours in seconds
     }
@@ -84,5 +84,5 @@ class TimezoneHelperTest {
         // Maximum timezone difference is around 26 hours
         assertTrue(Math.abs(offset) <= 26 * 3600);
     }
-    
+
 }

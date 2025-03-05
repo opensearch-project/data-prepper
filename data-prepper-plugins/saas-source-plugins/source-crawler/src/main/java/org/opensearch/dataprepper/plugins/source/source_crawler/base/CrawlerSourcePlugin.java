@@ -74,7 +74,7 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
         log.debug("Leader partition creation status: {}", isPartitionCreated);
 
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, sourceConfig.getPollingTimezoneOffsetInSeconds());
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
         for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {

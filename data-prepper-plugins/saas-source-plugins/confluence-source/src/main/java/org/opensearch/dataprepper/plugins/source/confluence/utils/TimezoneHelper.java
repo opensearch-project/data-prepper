@@ -6,7 +6,7 @@ import java.time.ZonedDateTime;
 
 public class TimezoneHelper {
 
-    public static int getUTCTimezoneOffset(String timezone) {
+    public static int getUTCTimezoneOffsetSeconds(String timezone) {
         return getTimezoneOffsetSeconds(timezone, "UTC");
     }
 

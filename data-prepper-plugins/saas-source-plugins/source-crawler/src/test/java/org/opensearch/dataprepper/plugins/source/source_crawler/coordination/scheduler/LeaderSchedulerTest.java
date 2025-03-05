@@ -39,7 +39,7 @@ public class LeaderSchedulerTest {
 
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, 0);
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -52,7 +52,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, 0);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -66,7 +66,7 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, times(1)).crawl(leaderPartition, coordinator, batchSize);
+        verify(crawler, times(1)).crawl(leaderPartition, coordinator, batchSize, 0);
         verify(coordinator, times(1)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
 
     }
@@ -74,7 +74,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testExceptionWhileAcquiringLeaderPartition(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, 0);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -92,12 +92,12 @@ public class LeaderSchedulerTest {
 
     @Test
     void testWhileLoopRunnningAfterTheSleep() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, 0);
         leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(false);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
-        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt())).thenReturn(Instant.ofEpochMilli(10));
+        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt(), anyInt())).thenReturn(Instant.ofEpochMilli(10));
         when(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(leaderPartition))
                 .thenThrow(RuntimeException.class);
@@ -110,6 +110,6 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt());
+        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt(), anyInt());
     }
 }

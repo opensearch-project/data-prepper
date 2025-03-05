@@ -90,6 +90,10 @@ public class ConfluenceService {
         return confluenceRestClient.getContent(contentId);
     }
 
+    public String getConfluenceServerDefaultTimezone() {
+        return confluenceRestClient.getConfluenceServerDefaultTimezone();
+    }
+
     /**
      * Method for building Content Item Info.
      *

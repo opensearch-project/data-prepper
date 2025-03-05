@@ -16,4 +16,9 @@ public class AtlassianSourceConfigTest extends AtlassianSourceConfig {
     public String getOauth2UrlContext() {
         return "test";
     }
+
+    @Override
+    public int getPollingTimezoneOffsetInSeconds() {
+        return 0;
+    }
 }
