@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.source.confluence;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import lombok.Setter;
 import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.configuration.FilterConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
@@ -21,23 +20,21 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 public class ConfluenceSourceConfig extends AtlassianSourceConfig implements CrawlerSourceConfig {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
+
     /**
      * Filter Config to filter what tickets get ingested
      */
     @JsonProperty("filter")
     private FilterConfig filterConfig;
+
     /**
      * Boolean property indicating end to end acknowledgments state
      */
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
 
-    @Setter
-    private int pollingTimezoneOffsetInSeconds = 0;
-
     @Override
     public String getOauth2UrlContext() {
         return "confluence";
     }
-    
 }

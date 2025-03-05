@@ -15,11 +15,5 @@ public interface CrawlerSourceConfig {
      * @return boolean indicating acknowledgement state
      */
     boolean isAcknowledgments();
-
-    /**
-     * Returns the polling timezone offset in seconds.
-     *
-     * @return the polling timezone offset in seconds.
-     */
-    int getPollingTimezoneOffsetInSeconds();
+    
 }

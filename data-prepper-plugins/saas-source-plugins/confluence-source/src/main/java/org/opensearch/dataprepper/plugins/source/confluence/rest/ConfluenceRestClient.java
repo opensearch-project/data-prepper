@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestCli
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
-import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSystemInfoApiResponse;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -69,10 +69,10 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         contentRequestedCounter = pluginMetrics.counter(PAGES_REQUESTED);
     }
 
-    public String getConfluenceServerDefaultTimezone() {
+    public ConfluenceServerMetadata getConfluenceServerMetadata() {
         URI uri = UriComponentsBuilder.fromHttpUrl(authConfig.getUrl() + SYSTEM_INFO_API)
                 .buildAndExpand().toUri();
-        return invokeRestApi(uri, ConfluenceSystemInfoApiResponse.class).getBody().getDefaultTimeZone();
+        return invokeRestApi(uri, ConfluenceServerMetadata.class).getBody();
     }
 
     /**

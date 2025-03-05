@@ -43,9 +43,4 @@ public class JiraSourceConfig extends AtlassianSourceConfig implements CrawlerSo
         return "jira";
     }
 
-    @Override
-    public int getPollingTimezoneOffsetInSeconds() {
-        return 0;
-    }
-
 }

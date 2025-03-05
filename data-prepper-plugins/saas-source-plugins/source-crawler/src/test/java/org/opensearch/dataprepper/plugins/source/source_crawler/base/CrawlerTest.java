@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +38,7 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 @ExtendWith(MockitoExtension.class)
 public class CrawlerTest {
     private static final int DEFAULT_BATCH_SIZE = 50;
-    private static final int DEFAULT_TIMEZONE_OFFSET = 0;
+    private static final Duration DEFAULT_TIMEZONE_OFFSET = Duration.ofSeconds(0);
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock

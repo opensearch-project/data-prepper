@@ -1,28 +1,25 @@
 package org.opensearch.dataprepper.plugins.source.confluence.utils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class TimezoneHelper {
 
-    public static int getUTCTimezoneOffsetSeconds(String timezone) {
-        return getTimezoneOffsetSeconds(timezone, "UTC");
+    public static Duration getUTCTimezoneOffset(ZoneId timezone) {
+        return getTimezoneOffset(timezone, ZoneId.of("UTC"));
     }
 
-    public static int getTimezoneOffsetSeconds(String timezone1, String timezone2) {
-        ZoneId zone1 = ZoneId.of(timezone1);
-        ZoneId zone2 = ZoneId.of(timezone2);
-
+    public static Duration getTimezoneOffset(ZoneId timezone1, ZoneId timezone2) {
         // Get current instant
         LocalDateTime now = LocalDateTime.now();
 
         // Get offsets for both zones
-        ZonedDateTime zone1DateTime = now.atZone(zone1);
-        ZonedDateTime zone2DateTime = now.atZone(zone2);
+        ZonedDateTime zone1DateTime = now.atZone(timezone1);
+        ZonedDateTime zone2DateTime = now.atZone(timezone2);
 
         // Calculate difference
-        return (zone1DateTime.getOffset().getTotalSeconds() -
-                zone2DateTime.getOffset().getTotalSeconds());
+        return Duration.between(zone1DateTime, zone2DateTime);
     }
 }

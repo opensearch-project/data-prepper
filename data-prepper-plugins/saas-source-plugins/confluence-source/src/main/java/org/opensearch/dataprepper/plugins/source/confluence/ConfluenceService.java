@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceContentType;
@@ -90,8 +91,8 @@ public class ConfluenceService {
         return confluenceRestClient.getContent(contentId);
     }
 
-    public String getConfluenceServerDefaultTimezone() {
-        return confluenceRestClient.getConfluenceServerDefaultTimezone();
+    public ConfluenceServerMetadata getConfluenceServerMetadata() {
+        return confluenceRestClient.getConfluenceServerMetadata();
     }
 
     /**
