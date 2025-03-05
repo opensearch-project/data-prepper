@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
     private static final int CHECKPOINT_RECORD_INTERVAL = 50;
+    private static final int NO_ACK_PARTITION_TIME_OUT_SECONDS = 900; // 15 minutes
     private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -42,7 +43,7 @@ public class StreamAcknowledgementManager {
     public static final String NEGATIVE_ACKNOWLEDGEMENT_SET_METRIC_NAME = "negativeAcknowledgementSets";
     public static final String RECORDS_CHECKPOINTED = "recordsCheckpointed";
     public static final String NO_DATA_EXTEND_LEASE_COUNT = "noDataExtendLeaseCount";
-    public static final String GIVE_UP_PARTITION_COUNT = "giveupPartitionCount";
+    public static final String GIVE_UP_PARTITION_COUNT = "giveUpPartitionCount";
 
 
     public StreamAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
@@ -85,8 +86,10 @@ public class StreamAcknowledgementManager {
                                 checkpointStatus = checkpoints.peek();
                                 ackCount++;
                                 // at high TPS each ack contains 100 records. This should checkpoint every 100*50 = 5000 records.
-                                if (ackCount % CHECKPOINT_RECORD_INTERVAL == 0) {
+                                if ((ackCount % CHECKPOINT_RECORD_INTERVAL == 0) ||
+                                        (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs)){
                                     checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
+                                    lastCheckpointTime = System.currentTimeMillis();
                                 }
                             } while (checkpointStatus != null && checkpointStatus.isPositiveAcknowledgement());
                             checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
@@ -94,20 +97,23 @@ public class StreamAcknowledgementManager {
                         }
                     } else {
                         LOG.debug("Checkpoint not complete for resume token {}", checkpointStatus.getResumeToken());
-                        final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
+                        // negative ack
                         if (checkpointStatus.isNegativeAcknowledgement()) {
-                            // Give up partition and should interrupt parent thread to stop processing stream
-                            if (lastCheckpointStatus != null && lastCheckpointStatus.isPositiveAcknowledgement()) {
-                                checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
-                            }
-                            LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
-                            partitionCheckpoint.giveUpPartition();
-                            this.giveupPartitionCount.increment();
+                            LOG.warn("Negative Acknowledgement received for the checkpoint {}. Giving up partition.", checkpointStatus.getResumeToken());
+                            giveUpPartition(lastCheckpointStatus);
                             break;
+                        } else {
+                            final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
+                            // no ack received within timeout period
+                            if (!ackWaitDuration.minusSeconds(NO_ACK_PARTITION_TIME_OUT_SECONDS).isNegative()) {
+                                LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
+                                giveUpPartition(lastCheckpointStatus);
+                                break;
+                            }
                         }
                     }
                 } else {
-                    if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) {
+                    if (System.currentTimeMillis() - lastCheckpointTime >= checkPointIntervalInMs) { // 1 min
                         partitionCheckpoint.extendLease();
                         this.noDataExtendLeaseCount.increment();
                         lastCheckpointTime = System.currentTimeMillis();
@@ -128,10 +134,19 @@ public class StreamAcknowledgementManager {
         executorService.shutdown();
     }
 
+    private void giveUpPartition(final CheckpointStatus lastCheckpointStatus) {
+        // Give up partition and should interrupt parent thread to stop processing stream
+        if (lastCheckpointStatus != null && lastCheckpointStatus.isPositiveAcknowledgement()) {
+            checkpoint(lastCheckpointStatus.getResumeToken(), lastCheckpointStatus.getRecordCount());
+        }
+        partitionCheckpoint.giveUpPartition();
+        this.giveupPartitionCount.increment();
+    }
+
     private void checkpoint(final String resumeToken, final long recordCount) {
         LOG.debug("Perform regular checkpointing for resume token {} at record count {}", resumeToken, recordCount);
         partitionCheckpoint.checkpoint(resumeToken, recordCount);
-        this.recordsCheckpointed.increment(recordCount);
+        this.recordsCheckpointed.increment();
     }
 
     Optional<AcknowledgementSet> createAcknowledgementSet(final String resumeToken, final long recordNumber) {
