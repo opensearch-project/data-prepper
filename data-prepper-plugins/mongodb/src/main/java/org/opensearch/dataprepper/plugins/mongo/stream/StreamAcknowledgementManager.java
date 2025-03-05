@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 public class StreamAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(StreamAcknowledgementManager.class);
     private static final int CHECKPOINT_RECORD_INTERVAL = 50;
+    private static final int NO_ACK_PARTITION_TIME_OUT_SECONDS = 900; // 15 minutes
     private final ConcurrentLinkedQueue<CheckpointStatus> checkpoints = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<String, CheckpointStatus> ackStatus = new ConcurrentHashMap<>();
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -96,16 +97,15 @@ public class StreamAcknowledgementManager {
                         }
                     } else {
                         LOG.debug("Checkpoint not complete for resume token {}", checkpointStatus.getResumeToken());
-                        final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
                         // negative ack
                         if (checkpointStatus.isNegativeAcknowledgement()) {
                             LOG.warn("Negative Acknowledgement received for the checkpoint {}. Giving up partition.", checkpointStatus.getResumeToken());
                             giveUpPartition(lastCheckpointStatus);
                             break;
                         } else {
-                            // no ack received within timeout period (15 secs + 60 secs)
-                            if (!ackWaitDuration.minus(partitionAcknowledgmentTimeout)
-                                    .minusMillis(checkPointIntervalInMs).isNegative()) {
+                            final Duration ackWaitDuration = Duration.between(Instant.ofEpochMilli(checkpointStatus.getCreateTimestamp()), Instant.now());
+                            // no ack received within timeout period
+                            if (!ackWaitDuration.minusSeconds(NO_ACK_PARTITION_TIME_OUT_SECONDS).isNegative()) {
                                 LOG.warn("Acknowledgement not received for the checkpoint {} past wait time. Giving up partition.", checkpointStatus.getResumeToken());
                                 giveUpPartition(lastCheckpointStatus);
                                 break;
