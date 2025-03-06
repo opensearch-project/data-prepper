@@ -20,7 +20,9 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sch
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
@@ -33,18 +35,16 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
 
 
     private static final Logger log = LoggerFactory.getLogger(CrawlerSourcePlugin.class);
+    private EnhancedSourceCoordinator coordinator;
+    private Optional<SourceServerMetadata> serverMetadata = Optional.empty();
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
-
     private final AcknowledgementSetManager acknowledgementSetManager;
-
     private final ExecutorService executorService;
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final String sourcePluginName;
     private final int batchSize;
-    private EnhancedSourceCoordinator coordinator;
-    private Buffer<Record<Event>> buffer;
 
 
     public CrawlerSourcePlugin(final String sourcePluginName,
@@ -66,17 +66,24 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.executorService = executorServiceProvider.get();
     }
 
+    public void setServerMetadata(SourceServerMetadata serverMetadata) {
+        this.serverMetadata = Optional.of(serverMetadata);
+    }
+
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
         log.info("Starting {} Source Plugin", sourcePluginName);
-        this.buffer = buffer;
+        Duration timezoneOffset = Duration.ofSeconds(0);
 
         boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
         log.debug("Leader partition creation status: {}", isPartitionCreated);
+        if (serverMetadata.isPresent()) {
+            timezoneOffset = serverMetadata.get().getPollingTimezoneOffset();
+        }
 
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, this, crawler, batchSize);
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
         for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
