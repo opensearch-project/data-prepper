@@ -15,5 +15,4 @@ public interface CrawlerSourceConfig {
      * @return boolean indicating acknowledgement state
      */
     boolean isAcknowledgments();
-    
 }
