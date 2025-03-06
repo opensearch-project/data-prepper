@@ -30,16 +30,19 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClientBuilder;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.PutSecretValueRequest;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -49,6 +52,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -205,6 +209,49 @@ class AwsSecretManagerConfigurationTest {
         verify(secretsManagerClientBuilder).credentialsProvider(awsCredentialsProviderArgumentCaptor.capture());
         final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsProviderArgumentCaptor.getValue();
         assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+    }
+
+    @Test
+    void testCreateSecretManagerClientWithStsHeaderOverrides() throws IOException {
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
+                "/test-aws-secret-manager-configuration-with-sts-headers.yaml");
+        final AwsSecretManagerConfiguration awsSecretManagerConfiguration = objectMapper.readValue(
+                inputStream, AwsSecretManagerConfiguration.class);
+        assertThat(awsSecretManagerConfiguration.getAwsSecretId(), equalTo("test-secret"));
+        final StsAssumeRoleCredentialsProvider.Builder stsAssumeRoleCredentialsProviderBuilder =
+                mock(StsAssumeRoleCredentialsProvider.Builder.class);
+        final StsAssumeRoleCredentialsProvider stsAssumeRoleCredentialsProvider =
+                mock(StsAssumeRoleCredentialsProvider.class);
+        when(stsAssumeRoleCredentialsProviderBuilder.stsClient(any()))
+                .thenReturn(stsAssumeRoleCredentialsProviderBuilder);
+        when(stsAssumeRoleCredentialsProviderBuilder.refreshRequest(any(AssumeRoleRequest.class)))
+                .thenReturn(stsAssumeRoleCredentialsProviderBuilder);
+        when(stsAssumeRoleCredentialsProviderBuilder.build()).thenReturn(stsAssumeRoleCredentialsProvider);
+        when(secretsManagerClientBuilder.region(any(Region.class))).thenReturn(secretsManagerClientBuilder);
+        when(secretsManagerClientBuilder.credentialsProvider(any(AwsCredentialsProvider.class)))
+                .thenReturn(secretsManagerClientBuilder);
+        when(secretsManagerClientBuilder.build()).thenReturn(secretsManagerClient);
+        try (final MockedStatic<SecretsManagerClient> secretsManagerClientMockedStatic = mockStatic(
+                SecretsManagerClient.class);
+             final MockedStatic<StsAssumeRoleCredentialsProvider> stsAssumeRoleCredentialsProviderMockedStatic =
+                     mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+            secretsManagerClientMockedStatic.when(SecretsManagerClient::builder).thenReturn(secretsManagerClientBuilder);
+            stsAssumeRoleCredentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(
+                    stsAssumeRoleCredentialsProviderBuilder);
+            assertThat(awsSecretManagerConfiguration.createSecretManagerClient(), is(secretsManagerClient));
+        }
+        verify(secretsManagerClientBuilder).credentialsProvider(awsCredentialsProviderArgumentCaptor.capture());
+        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsProviderArgumentCaptor.getValue();
+        assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+        final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor =
+                ArgumentCaptor.forClass(AssumeRoleRequest.class);
+        verify(stsAssumeRoleCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+        final AssumeRoleRequest assumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+        assertThat(assumeRoleRequest.overrideConfiguration().isPresent(), is(true));
+        final AwsRequestOverrideConfiguration awsRequestOverrideConfiguration = assumeRoleRequest
+                .overrideConfiguration().get();
+        assertThat(awsRequestOverrideConfiguration.headers().size(), equalTo(1));
+        assertThat(awsRequestOverrideConfiguration.headers().get("test-header"), equalTo(List.of("test-value")));
     }
 
     @ParameterizedTest
