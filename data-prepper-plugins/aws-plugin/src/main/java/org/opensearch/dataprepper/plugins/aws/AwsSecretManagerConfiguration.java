@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +42,10 @@ public class AwsSecretManagerConfiguration {
     @JsonProperty("sts_role_arn")
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
+
+    @JsonProperty("sts_header_overrides")
+    @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
+    private Map<String, String> awsStsHeaderOverrides;
 
     @JsonProperty("refresh_interval")
     @NotNull(message = "refresh_interval must not be null")
@@ -100,6 +105,11 @@ public class AwsSecretManagerConfiguration {
             AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                     .roleSessionName("aws-secret-" + UUID.randomUUID())
                     .roleArn(awsStsRoleArn);
+
+            if (awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
+                assumeRoleRequestBuilder = assumeRoleRequestBuilder.overrideConfiguration(
+                        configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
+            }
 
             awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
                     .stsClient(stsClient)
