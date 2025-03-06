@@ -6,12 +6,9 @@
 package org.opensearch.dataprepper.model.log;
 
 import com.google.common.collect.ImmutableMap;
-import io.micrometer.core.instrument.util.IOUtils;
-import org.json.JSONException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import java.time.Instant;
@@ -26,7 +23,7 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasValue;
 import static org.hamcrest.Matchers.is;
 
-public class JacksonOtelLogTest {
+public class JacksonStandardOTelLogTest {
 
     private static final String TEST_KEY2 = UUID.randomUUID().toString();
     private static final Long TEST_TIME_KEY1 = new Date().getTime();
@@ -49,8 +46,8 @@ public class JacksonOtelLogTest {
     private static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 4;
     private static final Object TEST_BODY = Map.of("log", "message");
 
-    private JacksonOtelLog log;
-    private JacksonOtelLog.Builder builder = JacksonOtelLog.builder();
+    private JacksonStandardOTelLog log;
+    private JacksonStandardOTelLog.Builder builder = JacksonStandardOTelLog.builder();
 
     @BeforeEach
     public void setup() {
@@ -172,26 +169,18 @@ public class JacksonOtelLogTest {
 
     @Test
     public void testGetEmptyAttributes() {
-        JacksonOtelLog log2 = builder.withAttributes(null).build();
+        JacksonStandardOTelLog log2 = builder.withAttributes(null).build();
         final Map<String, Object> attributes = log2.getAttributes();
         Assertions.assertTrue(attributes.isEmpty());
     }
 
 
     @Test
-    public void testHistogramToJsonString() throws JSONException {
-        final String actual = log.toJsonString();
-        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/log.json"));
-        String expected = String.format(file, TEST_TIME_KEY1, TEST_KEY2);
-        JSONAssert.assertEquals(expected, actual, false);
-    }
-
-    @Test
     public void test_non_object_attributes_toJsonString_serializes_as_is() {
-        JacksonOtelLog testLog = JacksonOtelLog.builder()
+        JacksonStandardOTelLog testLog = JacksonStandardOTelLog.builder()
                 .withAttributes(Map.of("key", "value"))
                 .build();
-        assertThat(testLog.toJsonString(), equalTo("{\"key\":\"value\"}"));
+        assertThat(testLog.toJsonString(), equalTo("{\"attributes\":{\"key\":\"value\"}}"));
 
         testLog.put("attributes", "a string");
         assertThat(testLog.toJsonString(), equalTo("{\"attributes\":\"a string\"}"));

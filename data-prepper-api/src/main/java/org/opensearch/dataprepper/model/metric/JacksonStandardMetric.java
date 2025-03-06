@@ -5,71 +5,46 @@
 
 package org.opensearch.dataprepper.model.metric;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * A Jackson implementation for {@link Metric}s.
  *
- * @since 1.4
+ * @since 2.11
  */
-public abstract class JacksonMetric extends JacksonEvent implements Metric {
+public abstract class JacksonStandardMetric extends JacksonEvent implements Metric {
 
     protected static final String NAME_KEY = "name";
     protected static final String SCOPE_KEY = "scope";
     protected static final String RESOURCE_KEY = "resource";
     protected static final String DESCRIPTION_KEY = "description";
-    protected static final String START_TIME_KEY = "startTime";
+    protected static final String START_TIME_KEY = "start_time";
     protected static final String TIME_KEY = "time";
-    protected static final String SERVICE_NAME_KEY = "serviceName";
+    protected static final String SERVICE_NAME_KEY = "service_name";
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
+    protected static final String SUM_KEY = "sum";
+    protected static final String VALUE_KEY = "value";
+    protected static final String AGGREGATION_TEMPORALITY_KEY = "aggregation_temporality";
+    protected static final String COUNT_KEY = "count";
     public static final String ATTRIBUTES_KEY = "attributes";
-    protected static final String SCHEMA_URL_KEY = "schemaUrl";
+    protected static final String SCHEMA_URL_KEY = "schema_url";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
-    private boolean flattenAttributes;
 
-    protected JacksonMetric(Builder builder, boolean flattenAttributes) {
+    protected JacksonStandardMetric(Builder builder) {
         super(builder);
-        this.flattenAttributes = flattenAttributes;
-    }
-
-    public void setFlattenAttributes(boolean flattenAttributes) {
-        this.flattenAttributes = flattenAttributes;
-    }
-
-    boolean getFlattenAttributes() {
-        return flattenAttributes;
     }
 
     @Override
     public String toJsonString() {
-        if (!flattenAttributes) {
-            return getJsonNode().toString();
-        }
-        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get(ATTRIBUTES_KEY);
-        final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
-        if (attributesNode != null) {
-            flattenedJsonNode.remove(ATTRIBUTES_KEY);
-            for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
-                Map.Entry<String, JsonNode> entry = it.next();
-                String field = entry.getKey();
-                if (!flattenedJsonNode.has(field)) {
-                    flattenedJsonNode.set(field, entry.getValue());
-                }
-            }
-        }
-        return flattenedJsonNode.toString();
+        return getJsonNode().toString();
     }
 
     @Override
@@ -138,9 +113,9 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     }
 
     /**
-     * Builder for creating {@link JacksonMetric}
+     * Builder for creating {@link JacksonStandardMetric}
      *
-     * @since 1.4
+     * @since 2.11
      */
     public abstract static class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
 
@@ -154,19 +129,15 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             eventHandle = null;
         }
 
-	public void put(String key, Object value) {
-            mdata.put(key, value);
-	}
-
-        public void computeIfAbsent(String key, Function<? super String,? extends Object> f) {
-            mdata.computeIfAbsent(key, f);
+        public void put(String key, Object value) {
+                mdata.put(key, value);
         }
 
         /**
          * Sets the kind of the event. One of {@link Metric.KIND}
          * @param kind the kind of this event
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withEventKind(final String kind) {
             put(KIND_KEY, kind);
@@ -177,7 +148,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Sets the unit of the event
          * @param unit the unit of this event
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withUnit(final String unit) {
             put(UNIT_KEY, unit);
@@ -193,7 +164,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Optional - sets the attributes for this event. Default is an empty map.
          * @param attributes the attributes to associate with this event.
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withAttributes(final Map<String, Object> attributes) {
             put(ATTRIBUTES_KEY, attributes);
@@ -204,7 +175,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Sets the gauge name
          * @param name the name
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withName(final String name) {
             put(NAME_KEY, name);
@@ -215,43 +186,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Sets the gauge description
          * @param description the description of the metric
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withDescription(final String description) {
             put(DESCRIPTION_KEY, description);
-            return getThis();
-        }
-
-        /**
-         * Sets the start time of the gauge
-         * @param startTime the start time
-         * @return the builder
-         * @since 1.4
-         */
-        public T withStartTime(final String startTime) {
-            put(START_TIME_KEY, startTime);
-            return getThis();
-        }
-
-        /**
-         * Sets the time for the metricc event.
-         * @param time the moment corresponding to when the data point's aggregate value was captured.
-         * @return the builder
-         * @since 1.4
-         */
-        public T withTime(final String time) {
-            put(TIME_KEY, time);
-            return getThis();
-        }
-
-        /**
-         * Sets the service name of the metric event
-         * @param serviceName sets the name of the service
-         * @return the builder
-         * @since 1.4
-         */
-        public T withServiceName(final String serviceName) {
-            put(SERVICE_NAME_KEY, serviceName);
             return getThis();
         }
 
@@ -280,10 +218,43 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
         }
 
         /**
+         * Sets the start time of the gauge
+         * @param startTime the start time
+         * @return the builder
+         * @since 2.11
+         */
+        public T withStartTime(final String startTime) {
+            put(START_TIME_KEY, startTime);
+            return getThis();
+        }
+
+        /**
+         * Sets the time for the metricc event.
+         * @param time the moment corresponding to when the data point's aggregate value was captured.
+         * @return the builder
+         * @since 2.11
+         */
+        public T withTime(final String time) {
+            put(TIME_KEY, time);
+            return getThis();
+        }
+
+        /**
+         * Sets the service name of the metric event
+         * @param serviceName sets the name of the service
+         * @return the builder
+         * @since 2.11
+         */
+        public T withServiceName(final String serviceName) {
+            put(SERVICE_NAME_KEY, serviceName);
+            return getThis();
+        }
+
+        /**
          * Sets the schema url of the metric event
          * @param schemaUrl sets the url of the schema
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withSchemaUrl(final String schemaUrl) {
             put(SCHEMA_URL_KEY, schemaUrl);
@@ -295,7 +266,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          *
          * @param timeReceived time received
          * @return the builder
-         * @since 2.7
+         * @since 2.11
          */
         @Override
         public T withTimeReceived(final Instant timeReceived) {
@@ -307,7 +278,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Sets the exemplars that are associated with this metric event
          * @param  exemplars sets the exemplars for this metric
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withExemplars(final List<Exemplar> exemplars) {
             put(EXEMPLARS_KEY, exemplars);
@@ -318,7 +289,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          * Sets the flags that are associated with this metric event
          * @param flags sets the flags for this metric
          * @return the builder
-         * @since 1.4
+         * @since 2.11
          */
         public T withFlags(final Integer flags) {
             put(FLAGS_KEY, flags);

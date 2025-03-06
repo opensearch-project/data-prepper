@@ -7,9 +7,7 @@ package org.opensearch.dataprepper.model.trace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
@@ -18,43 +16,39 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A Jackson implementation for {@link Span}. This class extends the {@link JacksonEvent}.
  *
- * @since 1.2
+ * @since 2.11
  */
-public class JacksonSpan extends JacksonEvent implements Span {
+public class JacksonStandardSpan extends JacksonEvent implements Span {
 
     private static final String STATUS_KEY = "status";
     private static final String SCOPE_KEY = "scope";
     private static final String RESOURCE_KEY = "resource";
-    private static final String TRACE_ID_KEY = "traceId";
-    private static final String SPAN_ID_KEY = "spanId";
-    private static final String TRACE_STATE_KEY = "traceState";
-    private static final String PARENT_SPAN_ID_KEY = "parentSpanId";
+    private static final String TRACE_ID_KEY = "trace_id";
+    private static final String SPAN_ID_KEY = "span_id";
+    private static final String TRACE_STATE_KEY = "trace_state";
+    private static final String PARENT_SPAN_ID_KEY = "parent_span_id";
     private static final String NAME_KEY = "name";
     private static final String KIND_KEY = "kind";
-    private static final String START_TIME_KEY = "startTime";
-    private static final String END_TIME_KEY = "endTime";
+    private static final String START_TIME_KEY = "start_time";
+    private static final String END_TIME_KEY = "end_time";
     private static final String ATTRIBUTES_KEY = "attributes";
-    private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
+    private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "dropped_attributes_count";
     private static final String EVENTS_KEY = "events";
-    private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
+    private static final String DROPPED_EVENTS_COUNT_KEY = "dropped_events_count";
     private static final String LINKS_KEY = "links";
-    private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
-    private static final String SERVICE_NAME_KEY = "serviceName";
-    private static final String TRACE_GROUP_KEY = "traceGroup";
-    private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
-    private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
+    private static final String DROPPED_LINKS_COUNT_KEY = "dropped_links_count";
+    private static final String SERVICE_NAME_KEY = "service_name";
+    private static final String TRACE_GROUP_KEY = "trace_group";
+    private static final String DURATION_IN_NANOS_KEY = "duration_in_nanos";
+    private static final String TRACE_GROUP_FIELDS_KEY = "trace_group_fields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>
@@ -66,13 +60,13 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
-    protected JacksonSpan(final Builder builder) {
+    protected JacksonStandardSpan(final Builder builder) {
         super(builder);
 
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
     }
 
-    private JacksonSpan(final JacksonSpan otherSpan) {
+    private JacksonStandardSpan(final JacksonStandardSpan otherSpan) {
         super(otherSpan);
     }
 
@@ -107,6 +101,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
     }
 
     @Override
+    public Map<String, Object> getStatus() {
+        return this.get(STATUS_KEY, Map.class);
+    }
+
+    @Override
     public Map<String, Object> getScope() {
         return this.get(SCOPE_KEY, Map.class);
     }
@@ -114,11 +113,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public Map<String, Object> getResource() {
         return this.get(RESOURCE_KEY, Map.class);
-    }
-
-    @Override
-    public Map<String, Object> getStatus() {
-        return this.get(STATUS_KEY, Map.class);
     }
 
     @Override
@@ -195,11 +189,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         return new Builder();
     }
 
-    public static JacksonSpan fromSpan(final Span span) {
-        if (span instanceof JacksonSpan) {
-            return new JacksonSpan((JacksonSpan) span);
+    public static JacksonStandardSpan fromSpan(final Span span) {
+        if (span instanceof JacksonStandardSpan) {
+            return new JacksonStandardSpan((JacksonStandardSpan) span);
         } else {
-            return JacksonSpan.builder()
+            return JacksonStandardSpan.builder()
                     .withData(span.toMap())
                     .withEventMetadata(span.getMetadata())
                     .build();
@@ -208,25 +202,13 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String toJsonString() {
-        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
-        final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
-        if (attributesNode != null) {
-            flattenedJsonNode.remove("attributes");
-            for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
-                Map.Entry<String, JsonNode> entry = it.next();
-                String field = entry.getKey();
-                if (!flattenedJsonNode.has(field)) {
-                    flattenedJsonNode.set(field, entry.getValue());
-                }
-            }
-        }
-        return flattenedJsonNode.toString();
+        return getJsonNode().toString();
     }
 
     /**
-     * Builder for creating {@link JacksonSpan}
+     * Builder for creating {@link JacksonStandardSpan}
      *
-     * @since 1.2
+     * @since 2.11
      */
     public static class Builder extends JacksonEvent.Builder<Builder> {
 
@@ -246,7 +228,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param data JSON representation of the data
          * @return returns the builder
-         * @since 2.0
+         * @since 2.11
          */
         public Builder withJsonData(final String data) {
             try {
@@ -262,7 +244,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param data the data
          * @return returns the builder
-         * @since 2.0
+         * @since 2.11
          */
         @Override
         public Builder withData(final Object data) {
@@ -275,7 +257,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param eventMetadata the metadata
          * @return returns the builder
-         * @since 2.0
+         * @since 2.11
          */
         @Override
         public Builder withEventMetadata(final EventMetadata eventMetadata) {
@@ -288,7 +270,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param spanId span id
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withSpanId(final String spanId) {
             data.put(SPAN_ID_KEY, spanId);
@@ -300,7 +282,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param traceId trace id
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withTraceId(final String traceId) {
             data.put(TRACE_ID_KEY, traceId);
@@ -312,7 +294,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param traceState trace state
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withTraceState(final String traceState) {
             data.put(TRACE_STATE_KEY, traceState);
@@ -324,7 +306,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param parentSpanId parent span id
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withParentSpanId(final String parentSpanId) {
             data.put(PARENT_SPAN_ID_KEY, parentSpanId);
@@ -336,7 +318,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param name name
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withName(final String name) {
             data.put(NAME_KEY, name);
@@ -348,7 +330,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param kind kind
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withKind(final String kind) {
             data.put(KIND_KEY, kind);
@@ -397,7 +379,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param startTime start time
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withStartTime(final String startTime) {
             data.put(START_TIME_KEY, startTime);
@@ -409,7 +391,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param endTime end time
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withEndTime(final String endTime) {
             data.put(END_TIME_KEY, endTime);
@@ -417,11 +399,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the attributes for {@link JacksonSpan}. Default is an empty map.
+         * Optional - sets the attributes for {@link JacksonStandardSpan}. Default is an empty map.
          *
          * @param attributes the attributes to associate with this event.
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
             data.put(ATTRIBUTES_KEY, attributes);
@@ -429,11 +411,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the dropped attribute count for {@link JacksonSpan}. Default is 0.
+         * Optional - sets the dropped attribute count for {@link JacksonStandardSpan}. Default is 0.
          *
          * @param droppedAttributesCount the total number of dropped attributes
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
             data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
@@ -441,11 +423,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the events for {@link JacksonSpan}. Default is an empty list.
+         * Optional - sets the events for {@link JacksonStandardSpan}. Default is an empty list.
          *
          * @param events the events to associate.
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withEvents(final List<? extends SpanEvent> events) {
             data.put(EVENTS_KEY, events);
@@ -453,11 +435,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the dropped events count for {@link JacksonSpan}. Default is 0.
+         * Optional - sets the dropped events count for {@link JacksonStandardSpan}. Default is 0.
          *
          * @param droppedEventsCount the total number of dropped events
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withDroppedEventsCount(final Integer droppedEventsCount) {
             data.put(DROPPED_EVENTS_COUNT_KEY, droppedEventsCount);
@@ -465,11 +447,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the links for {@link JacksonSpan}. Default is an empty list.
+         * Optional - sets the links for {@link JacksonStandardSpan}. Default is an empty list.
          *
          * @param links the links to associate.
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withLinks(final List<? extends Link> links) {
             data.put(LINKS_KEY, links);
@@ -477,11 +459,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Optional - sets the dropped links count for {@link JacksonSpan}. Default is 0.
+         * Optional - sets the dropped links count for {@link JacksonStandardSpan}. Default is 0.
          *
          * @param droppedLinksCount the total number of dropped links
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withDroppedLinksCount(final Integer droppedLinksCount) {
             data.put(DROPPED_LINKS_COUNT_KEY, droppedLinksCount);
@@ -493,7 +475,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param traceGroup trace group
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withTraceGroup(final String traceGroup) {
             data.put(TRACE_GROUP_KEY, traceGroup);
@@ -505,7 +487,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param timeReceived time received
          * @return the builder
-         * @since 2.7
+         * @since 2.11
          */
         @Override
         public Builder withTimeReceived(final Instant timeReceived) {
@@ -517,7 +499,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param durationInNanos duration of the span in nano seconds
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withDurationInNanos(final Long durationInNanos) {
             data.put(DURATION_IN_NANOS_KEY, durationInNanos);
@@ -529,7 +511,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param traceGroupFields trace group fields
          * @return returns the builder
-         * @since 1.2
+         * @since 2.11
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
             data.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
@@ -541,7 +523,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          *
          * @param serviceName name of the service
          * @return returns the builder
-         * @since 1.3
+         * @since 2.11
          */
         public Builder withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
@@ -549,44 +531,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Returns a newly created {@link JacksonSpan}
+         * Returns a newly created {@link JacksonStandardSpan}
          *
-         * @return a JacksonSpan
-         * @since 1.2
+         * @return a JacksonStandardSpan
+         * @since 2.11
          */
         @Override
-        public JacksonSpan build() {
-            validateParameters();
-            checkAndSetDefaultValues();
+        public JacksonStandardSpan build() {
             super.withData(data);
             this.withEventType(EventType.TRACE.toString());
-            return new JacksonSpan(this);
-        }
-
-        private void validateParameters() {
-            REQUIRED_KEYS.forEach(key -> {
-                checkState(data.containsKey(key), key + " need to be assigned");
-            });
-
-            REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
-                final String value = (String) data.get(key);
-                checkNotNull(value, key + " cannot be null");
-                checkArgument(!value.isEmpty(), key + " cannot be an empty string");
-            });
-
-            REQUIRED_NON_NULL_KEYS.forEach(key -> {
-                final Object value = data.get(key);
-                checkNotNull(value, key + " cannot be null");
-            });
-        }
-
-        private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-            data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
-            data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
-            data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
+            return new JacksonStandardSpan(this);
         }
 
     }
