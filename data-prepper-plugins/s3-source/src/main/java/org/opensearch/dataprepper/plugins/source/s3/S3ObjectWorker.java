@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
@@ -23,13 +22,12 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -67,89 +65,14 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
     }
 
-    private void processObjectMetadata(final AcknowledgementSet acknowledgementSet,
-                               final S3ObjectReference s3ObjectReference,
-                               final BufferAccumulator<Record<Event>> bufferAccumulator,
-                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
-                               final String partitionKey) throws IOException {
-        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
-        final String BUCKET = "bucket";
-        final String KEY = "key";
-        final String TIME = "time";
-        final String LENGTH = "length";
-        Map<String, Object> data = new HashMap<>();
-        data.put(BUCKET, s3ObjectReference.getBucketName());
-        data.put(KEY, s3ObjectReference.getKey());
-        data.put(TIME, inputFile.getLastModified());
-        data.put(LENGTH, inputFile.getLength());
-        Event event = JacksonEvent.builder()
-                .withEventType("event")
-                .withData(data)
-                .build();
-        final long s3ObjectSize = event.toJsonString().length();
-        if (acknowledgementSet != null) {
-            acknowledgementSet.add(event);
-        }
-        AtomicLong lastCheckpointTime = new AtomicLong(System.currentTimeMillis());
-        final AtomicInteger saveStateCounter = new AtomicInteger();
-        final Instant lastModifiedTime = inputFile.getLastModified();
-        final Instant now = Instant.now();
-        final Instant originationTime = (lastModifiedTime == null || lastModifiedTime.isAfter(now)) ? now : lastModifiedTime;
-        event.getMetadata().setExternalOriginationTime(originationTime);
-        event.getEventHandle().setExternalOriginationTime(originationTime);
-        try {
-            bufferAccumulator.add(new Record<>(event));
-        } catch (final Exception e) {
-            LOG.error("Failed writing S3 objects to buffer.", e);
-        }
-        if (acknowledgementSet != null && sourceCoordinator != null && partitionKey != null &&
-                (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
-            LOG.debug("Renew partition ownership for the object {}", partitionKey);
-            sourceCoordinator.saveProgressStateForPartition(partitionKey, null);
-            lastCheckpointTime.set(System.currentTimeMillis());
-            saveStateCounter.getAndIncrement();
-        }
-
-        try {
-            bufferAccumulator.flush();
-        } catch (final Exception e) {
-            LOG.error("Failed writing S3 objects to buffer.", e);
-        }
-
-        final int recordsWritten = bufferAccumulator.getTotalWritten();
-
-        if (recordsWritten == 0) {
-            LOG.warn("Failed to get metadata for S3 object: s3ObjectReference={}.", s3ObjectReference);
-            s3ObjectPluginMetrics.getS3ObjectNoRecordsFound().increment();
-        }
-        s3ObjectPluginMetrics.getS3ObjectSizeSummary().record(s3ObjectSize);
-        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(recordsWritten);
-    }
-
-    public void processS3ObjectMetadata(final S3ObjectReference s3ObjectReference,
-                                        final AcknowledgementSet acknowledgementSet,
-                                        final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
-                                        final String partitionKey) throws IOException {
-        final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-        try {
-            s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                processObjectMetadata(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
-                return null;
-            });
-        } catch (final Exception e) {
-            throw new RuntimeException(e);
-        }
-        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
-    }
-
-    public void parseS3Object(final S3ObjectReference s3ObjectReference,
+    public void processS3Object(final S3ObjectReference s3ObjectReference,
                               final AcknowledgementSet acknowledgementSet,
                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                               final String partitionKey) throws IOException {
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                doParseObject(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
+                doProcessObject(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
                 return null;
             });
         } catch (final IOException | RuntimeException e) {
@@ -202,11 +125,22 @@ class S3ObjectWorker implements S3ObjectHandler {
         }
     }
 
-    private void doParseObject(final AcknowledgementSet acknowledgementSet,
+    @Override
+    public long consumeS3Object(final S3ObjectReference s3ObjectReference, final S3InputFile inputFile, final Consumer<Record<Event>> consumer) throws Exception {
+        final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
+                compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
+
+        codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
+            consumer.accept(record);
+        });
+        return inputFile.getLength();
+    }
+
+    private void doProcessObject(final AcknowledgementSet acknowledgementSet,
                                final S3ObjectReference s3ObjectReference,
                                final BufferAccumulator<Record<Event>> bufferAccumulator,
                                final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
-                               final String partitionKey) throws IOException {
+                               final String partitionKey) throws Exception {
         final long s3ObjectSize;
         final long totalBytesRead;
 
@@ -215,20 +149,17 @@ class S3ObjectWorker implements S3ObjectHandler {
 
         final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
 
-        final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
-                compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
-
         final AtomicInteger saveStateCounter = new AtomicInteger();
         try {
-            s3ObjectSize = inputFile.getLength();
             final Instant lastModifiedTime = inputFile.getLastModified();
             final Instant now = Instant.now();
             final Instant originationTime = (lastModifiedTime == null || lastModifiedTime.isAfter(now)) ? now : lastModifiedTime;
-
-            codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
+            s3ObjectSize = consumeS3Object(s3ObjectReference, inputFile, (record) -> {
                 try {
                     Event event = record.getData();
-                    eventConsumer.accept(event, s3ObjectReference);
+                    if (eventConsumer != null) {
+                        eventConsumer.accept(event, s3ObjectReference);
+                    }
                     event.getMetadata().setExternalOriginationTime(originationTime);
                     event.getEventHandle().setExternalOriginationTime(originationTime);
                     // Always add record to acknowledgementSet before adding to
@@ -239,7 +170,6 @@ class S3ObjectWorker implements S3ObjectHandler {
                         acknowledgementSet.add(event);
                     }
                     bufferAccumulator.add(record);
-
                     if (acknowledgementSet != null && sourceCoordinator != null && partitionKey != null &&
                             (System.currentTimeMillis() - lastCheckpointTime.get() > DEFAULT_CHECKPOINT_INTERVAL_MILLS)) {
                         LOG.debug("Renew partition ownership for the object {}", partitionKey);
@@ -251,6 +181,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
+
         } catch (final Exception ex) {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
@@ -262,7 +193,6 @@ class S3ObjectWorker implements S3ObjectHandler {
         } catch (final Exception e) {
             LOG.error("Failed writing S3 objects to buffer.", e);
         }
-
         final int recordsWritten = bufferAccumulator.getTotalWritten();
 
         if (recordsWritten == 0) {

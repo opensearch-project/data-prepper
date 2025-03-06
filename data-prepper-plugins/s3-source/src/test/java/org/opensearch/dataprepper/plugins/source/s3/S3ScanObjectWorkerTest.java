@@ -137,6 +137,7 @@ class S3ScanObjectWorkerTest {
     private ScanObjectWorker createObjectUnderTest() {
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION)).thenReturn(noObjectsFoundForFolderPartitionCounter);
         when(pluginMetrics.counter(PARTITION_OWNERSHIP_UPDATE_ERRORS)).thenReturn(partitionOwnershipUpdateErrorCounter);
@@ -148,7 +149,7 @@ class S3ScanObjectWorkerTest {
 
     @ParameterizedTest
     @MethodSource("exceptionProvider")
-    void giveUpPartitions_is_called_when_a_PartitionException_is_thrown_from_parseS3Object(final Class exception) throws IOException {
+    void giveUpPartitions_is_called_when_a_PartitionException_is_thrown_from_processS3Object(final Class exception) throws IOException {
         final String bucket = UUID.randomUUID().toString();
         final String objectKey = UUID.randomUUID().toString();
         final String partitionKey = bucket + "|" + objectKey;
@@ -159,7 +160,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doThrow(exception).when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doThrow(exception).when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).giveUpPartition(any());
 
         createObjectUnderTest().runWithoutInfiniteLoop();
@@ -182,7 +183,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         createObjectUnderTest().runWithoutInfiniteLoop();
@@ -211,7 +212,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(anyString(), eq(true));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
@@ -267,7 +268,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(anyString(), eq(true));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
@@ -323,7 +324,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
@@ -358,7 +359,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
@@ -393,7 +394,7 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doThrow(NoSuchKeyException.class).when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doThrow(NoSuchKeyException.class).when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).completePartition(partitionKey, false);
 
         createObjectUnderTest().runWithoutInfiniteLoop();
@@ -521,7 +522,7 @@ class S3ScanObjectWorkerTest {
         doNothing().when(acknowledgementSet2).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
 
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
-        doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
         scanObjectWorker.runWithoutInfiniteLoop();
@@ -598,7 +599,7 @@ class S3ScanObjectWorkerTest {
         doNothing().when(acknowledgementSet1).addProgressCheck(any(Consumer.class), eq(CHECKPOINT_OWNERSHIP_INTERVAL));
 
         doNothing().when(s3ObjectDeleteWorker).deleteS3Object(any(DeleteObjectRequest.class));
-        doNothing().when(s3ObjectHandler).parseS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).processS3Object(any(S3ObjectReference.class), any(AcknowledgementSet.class), eq(sourceCoordinator), eq(partitionKey));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
         scanObjectWorker.runWithoutInfiniteLoop();
