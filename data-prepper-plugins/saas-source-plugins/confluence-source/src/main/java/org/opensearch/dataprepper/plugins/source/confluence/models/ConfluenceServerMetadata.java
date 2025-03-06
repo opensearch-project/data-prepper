@@ -40,7 +40,7 @@ public class ConfluenceServerMetadata implements SourceServerMetadata {
     @Override
     public Duration getPollingTimezoneOffset() {
         Duration pollingTimezoneOffset = TimezoneHelper.getUTCTimezoneOffset(defaultTimeZone);
-        log.info("Confluence server default timezone: {} with pollingTimezoneOffsetInSeconds: {}",
+        log.info("Confluence server default timezone: {} with pollingTimezoneOffset: {}",
                 defaultTimeZone, pollingTimezoneOffset);
         return pollingTimezoneOffset;
     }

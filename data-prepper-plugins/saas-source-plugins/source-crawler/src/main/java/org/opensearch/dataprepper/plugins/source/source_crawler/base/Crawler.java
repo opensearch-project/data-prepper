@@ -49,7 +49,7 @@ public class Crawler {
         Instant lastPollTimeWithOffsetAdjustment = lastPollTime.plusSeconds(pollingTimezoneOffset.toSeconds());
         client.setLastPollTime(lastPollTimeWithOffsetAdjustment);
         Iterator<ItemInfo> itemInfoIterator = client.listItems();
-        Instant latestModifiedTime = Instant.from(lastPollTime);
+        Instant latestModifiedTime = lastPollTime;
         log.info("Starting to crawl the source with lastPollTime: {}", lastPollTimeWithOffsetAdjustment);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
