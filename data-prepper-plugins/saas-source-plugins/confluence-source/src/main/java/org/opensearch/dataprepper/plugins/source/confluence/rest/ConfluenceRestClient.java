@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestCli
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -36,6 +37,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 @Named
 public class ConfluenceRestClient extends AtlassianRestClient {
 
+    public static final String SYSTEM_INFO_API = "wiki/rest/api/settings/systemInfo";
     public static final String REST_API_SEARCH = "wiki/rest/api/content/search";
     public static final String REST_API_FETCH_CONTENT = "wiki/rest/api/content/";
     public static final String REST_API_CONTENT_EXPAND_PARAM = "?expand=body.view";
@@ -65,6 +67,12 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
         spaceFetchLatencyTimer = pluginMetrics.timer(SPACES_FETCH_LATENCY_TIMER);
         contentRequestedCounter = pluginMetrics.counter(PAGES_REQUESTED);
+    }
+
+    public ConfluenceServerMetadata getConfluenceServerMetadata() {
+        URI uri = UriComponentsBuilder.fromHttpUrl(authConfig.getUrl() + SYSTEM_INFO_API)
+                .buildAndExpand().toUri();
+        return invokeRestApi(uri, ConfluenceServerMetadata.class).getBody();
     }
 
     /**
