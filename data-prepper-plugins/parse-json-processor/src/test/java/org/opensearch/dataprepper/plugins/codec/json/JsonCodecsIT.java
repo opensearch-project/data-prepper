@@ -37,6 +37,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig.DEFAULT_MAX_EVENT_LENGTH;
 
 public class JsonCodecsIT {
 
@@ -51,6 +52,7 @@ public class JsonCodecsIT {
         when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(Collections.emptyList());
         when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
+        when(jsonInputCodecConfig.getMaxEventLength()).thenReturn(DEFAULT_MAX_EVENT_LENGTH);
         eventConsumer = mock(Consumer.class);
     }
 
