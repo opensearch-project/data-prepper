@@ -19,13 +19,16 @@ import org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestCli
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.inject.Named;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceNextLinkValidator.validateAndSanitizeURL;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_VALUE;
@@ -34,10 +37,12 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 @Named
 public class ConfluenceRestClient extends AtlassianRestClient {
 
+    public static final String SYSTEM_INFO_API = "wiki/rest/api/settings/systemInfo";
     public static final String REST_API_SEARCH = "wiki/rest/api/content/search";
     public static final String REST_API_FETCH_CONTENT = "wiki/rest/api/content/";
     public static final String REST_API_CONTENT_EXPAND_PARAM = "?expand=body.view";
     //public static final String REST_API_SPACES = "/rest/api/api/spaces";
+    public static final String WIKI_PARAM = "wiki";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String LIMIT_PARAM = "limit";
@@ -64,6 +69,12 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         contentRequestedCounter = pluginMetrics.counter(PAGES_REQUESTED);
     }
 
+    public ConfluenceServerMetadata getConfluenceServerMetadata() {
+        URI uri = UriComponentsBuilder.fromHttpUrl(authConfig.getUrl() + SYSTEM_INFO_API)
+                .buildAndExpand().toUri();
+        return invokeRestApi(uri, ConfluenceServerMetadata.class).getBody();
+    }
+
     /**
      * Method to get all Contents in a paginated fashion.
      *
@@ -78,8 +89,10 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         URI uri;
         if (null != paginationLinks && null != paginationLinks.getNext()) {
             try {
-                uri = new URI(authConfig.getUrl() + paginationLinks.getNext());
-            } catch (URISyntaxException e) {
+                String urlString = authConfig.getUrl() + WIKI_PARAM + paginationLinks.getNext();
+                urlString = validateAndSanitizeURL(urlString);
+                uri = new URI(urlString);
+            } catch (URISyntaxException | MalformedURLException e) {
                 throw new RuntimeException("Failed to construct pagination url.", e);
             }
         } else {

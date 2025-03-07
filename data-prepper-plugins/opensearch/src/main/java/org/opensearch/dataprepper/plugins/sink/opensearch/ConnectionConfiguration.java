@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
@@ -29,9 +28,11 @@ import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsRequestSigningApache4Interceptor;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ServerlessOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -61,36 +62,17 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 public class ConnectionConfiguration {
-  static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final String AWS_IAM_ROLE = "role";
   private static final String AWS_IAM = "iam";
   private static final String AOS_SERVICE_NAME = "es";
   private static final String AOSS_SERVICE_NAME = "aoss";
-  private static final String DEFAULT_AWS_REGION = "us-east-1";
 
   public static final String HOSTS = "hosts";
-  public static final String USERNAME = "username";
-  public static final String PASSWORD = "password";
-  public static final String SOCKET_TIMEOUT = "socket_timeout";
-  public static final String CONNECT_TIMEOUT = "connect_timeout";
-  public static final String CERT_PATH = "cert";
-  public static final String INSECURE = "insecure";
-  public static final String AWS_OPTION = "aws";
   public static final String AWS_SIGV4 = "aws_sigv4";
-  public static final String AWS_REGION = "aws_region";
-  public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
-  public static final String AWS_STS_EXTERNAL_ID = "aws_sts_external_id";
-  public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
-  public static final String PROXY = "proxy";
   public static final String SERVERLESS = "serverless";
-  public static final String SERVERLESS_OPTIONS = "serverless_options";
-  public static final String COLLECTION_NAME = "collection_name";
-  public static final String NETWORK_POLICY_NAME = "network_policy_name";
-  public static final String VPCE_ID = "vpce_id";
   public static final String REQUEST_COMPRESSION_ENABLED = "enable_request_compression";
 
   /**
@@ -112,7 +94,6 @@ public class ConnectionConfiguration {
   private final String awsStsExternalId;
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
-  private final String pipelineName;
   private final boolean serverless;
   private final String serverlessNetworkPolicyName;
   private final String serverlessCollectionName;
@@ -203,23 +184,16 @@ public class ConnectionConfiguration {
     this.serverlessCollectionName = builder.serverlessCollectionName;
     this.serverlessVpceId = builder.serverlessVpceId;
     this.requestCompressionEnabled = builder.requestCompressionEnabled;
-    this.pipelineName = builder.pipelineName;
     this.authConfig = builder.authConfig;
   }
 
-  public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
-    @SuppressWarnings("unchecked")
-    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
+  public static ConnectionConfiguration readConnectionConfiguration(final OpenSearchSinkConfig openSearchSinkConfig){
+    final List<String> hosts = openSearchSinkConfig.getHosts();
     ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
-    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
-    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
-    builder.withPipelineName(pluginSetting.getPipelineName());
-    final AuthConfig authConfig = AuthConfig.readAuthConfig(pluginSetting);
+    final String username = openSearchSinkConfig.getUsername();
+    final String password = openSearchSinkConfig.getPassword();
+    final AuthConfig authConfig = openSearchSinkConfig.getAuthConfig();
     if (authConfig != null) {
-      if (username != null || password != null) {
-        throw new IllegalStateException("Deprecated username and password should not be set " +
-                "when authentication is configured.");
-      }
       builder = builder.withAuthConfig(authConfig);
     } else {
       if (username != null) {
@@ -229,74 +203,69 @@ public class ConnectionConfiguration {
         builder = builder.withPassword(password);
       }
     }
-    final Integer socketTimeout = pluginSetting.getIntegerOrDefault(SOCKET_TIMEOUT, null);
+    final Integer socketTimeout = openSearchSinkConfig.getSocketTimeout();
     if (socketTimeout != null) {
       builder = builder.withSocketTimeout(socketTimeout);
     }
-    final Integer connectTimeout = pluginSetting.getIntegerOrDefault(CONNECT_TIMEOUT, null);
+    final Integer connectTimeout = openSearchSinkConfig.getConnectTimeout();
     if (connectTimeout != null) {
       builder = builder.withConnectTimeout(connectTimeout);
     }
 
-    Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
-    boolean awsOptionUsed = false;
     builder.withAwsSigv4(false);
-    if (awsOption != null && !awsOption.isEmpty()) {
-        awsOptionUsed = true;
-        builder.withAwsSigv4(true);
-        builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
-        builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
-        builder.withAWSStsExternalId((String)(awsOption.getOrDefault(AWS_STS_EXTERNAL_ID.substring(4), null)));
-        builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
-        builder.withServerless(OBJECT_MAPPER.convertValue(
-                awsOption.getOrDefault(SERVERLESS, false), Boolean.class));
+    final AwsAuthenticationConfiguration awsAuthenticationConfiguration = openSearchSinkConfig.getAwsAuthenticationOptions();
+    boolean awsSigv4 = openSearchSinkConfig.isAwsSigv4();
+    if (awsAuthenticationConfiguration != null) {
+      builder = builder.withAwsSigv4(true)
+              .withAwsRegion(awsAuthenticationConfiguration.getAwsRegion().toString())
+              .withAWSStsRoleArn(awsAuthenticationConfiguration.getAwsStsRoleArn())
+              .withAWSStsExternalId(awsAuthenticationConfiguration.getAwsStsExternalId())
+              .withAwsStsHeaderOverrides(awsAuthenticationConfiguration.getAwsStsHeaderOverrides())
+              .withServerless(awsAuthenticationConfiguration.isServerlessCollection());
 
-        Map<String, String> serverlessOptions = (Map<String, String>) awsOption.get(SERVERLESS_OPTIONS);
-        if (serverlessOptions != null && !serverlessOptions.isEmpty()) {
-          builder.withServerlessNetworkPolicyName((String)(serverlessOptions.getOrDefault(NETWORK_POLICY_NAME, null)));
-          builder.withServerlessCollectionName((String)(serverlessOptions.getOrDefault(COLLECTION_NAME, null)));
-          builder.withServerlessVpceId((String)(serverlessOptions.getOrDefault(VPCE_ID, null)));
-        }
-    } else {
+      final ServerlessOptions serverlessOptions = awsAuthenticationConfiguration.getServerlessOptions();
+      if (serverlessOptions != null) {
+        builder = builder.withServerlessNetworkPolicyName(serverlessOptions.getNetworkPolicyName())
+                .withServerlessCollectionName(serverlessOptions.getCollectionName())
+                .withServerlessVpceId(serverlessOptions.getVpceId());
+      }
+    } else if (awsSigv4) {
+      builder = builder.withAwsSigv4(awsSigv4)
+              .withAwsRegion(openSearchSinkConfig.getAwsRegion())
+              .withAWSStsRoleArn(openSearchSinkConfig.getAwsStsRoleArn())
+              .withAWSStsExternalId(openSearchSinkConfig.getAwsStsExternalId())
+              .withAwsStsHeaderOverrides(openSearchSinkConfig.getAwsStsHeaderOverrides());
+
+      final ServerlessOptions serverlessOptions = openSearchSinkConfig.getServerlessOptions();
+      if (serverlessOptions != null) {
+        builder = builder.withServerlessNetworkPolicyName(serverlessOptions.getNetworkPolicyName())
+                .withServerlessCollectionName(serverlessOptions.getCollectionName())
+                .withServerlessVpceId(serverlessOptions.getVpceId());
+      }
+    }  else {
       builder.withServerless(false);
     }
-    boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
-    final String awsOptionConflictMessage = String.format("%s option cannot be used along with %s option", AWS_SIGV4, AWS_OPTION);
-    if (awsSigv4) {
-      if (awsOptionUsed) {
-        throw new RuntimeException(awsOptionConflictMessage);
-      }
-      builder.withAwsSigv4(true);
-      builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
-      builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
-      builder.withAWSStsExternalId(pluginSetting.getStringOrDefault(AWS_STS_EXTERNAL_ID, null));
-      builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
-    }
 
-    final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
-    final boolean insecure = pluginSetting.getBooleanOrDefault(INSECURE, false);
+    final String certPath = openSearchSinkConfig.getCertPath();
+    final boolean insecure = openSearchSinkConfig.isInsecure();
     // Insecure == true will override configured certPath
     if (insecure) {
       builder.withInsecure(insecure);
     } else if (certPath != null) {
       builder.withCert(certPath);
     }
-    final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
-    builder = builder.withProxy(proxy);
+    
+    final String proxy = openSearchSinkConfig.getProxy();
+    if (proxy != null) {
+      builder = builder.withProxy(proxy);
+    }
 
-    final String distributionVersionName = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
-            DistributionVersion.DEFAULT.getVersion());
-    final DistributionVersion distributionVersion = DistributionVersion.fromTypeName(distributionVersionName);
-    final boolean requestCompressionEnabled = pluginSetting.getBooleanOrDefault(
-            REQUEST_COMPRESSION_ENABLED, !DistributionVersion.ES6.equals(distributionVersion));
+    final boolean requestCompressionEnabled = openSearchSinkConfig.getEnableRequestCompression();
     builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
     return builder.build();
   }
 
-  public String getPipelineName() {
-    return pipelineName;
-  }
 
   public RestHighLevelClient createClient(AwsCredentialsSupplier awsCredentialsSupplier) {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
@@ -629,11 +598,6 @@ public class ConnectionConfiguration {
 
     public Builder withProxy(final String proxy) {
       this.proxy = Optional.ofNullable(proxy);
-      return this;
-    }
-
-    public Builder withPipelineName(final String pipelineName) {
-      this.pipelineName = pipelineName;
       return this;
     }
 

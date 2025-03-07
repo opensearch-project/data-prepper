@@ -63,15 +63,20 @@ public class LambdaCommonHandler {
 
         LOG.debug("Batch size received to lambda processor: {}", records.size());
         for (Record<Event> record : records) {
+            //check size or time has exceeded threshold
+            if (ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
+                batchedBuffers.add(currentBufferPerBatch);
+                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+            }
 
             currentBufferPerBatch.addRecord(record);
-            if (ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes,
-                    maxCollectionDuration)) {
+
+            // After adding, check if the event count threshold is reached.
+            if (ThresholdCheck.checkEventCountThresholdExceeded(currentBufferPerBatch, maxEvents)) {
                 batchedBuffers.add(currentBufferPerBatch);
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
         }
-
         if (currentBufferPerBatch.getEventCount() > 0) {
             batchedBuffers.add(currentBufferPerBatch);
         }
@@ -100,7 +105,6 @@ public class LambdaCommonHandler {
             CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
             bufferToFutureMap.put(buffer, future);
         }
-        waitForFutures(bufferToFutureMap.values());
         return bufferToFutureMap;
     }
 

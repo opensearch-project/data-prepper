@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.rds.exception.SqlMetadataException;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
@@ -23,13 +24,12 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +41,7 @@ import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaMa
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_POSITION;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.BINLOG_STATUS_QUERY;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.COLUMN_NAME;
+import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TABLE_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.TYPE_NAME;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.DELETE_RULE;
 import static org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager.FKCOLUMN_NAME;
@@ -81,20 +82,54 @@ class MySqlSchemaManagerTest {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getString(COLUMN_NAME)).thenReturn(primaryKey);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
+        final String fullTableName = databaseName + "." + tableName;
+        final Map<String, List<String>> primaryKeysMap = schemaManager.getPrimaryKeys(List.of(fullTableName));
 
-        assertThat(primaryKeys, contains(primaryKey));
+        assertThat(primaryKeysMap.get(fullTableName), is(List.of(primaryKey)));
     }
 
     @Test
-    void test_getPrimaryKeys_throws_exception_then_returns_empty_list() throws SQLException {
+    void test_getPrimaryKeys_when_connection_fails_then_throws() throws SQLException {
         final String databaseName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
         when(connectionManager.getConnection()).thenThrow(SQLException.class);
 
-        final List<String> primaryKeys = schemaManager.getPrimaryKeys(databaseName + "." + tableName);
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
+    }
 
-        assertThat(primaryKeys, empty());
+    @Test
+    void test_getPrimaryKeys_when_fails_to_get_metadata_then_throws() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenThrow(SqlMetadataException.class);
+
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getPrimaryKeys(List.of(fullTableName)));
+    }
+
+    @Test
+    void test_getTableNames_returns_correct_result() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+        final String fullTableName = databaseName + DOT_DELIMITER + tableName;
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData().getTables(databaseName, null, null, new String[]{"TABLE"})).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getString(TABLE_NAME)).thenReturn(tableName);
+
+        Set<String> tableNames = schemaManager.getTableNames(databaseName);
+
+        assertThat(tableNames, is(Set.of(fullTableName)));
+    }
+
+    @Test
+    void test_getTableNames_when_exception_then_throws() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        when(connectionManager.getConnection()).thenThrow(SQLException.class);
+
+        assertThrows(RuntimeException.class, () -> schemaManager.getTableNames(databaseName));
     }
 
     @Test
@@ -127,29 +162,41 @@ class MySqlSchemaManagerTest {
 
     @Test
     public void getColumnDataTypes_whenFailedToRetrieveColumns_shouldThrowException() throws SQLException {
-        final String database = UUID.randomUUID().toString();
+        final String databaseName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
 
         when(connectionManager.getConnection()).thenReturn(connection);
         when(connection.getMetaData()).thenReturn(databaseMetaData);
-        when(databaseMetaData.getColumns(database, null, tableName, null)).thenThrow(new SQLException("Test exception"));
+        when(databaseMetaData.getColumns(databaseName, null, tableName, null)).thenThrow(new SQLException("Test exception"));
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database + "." + tableName));
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
     }
 
     @Test
     public void getColumnDataTypes_whenFailedToGetConnection_shouldThrowException() throws SQLException {
-        final String database = UUID.randomUUID().toString();
+        final String databaseName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
 
         when(connectionManager.getConnection()).thenThrow(new SQLException("Connection failed"));
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
+    }
 
-        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(database + "." + tableName));
+    @Test
+    public void getColumnDataTypes_whenFailsToGetMetadata_shouldThrowException() throws SQLException {
+        final String databaseName = UUID.randomUUID().toString();
+        final String tableName = UUID.randomUUID().toString();
+
+        when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenThrow(SqlMetadataException.class);
+        final String fullTableName = databaseName + "." + tableName;
+        assertThrows(RuntimeException.class, () -> schemaManager.getColumnDataTypes(List.of(fullTableName)));
     }
 
     @Test
     void getColumnDataTypes_whenColumnsExist_shouldReturnValidMapping() throws SQLException {
-        final String database = UUID.randomUUID().toString();
+        final String databaseName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
         final Map<String, String> expectedColumnTypes = Map.of(
                 "id", "INTEGER",
@@ -160,7 +207,7 @@ class MySqlSchemaManagerTest {
         // Setup the mocks
         when(connectionManager.getConnection()).thenReturn(connection);
         when(connection.getMetaData()).thenReturn(databaseMetaData);
-        when(databaseMetaData.getColumns(database, null, tableName, null))
+        when(databaseMetaData.getColumns(databaseName, null, tableName, null))
                 .thenReturn(resultSet);
 
         // Setup ResultSet to return our expected columns
@@ -171,11 +218,14 @@ class MySqlSchemaManagerTest {
         when(resultSet.getString(TYPE_NAME))
                 .thenReturn("INTEGER", "VARCHAR", "TIMESTAMP");
 
-        Map<String, String> result = schemaManager.getColumnDataTypes(database + "." + tableName);
+        final String fullTableName = databaseName + "." + tableName;
+        Map<String, Map<String, String>> result = schemaManager.getColumnDataTypes(List.of(fullTableName));
 
         assertThat(result, notNullValue());
-        assertThat(result.size(), is(expectedColumnTypes.size()));
-        assertThat(result, equalTo(expectedColumnTypes));
+        assertThat(result.size(), is(1));
+        final Map<String, String> resultItem = result.get(fullTableName);
+        assertThat(resultItem.size(), is(expectedColumnTypes.size()));
+        assertThat(resultItem, equalTo(expectedColumnTypes));
     }
 
     @Test

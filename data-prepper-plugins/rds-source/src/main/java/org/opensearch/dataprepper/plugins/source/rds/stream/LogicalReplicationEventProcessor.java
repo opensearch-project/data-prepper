@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class LogicalReplicationEventProcessor {
@@ -77,7 +78,6 @@ public class LogicalReplicationEventProcessor {
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final int NUM_OF_RETRIES = 3;
     static final int BACKOFF_IN_MILLIS = 500;
-    static final String DOT_DELIMITER_REGEX = "\\.";
     static final String CHANGE_EVENTS_PROCESSED_COUNT = "changeEventsProcessed";
     static final String CHANGE_EVENTS_PROCESSING_ERROR_COUNT = "changeEventsProcessingErrors";
     static final String BYTES_RECEIVED = "bytesReceived";
@@ -144,13 +144,34 @@ public class LogicalReplicationEventProcessor {
         eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
+    public static LogicalReplicationEventProcessor create(final StreamPartition streamPartition,
+                                                          final RdsSourceConfig sourceConfig,
+                                                          final Buffer<Record<Event>> buffer,
+                                                          final String s3Prefix,
+                                                          final PluginMetrics pluginMetrics,
+                                                          final LogicalReplicationClient logicalReplicationClient,
+                                                          final StreamCheckpointer streamCheckpointer,
+                                                          final AcknowledgementSetManager acknowledgementSetManager) {
+        return new LogicalReplicationEventProcessor(streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics,
+                logicalReplicationClient, streamCheckpointer, acknowledgementSetManager);
+    }
+
     public void process(ByteBuffer msg) {
         // Message processing logic:
         // If it's a BEGIN, note its LSN
         // If it's a RELATION, update table metadata map
         // If it's INSERT/UPDATE/DELETE, prepare events
         // If it's a COMMIT, convert all prepared events and send to buffer
-        MessageType messageType = MessageType.from((char) msg.get());
+        MessageType messageType;
+        char typeChar = '\0';
+        try {
+            typeChar = (char) msg.get();
+            messageType = MessageType.from(typeChar);
+        } catch (IllegalArgumentException e) {
+            LOG.warn("Unknown message type {} received from stream. Skipping.", typeChar);
+            return;
+        }
+
         switch (messageType) {
             case BEGIN:
                 handleMessageWithRetries(msg, this::processBeginMessage, messageType);
@@ -170,8 +191,11 @@ public class LogicalReplicationEventProcessor {
             case COMMIT:
                 handleMessageWithRetries(msg, this::processCommitMessage, messageType);
                 break;
+            case TYPE:
+                handleMessageWithRetries(msg, this::processTypeMessage, messageType);
+                break;
             default:
-                throw new IllegalArgumentException("Replication message type [" + messageType + "] is not supported. ");
+                LOG.debug("Replication message type '{}' is not supported. Skipping.", messageType);
         }
     }
 
@@ -198,10 +222,11 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processRelationMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
-        // null terminated string
+        final long tableId = msg.getInt();
+        String databaseName = sourceConfig.getTables().getDatabase();
         String schemaName = getNullTerminatedString(msg);
         String tableName = getNullTerminatedString(msg);
+
         int replicaId = msg.get();
         short numberOfColumns = msg.getShort();
 
@@ -209,9 +234,16 @@ public class LogicalReplicationEventProcessor {
         List<String> columnTypes = new ArrayList<>();
         for (int i = 0; i < numberOfColumns; i++) {
             int flag = msg.get();    // 1 indicates this column is part of the replica identity
-            // null terminated string
             String columnName = getNullTerminatedString(msg);
-            ColumnType columnType = ColumnType.getByTypeId(msg.getInt());
+            ColumnType columnType;
+            try {
+                columnType = ColumnType.getByTypeId(msg.getInt());
+            } catch (IllegalArgumentException e) {
+                final Set<String> enumColumns = getEnumColumns(databaseName, schemaName, tableName);
+                if (enumColumns != null && enumColumns.contains(columnName)) {
+                    columnType = ColumnType.getByTypeId(ColumnType.ENUM_TYPE_ID);
+                } else throw e;
+            }
             String columnTypeName = columnType.getTypeName();
             columnTypes.add(columnTypeName);
             int typeModifier = msg.getInt();
@@ -224,7 +256,6 @@ public class LogicalReplicationEventProcessor {
             columnNames.add(columnName);
         }
 
-        final String databaseName = getDatabaseName(sourceConfig.getTableNames());
         final List<String> primaryKeys = getPrimaryKeys(databaseName, schemaName, tableName);
         final TableMetadata tableMetadata = TableMetadata.builder()
                 .withDatabaseName(databaseName)
@@ -235,7 +266,7 @@ public class LogicalReplicationEventProcessor {
                 .withPrimaryKeys(primaryKeys)
                 .build();
 
-        tableMetadataMap.put((long) tableId, tableMetadata);
+        tableMetadataMap.put(tableId, tableMetadata);
 
         LOG.debug("Processed an Relation message with RelationId: {} Namespace: {} RelationName: {} ReplicaId: {}", tableId, schemaName, tableName, replicaId);
     }
@@ -253,6 +284,11 @@ public class LogicalReplicationEventProcessor {
         }
 
         final long recordCount = pipelineEvents.size();
+        if (recordCount == 0) {
+            LOG.debug("No records found in current batch. Skipping.");
+            return;
+        }
+
         AcknowledgementSet acknowledgementSet = null;
         if (sourceConfig.isAcknowledgmentsEnabled()) {
             acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(LogSequenceNumber.valueOf(currentLsn), recordCount);
@@ -270,10 +306,10 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processInsertMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
@@ -283,9 +319,9 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processUpdateMessage(ByteBuffer msg) {
-        final int tableId = msg.getInt();
+        final long tableId = msg.getInt();
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final List<String> columnTypes = tableMetadata.getColumnTypes();
@@ -294,25 +330,19 @@ public class LogicalReplicationEventProcessor {
         TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
         if (tupleDataType == TupleDataType.NEW) {
             doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {}", tableId);
-        } else if (tupleDataType == TupleDataType.KEY) {
-            // Primary keys were changed
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
-            msg.get();  // should be a char 'N'
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
-            LOG.debug("Processed an UPDATE message with table id: {} and primary key(s) were changed", tableId);
-
-        } else if (tupleDataType == TupleDataType.OLD) {
+        } else if (tupleDataType == TupleDataType.OLD || tupleDataType == TupleDataType.KEY) {
             // Replica Identity is set to full, containing both old and new row data
             Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
             msg.get();  // should be a char 'N'
             Map<String, Object> newRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
 
             if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
+                LOG.debug("Primary keys were changed");
                 createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
             }
             createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
         }
+        LOG.debug("Processed an UPDATE message with table id: {}", tableId);
     }
 
     private boolean isPrimaryKeyChanged(Map<String, Object> oldRowDataMap, Map<String, Object> newRowDataMap, List<String> primaryKeys) {
@@ -325,16 +355,23 @@ public class LogicalReplicationEventProcessor {
     }
 
     void processDeleteMessage(ByteBuffer msg) {
-        int tableId = msg.getInt();
+        final long tableId = msg.getInt();
         char n_char = (char) msg.get();  // Skip the 'N' character
 
-        final TableMetadata tableMetadata = tableMetadataMap.get((long) tableId);
+        final TableMetadata tableMetadata = tableMetadataMap.get(tableId);
         final List<String> columnNames = tableMetadata.getColumnNames();
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
 
         doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
         LOG.debug("Processed a DELETE message with table id: {}", tableId);
+    }
+
+     void processTypeMessage(ByteBuffer msg) {
+        int dataTypeId = msg.getInt();
+        String schemaName = getNullTerminatedString(msg);
+        String typeName = getNullTerminatedString(msg);
+        LOG.debug("Processed a TYPE message with TypeId: {} Namespace: {} TypeName: {}", dataTypeId, schemaName, typeName);
     }
 
     private void doProcess(ByteBuffer msg, List<String> columnNames, TableMetadata tableMetadata,
@@ -439,12 +476,12 @@ public class LogicalReplicationEventProcessor {
 
     private List<String> getPrimaryKeys(String databaseName, String schemaName, String tableName) {
         StreamProgressState progressState = streamPartition.getProgressState().get();
-
         return progressState.getPrimaryKeyMap().get(databaseName + "." + schemaName + "." + tableName);
     }
 
-    private String getDatabaseName(List<String> tableNames) {
-        return tableNames.get(0).split(DOT_DELIMITER_REGEX)[0];
+    private Set<String> getEnumColumns(String databaseName, String schemaName, String tableName) {
+        StreamProgressState progressState = streamPartition.getProgressState().get();
+        return progressState.getPostgresStreamState().getEnumColumnsByTable().get(databaseName + "." + schemaName + "." + tableName);
     }
 
     private void handleMessageWithRetries(ByteBuffer message, Consumer<ByteBuffer> function, MessageType messageType) {

@@ -11,8 +11,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -30,6 +31,7 @@ import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.converter.ExportRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.DataFileProgressState;
@@ -113,14 +115,16 @@ class DataFileLoaderTest {
         when(pluginMetrics.summary(BYTES_PROCESSED)).thenReturn(bytesProcessedSummary);
     }
 
-    @Test
-    void test_run_success() throws Exception {
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_run_success(EngineType engineType) throws Exception {
         final String bucket = UUID.randomUUID().toString();
         final String key = UUID.randomUUID().toString();
         when(dataFilePartition.getBucket()).thenReturn(bucket);
         when(dataFilePartition.getKey()).thenReturn(key);
         final DataFileProgressState progressState = mock(DataFileProgressState.class, RETURNS_DEEP_STUBS);
         when(dataFilePartition.getProgressState()).thenReturn(Optional.of(progressState));
+        when(progressState.getEngineType()).thenReturn(engineType.toString());
 
         InputStream inputStream = mock(InputStream.class);
         when(s3ObjectReader.readFile(bucket, key)).thenReturn(inputStream);
@@ -162,14 +166,16 @@ class DataFileLoaderTest {
         verify(exportRecordErrorCounter, never()).increment(1);
     }
 
-    @Test
-    void test_flush_failure_then_error_metric_updated() throws Exception {
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_flush_failure_then_error_metric_updated(EngineType engineType) throws Exception {
         final String bucket = UUID.randomUUID().toString();
         final String key = UUID.randomUUID().toString();
         when(dataFilePartition.getBucket()).thenReturn(bucket);
         when(dataFilePartition.getKey()).thenReturn(key);
         final DataFileProgressState progressState = mock(DataFileProgressState.class, RETURNS_DEEP_STUBS);
         when(dataFilePartition.getProgressState()).thenReturn(Optional.of(progressState));
+        when(progressState.getEngineType()).thenReturn(engineType.toString());
 
         InputStream inputStream = mock(InputStream.class);
         when(s3ObjectReader.readFile(bucket, key)).thenReturn(inputStream);

@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sta
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +38,7 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 @ExtendWith(MockitoExtension.class)
 public class CrawlerTest {
     private static final int DEFAULT_BATCH_SIZE = 50;
+    private static final Duration DEFAULT_TIMEZONE_OFFSET = Duration.ofSeconds(0);
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock
@@ -77,7 +79,7 @@ public class CrawlerTest {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         when(client.listItems()).thenReturn(Collections.emptyIterator());
         when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         verify(coordinator, never()).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -88,7 +90,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("itemId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
 
     }
@@ -100,7 +102,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         verify(coordinator, times(2)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -112,7 +114,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage);
+        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage, DEFAULT_TIMEZONE_OFFSET);
         int expectedNumberOfInvocations = 1;
         verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
 
@@ -122,7 +124,7 @@ public class CrawlerTest {
             itemInfoList2.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList2.iterator());
-        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage2);
+        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage2, DEFAULT_TIMEZONE_OFFSET);
         expectedNumberOfInvocations += 2;
         verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
     }
@@ -135,7 +137,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -145,7 +147,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         assertNotEquals(Instant.ofEpochMilli(0), updatedPollTime);
     }
 
@@ -156,7 +158,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems()).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE, DEFAULT_TIMEZONE_OFFSET);
         assertNotEquals(lastPollTime, updatedPollTime);
     }
 

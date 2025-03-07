@@ -3,8 +3,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginComponentRefresher;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 
-public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenSearchClient, PluginSetting> {
+public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenSearchClient, OpenSearchSinkConfig> {
     static final String CREDENTIALS_CHANGED = "credentialsChanged";
     static final String CLIENT_REFRESH_ERRORS = "clientRefreshErrors";
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchClientRefresher.class);
@@ -54,8 +54,8 @@ public class OpenSearchClientRefresher implements PluginComponentRefresher<OpenS
     }
 
     @Override
-    public void update(PluginSetting pluginSetting) {
-        final ConnectionConfiguration newConfig = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+    public void update(OpenSearchSinkConfig openSearchSinkConfig) {
+        final ConnectionConfiguration newConfig = ConnectionConfiguration.readConnectionConfiguration(openSearchSinkConfig);
         if (basicAuthChanged(newConfig)) {
             credentialsChangeCounter.increment();
             readWriteLock.writeLock().lock();

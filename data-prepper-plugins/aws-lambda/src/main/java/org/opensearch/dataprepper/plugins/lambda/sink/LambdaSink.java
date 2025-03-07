@@ -80,7 +80,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     private volatile boolean sinkInitialized;
     private DlqPushHandler dlqPushHandler = null;
     final int maxEvents;
-    final long maxBytes;
+    final ByteCount maxBytes;
     final Duration maxCollectTime;
 
     // The partial buffer that may not yet have reached threshold.
@@ -103,7 +103,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         this.expressionEvaluator = expressionEvaluator;
         this.outputCodecContext = OutputCodecContext.fromSinkContext(sinkContext);
         this.maxEvents = lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCount();
-        this.maxBytes = lambdaSinkConfig.getBatchOptions().getThresholdOptions().getMaximumSize().getBytes();
+        this.maxBytes = lambdaSinkConfig.getBatchOptions().getThresholdOptions().getMaximumSize();
         this.maxCollectTime = lambdaSinkConfig.getBatchOptions().getThresholdOptions().getEventCollectTimeOut();
 
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
@@ -200,10 +200,16 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
             // Add to the persistent buffer, check threshold
             for (Record<Event> record : records) {
+                if (ThresholdCheck.checkSizeThresholdExceed(statefulBuffer, maxBytes, record)
+                || ThresholdCheck.checkTimeoutExceeded(statefulBuffer, maxCollectTime)) {
+                    fullBuffers.add(statefulBuffer);
+                    statefulBuffer = new InMemoryBufferSynchronized(lambdaSinkConfig.getBatchOptions().getKeyName());
+                }
+
                 //statefulBuffer is either empty or partially filled(from previous run)
                 statefulBuffer.addRecord(record);
 
-                if (isThresholdExceeded(statefulBuffer)) {
+                if (ThresholdCheck.checkEventCountThresholdExceeded(statefulBuffer, maxEvents)) {
                     // This buffer is full
                     fullBuffers.add(statefulBuffer);
                     // Create new partial buffer
@@ -333,12 +339,14 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
         }
     }
 
-    private boolean isThresholdExceeded(Buffer buffer) {
-        return ThresholdCheck.checkThresholdExceed(
+    private boolean isThresholdExceeded(Buffer buffer, Record record) {
+        return ThresholdCheck.checkEventCountThresholdExceeded(
                 buffer,
-                maxEvents,
-                ByteCount.ofBytes(maxBytes),
-                maxCollectTime
+                maxEvents
+        ) || ThresholdCheck.checkSizeThresholdExceed(
+                buffer,
+                maxBytes,
+                record
         );
     }
 }

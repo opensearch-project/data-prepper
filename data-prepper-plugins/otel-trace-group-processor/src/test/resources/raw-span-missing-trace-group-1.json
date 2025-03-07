@@ -25,6 +25,5 @@
   "resource.attributes.telemetry@sdk@version": "0.8.0-SNAPSHOT",
   "resource.attributes.service@name": "analytics-service",
   "span.attributes.http@status_code": 200,
-  "status.code": 1,
-  "instrumentationLibrary.name": "io.opentelemetry.auto.apache-httpasyncclient-4.0"
+  "status.code": 1
 }

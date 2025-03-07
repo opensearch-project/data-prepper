@@ -61,7 +61,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
     public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
+    public static final String RECORDS_EXCEEDING_THRESHOLD = "recordsExceedingThreshold";
     private static final String NO_RETURN_RESPONSE = "null";
+    private static final String EXCEEDING_PAYLOAD_LIMIT_EXCEPTION = "Status Code: 413";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
     final PluginSetting codecPluginSetting;
@@ -74,6 +76,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRequestsSuccessCounter;
     private final Counter numberOfRequestsFailedCounter;
     private final Counter lambdaResponseRecordsCounter;
+    private final Counter batchExceedingThresholdCounter;
     private final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
@@ -105,6 +108,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
         this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
+        this.batchExceedingThresholdCounter = pluginMetrics.counter(RECORDS_EXCEEDING_THRESHOLD);
+
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
 
@@ -165,7 +170,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                     recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
                     new OutputCodecContext());
         } catch (Exception e) {
-            LOG.error(NOISY, "Error while sending records to Lambda", e);
+            //NOTE: Ideally we should never hit this at least due to lambda invocation failure.
+            // All lambda exceptions will reflect only when handling future.join() per request
+            LOG.error(NOISY, "Error while batching and sending records to Lambda", e);
             numberOfRecordsFailedCounter.increment(recordsToLambda.size());
             numberOfRequestsFailedCounter.increment();
             resultRecords.addAll(addFailureTags(recordsToLambda));
@@ -194,6 +201,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             } catch (Exception e) {
                 LOG.error(NOISY, e.getMessage(), e);
+                if(e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)){
+                    batchExceedingThresholdCounter.increment();
+                }
                 /* fall through */
                 numberOfRecordsFailedCounter.increment(inputBuffer.getEventCount());
                 numberOfRequestsFailedCounter.increment();

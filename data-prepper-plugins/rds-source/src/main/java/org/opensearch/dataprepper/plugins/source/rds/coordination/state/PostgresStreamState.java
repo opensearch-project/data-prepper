@@ -11,6 +11,9 @@ package org.opensearch.dataprepper.plugins.source.rds.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Map;
+import java.util.Set;
+
 public class PostgresStreamState {
 
     @JsonProperty("currentLsn")
@@ -21,6 +24,9 @@ public class PostgresStreamState {
 
     @JsonProperty("replicationSlotName")
     private String replicationSlotName;
+
+    @JsonProperty("enumColumnsByTable")
+    private Map<String, Set<String>> enumColumnsByTable;
 
     public String getCurrentLsn() {
         return currentLsn;
@@ -44,5 +50,13 @@ public class PostgresStreamState {
 
     public void setReplicationSlotName(String replicationSlotName) {
         this.replicationSlotName = replicationSlotName;
+    }
+
+    public Map<String, Set<String>> getEnumColumnsByTable() {
+        return enumColumnsByTable;
+    }
+
+    public void setEnumColumnsByTable(Map<String, Set<String>> enumColumnsByTable) {
+        this.enumColumnsByTable = enumColumnsByTable;
     }
 }

@@ -35,6 +35,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     private LogSequenceNumber startLsn;
     private LogicalReplicationEventProcessor eventProcessor;
 
+    private PGReplicationStream stream = null;
     private volatile boolean disconnectRequested = false;
 
     public LogicalReplicationClient(final ConnectionManager connectionManager,
@@ -48,7 +49,6 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     @Override
     public void connect() {
         LOG.debug("Start connecting logical replication stream. ");
-        PGReplicationStream stream;
         try (Connection conn = connectionManager.getConnection()) {
             PGConnection pgConnection = conn.unwrap(PGConnection.class);
 
@@ -66,7 +66,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
             LOG.debug("Logical replication stream started. ");
 
             if (eventProcessor != null) {
-                while (!disconnectRequested) {
+                while (!disconnectRequested && !Thread.currentThread().isInterrupted()) {
                     try {
                         // Read changes
                         ByteBuffer msg = stream.readPending();
@@ -85,19 +85,17 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                         stream.setAppliedLSN(lsn);
                     } catch (Exception e) {
                         LOG.error("Exception while processing Postgres replication stream. ", e);
+                        closeStream();
                         throw e;
                     }
                 }
             }
 
-            stream.close();
+            closeStream();
+
             disconnectRequested = false;
-            if (eventProcessor != null) {
-                eventProcessor.stopCheckpointManager();
-            }
-            LOG.debug("Replication stream closed successfully.");
         } catch (Exception e) {
-            LOG.error("Exception while creating Postgres replication stream. ", e);
+            LOG.error("Exception while creating or processing Postgres replication stream. ", e);
             throw new RuntimeException(e);
         }
     }
@@ -106,6 +104,13 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     public void disconnect() {
         disconnectRequested = true;
         LOG.debug("Requested to disconnect logical replication stream.");
+
+        closeStream();
+
+        if (eventProcessor != null) {
+            eventProcessor.stopCheckpointManager();
+            LOG.debug("Stopped checkpoint manager.");
+        }
     }
 
     public void setEventProcessor(LogicalReplicationEventProcessor eventProcessor) {
@@ -114,5 +119,16 @@ public class LogicalReplicationClient implements ReplicationLogClient {
 
     public void setStartLsn(LogSequenceNumber startLsn) {
         this.startLsn = startLsn;
+    }
+
+    private void closeStream() {
+        if (stream != null && !stream.isClosed()) {
+            try {
+                stream.close();
+                LOG.debug("Replication stream closed.");
+            } catch (Exception e) {
+                LOG.error("Exception while closing replication stream. ", e);
+            }
+        }
     }
 }
