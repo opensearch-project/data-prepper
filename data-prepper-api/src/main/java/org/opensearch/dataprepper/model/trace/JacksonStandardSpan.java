@@ -31,24 +31,24 @@ public class JacksonStandardSpan extends JacksonEvent implements Span {
     private static final String STATUS_KEY = "status";
     private static final String SCOPE_KEY = "scope";
     private static final String RESOURCE_KEY = "resource";
-    private static final String TRACE_ID_KEY = "trace_id";
-    private static final String SPAN_ID_KEY = "span_id";
-    private static final String TRACE_STATE_KEY = "trace_state";
-    private static final String PARENT_SPAN_ID_KEY = "parent_span_id";
+    private static final String TRACE_ID_KEY = "traceId";
+    private static final String SPAN_ID_KEY = "spanId";
+    private static final String TRACE_STATE_KEY = "traceState";
+    private static final String PARENT_SPAN_ID_KEY = "parentSpanId";
     private static final String NAME_KEY = "name";
     private static final String KIND_KEY = "kind";
-    private static final String START_TIME_KEY = "start_time";
-    private static final String END_TIME_KEY = "end_time";
+    private static final String START_TIME_KEY = "startTime";
+    private static final String END_TIME_KEY = "endTime";
     private static final String ATTRIBUTES_KEY = "attributes";
-    private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "dropped_attributes_count";
+    private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
     private static final String EVENTS_KEY = "events";
-    private static final String DROPPED_EVENTS_COUNT_KEY = "dropped_events_count";
+    private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
     private static final String LINKS_KEY = "links";
-    private static final String DROPPED_LINKS_COUNT_KEY = "dropped_links_count";
-    private static final String SERVICE_NAME_KEY = "service_name";
-    private static final String TRACE_GROUP_KEY = "trace_group";
-    private static final String DURATION_IN_NANOS_KEY = "duration_in_nanos";
-    private static final String TRACE_GROUP_FIELDS_KEY = "trace_group_fields";
+    private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
+    private static final String SERVICE_NAME_KEY = "serviceName";
+    private static final String TRACE_GROUP_KEY = "traceGroup";
+    private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
+    private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>

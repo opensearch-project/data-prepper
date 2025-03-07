@@ -128,8 +128,14 @@ public class JacksonStandardOTelLogTest {
 
     @Test
     public void testGetServerityNumber() {
-        final Integer observedTime = log.getSeverityNumber();
-        assertThat(observedTime, is(equalTo(TEST_SEVERITY_NUMBER)));
+        final Integer severityNumber = log.getSeverityNumber();
+        assertThat(severityNumber, is(equalTo(TEST_SEVERITY_NUMBER)));
+    }
+
+    @Test
+    public void testGetSeverity() {
+        final Map<String, Object> severity = log.getSeverity();
+        assertThat(severity.get("severity"), is(equalTo(Map.of("number", TEST_SEVERITY_NUMBER, "text", TEST_SEVERITY_TEXT))));
     }
 
     @Test

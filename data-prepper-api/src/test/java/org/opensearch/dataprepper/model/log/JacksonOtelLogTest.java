@@ -136,6 +136,12 @@ public class JacksonOtelLogTest {
     }
 
     @Test
+    public void testGetSeverity() {
+        final Map<String, Object> severity = log.getSeverity();
+        assertThat(severity.get("severity"), is(equalTo(Map.of("number", TEST_SEVERITY_NUMBER, "text", TEST_SEVERITY_TEXT))));
+    }
+
+    @Test
     public void testGetDroppedAttributesCount() {
         final Integer droppedAttributesCount = log.getDroppedAttributesCount();
         assertThat(droppedAttributesCount, is(equalTo(TEST_DROPPED_ATTRIBUTES_COUNT)));

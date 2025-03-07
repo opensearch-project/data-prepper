@@ -395,26 +395,26 @@ public class JacksonStandardSpanTest {
         @Test
         void testWithJsonData_with_valid_json_data() {
             final String data = "{\n" +
-                    "  \"trace_id\": \"414243\",\n" +
-                    "  \"dropped_links_count\": 0,\n" +
+                    "  \"traceId\": \"414243\",\n" +
+                    "  \"droppedLinksCount\": 0,\n" +
                     "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
-                    "  \"dropped_events_count\": 0,\n" +
-                    "  \"trace_group_fields\": {\n" +
-                    "    \"end_time\": \"1970-01-01T00:00:00Z\",\n" +
-                    "    \"duration_in_nanos\": 0,\n" +
-                    "    \"status_code\": 0\n" +
+                    "  \"droppedEventsCount\": 0,\n" +
+                    "  \"traceGroupFields\": {\n" +
+                    "    \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "    \"durationInNanos\": 0,\n" +
+                    "    \"statusCode\": 0\n" +
                     "  },\n" +
-                    "  \"trace_group\": \"FRUITS\",\n" +
-                    "  \"service_name\": \"ServiceA\",\n" +
-                    "  \"parent_span_id\": \"\",\n" +
-                    "  \"span_id\": \"313030\",\n" +
-                    "  \"trace_state\": \"\",\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"serviceName\": \"ServiceA\",\n" +
+                    "  \"parentSpanId\": \"\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
+                    "  \"traceState\": \"\",\n" +
                     "  \"name\": \"FRUITS\",\n" +
-                    "  \"start_time\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
                     "  \"links\": [],\n" +
-                    "  \"end_time\": \"1970-01-01T00:00:00Z\",\n" +
-                    "  \"dropped_attributes_count\": 0,\n" +
-                    "  \"duration_in_nanos\": 0,\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"droppedAttributesCount\": 0,\n" +
+                    "  \"durationInNanos\": 0,\n" +
                     "  \" events\": [],\n" +
                     "  \"status.code\": 0\n" +
                     "}";
@@ -433,19 +433,19 @@ public class JacksonStandardSpanTest {
         @Test
         void testBuilder_withEventMetadata_with_event_metadata_with_valid_metadata() {
             final String data = "{\n" +
-                    "  \"trace_id\": \"414243\",\n" +
+                    "  \"traceId\": \"414243\",\n" +
                     "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
-                    "  \"trace_group_fields\": {\n" +
-                    "    \"end_time\": \"1970-01-01T00:00:00Z\",\n" +
-                    "    \"duration_in_nanos\": 0,\n" +
-                    "    \"status_code\": 0\n" +
+                    "  \"traceGroupFields\": {\n" +
+                    "    \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "    \"durationInNanos\": 0,\n" +
+                    "    \"statusCode\": 0\n" +
                     "  },\n" +
-                    "  \"trace_group\": \"FRUITS\",\n" +
-                    "  \"span_id\": \"313030\",\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
                     "  \"name\": \"FRUITS\",\n" +
-                    "  \"start_time\": \"1970-01-01T00:00:00Z\",\n" +
-                    "  \"end_time\": \"1970-01-01T00:00:00Z\",\n" +
-                    "  \"duration_in_nanos\": 0" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"durationInNanos\": 0" +
                     "}";
 
             EventMetadata eventMetadata = mock(EventMetadata.class);
@@ -465,7 +465,7 @@ public class JacksonStandardSpanTest {
 
         @Test
         void testBuilder_withJsonData_with_invalid_json_data_should_throw() {
-            String invalidJsonData = "{\"trace_id\": \"FRUITS}";
+            String invalidJsonData = "{\"traceId\": \"FRUITS}";
             final JacksonStandardSpan.Builder builder = JacksonStandardSpan.builder();
 
             assertThrows(RuntimeException.class, () -> builder.withJsonData(invalidJsonData));
@@ -473,25 +473,25 @@ public class JacksonStandardSpanTest {
 
         @Test
         void testBuilder_withData_with_event_valid_data() {
-	    final Map<String, Object> data = new HashMap<String, Object>();
-	    final String traceId = "414243";
-	    final String kind = "SPAN_KIND_INTERNAL";
-	    final String traceGroup = "FRUITSGroup";
-	    final String traceGroupFields = "{\"end_time\":\"1970-01-01T00:00:00Z\",\"duration_in_nanos\": 0,\"status_code\": 0}";
-	    final String spanId = "313030";
-	    final String name = "FRUITS";
-	    final String startTime = "1970-01-01T00:00:00Z";
-	    final String endTime = "1970-01-02T00:00:00Z";
-	    final String durationInNanos = "100";
-	    data.put("trace_id", traceId);
-	    data.put("kind", kind);
-	    data.put("trace_group", traceGroup);
-	    data.put("trace_group_fields", traceGroupFields);
-	    data.put("span_id", spanId);
-	    data.put("name", name);
-	    data.put("start_time", startTime);
-	    data.put("end_time", endTime);
-	    data.put("duration_in_nanos", durationInNanos);
+            final Map<String, Object> data = new HashMap<String, Object>();
+            final String traceId = "414243";
+            final String kind = "SPAN_KIND_INTERNAL";
+            final String traceGroup = "FRUITSGroup";
+            final String traceGroupFields = "{\"endTime\":\"1970-01-01T00:00:00Z\",\"durationInNanos\": 0,\"statusCode\": 0}";
+            final String spanId = "313030";
+            final String name = "FRUITS";
+            final String startTime = "1970-01-01T00:00:00Z";
+            final String endTime = "1970-01-02T00:00:00Z";
+            final String durationInNanos = "100";
+            data.put("traceId", traceId);
+            data.put("kind", kind);
+            data.put("traceGroup", traceGroup);
+            data.put("traceGroupFields", traceGroupFields);
+            data.put("spanId", spanId);
+            data.put("name", name);
+            data.put("startTime", startTime);
+            data.put("endTime", endTime);
+            data.put("durationInNanos", durationInNanos);
 
             EventMetadata eventMetadata = mock(EventMetadata.class);
             final Instant now = Instant.now();
@@ -507,14 +507,14 @@ public class JacksonStandardSpanTest {
             assertThat(jacksonSpan, is(notNullValue()));
             assertThat(jacksonSpan.getMetadata(), is(notNullValue()));
             assertThat(jacksonSpan.getMetadata().getTimeReceived(), equalTo(now));
-            assertThat(jacksonSpan.toMap().get("trace_id"), equalTo(traceId));
+            assertThat(jacksonSpan.toMap().get("traceId"), equalTo(traceId));
             assertThat(jacksonSpan.toMap().get("kind"), equalTo(kind));
-            assertThat(jacksonSpan.toMap().get("trace_group"), equalTo(traceGroup));
-            assertThat(jacksonSpan.toMap().get("span_id"), equalTo(spanId));
+            assertThat(jacksonSpan.toMap().get("traceGroup"), equalTo(traceGroup));
+            assertThat(jacksonSpan.toMap().get("spanId"), equalTo(spanId));
             assertThat(jacksonSpan.toMap().get("name"), equalTo(name));
-            assertThat(jacksonSpan.toMap().get("start_time"), equalTo(startTime));
-            assertThat(jacksonSpan.toMap().get("end_time"), equalTo(endTime));
-            assertThat(jacksonSpan.toMap().get("duration_in_nanos"), equalTo(durationInNanos));
+            assertThat(jacksonSpan.toMap().get("startTime"), equalTo(startTime));
+            assertThat(jacksonSpan.toMap().get("endTime"), equalTo(endTime));
+            assertThat(jacksonSpan.toMap().get("durationInNanos"), equalTo(durationInNanos));
         }
     }
 

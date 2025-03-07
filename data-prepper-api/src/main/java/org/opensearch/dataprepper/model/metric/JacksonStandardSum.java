@@ -21,7 +21,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class JacksonStandardSum extends JacksonStandardMetric implements Sum {
 
-    private static final String IS_MONOTONIC_KEY = "is_monotonic";
+    private static final String IS_MONOTONIC_KEY = "isMonotonic";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);

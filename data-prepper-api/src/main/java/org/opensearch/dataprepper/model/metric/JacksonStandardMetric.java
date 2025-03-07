@@ -24,17 +24,17 @@ public abstract class JacksonStandardMetric extends JacksonEvent implements Metr
     protected static final String SCOPE_KEY = "scope";
     protected static final String RESOURCE_KEY = "resource";
     protected static final String DESCRIPTION_KEY = "description";
-    protected static final String START_TIME_KEY = "start_time";
+    protected static final String START_TIME_KEY = "startTime";
     protected static final String TIME_KEY = "time";
-    protected static final String SERVICE_NAME_KEY = "service_name";
+    protected static final String SERVICE_NAME_KEY = "serviceName";
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
     protected static final String SUM_KEY = "sum";
     protected static final String VALUE_KEY = "value";
-    protected static final String AGGREGATION_TEMPORALITY_KEY = "aggregation_temporality";
+    protected static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
     protected static final String COUNT_KEY = "count";
     public static final String ATTRIBUTES_KEY = "attributes";
-    protected static final String SCHEMA_URL_KEY = "schema_url";
+    protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
 

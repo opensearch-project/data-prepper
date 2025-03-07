@@ -35,6 +35,9 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     protected static final String BODY_KEY = "body";
     protected static final String SPAN_ID_KEY = "spanId";
     protected static final String TRACE_ID_KEY = "traceId";
+    protected static final String SEVERITY_KEY = "severity";
+    protected static final String NUMBER_KEY = "number";
+    protected static final String TEXT_KEY = "text";
     protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
     protected static final String SEVERITY_TEXT_KEY = "severityText";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
@@ -84,6 +87,11 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     @Override
     public String getTraceId() {
         return this.get(TRACE_ID_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getSeverity() {
+        return Map.of(SEVERITY_KEY, Map.of(TEXT_KEY, getSeverityText(), NUMBER_KEY, getSeverityNumber()));
     }
 
     @Override

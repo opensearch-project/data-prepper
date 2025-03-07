@@ -23,18 +23,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonStandardExponentialHistogram extends JacksonStandardMetric implements ExponentialHistogram {
 
     private static final String SCALE_KEY = "scale";
-    private static final String ZERO_COUNT_KEY = "zero_count";
-    public static final String POSITIVE_BUCKETS_KEY = "positive_buckets";
-    public static final String NEGATIVE_BUCKETS_KEY = "negative_buckets";
+    private static final String ZERO_COUNT_KEY = "zeroCount";
+    public static final String POSITIVE_BUCKETS_KEY = "positiveBuckets";
+    public static final String NEGATIVE_BUCKETS_KEY = "negativeBuckets";
     private static final String NEGATIVE_KEY = "negative";
     private static final String POSITIVE_KEY = "positive";
-    private static final String NEGATIVE_OFFSET_KEY = "negative_offset";
-    private static final String POSITIVE_OFFSET_KEY = "positive_offset";
+    private static final String NEGATIVE_OFFSET_KEY = "negativeOffset";
+    private static final String POSITIVE_OFFSET_KEY = "positiveOffset";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(SUM_KEY);
-
 
     protected JacksonStandardExponentialHistogram(JacksonStandardExponentialHistogram.Builder builder) {
         super(builder);

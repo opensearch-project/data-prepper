@@ -21,20 +21,23 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class JacksonStandardOTelLog extends JacksonEvent implements OpenTelemetryLog {
 
-    protected static final String OBSERVED_TIME_KEY = "observed_time";
+    protected static final String OBSERVED_TIME_KEY = "observedTimeStamp";
     protected static final String SCOPE_KEY = "scope";
     protected static final String RESOURCE_KEY = "resource";
     protected static final String TIME_KEY = "time";
-    protected static final String SERVICE_NAME_KEY = "service_name";
+    protected static final String SERVICE_NAME_KEY = "serviceName";
     protected static final String ATTRIBUTES_KEY = "attributes";
-    protected static final String SCHEMA_URL_KEY = "schema_url";
+    protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String FLAGS_KEY = "flags";
     protected static final String BODY_KEY = "body";
-    protected static final String SPAN_ID_KEY = "span_id";
-    protected static final String TRACE_ID_KEY = "trace_id";
-    protected static final String SEVERITY_NUMBER_KEY = "severity_number";
-    protected static final String SEVERITY_TEXT_KEY = "severity_text";
-    protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "dropped_attributes_count";
+    protected static final String SPAN_ID_KEY = "spanId";
+    protected static final String TRACE_ID_KEY = "traceId";
+    protected static final String SEVERITY_KEY = "severity";
+    protected static final String NUMBER_KEY = "number";
+    protected static final String TEXT_KEY = "text";
+    protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
+    protected static final String SEVERITY_TEXT_KEY = "severityText";
+    protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
 
 
     protected JacksonStandardOTelLog(final JacksonStandardOTelLog.Builder builder) {
@@ -71,6 +74,11 @@ public class JacksonStandardOTelLog extends JacksonEvent implements OpenTelemetr
     @Override
     public Integer getFlags() {
         return this.get(FLAGS_KEY, Integer.class);
+    }
+
+    @Override
+    public Map<String, Object> getSeverity() {
+        return Map.of(SEVERITY_KEY, Map.of(TEXT_KEY, getSeverityText(), NUMBER_KEY, getSeverityNumber()));
     }
 
     @Override

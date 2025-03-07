@@ -24,11 +24,11 @@ public class JacksonStandardHistogram extends JacksonStandardMetric implements H
 
     private static final String MAX_KEY = "max";
     private static final String MIN_KEY = "min";
-    private static final String BUCKET_COUNTS_KEY = "bucket_counts";
-    private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicit_bounds_count";
+    private static final String BUCKET_COUNTS_KEY = "bucketCounts";
+    private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicitBoundsCount";
     public static final String BUCKETS_KEY = "buckets";
-    private static final String BUCKET_COUNTS_LIST_KEY = "bucket_counts_list";
-    private static final String EXPLICIT_BOUNDS_KEY = "explicit_bounds";
+    private static final String BUCKET_COUNTS_LIST_KEY = "bucketCountsList";
+    private static final String EXPLICIT_BOUNDS_KEY = "explicitBounds";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);

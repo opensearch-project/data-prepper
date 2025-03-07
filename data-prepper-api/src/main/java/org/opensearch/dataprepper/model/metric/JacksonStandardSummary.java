@@ -22,7 +22,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonStandardSummary extends JacksonStandardMetric implements Summary {
 
     private static final String QUANTILES_KEY = "quantiles";
-    private static final String QUANTILE_VALUES_COUNT_KEY = "quantile_values_count";
+    private static final String QUANTILE_VALUES_COUNT_KEY = "quantileValuesCount";
 
     private static final List<String> REQUIRED_KEYS = Collections.singletonList(ATTRIBUTES_KEY);
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
