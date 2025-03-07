@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 
 public class JsonTypeHandler implements PostgresDataTypeHandler {
     @Override
@@ -9,6 +10,14 @@ public class JsonTypeHandler implements PostgresDataTypeHandler {
         if (!columnType.isJson()) {
             throw new IllegalArgumentException("ColumnType is not Json: " + columnType);
         }
-        return value.toString();
+        if (columnType.isSubCategoryArray())
+            return PgArrayParser.parseTypedArray(value.toString(), PostgresDataType.getScalarType(columnType),
+                    this::parseJsonValue);
+        return parseJsonValue(columnType, value.toString());
     }
+
+    private Object parseJsonValue(PostgresDataType columnType, String textValue) {
+        return textValue;
+    }
+
 }
