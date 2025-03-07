@@ -99,6 +99,8 @@ public class ScanObjectWorker implements Runnable {
 
     private final Duration acknowledgmentSetTimeout;
 
+    private final boolean metadataOnly;
+
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
                             final S3ObjectHandler s3ObjectHandler,
@@ -115,6 +117,7 @@ public class ScanObjectWorker implements Runnable {
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
+        this.metadataOnly = s3SourceConfig.getS3ScanScanOptions().getMetdataOnly();
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -251,10 +254,14 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
-            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled) {
-                final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
-                return Optional.of(deleteObjectRequest);
+            if (!metadataOnly) {
+                s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
+                if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled) {
+                    final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
+                    return Optional.of(deleteObjectRequest);
+                }
+            } else {
+                s3ObjectHandler.processS3ObjectMetadata(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
             }
         } catch (final IOException ex) {
             LOG.error("Error while process the parseS3Object. ",ex);

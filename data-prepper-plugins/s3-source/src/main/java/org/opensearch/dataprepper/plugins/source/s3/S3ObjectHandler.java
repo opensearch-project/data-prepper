@@ -29,4 +29,9 @@ public interface S3ObjectHandler {
                        final String partitionKey) throws IOException;
 
     void deleteS3Object(final S3ObjectReference s3ObjectReference);
+
+    void processS3ObjectMetadata(final S3ObjectReference s3ObjectReference,
+                                 final AcknowledgementSet acknowledgementSet,
+                                 final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                                 final String partitionKey) throws IOException;
 }
