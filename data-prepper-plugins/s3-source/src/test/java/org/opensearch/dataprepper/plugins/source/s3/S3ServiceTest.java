@@ -28,13 +28,13 @@ public class S3ServiceTest {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final S3ObjectReference s3ObjectReference = mock(S3ObjectReference.class);
 
-        doNothing().when(s3ObjectHandler).parseS3Object(eq(s3ObjectReference), eq(acknowledgementSet), eq(null), eq(null));
+        doNothing().when(s3ObjectHandler).processS3Object(eq(s3ObjectReference), eq(acknowledgementSet), eq(null), eq(null));
 
         final S3Service objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.addS3Object(s3ObjectReference, acknowledgementSet);
 
-        verify(s3ObjectHandler).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        verify(s3ObjectHandler).processS3Object(s3ObjectReference, acknowledgementSet, null, null);
     }
 
     @Test

@@ -98,6 +98,7 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
 
     private final Duration acknowledgmentSetTimeout;
+    private S3DataSelection dataSelection;
 
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
@@ -115,6 +116,7 @@ public class ScanObjectWorker implements Runnable {
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
+        this.dataSelection = s3SourceConfig.getDataSelection();
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -173,7 +175,6 @@ public class ScanObjectWorker implements Runnable {
 
     private void startProcessingObject(final long waitTimeMillis) {
         final Optional<SourcePartition<S3SourceProgressState>> objectToProcess = sourceCoordinator.getNextPartition(partitionCreationSupplier, folderPartitioningOptions != null);
-
         if (objectToProcess.isEmpty()) {
             try {
                 Thread.sleep(waitTimeMillis);
@@ -234,7 +235,9 @@ public class ScanObjectWorker implements Runnable {
                 acknowledgementSet.complete();
             } else {
                 sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
-                deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
+                if (s3ObjectDeleteWorker != null) {
+                    deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
+                }
                 partitionKeys.remove(objectToProcess.get().getPartitionKey());
             }
         } catch (final NoSuchKeyException e) {
@@ -251,13 +254,13 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
-            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled) {
+            s3ObjectHandler.processS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
+            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled && s3ObjectDeleteWorker != null) {
                 final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
                 return Optional.of(deleteObjectRequest);
             }
         } catch (final IOException ex) {
-            LOG.error("Error while process the parseS3Object. ",ex);
+            LOG.error("Error while process the processS3Object. ",ex);
         }
         return Optional.empty();
     }
@@ -333,6 +336,7 @@ public class ScanObjectWorker implements Runnable {
 
         return false;
     }
+
 
     private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
                                                   final SourcePartition<S3SourceProgressState> folderPartition) {

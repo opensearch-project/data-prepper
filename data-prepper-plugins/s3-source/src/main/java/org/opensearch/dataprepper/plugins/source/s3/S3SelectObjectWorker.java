@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -100,7 +101,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
     }
 
-    public void parseS3Object(final S3ObjectReference s3ObjectReference,
+    public void processS3Object(final S3ObjectReference s3ObjectReference,
                               final AcknowledgementSet acknowledgementSet,
                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                               final String partitionKey) throws IOException {
@@ -112,6 +113,11 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             throw new IOException(e);
         }
+    }
+
+    @Override
+    public long consumeS3Object(final S3ObjectReference s3ObjectReference, final S3InputFile inputFile, Consumer<Record<Event>> consumer) {
+        throw new RuntimeException("Not Supported");
     }
 
     @Override
