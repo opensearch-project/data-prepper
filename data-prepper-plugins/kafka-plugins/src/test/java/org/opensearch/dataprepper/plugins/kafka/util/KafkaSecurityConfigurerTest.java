@@ -270,6 +270,35 @@ public class KafkaSecurityConfigurerTest {
             assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
             assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
                     instanceOf(DefaultCredentialsProvider.class));
+            assertThat(glueSchemaRegistryKafkaDeserializer
+                    .getGlueSchemaRegistryDeserializationFacade()
+                    .getGlueSchemaRegistryConfiguration()
+                    .getEndPoint(), is(nullValue()));
+        }
+    }
+
+    @Test
+    void testGetGlueSerializerWithDefaultCredentialsProviderAndOverrridenRegistryEndpoint() throws IOException {
+        final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(
+                "kafka-pipeline-bootstrap-servers-glue-override-endpoint.yaml");
+        final DefaultAwsRegionProviderChain.Builder defaultAwsRegionProviderChainBuilder = mock(
+                DefaultAwsRegionProviderChain.Builder.class);
+        final DefaultAwsRegionProviderChain defaultAwsRegionProviderChain = mock(DefaultAwsRegionProviderChain.class);
+        when(defaultAwsRegionProviderChainBuilder.build()).thenReturn(defaultAwsRegionProviderChain);
+        when(defaultAwsRegionProviderChain.getRegion()).thenReturn(Region.US_EAST_1);
+        try (MockedStatic<DefaultAwsRegionProviderChain> defaultAwsRegionProviderChainMockedStatic =
+                     mockStatic(DefaultAwsRegionProviderChain.class)) {
+            defaultAwsRegionProviderChainMockedStatic.when(DefaultAwsRegionProviderChain::builder)
+                    .thenReturn(defaultAwsRegionProviderChainBuilder);
+            final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                    .getGlueSerializer(kafkaSourceConfig);
+            assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+            assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                    instanceOf(DefaultCredentialsProvider.class));
+            assertThat(glueSchemaRegistryKafkaDeserializer
+                    .getGlueSchemaRegistryDeserializationFacade()
+                    .getGlueSchemaRegistryConfiguration()
+                    .getEndPoint(), is("http://fake-glue-registry"));
         }
     }
 
