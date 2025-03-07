@@ -38,7 +38,7 @@ public class OTelLogsProtoBufDecoderTest {
     private static final String TEST_REQUEST_MULTI_LOGS_FILE = "test-otel-multi-log.protobuf";
 
     public OTelLogsProtoBufDecoder createObjectUnderTest(boolean lengthPrefixedEncoding) {
-        return new OTelLogsProtoBufDecoder(lengthPrefixedEncoding);
+        return new OTelLogsProtoBufDecoder(true, lengthPrefixedEncoding);
     }
 
     private void assertLog(OpenTelemetryLog logRecord, final int severityNumber, final String time, final String spanId) {

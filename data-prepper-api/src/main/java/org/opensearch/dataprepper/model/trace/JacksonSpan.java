@@ -35,23 +35,39 @@ import static com.google.common.base.Preconditions.checkState;
 public class JacksonSpan extends JacksonEvent implements Span {
 
     private static final String TRACE_ID_KEY = "traceId";
+    private static final String OTLP_TRACE_ID_KEY = "trace_id";
     private static final String SPAN_ID_KEY = "spanId";
+    private static final String OTLP_SPAN_ID_KEY = "span_id";
     private static final String TRACE_STATE_KEY = "traceState";
+    private static final String OTLP_TRACE_STATE_KEY = "trace_state";
     private static final String PARENT_SPAN_ID_KEY = "parentSpanId";
+    private static final String OTLP_PARENT_SPAN_ID_KEY = "parent_span_id";
     private static final String NAME_KEY = "name";
     private static final String KIND_KEY = "kind";
+    private static final String STATUS_KEY = "status";
+    private static final String SCOPE_KEY = "scope";
+    private static final String RESOURCE_KEY = "resource";
     private static final String START_TIME_KEY = "startTime";
+    private static final String OTLP_START_TIME_KEY = "start_time";
     private static final String END_TIME_KEY = "endTime";
+    private static final String OTLP_END_TIME_KEY = "end_time";
     private static final String ATTRIBUTES_KEY = "attributes";
     private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
+    private static final String OTLP_DROPPED_ATTRIBUTES_COUNT_KEY = "dropped_attributes_count";
     private static final String EVENTS_KEY = "events";
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
+    private static final String OTLP_DROPPED_EVENTS_COUNT_KEY = "dropped_events_count";
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
+    private static final String OTLP_DROPPED_LINKS_COUNT_KEY = "dropped_links_count";
     private static final String SERVICE_NAME_KEY = "serviceName";
+    private static final String OTLP_SERVICE_NAME_KEY = "service_name";
     private static final String TRACE_GROUP_KEY = "traceGroup";
+    private static final String OTLP_TRACE_GROUP_KEY = "trace_group";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
+    private static final String OTLP_DURATION_IN_NANOS_KEY = "duration_in_nanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
+    private static final String OTLP_TRACE_GROUP_FIELDS_KEY = "trace_group_fields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>
@@ -62,9 +78,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
             .registerModule(new JavaTimeModule());
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
+    private boolean opensearchMode;
 
-    protected JacksonSpan(final Builder builder) {
+    protected JacksonSpan(final Builder builder, boolean opensearchMode) {
         super(builder);
+        this.opensearchMode = opensearchMode;
 
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
     }
@@ -73,24 +91,37 @@ public class JacksonSpan extends JacksonEvent implements Span {
         super(otherSpan);
     }
 
+    public void setOpensearchMode(final boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
+    }
+
+    @Override
+    public boolean getOpensearchMode() {
+        return opensearchMode;
+    }
+
     @Override
     public String getTraceId() {
-        return this.get(TRACE_ID_KEY, String.class);
+        final String key = (opensearchMode) ? TRACE_ID_KEY : OTLP_TRACE_ID_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getSpanId() {
-        return this.get(SPAN_ID_KEY, String.class);
+        final String key = (opensearchMode) ? SPAN_ID_KEY : OTLP_SPAN_ID_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getTraceState() {
-        return this.get(TRACE_STATE_KEY, String.class);
+        final String key = (opensearchMode) ? TRACE_STATE_KEY : OTLP_TRACE_STATE_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getParentSpanId() {
-        return this.get(PARENT_SPAN_ID_KEY, String.class);
+        final String key = (opensearchMode) ? PARENT_SPAN_ID_KEY : OTLP_PARENT_SPAN_ID_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -105,12 +136,14 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String getStartTime() {
-        return this.get(START_TIME_KEY, String.class);
+        final String key = (opensearchMode) ? START_TIME_KEY : OTLP_START_TIME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getEndTime() {
-        return this.get(END_TIME_KEY, String.class);
+        final String key = (opensearchMode) ? END_TIME_KEY : OTLP_END_TIME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -119,8 +152,24 @@ public class JacksonSpan extends JacksonEvent implements Span {
     }
 
     @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getStatus() {
+        return this.get(STATUS_KEY, Map.class);
+    }
+
+    @Override
     public Integer getDroppedAttributesCount() {
-        return this.get(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class);
+        final String key = (opensearchMode) ? DROPPED_ATTRIBUTES_COUNT_KEY : OTLP_DROPPED_ATTRIBUTES_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
@@ -130,7 +179,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public Integer getDroppedEventsCount() {
-        return this.get(DROPPED_EVENTS_COUNT_KEY, Integer.class);
+        final String key = (opensearchMode) ? DROPPED_EVENTS_COUNT_KEY : OTLP_DROPPED_EVENTS_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
@@ -140,48 +190,55 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public Integer getDroppedLinksCount() {
-        return this.get(DROPPED_LINKS_COUNT_KEY, Integer.class);
+        final String key = (opensearchMode) ? DROPPED_LINKS_COUNT_KEY : OTLP_DROPPED_LINKS_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
     public String getTraceGroup() {
-        return this.get(TRACE_GROUP_KEY, String.class);
+        final String key = (opensearchMode) ? TRACE_GROUP_KEY : OTLP_TRACE_GROUP_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public Long getDurationInNanos() {
-        return this.get(DURATION_IN_NANOS_KEY, Long.class);
+        final String key = (opensearchMode) ? DURATION_IN_NANOS_KEY : OTLP_DURATION_IN_NANOS_KEY;
+        return this.get(key, Long.class);
     }
 
     @Override
     public TraceGroupFields getTraceGroupFields() {
-        return this.get(TRACE_GROUP_FIELDS_KEY, DefaultTraceGroupFields.class);
+        final String key = (opensearchMode) ? TRACE_GROUP_FIELDS_KEY : OTLP_TRACE_GROUP_FIELDS_KEY;
+        return this.get(key, DefaultTraceGroupFields.class);
     }
 
     @Override
     public String getServiceName() {
-        return this.get(SERVICE_NAME_KEY, String.class);
+        final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public void setTraceGroup(final String traceGroup) {
-        this.put(TRACE_GROUP_KEY, traceGroup);
+        final String key = (opensearchMode) ? TRACE_GROUP_KEY : OTLP_TRACE_GROUP_KEY;
+        this.put(key, traceGroup);
     }
 
     @Override
     public void setTraceGroupFields(final TraceGroupFields traceGroupFields) {
-        this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        final String key = (opensearchMode) ? TRACE_GROUP_FIELDS_KEY : OTLP_TRACE_GROUP_FIELDS_KEY;
+        this.put(key, traceGroupFields);
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(final boolean opensearchMode) {
+        return new Builder(opensearchMode);
     }
 
     public static JacksonSpan fromSpan(final Span span) {
         if (span instanceof JacksonSpan) {
             return new JacksonSpan((JacksonSpan) span);
         } else {
-            return JacksonSpan.builder()
+            return JacksonSpan.builder(span.getOpensearchMode())
                     .withData(span.toMap())
                     .withEventMetadata(span.getMetadata())
                     .build();
@@ -190,10 +247,13 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String toJsonString() {
-        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
+        if (!opensearchMode) {
+            return getJsonNode().toString();
+        }
+        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get(ATTRIBUTES_KEY);
         final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
         if (attributesNode != null) {
-            flattenedJsonNode.remove("attributes");
+            flattenedJsonNode.remove(ATTRIBUTES_KEY);
             for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
                 Map.Entry<String, JsonNode> entry = it.next();
                 String field = entry.getKey();
@@ -213,9 +273,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
     public static class Builder extends JacksonEvent.Builder<Builder> {
 
         private final Map<String, Object> data;
+        private boolean opensearchMode;
 
-        public Builder() {
+        public Builder(final boolean opensearchMode) {
             data = new HashMap();
+            this.opensearchMode = opensearchMode;
         }
 
         @Override
@@ -273,7 +335,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withSpanId(final String spanId) {
-            data.put(SPAN_ID_KEY, spanId);
+            final String key = (opensearchMode) ? SPAN_ID_KEY : OTLP_SPAN_ID_KEY;
+            data.put(key, spanId);
             return this;
         }
 
@@ -285,7 +348,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceId(final String traceId) {
-            data.put(TRACE_ID_KEY, traceId);
+            final String key = (opensearchMode) ? TRACE_ID_KEY : OTLP_TRACE_ID_KEY;
+            data.put(key, traceId);
             return this;
         }
 
@@ -297,7 +361,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceState(final String traceState) {
-            data.put(TRACE_STATE_KEY, traceState);
+            final String key = (opensearchMode) ? TRACE_STATE_KEY : OTLP_TRACE_STATE_KEY;
+            data.put(key, traceState);
             return this;
         }
 
@@ -309,7 +374,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withParentSpanId(final String parentSpanId) {
-            data.put(PARENT_SPAN_ID_KEY, parentSpanId);
+            final String key = (opensearchMode) ? PARENT_SPAN_ID_KEY : OTLP_PARENT_SPAN_ID_KEY;
+            data.put(key, parentSpanId);
             return this;
         }
 
@@ -345,7 +411,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withStartTime(final String startTime) {
-            data.put(START_TIME_KEY, startTime);
+            final String key = (opensearchMode) ? START_TIME_KEY : OTLP_START_TIME_KEY;
+            data.put(key, startTime);
             return this;
         }
 
@@ -357,7 +424,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withEndTime(final String endTime) {
-            data.put(END_TIME_KEY, endTime);
+            final String key = (opensearchMode) ? END_TIME_KEY : OTLP_END_TIME_KEY;
+            data.put(key, endTime);
             return this;
         }
 
@@ -373,6 +441,21 @@ public class JacksonSpan extends JacksonEvent implements Span {
             return this;
         }
 
+        public Builder withScope(final Map<String, Object> scope) {
+            data.put(SCOPE_KEY, scope);
+            return this;
+        }
+
+        public Builder withResource(final Map<String, Object> resource) {
+            data.put(RESOURCE_KEY, resource);
+            return this;
+        }
+
+        public Builder withStatus(final Map<String, Object> status) {
+            data.put(STATUS_KEY, status);
+            return this;
+        }
+
         /**
          * Optional - sets the dropped attribute count for {@link JacksonSpan}. Default is 0.
          *
@@ -381,7 +464,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
-            data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
+            final String key = (opensearchMode) ? DROPPED_ATTRIBUTES_COUNT_KEY : OTLP_DROPPED_ATTRIBUTES_COUNT_KEY;
+            data.put(key, droppedAttributesCount);
             return this;
         }
 
@@ -405,7 +489,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedEventsCount(final Integer droppedEventsCount) {
-            data.put(DROPPED_EVENTS_COUNT_KEY, droppedEventsCount);
+            final String key = (opensearchMode) ? DROPPED_EVENTS_COUNT_KEY : OTLP_DROPPED_EVENTS_COUNT_KEY;
+            data.put(key, droppedEventsCount);
             return this;
         }
 
@@ -429,7 +514,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedLinksCount(final Integer droppedLinksCount) {
-            data.put(DROPPED_LINKS_COUNT_KEY, droppedLinksCount);
+        final String key = (opensearchMode) ? DROPPED_LINKS_COUNT_KEY : OTLP_DROPPED_LINKS_COUNT_KEY;
+            data.put(key, droppedLinksCount);
             return this;
         }
 
@@ -441,7 +527,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceGroup(final String traceGroup) {
-            data.put(TRACE_GROUP_KEY, traceGroup);
+            final String key = (opensearchMode) ? TRACE_GROUP_KEY : OTLP_TRACE_GROUP_KEY;
+            data.put(key, traceGroup);
             return this;
         }
 
@@ -465,7 +552,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDurationInNanos(final Long durationInNanos) {
-            data.put(DURATION_IN_NANOS_KEY, durationInNanos);
+            final String key = (opensearchMode) ? DURATION_IN_NANOS_KEY : OTLP_DURATION_IN_NANOS_KEY;
+            data.put(key, durationInNanos);
             return this;
         }
 
@@ -477,7 +565,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
-            data.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+            final String key = (opensearchMode) ? TRACE_GROUP_FIELDS_KEY : OTLP_TRACE_GROUP_FIELDS_KEY;
+            data.put(key, traceGroupFields);
             return this;
         }
 
@@ -489,7 +578,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.3
          */
         public Builder withServiceName(final String serviceName) {
-            data.put(SERVICE_NAME_KEY, serviceName);
+            final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+            data.put(key, serviceName);
             return this;
         }
 
@@ -499,39 +589,44 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @return a JacksonSpan
          * @since 1.2
          */
+
         @Override
         public JacksonSpan build() {
             validateParameters();
             checkAndSetDefaultValues();
             super.withData(data);
             this.withEventType(EventType.TRACE.toString());
-            return new JacksonSpan(this);
+            return new JacksonSpan(this, opensearchMode);
         }
 
         private void validateParameters() {
-            REQUIRED_KEYS.forEach(key -> {
-                checkState(data.containsKey(key), key + " need to be assigned");
-            });
+            if (opensearchMode) {
+                REQUIRED_KEYS.forEach(key -> {
+                    checkState(data.containsKey(key), key + " need to be assigned");
+                });
 
-            REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
-                final String value = (String) data.get(key);
-                checkNotNull(value, key + " cannot be null");
-                checkArgument(!value.isEmpty(), key + " cannot be an empty string");
-            });
+                REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
+                    final String value = (String) data.get(key);
+                    checkNotNull(value, key + " cannot be null");
+                    checkArgument(!value.isEmpty(), key + " cannot be an empty string");
+                });
 
-            REQUIRED_NON_NULL_KEYS.forEach(key -> {
-                final Object value = data.get(key);
-                checkNotNull(value, key + " cannot be null");
-            });
+                REQUIRED_NON_NULL_KEYS.forEach(key -> {
+                    final Object value = data.get(key);
+                    checkNotNull(value, key + " cannot be null");
+                });
+            }
         }
 
         private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-            data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
-            data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
-            data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
+            if (opensearchMode) {
+                data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+                data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
+                data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
+                data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
+                data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
+                data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
+            }
         }
 
     }

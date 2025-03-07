@@ -28,24 +28,29 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     private static final String MIN_KEY = "min";
     private static final String COUNT_KEY = "count";
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
+    private static final String OTLP_AGGREGATION_TEMPORALITY_KEY = "aggregation_temporality";
     private static final String BUCKET_COUNTS_KEY = "bucketCounts";
+    private static final String OTLP_BUCKET_COUNTS_KEY = "bucket_counts";
     private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicitBoundsCount";
+    private static final String OTLP_EXPLICIT_BOUNDS_COUNT_KEY = "explicit_bounds_count";
     public static final String BUCKETS_KEY = "buckets";
     private static final String BUCKET_COUNTS_LIST_KEY = "bucketCountsList";
+    private static final String OTLP_BUCKET_COUNTS_LIST_KEY = "bucket_counts_list";
     private static final String EXPLICIT_BOUNDS_KEY = "explicitBounds";
+    private static final String OTLP_EXPLICIT_BOUNDS_KEY = "explicit_bounds";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(SUM_KEY);
 
 
-    protected JacksonHistogram(JacksonHistogram.Builder builder, boolean flattenAttributes) {
-        super(builder, flattenAttributes);
+    protected JacksonHistogram(JacksonHistogram.Builder builder, boolean opensearchMode) {
+        super(builder, opensearchMode);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
-    public static JacksonHistogram.Builder builder() {
-        return new JacksonHistogram.Builder();
+    public static JacksonHistogram.Builder builder(final boolean opensearchMode) {
+        return new JacksonHistogram.Builder(opensearchMode);
     }
 
     @Override
@@ -70,17 +75,20 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
 
     @Override
     public String getAggregationTemporality() {
-        return this.get(AGGREGATION_TEMPORALITY_KEY, String.class);
+        final String key = getOpensearchMode() ? AGGREGATION_TEMPORALITY_KEY : OTLP_AGGREGATION_TEMPORALITY_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public Integer getBucketCount() {
-        return this.get(BUCKET_COUNTS_KEY, Integer.class);
+        final String key = getOpensearchMode() ? BUCKET_COUNTS_KEY : OTLP_BUCKET_COUNTS_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
     public Integer getExplicitBoundsCount() {
-        return this.get(EXPLICIT_BOUNDS_COUNT_KEY, Integer.class);
+        final String key = getOpensearchMode() ? EXPLICIT_BOUNDS_COUNT_KEY : OTLP_EXPLICIT_BOUNDS_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
@@ -90,12 +98,14 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
 
     @Override
     public List<Long> getBucketCountsList() {
-        return this.getList(BUCKET_COUNTS_LIST_KEY, Long.class);
+        final String key = getOpensearchMode() ? BUCKET_COUNTS_LIST_KEY : OTLP_BUCKET_COUNTS_LIST_KEY;
+        return this.getList(key, Long.class);
     }
 
     @Override
     public List<Double> getExplicitBoundsList() {
-        return this.getList(EXPLICIT_BOUNDS_KEY, Double.class);
+        final String key = getOpensearchMode() ? EXPLICIT_BOUNDS_KEY : OTLP_EXPLICIT_BOUNDS_KEY;
+        return this.getList(key, Double.class);
     }
 
     /**
@@ -104,6 +114,10 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
      * @since 1.4
      */
     public static class Builder extends JacksonMetric.Builder<JacksonHistogram.Builder> {
+
+        public Builder(final boolean opensearchMode) {
+            super(opensearchMode);
+        }
 
         @Override
         public JacksonHistogram.Builder getThis() {
@@ -165,7 +179,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withBucketCount(int bucketCount) {
-            put(BUCKET_COUNTS_KEY, bucketCount);
+            final String key = getOpensearchMode() ? BUCKET_COUNTS_KEY : OTLP_BUCKET_COUNTS_KEY;
+            put(key, bucketCount);
             return this;
         }
 
@@ -176,7 +191,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withExplicitBoundsCount(int explicitBoundsCount) {
-            put(EXPLICIT_BOUNDS_COUNT_KEY, explicitBoundsCount);
+            final String key = getOpensearchMode() ? EXPLICIT_BOUNDS_COUNT_KEY : OTLP_EXPLICIT_BOUNDS_COUNT_KEY;
+            put(key, explicitBoundsCount);
             return this;
         }
 
@@ -187,7 +203,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public  JacksonHistogram.Builder withAggregationTemporality(String aggregationTemporality) {
-            put(AGGREGATION_TEMPORALITY_KEY, aggregationTemporality);
+            final String key = getOpensearchMode() ? AGGREGATION_TEMPORALITY_KEY : OTLP_AGGREGATION_TEMPORALITY_KEY;
+            put(key, aggregationTemporality);
             return this;
         }
 
@@ -221,7 +238,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withBucketCountsList(List<Long> bucketCountsList) {
-            put(BUCKET_COUNTS_LIST_KEY, bucketCountsList);
+            final String key = getOpensearchMode() ? BUCKET_COUNTS_LIST_KEY : OTLP_BUCKET_COUNTS_LIST_KEY;
+            put(key, bucketCountsList);
             return this;
         }
 
@@ -232,7 +250,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram.Builder withExplicitBoundsList(List<Double> explicitBoundsList) {
-            put(EXPLICIT_BOUNDS_KEY, explicitBoundsList);
+            final String key = getOpensearchMode() ? EXPLICIT_BOUNDS_KEY : OTLP_EXPLICIT_BOUNDS_KEY;
+            put(key, explicitBoundsList);
             return this;
         }
 
@@ -242,23 +261,15 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram build() {
-            return build(true);
-        }
-
-        /**
-         * Returns a newly created {@link JacksonHistogram}
-         * @param flattenAttributes flag indicating if the attributes should be flattened or not
-         * @return a JacksonHistogram
-         * @since 2.1
-         */
-        public JacksonHistogram build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventKind(KIND.HISTOGRAM.toString());
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            if (getOpensearchMode()) {
+                new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            }
 
-            return new JacksonHistogram(this, flattenAttributes);
+            return new JacksonHistogram(this, opensearchMode);
         }
 
         private void checkAndSetDefaultValues() {

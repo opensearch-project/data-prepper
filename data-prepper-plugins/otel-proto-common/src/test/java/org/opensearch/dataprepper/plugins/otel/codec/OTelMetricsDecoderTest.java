@@ -36,7 +36,7 @@ public class OTelMetricsDecoderTest {
     private static final String TEST_REQUEST_METRICS_FILE = "test-request-multiple-metrics.json";
     
     public OTelMetricDecoder createObjectUnderTest() {
-        return new OTelMetricDecoder();
+        return new OTelMetricDecoder(true);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {

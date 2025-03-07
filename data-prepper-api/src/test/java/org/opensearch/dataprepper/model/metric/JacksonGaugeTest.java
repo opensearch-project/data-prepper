@@ -58,9 +58,8 @@ class JacksonGaugeTest {
 
     private JacksonGauge.Builder builder;
 
-    @BeforeEach
-    public void setup() {
-        builder = JacksonGauge.builder()
+    private JacksonGauge createObjectUnderTest(boolean opensearchMode) {
+        builder = JacksonGauge.builder(opensearchMode)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -74,8 +73,12 @@ class JacksonGaugeTest {
                 .withSchemaUrl(TEST_SCHEMA_URL)
                 .withFlags(TEST_FLAGS);
 
-        gauge = builder.build();
+        return builder.build();
+    }
 
+    @BeforeEach
+    public void setup() {
+        gauge = createObjectUnderTest(true);
     }
 
     @Test
@@ -182,7 +185,7 @@ class JacksonGaugeTest {
 
     @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonGauge.Builder builder = JacksonGauge.builder();
+        final JacksonGauge.Builder builder = JacksonGauge.builder(true);
         builder.withValue(null);
         assertThrows(NullPointerException.class, builder::build);
     }
@@ -215,7 +218,7 @@ class JacksonGaugeTest {
 
     @Test
     public void testGaugeToJsonStringWithAttributes() throws JSONException {
-        gauge = builder.build(false);
+        gauge = createObjectUnderTest(false);
         gauge.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         gauge.put("testObject", new TestObject(value));

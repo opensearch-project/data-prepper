@@ -121,7 +121,7 @@ public class PipelineConnectorTest {
                 .withStatusCode(201)
                 .withEndTime("the End")
                 .build();
-        final JacksonSpan span = JacksonSpan.builder()
+        final JacksonSpan span = JacksonSpan.builder(true)
                 .withSpanId(TEST_SPAN_ID)
                 .withTraceId(TEST_TRACE_ID)
                 .withTraceState(TEST_TRACE_STATE)

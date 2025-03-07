@@ -87,7 +87,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelTraceDecoder();
+        this.byteDecoder = new OTelTraceDecoder(oTelTraceSourceConfig.getOpensearchMode());
     }
 
     @Override
@@ -107,6 +107,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
+                    oTelTraceSourceConfig.getOpensearchMode(),
                     pluginMetrics
             );
 

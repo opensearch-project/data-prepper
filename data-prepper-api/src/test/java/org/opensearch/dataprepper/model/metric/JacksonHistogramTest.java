@@ -10,6 +10,8 @@ import io.micrometer.core.instrument.util.IOUtils;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.TestObject;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -67,9 +69,8 @@ class JacksonHistogramTest {
 
     private JacksonHistogram.Builder builder;
 
-    @BeforeEach
-    public void setup() {
-        builder = JacksonHistogram.builder()
+    private JacksonHistogram.Builder createBuilder(final boolean opensearchMode) {
+        builder = JacksonHistogram.builder(opensearchMode)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -89,8 +90,17 @@ class JacksonHistogramTest {
                 .withSchemaUrl(TEST_SCHEMA_URL)
                 .withExplicitBoundsList(TEST_EXPLICIT_BOUNDS_LIST)
                 .withBucketCountsList(TEST_BUCKET_COUNTS_LIST);
+        return builder;
+    }
 
-        histogram = builder.build();
+    private JacksonHistogram createObjectUnderTest(boolean opensearchMode) {
+        createBuilder(opensearchMode);
+        return builder.build();
+    }
+
+    @BeforeEach
+    public void setup() {
+        histogram = createObjectUnderTest(true);
     }
 
     @Test
@@ -177,8 +187,10 @@ class JacksonHistogramTest {
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
     }
 
-    @Test
-    public void testGetBuckets() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetBuckets(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final List<? extends Bucket> buckets = histogram.getBuckets();
         assertThat(buckets.size(), is(equalTo(2)));
         Bucket firstBucket = buckets.get(0);
@@ -194,39 +206,49 @@ class JacksonHistogramTest {
 
     }
 
-    @Test
-    public void testGetBucketCountsList() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetBucketCountsList(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         List<Long> counts = histogram.getBucketCountsList();
         assertEquals(counts, TEST_BUCKET_COUNTS_LIST);
     }
 
-    @Test
-    public void testGetExplicitBoundsList() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetExplicitBoundsList(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         List<Double> bounds = histogram.getExplicitBoundsList();
         assertEquals(bounds, TEST_EXPLICIT_BOUNDS_LIST);
     }
 
-    @Test
-    public void testGetBucketCounts() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetBucketCounts(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         Integer count = histogram.getBucketCount();
         assertEquals(count, TEST_BUCKETS_COUNT);
     }
 
-    @Test
-    public void testGetExplicitBoundsCount() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetExplicitBoundsCount(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final Integer explicitBoundsCount = histogram.getExplicitBoundsCount();
         assertThat(explicitBoundsCount, is(equalTo(TEST_EXPLICIT_BOUNDS_COUNT)));
     }
 
-    @Test
-    public void testGetAggregationTemporality() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testGetAggregationTemporality(final boolean opensearchMode) {
+        histogram = createObjectUnderTest(opensearchMode);
         final String aggregationTemporality = histogram.getAggregationTemporality();
         assertThat(aggregationTemporality, is(equalTo(TEST_AGGREGATION_TEMPORALITY)));
     }
 
     @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonSum.Builder builder = JacksonSum.builder();
+        final JacksonSum.Builder builder = JacksonSum.builder(true);
         builder.withValue(null);
         assertThrows(NullPointerException.class, builder::build);
     }
@@ -264,7 +286,7 @@ class JacksonHistogramTest {
 
     @Test
     public void testHistogramToJsonStringWithAttributes() throws JSONException {
-        histogram = builder.build(false);
+        histogram = createObjectUnderTest(false);
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));

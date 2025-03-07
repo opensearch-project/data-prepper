@@ -24,6 +24,7 @@ public class OTelTraceSourceConfig {
     static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
     static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     static final String SSL_KEY_FILE = "sslKeyFile";
+    static final String OPENSEARCH_MODE = "opensearch_mode";
     static final String ACM_CERT_ARN = "acmCertificateArn";
     static final String ACM_PRIVATE_KEY_PASSWORD = "acmPrivateKeyPassword";
     static final String AWS_REGION = "awsRegion";
@@ -63,6 +64,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty(ENABLE_UNFRAMED_REQUESTS)
     private boolean enableUnframedRequests = DEFAULT_ENABLED_UNFRAMED_REQUESTS;
+
+    @JsonProperty(OPENSEARCH_MODE)
+    private boolean opensearchMode = true;
 
     @JsonProperty(SSL)
     private boolean ssl = DEFAULT_SSL;
@@ -153,6 +157,10 @@ public class OTelTraceSourceConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public boolean getOpensearchMode() {
+        return opensearchMode;
     }
 
     public String getPath() {
