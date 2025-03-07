@@ -96,6 +96,12 @@ public interface OpenTelemetryLog extends Log {
      */
     String getSeverityText();
 
+    /**
+     * Gets the severity text and number of this log event.
+     * @return the severity number encoded as Integer
+     * @since 2.11
+     */
+    Map<String, Object> getSeverity();
 
     /**
      * Gets the dropped attributes count of this log event.
@@ -112,4 +118,20 @@ public interface OpenTelemetryLog extends Log {
      * @since 2.1
      */
     Object getBody();
+
+    /**
+     * Gets the scope of this log event.
+     *
+     * @return the scope
+     * @since 2.11
+     */
+    Map<String, Object> getScope();
+
+    /**
+     * Gets the resource of this log event.
+     *
+     * @return the resource
+     * @since 2.11
+     */
+    Map<String, Object> getResource();
 }
