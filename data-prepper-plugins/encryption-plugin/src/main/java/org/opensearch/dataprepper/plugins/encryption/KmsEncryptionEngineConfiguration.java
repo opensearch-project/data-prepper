@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.arns.Arn;
@@ -50,8 +51,9 @@ public class KmsEncryptionEngineConfiguration implements EncryptionEngineConfigu
     @JsonProperty("sts_role_arn")
     private String stsRoleArn;
 
-    @JsonProperty("rotation_interval")
     @Valid
+    @JsonProperty("rotation_interval")
+    @DurationMin(hours = 2L, message = "Rotation interval must be at least 2 hours.")
     private Duration rotationInterval = Duration.ofDays(30);
 
     public String getEncryptionKey() {

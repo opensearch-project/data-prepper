@@ -22,6 +22,7 @@ dependencies {
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation libs.commons.io
     implementation libs.caffeine
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
