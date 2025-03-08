@@ -20,7 +20,11 @@ public class DefaultEncryptionHttpHandler implements EncryptionHttpHandler {
 
     private final Set<EncryptionRotationHandler> encryptionRotationHandlers;
 
-    public DefaultEncryptionHttpHandler(final Set<EncryptionRotationHandler> encryptionRotationHandlers) {
+    public static DefaultEncryptionHttpHandler create(final Set<EncryptionRotationHandler> encryptionRotationHandlers) {
+        return new DefaultEncryptionHttpHandler(encryptionRotationHandlers);
+    }
+
+    private DefaultEncryptionHttpHandler(final Set<EncryptionRotationHandler> encryptionRotationHandlers) {
         this.encryptionRotationHandlers = encryptionRotationHandlers;
     }
 

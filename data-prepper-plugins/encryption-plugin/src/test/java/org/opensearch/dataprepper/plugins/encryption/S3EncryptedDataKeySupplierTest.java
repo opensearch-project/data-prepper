@@ -96,7 +96,7 @@ class S3EncryptedDataKeySupplierTest {
     }
 
     @Test
-    void testRetrieveAfterRefreshSuccess() {
+    void testRetrieveValueAfterRefreshSuccess() {
         try (final MockedStatic<IOUtils> ioUtilsMockedStatic = mockStatic(IOUtils.class)) {
             ioUtilsMockedStatic.when(
                             () -> IOUtils.toString(eq(getObjectResponseResponseInputStream), eq(StandardCharsets.UTF_8)))
@@ -143,7 +143,7 @@ class S3EncryptedDataKeySupplierTest {
     }
 
     @Test
-    void testRetrieveLatestDataKeyFileContentThrowsRuntimeException_when_no_IOUtils_throws_IOException() {
+    void testRetrieveLatestDataKeyFileContentThrowsRuntimeException_when_IOUtils_throws_IOException() {
         try (final MockedStatic<IOUtils> ioUtilsMockedStatic = mockStatic(IOUtils.class)) {
             ioUtilsMockedStatic.when(
                             () -> IOUtils.toString(eq(getObjectResponseResponseInputStream), eq(StandardCharsets.UTF_8)))

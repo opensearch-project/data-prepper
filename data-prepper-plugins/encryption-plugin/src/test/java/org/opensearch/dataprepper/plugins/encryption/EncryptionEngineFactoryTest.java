@@ -30,7 +30,7 @@ class EncryptionEngineFactoryTest {
 
     @BeforeEach
     void setUp() {
-        objectUnderTest = new EncryptionEngineFactory(keyProviderFactory);
+        objectUnderTest = EncryptionEngineFactory.create(keyProviderFactory);
     }
 
     @Test

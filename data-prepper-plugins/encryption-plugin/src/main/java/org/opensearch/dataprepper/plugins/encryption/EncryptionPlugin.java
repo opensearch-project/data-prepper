@@ -35,28 +35,29 @@ public class EncryptionPlugin implements ExtensionPlugin {
 
     @DataPrepperPluginConstructor
     public EncryptionPlugin(final EncryptionPluginConfig encryptionPluginConfig) {
-        final KeyProviderFactory keyProviderFactory = new KeyProviderFactory();
-        final EncryptionEngineFactory encryptionEngineFactory = new EncryptionEngineFactory(keyProviderFactory);
+        final KeyProviderFactory keyProviderFactory = KeyProviderFactory.create();
+        final EncryptionEngineFactory encryptionEngineFactory = EncryptionEngineFactory.create(keyProviderFactory);
         final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory =
-                new EncryptedDataKeySupplierFactory();
+                EncryptedDataKeySupplierFactory.create();
         if (encryptionPluginConfig != null) {
             encryptionSupplier = new EncryptionSupplier(
                     encryptionPluginConfig, encryptionEngineFactory, encryptedDataKeySupplierFactory);
             pluginMetrics = PluginMetrics.fromPrefix("encryption");
             final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory = new EncryptedDataKeyWriterFactory();
             final EncryptionRotationHandlerFactory encryptionRotationHandlerFactory =
-                    new EncryptionRotationHandlerFactory(pluginMetrics, encryptedDataKeyWriterFactory);
+                    EncryptionRotationHandlerFactory.create(pluginMetrics, encryptedDataKeyWriterFactory);
             final Set<EncryptionRotationHandler> encryptionRotationHandlers = encryptionPluginConfig
                     .getEncryptionConfigurationMap().entrySet().stream()
+                    .filter(entry -> entry.getValue().rotationEnabled())
                     .map(entry -> encryptionRotationHandlerFactory
                             .createEncryptionRotationHandler(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toSet());
-            encryptionHttpHandler = new DefaultEncryptionHttpHandler(encryptionRotationHandlers);
+            encryptionHttpHandler = DefaultEncryptionHttpHandler.create(encryptionRotationHandlers);
             submitEncryptionRefreshJobs(encryptionPluginConfig, encryptionSupplier);
         } else {
             encryptionSupplier = new EncryptionSupplier(
                     new EncryptionPluginConfig(), encryptionEngineFactory, encryptedDataKeySupplierFactory);
-            encryptionHttpHandler = new DefaultEncryptionHttpHandler(Collections.emptySet());
+            encryptionHttpHandler = DefaultEncryptionHttpHandler.create(Collections.emptySet());
         }
     }
 

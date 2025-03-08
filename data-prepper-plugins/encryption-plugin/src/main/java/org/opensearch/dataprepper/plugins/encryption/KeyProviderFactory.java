@@ -6,6 +6,13 @@
 package org.opensearch.dataprepper.plugins.encryption;
 
 public class KeyProviderFactory {
+
+    public static KeyProviderFactory create() {
+        return new KeyProviderFactory();
+    }
+
+    private KeyProviderFactory() {}
+
     public KmsKeyProvider createKmsKeyProvider(
             final KmsEncryptionEngineConfiguration kmsEncryptionEngineConfiguration) {
         return new KmsKeyProvider(kmsEncryptionEngineConfiguration);

@@ -26,7 +26,7 @@ class EncryptedDataKeySupplierFactoryTest {
     void testCreateStaticEncryptedDataKeySupplier() {
         final String testEncryptionKey = UUID.randomUUID().toString();
         when(kmsEncryptionEngineConfiguration.getEncryptionKey()).thenReturn(testEncryptionKey);
-        final EncryptedDataKeySupplierFactory objectUnderTest = new EncryptedDataKeySupplierFactory();
+        final EncryptedDataKeySupplierFactory objectUnderTest = EncryptedDataKeySupplierFactory.create();
         final EncryptedDataKeySupplier encryptedDataKeySupplier = objectUnderTest.createEncryptedDataKeySupplier(
                 kmsEncryptionEngineConfiguration);
         assertThat(encryptedDataKeySupplier, instanceOf(StaticEncryptedDataKeySupplier.class));
