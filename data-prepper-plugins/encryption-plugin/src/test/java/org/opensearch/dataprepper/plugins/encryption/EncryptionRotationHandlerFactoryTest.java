@@ -47,7 +47,7 @@ class EncryptionRotationHandlerFactoryTest {
         when(kmsEncryptionEngineConfiguration.createS3Client()).thenReturn(s3Client);
         when(encryptedDataKeyWriterFactory.createS3EncryptedDataKeyWriter(eq(s3Client), eq(TEST_ENCRYPTION_KEY_DIRECTORY)))
                 .thenReturn(s3EncryptedDataKeyWriter);
-        objectUnderTest = new EncryptionRotationHandlerFactory(pluginMetrics, encryptedDataKeyWriterFactory);
+        objectUnderTest = EncryptionRotationHandlerFactory.create(pluginMetrics, encryptedDataKeyWriterFactory);
         final EncryptionRotationHandler encryptionRotationHandler = objectUnderTest.createEncryptionRotationHandler(
                 TEST_ENCRYPTION_ID, kmsEncryptionEngineConfiguration);
         assertThat(encryptionRotationHandler, instanceOf(KmsEncryptionRotationHandler.class));
@@ -60,7 +60,7 @@ class EncryptionRotationHandlerFactoryTest {
         when(kmsEncryptionEngineConfiguration.getEncryptionKeyDirectory()).thenReturn(TEST_ENCRYPTION_KEY_DIRECTORY);
         when(encryptedDataKeyWriterFactory.createLocalDirectoryEncryptedDataKeyWriter(eq(TEST_ENCRYPTION_KEY_DIRECTORY)))
                 .thenReturn(localDirectoryEncryptedDataKeyWriter);
-        objectUnderTest = new EncryptionRotationHandlerFactory(pluginMetrics, encryptedDataKeyWriterFactory);
+        objectUnderTest = EncryptionRotationHandlerFactory.create(pluginMetrics, encryptedDataKeyWriterFactory);
         final EncryptionRotationHandler encryptionRotationHandler = objectUnderTest.createEncryptionRotationHandler(
                 TEST_ENCRYPTION_ID, kmsEncryptionEngineConfiguration);
         assertThat(encryptionRotationHandler, instanceOf(KmsEncryptionRotationHandler.class));

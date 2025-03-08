@@ -51,7 +51,7 @@ class DefaultEncryptionHttpHandlerTest {
         when(httpExchange.getRequestURI()).thenReturn(URI.create("http://localhost:4900/" + encryptionId));
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.POST);
         doThrow(RuntimeException.class).when(encryptionRotationHandler).handleRotation();
-        final DefaultEncryptionHttpHandler handler = new DefaultEncryptionHttpHandler(
+        final DefaultEncryptionHttpHandler handler = DefaultEncryptionHttpHandler.create(
                 Set.of(encryptionRotationHandler));
 
         handler.handle(httpExchange);
@@ -68,7 +68,7 @@ class DefaultEncryptionHttpHandlerTest {
         when(encryptionRotationHandler.getEncryptionId()).thenReturn(encryptionId);
         when(httpExchange.getRequestURI()).thenReturn(URI.create("http://localhost:4900/" + encryptionId));
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.POST);
-        final DefaultEncryptionHttpHandler handler = new DefaultEncryptionHttpHandler(
+        final DefaultEncryptionHttpHandler handler = DefaultEncryptionHttpHandler.create(
                 Set.of(encryptionRotationHandler));
 
         handler.handle(httpExchange);
@@ -85,7 +85,7 @@ class DefaultEncryptionHttpHandlerTest {
         when(encryptionRotationHandler.getEncryptionId()).thenReturn(encryptionId);
         when(httpExchange.getRequestURI()).thenReturn(URI.create("http://localhost:4900/" + encryptionId + "diff"));
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.POST);
-        final DefaultEncryptionHttpHandler handler = new DefaultEncryptionHttpHandler(
+        final DefaultEncryptionHttpHandler handler = DefaultEncryptionHttpHandler.create(
                 Set.of(encryptionRotationHandler));
 
         handler.handle(httpExchange);
@@ -99,7 +99,7 @@ class DefaultEncryptionHttpHandlerTest {
     @ParameterizedTest
     @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT, HttpMethod.GET})
     void testGivenProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
-        final DefaultEncryptionHttpHandler handler = new DefaultEncryptionHttpHandler(Collections.emptySet());
+        final DefaultEncryptionHttpHandler handler = DefaultEncryptionHttpHandler.create(Collections.emptySet());
 
         when(httpExchange.getRequestMethod()).thenReturn(httpMethod);
 

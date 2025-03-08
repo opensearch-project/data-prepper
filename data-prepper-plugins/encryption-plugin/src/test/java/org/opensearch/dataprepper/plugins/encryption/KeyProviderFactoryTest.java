@@ -28,7 +28,7 @@ class KeyProviderFactoryTest {
 
     @BeforeEach
     void setUp() {
-        keyProviderFactory = new KeyProviderFactory();
+        keyProviderFactory = KeyProviderFactory.create();
     }
 
     @Test
