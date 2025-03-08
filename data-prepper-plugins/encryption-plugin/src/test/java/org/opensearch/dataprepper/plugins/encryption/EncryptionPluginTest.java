@@ -89,7 +89,6 @@ class EncryptionPluginTest {
                      mockStatic(EncryptionRotationHandlerFactory.class);
              final MockedStatic<DefaultEncryptionHttpHandler> defaultEncryptionHttpHandlerMockedStatic =
                      mockStatic(DefaultEncryptionHttpHandler.class);
-             final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)
         ) {
             encryptedDataKeySupplierFactoryMockedStatic.when(EncryptedDataKeySupplierFactory::create)
                     .thenReturn(encryptedDataKeySupplierFactory);
@@ -100,8 +99,6 @@ class EncryptionPluginTest {
                     .thenReturn(encryptionRotationHandlerFactory);
             defaultEncryptionHttpHandlerMockedStatic.when(() -> DefaultEncryptionHttpHandler.create(anySet()))
                     .thenReturn(defaultEncryptionHttpHandler);
-            executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor)
-                    .thenReturn(scheduledExecutorService);
             objectUnderTest = new EncryptionPlugin(encryptionPluginConfig);
             objectUnderTest.apply(extensionPoints);
             final ArgumentCaptor<ExtensionProvider> extensionProviderArgumentCaptor =
