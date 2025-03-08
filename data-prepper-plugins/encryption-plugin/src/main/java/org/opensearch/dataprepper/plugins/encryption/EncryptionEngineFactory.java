@@ -11,7 +11,11 @@ import org.opensearch.dataprepper.model.encryption.KeyProvider;
 public class EncryptionEngineFactory {
     private final KeyProviderFactory keyProviderFactory;
 
-    public EncryptionEngineFactory(final KeyProviderFactory keyProviderFactory) {
+    public static EncryptionEngineFactory create(final KeyProviderFactory keyProviderFactory) {
+        return new EncryptionEngineFactory(keyProviderFactory);
+    }
+
+    private EncryptionEngineFactory(final KeyProviderFactory keyProviderFactory) {
         this.keyProviderFactory = keyProviderFactory;
     }
 

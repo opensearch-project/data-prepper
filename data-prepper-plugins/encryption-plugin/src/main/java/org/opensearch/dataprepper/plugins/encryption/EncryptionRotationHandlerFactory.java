@@ -12,8 +12,13 @@ public class EncryptionRotationHandlerFactory {
     private final PluginMetrics pluginMetrics;
     private final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory;
 
-    public EncryptionRotationHandlerFactory(final PluginMetrics pluginMetrics,
-                                            final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory) {
+    public static EncryptionRotationHandlerFactory create(
+            final PluginMetrics pluginMetrics, final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory) {
+        return new EncryptionRotationHandlerFactory(pluginMetrics, encryptedDataKeyWriterFactory);
+    }
+
+    private EncryptionRotationHandlerFactory(final PluginMetrics pluginMetrics,
+                                             final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory) {
         this.pluginMetrics = pluginMetrics;
         this.encryptedDataKeyWriterFactory = encryptedDataKeyWriterFactory;
     }
@@ -26,7 +31,8 @@ public class EncryptionRotationHandlerFactory {
                     encryptionId,
                     (KmsEncryptionEngineConfiguration) encryptionEngineConfiguration);
         } else {
-            throw new IllegalArgumentException("Unsupported.");
+            throw new IllegalArgumentException(
+                    "Unsupported encryption engine configuration for creating rotation handler.");
         }
     }
 
