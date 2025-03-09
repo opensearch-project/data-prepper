@@ -16,6 +16,8 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionN
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,9 +99,9 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, Set<DeleteObjectRequest>> objectsToDeleteForAcknowledgmentSets;
 
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
+    private final Map<String, S3DataSelection> bucketDataSelectionMap;
 
     private final Duration acknowledgmentSetTimeout;
-    private S3DataSelection dataSelection;
 
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
@@ -113,11 +116,18 @@ public class ScanObjectWorker implements Runnable {
         this.s3Client = s3Client;
         this.backOffMs = backOffMs;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
+        for (ScanOptions scanOptions : scanOptionsBuilderList) {
+        }
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
-        this.dataSelection = s3SourceConfig.getDataSelection();
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
+        this.bucketDataSelectionMap = new HashMap<>();
+        for (S3ScanBucketOptions bucketOption: s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
+            if (bucketOption.getS3ScanBucketOption() != null) {
+                bucketDataSelectionMap.put(bucketOption.getS3ScanBucketOption().getName(), bucketOption.getS3ScanBucketOption().getDataSelection());
+            }
+        }
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.deleteS3ObjectsOnRead = s3SourceConfig.isDeleteS3ObjectsOnRead();
@@ -254,7 +264,11 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            s3ObjectHandler.processS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
+            S3DataSelection dataSelection = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
+            if (dataSelection == null) {
+                dataSelection = S3DataSelection.DATA_AND_METADATA;
+            }
+            s3ObjectHandler.processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
             if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled && s3ObjectDeleteWorker != null) {
                 final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
                 return Optional.of(deleteObjectRequest);

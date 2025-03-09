@@ -8,10 +8,7 @@ package org.opensearch.dataprepper.plugins.source.s3;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.noop.NoopTimer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -21,20 +18,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
-import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsBackoff;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -42,17 +35,13 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -71,19 +60,14 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SqsWorkerIT {
-    private static final int TIMEOUT_IN_MILLIS = 200;
     private SqsClient sqsClient;
     @Mock
     private S3Service s3Service;
     @Mock
     private SqsOptions sqsOptions;
-    @Mock
-    DistributionSummary distributionSummary;
-
     private S3SourceConfig s3SourceConfig;
     private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
-    private S3ObjectPluginMetrics s3ObjectPluginMetrics;
     private String bucket;
     private Backoff backoff;
     private AcknowledgementSetManager acknowledgementSetManager;
@@ -95,14 +79,11 @@ class SqsWorkerIT {
     private AtomicBoolean ready = new AtomicBoolean(false);
     private int numEventsAdded;
     private List<Event> events;
-    private int recordsReceived;
-    S3Client s3Client;
 
     @BeforeEach
     void setUp() {
-        distributionSummary = mock(DistributionSummary.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
-        s3Client = S3Client.builder()
+        final S3Client s3Client = S3Client.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
@@ -120,6 +101,7 @@ class SqsWorkerIT {
 
         pluginMetrics = mock(PluginMetrics.class);
         final Counter sharedCounter = mock(Counter.class);
+        final DistributionSummary distributionSummary = mock(DistributionSummary.class);
         final Timer sqsMessageDelayTimer = mock(Timer.class);
 
         lenient().when(pluginMetrics.counter(anyString())).thenReturn(sharedCounter);
@@ -164,66 +146,6 @@ class SqsWorkerIT {
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getKey(), startsWith("s3 source/sqs/"));
         assertThat(sqsMessagesProcessed, greaterThanOrEqualTo(1));
         assertThat(sqsMessagesProcessed, lessThanOrEqualTo(numberOfObjectsToWrite));
-    }
-
-    @ParameterizedTest
-    @ValueSource(ints = {10})
-    void processSqsMessages_with_metadataOnly_option(final int numberOfObjectsToWrite) throws Exception {
-        final Counter counter = mock(Counter.class);
-        s3ObjectPluginMetrics = mock(S3ObjectPluginMetrics.class);
-        final Timer timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
-        when(sqsOptions.getMaxReceiveAttempts()).thenReturn(5);
-        lenient().when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(counter);
-        lenient().when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(distributionSummary);
-        lenient().when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(distributionSummary);
-        lenient().when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(timer);
-        Buffer<Record<Event>> buffer = mock(Buffer.class);
-        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
-        final Counter receivedCounter = mock(Counter.class);
-        final Counter deletedCounter = mock(Counter.class);
-        final Counter ackCallbackCounter = mock(Counter.class);
-        lenient().doAnswer(a -> {
-            final Collection<Record<Event>> recordsCollection = a.getArgument(0);
-            recordsReceived += recordsCollection.size();
-            return null;
-        }).when(buffer).writeAll(anyCollection(), anyInt());
-        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(receivedCounter);
-        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(deletedCounter);
-        when(pluginMetrics.counter(SqsWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(ackCallbackCounter);
-        lenient().doAnswer((val) -> {
-            receivedCount += (double)val.getArgument(0);
-            return null;
-        }).when(receivedCounter).increment(any(Double.class));
-        lenient().doAnswer((val) -> {
-            ackCallbackCount += 1;
-            return null;
-        }).when(ackCallbackCounter).increment();
-
-        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
-        acknowledgementSetManager = new  DefaultAcknowledgementSetManager(executor);
-        BucketOwnerProvider bucketOwnerProvider = b -> Optional.empty();
-        final S3ObjectRequest s3ObjectRequest = new S3ObjectRequest.Builder(buffer, 1,
-                        Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics)
-                    .bucketOwnerProvider(bucketOwnerProvider)
-                    .s3Client(s3Client)
-                    .build();
-        S3Service s3MetadataService = new S3Service(new S3ObjectMetadataWorker(s3ObjectRequest));
-        final SqsWorker objectUnderTest = new SqsWorker(acknowledgementSetManager, sqsClient, s3MetadataService, s3SourceConfig, pluginMetrics, backoff);
-        List<String> keyList = writeToS3(numberOfObjectsToWrite);
-        await().atMost(Duration.ofSeconds(60))
-                .untilAsserted(() -> {
-                    final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
-                    assertThat(recordsReceived, equalTo(numberOfObjectsToWrite));
-                });
-
-        assertThat(deletedCount, equalTo((double)0.0));
-        // Delete the objects created
-        for (String key: keyList) {
-            final DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                            .bucket(bucket)
-                            .key(key).build();
-            s3Client.deleteObject(deleteObjectRequest);
-        }
     }
 
     @ParameterizedTest
@@ -533,17 +455,14 @@ class SqsWorkerIT {
         assertThat(sqsMessagesProcessed, equalTo(0));
     }
 
-    private List<String> writeToS3(final int numberOfObjectsToWrite) throws IOException {
+    private void writeToS3(final int numberOfObjectsToWrite) throws IOException {
         final int numberOfRecords = 100;
         final NewlineDelimitedRecordsGenerator newlineDelimitedRecordsGenerator = new NewlineDelimitedRecordsGenerator();
-        List<String> keyList = new ArrayList<>();
         for (int i = 0; i < numberOfObjectsToWrite; i++) {
             final String key = "s3 source/sqs/" + UUID.randomUUID() + "_" + Instant.now().toString() + newlineDelimitedRecordsGenerator.getFileExtension();
             // isCompressionEnabled is set to false since we test for compression in S3ObjectWorkerIT
             s3ObjectGenerator.write(numberOfRecords, key, newlineDelimitedRecordsGenerator, false);
-            keyList.add(key);
         }
-        return keyList;
     }
 
     private void clearSqsQueue() {

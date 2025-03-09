@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.s3;
+package org.opensearch.dataprepper.plugins.source.s3.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
@@ -30,7 +30,7 @@ public enum S3DataSelection {
     }
 
     @JsonCreator
-    public static S3DataSelection getByMessageFormatByName(final String name) {
+    public static S3DataSelection fromOptionValue(final String name) {
         return S3_DATA_SELECTION_MAP.get(name.toLowerCase());
     }
 }

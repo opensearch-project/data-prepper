@@ -44,9 +44,6 @@ public class S3SourceConfig {
     @JsonProperty("codec")
     private PluginModel codec;
 
-    @JsonProperty("data_selection")
-    private S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
-
     @JsonProperty("sqs")
     @Valid
     private SqsOptions sqsOptions;
@@ -110,11 +107,6 @@ public class S3SourceConfig {
         return true;
     }
 
-    @AssertTrue(message = "Metadata only data selection is not supported with select option")
-    boolean s3SelectMetadataOnlyInvalidOption() {
-        return s3SelectOptions != null && dataSelection == S3DataSelection.METADATA_ONLY;
-    }
-
     @AssertTrue(message = "acknowledgments and delete_s3_objects_on_read must both be set to true when using folder_partitions mode")
     boolean isPrefixPartitionModeValid() {
         if (s3ScanScanOptions != null &&
@@ -157,10 +149,6 @@ public class S3SourceConfig {
 
     boolean getAcknowledgements() {
         return acknowledgments;
-    }
-
-    public S3DataSelection getDataSelection() {
-        return dataSelection;
     }
 
     public int getNumWorkers() {

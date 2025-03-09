@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectJsonOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -48,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -102,6 +102,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     public void processS3Object(final S3ObjectReference s3ObjectReference,
+                              final S3DataSelection dataSelection,
                               final AcknowledgementSet acknowledgementSet,
                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                               final String partitionKey) throws IOException {
@@ -113,11 +114,6 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             throw new IOException(e);
         }
-    }
-
-    @Override
-    public long consumeS3Object(final S3ObjectReference s3ObjectReference, final S3InputFile inputFile, Consumer<Record<Event>> consumer) {
-        throw new RuntimeException("Not Supported");
     }
 
     @Override

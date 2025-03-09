@@ -86,16 +86,10 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, s3SourceConfig.getNumberOfRecordsToAccumulate(),
                 s3SourceConfig.getBufferTimeout(), s3ObjectPluginMetrics);
         final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
-                s3SourceConfig.getMetadataRootKey(), s3SourceConfig.getDataSelection() == S3DataSelection.DATA_ONLY || s3SourceConfig.isDeleteS3MetadataInEvent());
+                s3SourceConfig.getMetadataRootKey(), s3SourceConfig.isDeleteS3MetadataInEvent());
         final S3ObjectDeleteWorker s3ObjectDeleteWorker = new S3ObjectDeleteWorker(s3ClientBuilderFactory.getS3Client(), pluginMetrics);
 
-        if (s3SourceConfig.getDataSelection() == S3DataSelection.METADATA_ONLY) {
-            final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
-                    .bucketOwnerProvider(bucketOwnerProvider)
-                    .s3Client(s3ClientBuilderFactory.getS3Client())
-                    .build();
-            s3Handler = new S3ObjectMetadataWorker(s3ObjectRequest);
-        } else if (s3SelectOptional.isPresent()) {
+        if (s3SelectOptional.isPresent()) {
             S3SelectCSVOption csvOption = (s3SelectOptional.get().getS3SelectCSVOption() != null) ?
                     s3SelectOptional.get().getS3SelectCSVOption() : new S3SelectCSVOption();
             S3SelectJsonOption jsonOption = (s3SelectOptional.get().getS3SelectJsonOption() != null) ?

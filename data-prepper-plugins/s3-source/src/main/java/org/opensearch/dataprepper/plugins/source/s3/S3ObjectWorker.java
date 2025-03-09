@@ -10,10 +10,13 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -22,12 +25,13 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -39,6 +43,10 @@ class S3ObjectWorker implements S3ObjectHandler {
 
     private static final int MAX_RETRIES_DELETE_OBJECT = 3;
     private static final long DELETE_OBJECT_RETRY_DELAY_MS = 1000;
+    private static final String BUCKET_KEY = "bucket";
+    private static final String KEY_KEY = "key";
+    private static final String TIME_KEY = "time";
+    private static final String LENGTH_KEY = "length";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
@@ -66,15 +74,19 @@ class S3ObjectWorker implements S3ObjectHandler {
     }
 
     public void processS3Object(final S3ObjectReference s3ObjectReference,
+                              final S3DataSelection dataSelection,
                               final AcknowledgementSet acknowledgementSet,
                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                               final String partitionKey) throws IOException {
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                doProcessObject(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
+                    doProcessObject(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey,
+                        dataSelection);
                 return null;
             });
+        } catch (final IllegalArgumentException e) {
+            throw new IOException(e.getMessage());
         } catch (final IOException | RuntimeException e) {
             throw e;
         } catch (final Exception e) {
@@ -125,22 +137,37 @@ class S3ObjectWorker implements S3ObjectHandler {
         }
     }
 
-    @Override
-    public long consumeS3Object(final S3ObjectReference s3ObjectReference, final S3InputFile inputFile, final Consumer<Record<Event>> consumer) throws Exception {
-        final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
-                compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
+    public long consumeS3Object(final S3InputFile inputFile, final S3DataSelection dataSelection, final BiConsumer<Record<Event>, S3DataSelection> consumer) throws Exception {
+        final S3ObjectReference s3ObjectReference = inputFile.getObjectReference();
+        if (dataSelection == S3DataSelection.METADATA_ONLY) {
+            Map<String, Object> data = new HashMap<>();
+            data.put(BUCKET_KEY, s3ObjectReference.getBucketName());
+            data.put(KEY_KEY, s3ObjectReference.getKey());
+            data.put(TIME_KEY, inputFile.getLastModified());
+            data.put(LENGTH_KEY, inputFile.getLength());
+            Event event = JacksonEvent.builder()
+                    .withEventType(EventType.DOCUMENT.toString())
+                    .withData(data)
+                    .build();
+            consumer.accept(new Record<>(event), S3DataSelection.METADATA_ONLY);
+            return event.toJsonString().length();
+        } else {
+            final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
+                    compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
 
-        codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
-            consumer.accept(record);
-        });
-        return inputFile.getLength();
+            codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
+                consumer.accept(record, dataSelection);
+            });
+            return inputFile.getLength();
+        }
     }
 
     private void doProcessObject(final AcknowledgementSet acknowledgementSet,
                                final S3ObjectReference s3ObjectReference,
                                final BufferAccumulator<Record<Event>> bufferAccumulator,
                                final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
-                               final String partitionKey) throws Exception {
+                               final String partitionKey,
+                               final S3DataSelection dataSelection) throws Exception {
         final long s3ObjectSize;
         final long totalBytesRead;
 
@@ -154,10 +181,11 @@ class S3ObjectWorker implements S3ObjectHandler {
             final Instant lastModifiedTime = inputFile.getLastModified();
             final Instant now = Instant.now();
             final Instant originationTime = (lastModifiedTime == null || lastModifiedTime.isAfter(now)) ? now : lastModifiedTime;
-            s3ObjectSize = consumeS3Object(s3ObjectReference, inputFile, (record) -> {
+            s3ObjectSize = consumeS3Object(inputFile, dataSelection, (record, objectDataSelection) -> {
                 try {
                     Event event = record.getData();
-                    if (eventConsumer != null) {
+                    // eventConsumer invoked only for S3DataSelection.DATA_AND_METADATA
+                    if (eventConsumer != null && objectDataSelection == S3DataSelection.DATA_AND_METADATA) {
                         eventConsumer.accept(event, s3ObjectReference);
                     }
                     event.getMetadata().setExternalOriginationTime(originationTime);
