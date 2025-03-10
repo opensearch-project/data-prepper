@@ -88,7 +88,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelMetricDecoder();
+        this.byteDecoder = new OTelMetricDecoder(oTelMetricsSourceConfig.getOpensearchMode());
     }
 
     @Override
@@ -107,6 +107,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
+                    oTelMetricsSourceConfig.getOpensearchMode(),
                     pluginMetrics
             );
 

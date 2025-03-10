@@ -60,7 +60,7 @@ class MetricsPluginHistogramTest {
     void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        when(config.getFlattenAttributesFlag()).thenReturn(true);
+        when(config.getOpensearchMode()).thenReturn(true);
         rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
     }
 
@@ -101,7 +101,7 @@ class MetricsPluginHistogramTest {
     void testWithConfigFlagDisabledAndNoFlattenedAttributes() throws JsonProcessingException {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        when(config.getFlattenAttributesFlag()).thenReturn(false);
+        when(config.getOpensearchMode()).thenReturn(false);
         rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
         Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
 

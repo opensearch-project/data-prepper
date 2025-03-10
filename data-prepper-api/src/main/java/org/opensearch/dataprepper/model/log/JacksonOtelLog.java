@@ -25,38 +25,70 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
     protected static final String OBSERVED_TIME_KEY = "observedTime";
+    protected static final String OTLP_OBSERVED_TIME_KEY = "observed_time";
     protected static final String TIME_KEY = "time";
     protected static final String SERVICE_NAME_KEY = "serviceName";
+    protected static final String OTLP_SERVICE_NAME_KEY = "service_name";
     protected static final String ATTRIBUTES_KEY = "attributes";
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
+    protected static final String OTLP_SCHEMA_URL_KEY = "schema_url";
+    protected static final String SCOPE_KEY = "scope";
+    protected static final String RESOURCE_KEY = "resource";
     protected static final String FLAGS_KEY = "flags";
     protected static final String BODY_KEY = "body";
     protected static final String SPAN_ID_KEY = "spanId";
+    protected static final String OTLP_SPAN_ID_KEY = "span_id";
     protected static final String TRACE_ID_KEY = "traceId";
+    protected static final String OTLP_TRACE_ID_KEY = "trace_id";
     protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
+    protected static final String OTLP_SEVERITY_NUMBER_KEY = "severity_number";
     protected static final String SEVERITY_TEXT_KEY = "severityText";
+    protected static final String OTLP_SEVERITY_TEXT_KEY = "severity_text";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
+    protected static final String OTLP_DROPPED_ATTRIBUTES_COUNT_KEY = "dropped_attributes_count";
+    private boolean opensearchMode;
 
 
-    protected JacksonOtelLog(final JacksonOtelLog.Builder builder) {
+    protected JacksonOtelLog(final JacksonOtelLog.Builder builder, final boolean opensearchMode) {
         super(builder);
+        this.opensearchMode = opensearchMode;
 
         checkArgument(this.getMetadata().getEventType().equals("LOG"), "eventType must be of type Log");
     }
 
+    public void setOpensearchMode(final boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
+    }
+
+    boolean getOpensearchMode() {
+        return opensearchMode;
+    }
+
     @Override
     public String getServiceName() {
-        return this.get(SERVICE_NAME_KEY, String.class);
+        final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getObservedTime() {
-        return this.get(OBSERVED_TIME_KEY, String.class);
+        final String key = (opensearchMode) ? OBSERVED_TIME_KEY : OTLP_OBSERVED_TIME_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getTime() {
         return this.get(TIME_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
     }
 
     @Override
@@ -66,7 +98,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
     @Override
     public String getSchemaUrl() {
-        return this.get(SCHEMA_URL_KEY, String.class);
+        final String key = (opensearchMode) ? SCHEMA_URL_KEY : OTLP_SCHEMA_URL_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
@@ -76,27 +109,32 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
     @Override
     public String getSpanId() {
-        return this.get(SPAN_ID_KEY, String.class);
+        final String key = (opensearchMode) ? SPAN_ID_KEY : OTLP_SPAN_ID_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public String getTraceId() {
-        return this.get(TRACE_ID_KEY, String.class);
+        final String key = (opensearchMode) ? TRACE_ID_KEY : OTLP_TRACE_ID_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public Integer getSeverityNumber() {
-        return this.get(SEVERITY_NUMBER_KEY, Integer.class);
+        final String key = (opensearchMode) ? SEVERITY_NUMBER_KEY : OTLP_SEVERITY_NUMBER_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
     public String getSeverityText() {
-        return this.get(SEVERITY_TEXT_KEY, String.class);
+        final String key = (opensearchMode) ? SEVERITY_TEXT_KEY : OTLP_SEVERITY_TEXT_KEY;
+        return this.get(key, String.class);
     }
 
     @Override
     public Integer getDroppedAttributesCount() {
-        return this.get(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class);
+        final String key = (opensearchMode) ? DROPPED_ATTRIBUTES_COUNT_KEY : OTLP_DROPPED_ATTRIBUTES_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
@@ -107,19 +145,23 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     /**
      * Constructs an empty builder.
      *
+     * @param opensearchMode indicates if opensearch mode
      * @return a builder
      * @since 2.1
      */
-    public static JacksonOtelLog.Builder builder() {
-        return new JacksonOtelLog.Builder();
+    public static JacksonOtelLog.Builder builder(final boolean opensearchMode) {
+        return new JacksonOtelLog.Builder(opensearchMode);
     }
 
     @Override
     public String toJsonString() {
-        Object anyAttributes = getJsonNode().get("attributes");
+        if (!opensearchMode) {
+            return getJsonNode().toString();
+        }
+        Object anyAttributes = getJsonNode().get(ATTRIBUTES_KEY);
         if(anyAttributes instanceof ObjectNode) {
             final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
-            flattenedJsonNode.remove("attributes");
+            flattenedJsonNode.remove(ATTRIBUTES_KEY);
 
             for (Iterator<Map.Entry<String, JsonNode>> it = ((ObjectNode) anyAttributes).fields(); it.hasNext(); ) {
                 Map.Entry<String, JsonNode> entry = it.next();
@@ -140,9 +182,11 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     public static class Builder extends JacksonEvent.Builder<JacksonOtelLog.Builder> {
 
         protected final Map<String, Object> data;
+        protected final boolean opensearchMode;
 
-        public Builder() {
+        public Builder(final boolean opensearchMode) {
             data = new HashMap<>();
+            this.opensearchMode = opensearchMode;
         }
 
         @Override
@@ -182,7 +226,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withObservedTime(final String observedTime) {
-            data.put(OBSERVED_TIME_KEY, observedTime);
+            final String key = (opensearchMode) ? OBSERVED_TIME_KEY : OTLP_OBSERVED_TIME_KEY;
+            data.put(key, observedTime);
             return getThis();
         }
 
@@ -198,6 +243,17 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
             return getThis();
         }
 
+        public Builder withScope(final Map<String, Object> scope) {
+            data.put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        public Builder withResource(final Map<String, Object> resource) {
+            data.put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
+        /**
         /**
          * Sets the service name of the log event
          * @param serviceName sets the name of the service
@@ -205,7 +261,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withServiceName(final String serviceName) {
-            data.put(SERVICE_NAME_KEY, serviceName);
+            final String key = (opensearchMode) ? SERVICE_NAME_KEY : OTLP_SERVICE_NAME_KEY;
+            data.put(key, serviceName);
             return getThis();
         }
 
@@ -217,7 +274,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withSchemaUrl(final String schemaUrl) {
-            data.put(SCHEMA_URL_KEY, schemaUrl);
+            final String key = (opensearchMode) ? SCHEMA_URL_KEY : OTLP_SCHEMA_URL_KEY;
+            data.put(key, schemaUrl);
             return getThis();
         }
 
@@ -253,7 +311,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withSpanId(final String spanId) {
-            data.put(SPAN_ID_KEY, spanId);
+            final String key = (opensearchMode) ? SPAN_ID_KEY : OTLP_SPAN_ID_KEY;
+            data.put(key, spanId);
             return getThis();
         }
 
@@ -265,7 +324,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withTraceId(final String traceId) {
-            data.put(TRACE_ID_KEY, traceId);
+            final String key = (opensearchMode) ? TRACE_ID_KEY : OTLP_TRACE_ID_KEY;
+            data.put(key, traceId);
             return getThis();
         }
 
@@ -277,7 +337,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withSeverityNumber(final Integer severityNumber) {
-            data.put(SEVERITY_NUMBER_KEY, severityNumber);
+            final String key = (opensearchMode) ? SEVERITY_NUMBER_KEY : OTLP_SEVERITY_NUMBER_KEY;
+            data.put(key, severityNumber);
             return getThis();
         }
 
@@ -289,7 +350,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.5
          */
         public Builder withSeverityText(final String severityText) {
-            data.put(SEVERITY_TEXT_KEY, severityText);
+            final String key = (opensearchMode) ? SEVERITY_TEXT_KEY : OTLP_SEVERITY_TEXT_KEY;
+            data.put(key, severityText);
             return getThis();
         }
 
@@ -301,7 +363,8 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
-            data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
+            final String key = (opensearchMode) ? DROPPED_ATTRIBUTES_COUNT_KEY : OTLP_DROPPED_ATTRIBUTES_COUNT_KEY;
+            data.put(key, droppedAttributesCount);
             return getThis();
         }
 
@@ -315,7 +378,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
             this.withEventType(EventType.LOG.toString());
             this.withData(data);
             checkAndSetDefaultValues();
-            return new JacksonOtelLog(this);
+            return new JacksonOtelLog(this, opensearchMode);
         }
 
         private void checkAndSetDefaultValues() {

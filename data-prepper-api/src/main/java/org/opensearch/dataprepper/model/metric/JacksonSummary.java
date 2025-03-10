@@ -24,6 +24,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
 
     private static final String QUANTILES_KEY = "quantiles";
     private static final String QUANTILE_VALUES_COUNT_KEY = "quantileValuesCount";
+    private static final String OTLP_QUANTILE_VALUES_COUNT_KEY = "quantile_values_count";
     private static final String SUM_KEY = "sum";
     private static final String COUNT_KEY = "count";
 
@@ -32,14 +33,14 @@ public class JacksonSummary extends JacksonMetric implements Summary {
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.emptyList();
 
 
-    protected JacksonSummary(JacksonSummary.Builder builder, boolean flattenAttributes) {
-        super(builder, flattenAttributes);
+    protected JacksonSummary(JacksonSummary.Builder builder, boolean opensearchMode) {
+        super(builder, opensearchMode);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
-    public static JacksonSummary.Builder builder() {
-        return new JacksonSummary.Builder();
+    public static JacksonSummary.Builder builder(final boolean opensearchMode) {
+        return new JacksonSummary.Builder(opensearchMode);
     }
 
     @Override
@@ -54,7 +55,8 @@ public class JacksonSummary extends JacksonMetric implements Summary {
 
     @Override
     public Integer getQuantileValuesCount() {
-        return this.get(QUANTILE_VALUES_COUNT_KEY, Integer.class);
+        final String key = getOpensearchMode() ? QUANTILE_VALUES_COUNT_KEY : OTLP_QUANTILE_VALUES_COUNT_KEY;
+        return this.get(key, Integer.class);
     }
 
     @Override
@@ -68,6 +70,10 @@ public class JacksonSummary extends JacksonMetric implements Summary {
      * @since 1.4
      */
     public static class Builder extends JacksonMetric.Builder<JacksonSummary.Builder> {
+
+        public Builder(final boolean opensearchMode) {
+            super(opensearchMode);
+        }
 
         @Override
         public Builder getThis() {
@@ -92,7 +98,8 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public Builder withQuantilesValueCount(int quantileValuesCount) {
-            put(QUANTILE_VALUES_COUNT_KEY, quantileValuesCount);
+            final String key = getOpensearchMode() ? QUANTILE_VALUES_COUNT_KEY : OTLP_QUANTILE_VALUES_COUNT_KEY;
+            put(key, quantileValuesCount);
             return this;
         }
 
@@ -136,23 +143,15 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public JacksonSummary build() {
-            return build(true);
-        }
-
-        /**
-         * Returns a newly created {@link JacksonSummary}
-         * @param flattenAttributes flag indicating if the attributes should be flattened or not
-         * @return a JacksonSummary
-         * @since 2.1
-         */
-        public JacksonSummary build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventKind(KIND.SUMMARY.toString());
             this.withEventType(EventType.METRIC.toString());
 
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            if (getOpensearchMode()) {
+                new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            }
             checkAndSetDefaultValues();
-            return new JacksonSummary(this, flattenAttributes);
+            return new JacksonSummary(this, opensearchMode);
         }
 
         private void checkAndSetDefaultValues() {

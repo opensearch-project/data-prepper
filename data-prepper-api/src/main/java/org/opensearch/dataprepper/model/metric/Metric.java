@@ -106,6 +106,8 @@ public interface Metric extends Event {
      */
     List<? extends Exemplar> getExemplars();
 
+    public Map<String, Object> getScope();
+    public Map<String, Object> getResource();
 
     /**
      * Gets the associated flags for this metric event.

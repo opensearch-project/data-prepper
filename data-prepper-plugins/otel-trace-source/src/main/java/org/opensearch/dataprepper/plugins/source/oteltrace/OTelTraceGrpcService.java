@@ -52,15 +52,17 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
-
+    private final boolean opensearchMode;
 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
                                 final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                 final Buffer<Record<Object>> buffer,
+                                final boolean opensearchMode,
                                 final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
         this.oTelProtoDecoder = oTelProtoDecoder;
+        this.opensearchMode = opensearchMode;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
@@ -89,7 +91,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         final Collection<Span> spans;
 
         try {
-            spans = oTelProtoDecoder.parseExportTraceServiceRequest(request, Instant.now());
+            spans = oTelProtoDecoder.parseExportTraceServiceRequest(request, Instant.now(), opensearchMode);
         } catch (final Exception e) {
             LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse request with error '{}'. Request body: {}.", e.getMessage(), request);
             throw new BadRequestException(e.getMessage(), e);

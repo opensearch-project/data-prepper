@@ -26,7 +26,7 @@ public class OTelTraceDecoderTest {
     private static final String TEST_REQUEST_TRACES_FILE = "test-request-multiple-traces.json";
     
     public OTelTraceDecoder createObjectUnderTest() {
-        return new OTelTraceDecoder();
+        return new OTelTraceDecoder(true);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {
