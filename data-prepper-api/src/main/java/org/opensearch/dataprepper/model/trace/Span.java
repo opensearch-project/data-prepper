@@ -153,4 +153,28 @@ public interface Span extends Event {
      * @since 1.3
      */
     void setTraceGroupFields(TraceGroupFields traceGroupFields);
+
+    /**
+     * Gets the scope of this log event.
+     *
+     * @return the scope
+     * @since 2.11
+     */
+    Map<String, Object> getScope();
+
+    /**
+     * Gets the resource of this log event.
+     *
+     * @return the resource
+     * @since 2.11
+     */
+    Map<String, Object> getResource();
+
+    /**
+     * Gets the status of this log event.
+     *
+     * @return the status
+     * @since 2.11
+     */
+    Map<String, Object> getStatus();
 }

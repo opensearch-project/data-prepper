@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.model.metric;
 
 import com.google.common.collect.ImmutableMap;
-import io.micrometer.core.instrument.util.IOUtils;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,6 @@ import org.opensearch.dataprepper.model.event.TestObject;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.AggregateEventHandle;
-import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -29,9 +27,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class JacksonGaugeTest {
+class JacksonStandardGaugeTest {
 
     private static final String TEST_KEY2 = UUID.randomUUID().toString();
     private static final Long TEST_TIME_KEY1 = new Date().getTime();
@@ -56,13 +53,13 @@ class JacksonGaugeTest {
             new DefaultExemplar("1971-01-01T00:00:00Z", 5.0, "xsdt", "asdf", Map.of("test", "value"))
     );
 
-    private JacksonGauge gauge;
+    private JacksonStandardGauge gauge;
 
-    private JacksonGauge.Builder builder;
+    private JacksonStandardGauge.Builder builder;
 
     @BeforeEach
     public void setup() {
-        builder = JacksonGauge.builder()
+        builder = JacksonStandardGauge.builder()
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -102,7 +99,7 @@ class JacksonGaugeTest {
     public void testGetDefaultEventHandle() {
         EventHandle eventHandle = new DefaultEventHandle(Instant.now());
         builder.withEventHandle(eventHandle);
-        JacksonGauge gauge = builder.build();
+        JacksonStandardGauge gauge = builder.build();
         final EventHandle handle = gauge.getEventHandle();
         assertThat(handle, is(sameInstance(eventHandle)));
     }
@@ -111,7 +108,7 @@ class JacksonGaugeTest {
     public void testGetAggregateEventHandle() {
         EventHandle eventHandle = new AggregateEventHandle(Instant.now());
         builder.withEventHandle(eventHandle);
-        JacksonGauge gauge = builder.build();
+        JacksonStandardGauge gauge = builder.build();
         final EventHandle handle = gauge.getEventHandle();
         assertThat(handle, is(sameInstance(eventHandle)));
     }
@@ -197,41 +194,8 @@ class JacksonGaugeTest {
     }
 
     @Test
-    public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
-        final JacksonGauge.Builder builder = JacksonGauge.builder();
-        builder.withValue(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyTime_throwsIllegalArgumentException() {
-        builder.withTime("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
-    public void testGaugeToJsonString() throws JSONException {
-        gauge.put("foo", "bar");
-        final String value = UUID.randomUUID().toString();
-        gauge.put("testObject", new TestObject(value));
-        gauge.put("list", Arrays.asList(1, 4, 5));
-        final String result = gauge.toJsonString();
-
-        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/gauge.json"));
-        String expected = String.format(file, value, TEST_TIME_KEY1, TEST_KEY2);
-        JSONAssert.assertEquals(expected, result, false);
-        String attrKey = UUID.randomUUID().toString();
-        String attrVal = UUID.randomUUID().toString();
-        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
-        gauge.put("attributes", attributes);
-        final String resultAttr = gauge.toJsonString();
-        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
-        assertThat(resultAttr.indexOf(attrString), equalTo(-1));
-    }
-
-    @Test
     public void testGaugeToJsonStringWithAttributes() throws JSONException {
-        gauge = builder.build(false);
+        gauge = builder.build();
         gauge.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         gauge.put("testObject", new TestObject(value));
