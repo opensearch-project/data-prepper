@@ -46,8 +46,8 @@ public class TimezoneHelperTest {
         Duration reverseOffset = TimezoneHelper.getTimezoneOffset(sourceZone, targetZone);
         // The Range check is because of the Day light saving time changes. Otherwise, this would have been equals check
         assertAll(
-                () -> assertTrue(reverseOffset.compareTo(maxDuration) >= 0, "Timezone Offset should be at least " + minDuration),
-                () -> assertTrue(reverseOffset.compareTo(maxDuration) <= 0, "Timezone Offset should be at most " + maxDuration)
+                () -> assertTrue(reverseOffset.compareTo(maxDuration) >= 0, "Timezone Offset should be at least " + maxDuration),
+                () -> assertTrue(reverseOffset.compareTo(minDuration) <= 0, "Timezone Offset should be at most " + minDuration)
         );
     }
 
