@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -34,12 +35,18 @@ public class JacksonSummary extends JacksonMetric implements Summary {
 
     protected JacksonSummary(JacksonSummary.Builder builder, boolean flattenAttributes) {
         super(builder, flattenAttributes);
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
+        checkAndSetDefaultValues();
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
     public static JacksonSummary.Builder builder() {
         return new JacksonSummary.Builder();
+    }
+
+    protected void checkAndSetDefaultValues() {
+        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
     }
 
     @Override
@@ -150,14 +157,9 @@ public class JacksonSummary extends JacksonMetric implements Summary {
             this.withEventKind(KIND.SUMMARY.toString());
             this.withEventType(EventType.METRIC.toString());
 
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
-            checkAndSetDefaultValues();
             return new JacksonSummary(this, flattenAttributes);
         }
 
-        private void checkAndSetDefaultValues() {
-            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-        }
 
     }
 }

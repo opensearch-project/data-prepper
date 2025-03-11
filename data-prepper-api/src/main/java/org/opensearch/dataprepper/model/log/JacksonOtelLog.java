@@ -24,7 +24,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
-    protected static final String OBSERVED_TIME_KEY = "observedTime";
+    protected static final String OBSERVED_TIME_KEY = "observedTimestamp";
     protected static final String TIME_KEY = "time";
     protected static final String SERVICE_NAME_KEY = "serviceName";
     protected static final String ATTRIBUTES_KEY = "attributes";
@@ -37,9 +37,13 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     protected static final String SEVERITY_TEXT_KEY = "severityText";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
 
+    protected void checkAndSetDefaultValues() {
+        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+    }
 
     protected JacksonOtelLog(final JacksonOtelLog.Builder builder) {
         super(builder);
+        checkAndSetDefaultValues();
 
         checkArgument(this.getMetadata().getEventType().equals("LOG"), "eventType must be of type Log");
     }
@@ -314,12 +318,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
         public JacksonOtelLog build() {
             this.withEventType(EventType.LOG.toString());
             this.withData(data);
-            checkAndSetDefaultValues();
             return new JacksonOtelLog(this);
-        }
-
-        private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
     }
 }
