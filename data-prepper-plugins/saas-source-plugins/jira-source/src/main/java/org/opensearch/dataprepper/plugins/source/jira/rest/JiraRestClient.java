@@ -10,7 +10,6 @@
 
 package org.opensearch.dataprepper.plugins.source.jira.rest;
 
-import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
@@ -39,14 +38,18 @@ public class JiraRestClient extends AtlassianRestClient {
     public static final String MAX_RESULT = "maxResults";
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
-    private static final String PROJECTS_FETCH_LATENCY_TIMER = "projectFetchLatency";
-    private static final String ISSUES_REQUESTED = "issuesRequested";
+    private static final String TICKETS_REQUESTED = "ticketsRequested";
+    private static final String TICKET_REQUESTS_FAILED = "ticketRequestsFailed";
+    private static final String TICKET_REQUESTS_SUCCESS = "ticketRequestsSuccess";
+    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
     private final Timer ticketFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
-    private final Timer projectFetchLatencyTimer;
-    private final Counter issuesRequestedCounter;
+    private final Counter ticketsRequestedCounter;
+    private final Counter ticketRequestsFailedCounter;
+    private final Counter ticketRequestsSuccessCounter;
+    private final Counter searchRequestsFailedCounter;
 
     public JiraRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig, PluginMetrics pluginMetrics) {
         super(restTemplate, authConfig);
@@ -55,8 +58,10 @@ public class JiraRestClient extends AtlassianRestClient {
 
         ticketFetchLatencyTimer = pluginMetrics.timer(TICKET_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
-        projectFetchLatencyTimer = pluginMetrics.timer(PROJECTS_FETCH_LATENCY_TIMER);
-        issuesRequestedCounter = pluginMetrics.counter(ISSUES_REQUESTED);
+        ticketsRequestedCounter = pluginMetrics.counter(TICKETS_REQUESTED);
+        ticketRequestsFailedCounter = pluginMetrics.counter(TICKET_REQUESTS_FAILED);
+        ticketRequestsSuccessCounter = pluginMetrics.counter(TICKET_REQUESTS_SUCCESS);
+        searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
     }
 
     /**
@@ -66,7 +71,6 @@ public class JiraRestClient extends AtlassianRestClient {
      * @param startAt the start at
      * @return InputStream input stream
      */
-    @Timed(SEARCH_CALL_LATENCY_TIMER)
     public SearchResults getAllIssues(StringBuilder jql, int startAt) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
@@ -77,7 +81,17 @@ public class JiraRestClient extends AtlassianRestClient {
                 .queryParam(JQL_FIELD, jql)
                 .queryParam(EXPAND_FIELD, EXPAND_VALUE)
                 .buildAndExpand().toUri();
-        return invokeRestApi(uri, SearchResults.class).getBody();
+        return searchCallLatencyTimer.record(
+                () -> {
+                    try {
+                        return invokeRestApi(uri, SearchResults.class).getBody();
+                    } catch (Exception e) {
+                        log.error("Error while fetching issues with jql {}", jql);
+                        searchRequestsFailedCounter.increment();
+                        throw e;
+                    }
+                }
+        );
     }
 
     /**
@@ -86,11 +100,20 @@ public class JiraRestClient extends AtlassianRestClient {
      * @param issueKey the item info
      * @return the issue
      */
-    @Timed(TICKET_FETCH_LATENCY_TIMER)
     public String getIssue(String issueKey) {
-        issuesRequestedCounter.increment();
+        ticketsRequestedCounter.increment();
         String url = authConfig.getUrl() + REST_API_FETCH_ISSUE + "/" + issueKey;
         URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
-        return invokeRestApi(uri, String.class).getBody();
+        return ticketFetchLatencyTimer.record(() -> {
+            try {
+                String body = invokeRestApi(uri, String.class).getBody();
+                ticketRequestsSuccessCounter.increment();
+                return body;
+            } catch (Exception e) {
+                log.error("Error while fetching issue with key {}", issueKey);
+                ticketRequestsFailedCounter.increment();
+                throw e;
+            }
+        });
     }
 }
