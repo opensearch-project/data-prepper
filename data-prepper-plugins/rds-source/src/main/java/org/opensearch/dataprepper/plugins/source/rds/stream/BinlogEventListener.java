@@ -53,6 +53,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(BinlogEventListener.class);
@@ -464,7 +466,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             eventProcessingTimer.record(() -> function.accept(event));
         } catch (Exception e) {
-            LOG.error("Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            LOG.error(NOISY, "Failed to process change event of type {}", event.getHeader().getEventType(), e);
             eventProcessingErrorCounter.increment();
         }
     }
