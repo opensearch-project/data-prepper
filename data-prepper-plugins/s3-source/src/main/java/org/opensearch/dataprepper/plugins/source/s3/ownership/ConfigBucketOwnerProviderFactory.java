@@ -9,14 +9,23 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.plugins.source.s3.S3SourceConfig;
 import org.opensearch.dataprepper.plugins.source.s3.SqsQueueUrl;
 import org.opensearch.dataprepper.plugins.source.s3.StsArnRole;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 import java.net.MalformedURLException;
+import java.util.Optional;
 
 /**
  * Produces a {@link BucketOwnerProvider} from the S3 source configuration as
  * provided in a {@link S3SourceConfig}.
  */
 public class ConfigBucketOwnerProviderFactory {
+    private final AwsCredentialsProvider defaultAwsCredentialsProvider;
+
+
+    public ConfigBucketOwnerProviderFactory(final AwsCredentialsProvider defaultAwsCredentialsProvider) {
+        this.defaultAwsCredentialsProvider = defaultAwsCredentialsProvider;
+    }
+
     /**
      * Creates the {@link BucketOwnerProvider}
      * @param s3SourceConfig The input {@link S3SourceConfig}
@@ -43,9 +52,15 @@ public class ConfigBucketOwnerProviderFactory {
             accountId = extractQueueAccountId(s3SourceConfig);
         else if(s3SourceConfig.getAwsAuthenticationOptions() != null && s3SourceConfig.getAwsAuthenticationOptions().getAwsStsRoleArn() != null)
             accountId = extractStsRoleArnAccountId(s3SourceConfig);
-        else
-            throw new InvalidPluginConfigurationException(
-                    "The S3 source is unable to determine a bucket owner. Configure the default_bucket_owner for the account Id that owns the bucket. You may also want to configure bucket_owners if you read from S3 buckets in different accounts.");
+        else {
+            final Optional<String> accountIdOptional = defaultAwsCredentialsProvider.resolveCredentials().accountId();
+            if (accountIdOptional.isEmpty()) {
+                throw new InvalidPluginConfigurationException(
+                        "The S3 source is unable to determine a bucket owner. Configure the default_bucket_owner for the account Id that owns the bucket. You may also want to configure bucket_owners if you read from S3 buckets in different accounts.");
+            } else {
+                accountId = accountIdOptional.get();
+            }
+        }
 
         return new StaticBucketOwnerProvider(accountId);
     }

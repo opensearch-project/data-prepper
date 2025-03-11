@@ -7,8 +7,12 @@ package org.opensearch.dataprepper.pipeline.parser.transformer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationReader;
@@ -26,6 +30,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,6 +44,23 @@ class DynamicConfigTransformerTest {
 
     TransformersFactory transformersFactory;
     RuleEvaluator ruleEvaluator;
+
+    @Test
+    void test_getAccountIdFromRole_returns_account_id_from_valid_role_arn() {
+        final String testAccountId = RandomStringUtils.randomNumeric(12);
+        final String testRoleArn = String.format("arn:aws:iam::%s:role/example-role", testAccountId);
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        assertThat(transformer.getAccountIdFromRole(testRoleArn)).isEqualTo(testAccountId);
+    }
+
+    @ParameterizedTest
+    @MethodSource("providesInvalidRoleArn")
+    void test_getAccountIdFromRole_returns_null_from_invalid_role_arn(final String testRoleArn) {
+        ruleEvaluator = mock(RuleEvaluator.class);
+        DynamicConfigTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
+        assertThat(transformer.getAccountIdFromRole(testRoleArn)).isNull();
+    }
 
     @Test
     void test_successful_transformation_with_only_source_and_sink() throws IOException {
@@ -353,5 +375,13 @@ class DynamicConfigTransformerTest {
         PipelinesDataFlowModel pipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         PipelineConfigurationTransformer transformer = new DynamicConfigTransformer(ruleEvaluator);
         assertThrows(RuntimeException.class, () -> transformer.transformConfiguration(pipelinesDataFlowModel));
+    }
+
+    private static Stream<Arguments> providesInvalidRoleArn() {
+        return Stream.of(
+                null,
+                Arguments.of("arn:aws:iam:::role/test-role"),
+                Arguments.of("invalid-format-arn")
+        );
     }
 }
