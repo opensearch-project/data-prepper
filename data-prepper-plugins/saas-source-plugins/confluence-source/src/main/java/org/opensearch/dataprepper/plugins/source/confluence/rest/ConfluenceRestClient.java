@@ -48,11 +48,17 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     private static final String PAGE_FETCH_LATENCY_TIMER = "pageFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String PAGES_REQUESTED = "pagesRequested";
+    private static final String PAGE_REQUESTS_FAILED = "pageRequestsFailed";
+    private static final String PAGE_REQUESTS_SUCCESS = "pageRequestsSuccess";
+    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
     private final Timer contentFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final Counter contentRequestedCounter;
+    private final Counter pageRequestsFailedCounter;
+    private final Counter pageRequestsSuccessCounter;
+    private final Counter searchRequestsFailedCounter;
 
     public ConfluenceRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
                                 PluginMetrics pluginMetrics) {
@@ -63,6 +69,9 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         contentFetchLatencyTimer = pluginMetrics.timer(PAGE_FETCH_LATENCY_TIMER);
         searchCallLatencyTimer = pluginMetrics.timer(SEARCH_CALL_LATENCY_TIMER);
         contentRequestedCounter = pluginMetrics.counter(PAGES_REQUESTED);
+        pageRequestsFailedCounter = pluginMetrics.counter(PAGE_REQUESTS_FAILED);
+        pageRequestsSuccessCounter = pluginMetrics.counter(PAGE_REQUESTS_SUCCESS);
+        searchRequestsFailedCounter = pluginMetrics.counter(SEARCH_REQUESTS_FAILED);
     }
 
     public ConfluenceServerMetadata getConfluenceServerMetadata() {
@@ -99,7 +108,15 @@ public class ConfluenceRestClient extends AtlassianRestClient {
                     .buildAndExpand().toUri();
         }
         return searchCallLatencyTimer.record(
-                () -> invokeRestApi(uri, ConfluenceSearchResults.class).getBody()
+                () -> {
+                    try {
+                        return invokeRestApi(uri, ConfluenceSearchResults.class).getBody();
+                    } catch (Exception e) {
+                        log.error("Error while fetching content with cql {}", cql);
+                        searchRequestsFailedCounter.increment();
+                        throw e;
+                    }
+                }
         );
     }
 
@@ -113,7 +130,17 @@ public class ConfluenceRestClient extends AtlassianRestClient {
         contentRequestedCounter.increment();
         String url = authConfig.getUrl() + REST_API_FETCH_CONTENT + "/" + contentId + REST_API_CONTENT_EXPAND_PARAM;
         URI uri = UriComponentsBuilder.fromHttpUrl(url).buildAndExpand().toUri();
-        return contentFetchLatencyTimer.record(() -> invokeRestApi(uri, String.class).getBody());
+        return contentFetchLatencyTimer.record(() -> {
+            try {
+                String body = invokeRestApi(uri, String.class).getBody();
+                pageRequestsSuccessCounter.increment();
+                return body;
+            } catch (Exception e) {
+                log.error("Error while fetching content with id {}", contentId);
+                pageRequestsFailedCounter.increment();
+                throw e;
+            }
+        });
     }
 
 }
