@@ -24,7 +24,7 @@ public class StreamCheckpointer {
     private static final Logger LOG = LoggerFactory.getLogger(StreamCheckpointer.class);
 
     static final Duration CHECKPOINT_OWNERSHIP_TIMEOUT_INCREASE = Duration.ofMinutes(5);
-    static final String CHECKPOINT_COUNT = "checkpoints";
+    static final String CHECKPOINT_COUNT = "checkpointCount";
 
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final StreamPartition streamPartition;

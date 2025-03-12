@@ -45,6 +45,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class LogicalReplicationEventProcessor {
 
     enum TupleDataType {
@@ -493,7 +495,7 @@ public class LogicalReplicationEventProcessor {
                 eventProcessingTimer.record(() -> function.accept(message));
                 return;
             } catch (Exception e) {
-                LOG.warn("Error when processing change event of type {}, will retry", messageType, e);
+                LOG.warn(NOISY, "Error when processing change event of type {}, will retry", messageType, e);
                 applyBackoff();
             }
             retry++;
