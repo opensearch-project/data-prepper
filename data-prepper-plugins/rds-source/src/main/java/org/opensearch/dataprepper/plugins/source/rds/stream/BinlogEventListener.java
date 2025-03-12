@@ -53,6 +53,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(BinlogEventListener.class);
@@ -66,6 +68,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String REPLICATION_LOG_PROCESSING_ERROR_COUNT = "replicationLogEntryProcessingErrors";
     static final String SEPARATOR = ".";
 
     /**
@@ -98,7 +101,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
     private final Timer eventProcessingTimer;
-
+    private final Counter eventProcessingErrorCounter;
 
     /**
      * currentBinlogCoordinate is the coordinate where next event will start
@@ -143,6 +146,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
+        eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
     public static BinlogEventListener create(final StreamPartition streamPartition,
@@ -462,7 +466,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             eventProcessingTimer.record(() -> function.accept(event));
         } catch (Exception e) {
-            LOG.error("Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            LOG.error(NOISY, "Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            eventProcessingErrorCounter.increment();
         }
     }
 }
