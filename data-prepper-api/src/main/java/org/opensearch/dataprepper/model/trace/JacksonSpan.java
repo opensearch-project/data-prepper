@@ -14,6 +14,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -24,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A Jackson implementation for {@link Span}. This class extends the {@link JacksonEvent}.
@@ -34,6 +33,9 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class JacksonSpan extends JacksonEvent implements Span {
 
+    private static final String STATUS_KEY = "status";
+    private static final String SCOPE_KEY = "scope";
+    private static final String RESOURCE_KEY = "resource";
     private static final String TRACE_ID_KEY = "traceId";
     private static final String SPAN_ID_KEY = "spanId";
     private static final String TRACE_STATE_KEY = "traceState";
@@ -42,7 +44,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String KIND_KEY = "kind";
     private static final String START_TIME_KEY = "startTime";
     private static final String END_TIME_KEY = "endTime";
-    private static final String ATTRIBUTES_KEY = "attributes";
+    protected static final String ATTRIBUTES_KEY = "attributes";
     private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
     private static final String EVENTS_KEY = "events";
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
@@ -54,7 +56,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
-    private static final List<String>
+    protected static final List<String>
             REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
 
@@ -65,12 +67,27 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
+        validateParameters();
+        checkAndSetDefaultValues();
 
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
     }
 
     private JacksonSpan(final JacksonSpan otherSpan) {
         super(otherSpan);
+    }
+
+    protected void validateParameters() {
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
+    }
+
+    protected void checkAndSetDefaultValues() {
+        putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
+        putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class, 0);
+        putIfAbsent(LINKS_KEY, LinkedList.class, new LinkedList<>());
+        putIfAbsent(DROPPED_LINKS_COUNT_KEY, Integer.class, 0);
+        putIfAbsent(EVENTS_KEY, LinkedList.class, new LinkedList<>());
+        putIfAbsent(DROPPED_EVENTS_COUNT_KEY, Integer.class, 0);
     }
 
     @Override
@@ -101,6 +118,21 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public String getKind() {
         return this.get(KIND_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getStatus() {
+        return this.get(STATUS_KEY, Map.class);
     }
 
     @Override
@@ -338,6 +370,42 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
+         * Sets the status of the log event
+         *
+         * @param status status to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withStatus(final Map<String, Object> status) {
+            data.put(STATUS_KEY, status);
+            return this;
+        }
+
+        /**
+         * Sets the scope of the log event
+         *
+         * @param scope scope to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withScope(final Map<String, Object> scope) {
+            data.put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        /**
+         * Sets the resource of the log event
+         *
+         * @param resource resource to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withResource(final Map<String, Object> resource) {
+            data.put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
+        /**
          * Sets the start time of the span
          *
          * @param startTime start time
@@ -493,6 +561,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
             return this;
         }
 
+        protected void populateEvent() {
+            super.withData(data);
+            this.withEventType(EventType.TRACE.toString());
+        }
+
         /**
          * Returns a newly created {@link JacksonSpan}
          *
@@ -501,38 +574,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         @Override
         public JacksonSpan build() {
-            validateParameters();
-            checkAndSetDefaultValues();
-            super.withData(data);
-            this.withEventType(EventType.TRACE.toString());
+            populateEvent();
             return new JacksonSpan(this);
         }
 
-        private void validateParameters() {
-            REQUIRED_KEYS.forEach(key -> {
-                checkState(data.containsKey(key), key + " need to be assigned");
-            });
-
-            REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
-                final String value = (String) data.get(key);
-                checkNotNull(value, key + " cannot be null");
-                checkArgument(!value.isEmpty(), key + " cannot be an empty string");
-            });
-
-            REQUIRED_NON_NULL_KEYS.forEach(key -> {
-                final Object value = data.get(key);
-                checkNotNull(value, key + " cannot be null");
-            });
-        }
-
-        private void checkAndSetDefaultValues() {
-            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-            data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
-            data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
-            data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
-            data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
-        }
 
     }
 }
