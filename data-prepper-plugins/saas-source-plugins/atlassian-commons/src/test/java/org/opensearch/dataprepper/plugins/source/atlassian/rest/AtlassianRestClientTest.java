@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,6 +18,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
@@ -31,7 +33,10 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.atlassian.rest.AtlassianRestClient.AUTH_FAILURES_COUNTER;
 
 @ExtendWith(MockitoExtension.class)
 public class AtlassianRestClientTest {
@@ -41,6 +46,12 @@ public class AtlassianRestClientTest {
 
     @Mock
     private AtlassianAuthConfig authConfig;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter authFailures;
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
         return Stream.of(
@@ -54,7 +65,7 @@ public class AtlassianRestClientTest {
     @ParameterizedTest
     @MethodSource("provideHttpStatusCodesWithExceptionClass")
     void testInvokeRestApiTokenExpired(HttpStatus statusCode, Class expectedExceptionType) {
-        AtlassianRestClient atlassianRestClient = new AtlassianRestClient(restTemplate, authConfig);
+        AtlassianRestClient atlassianRestClient = new AtlassianRestClient(restTemplate, authConfig, pluginMetrics);
         atlassianRestClient.setSleepTimeMultiplier(1);
         when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(statusCode));
         URI uri = UriComponentsBuilder.fromHttpUrl("https://example.com/rest/api/2/issue/key").buildAndExpand().toUri();
@@ -62,8 +73,20 @@ public class AtlassianRestClientTest {
     }
 
     @Test
+    void testAuthFailureCounter() {
+        when(pluginMetrics.counter(AUTH_FAILURES_COUNTER)).thenReturn(authFailures);
+        AtlassianRestClient atlassianRestClient = new AtlassianRestClient(restTemplate, authConfig, pluginMetrics);
+        atlassianRestClient.setSleepTimeMultiplier(1);
+        when(restTemplate.getForEntity(any(URI.class), any(Class.class))).thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+        URI uri = UriComponentsBuilder.fromHttpUrl("https://example.com/rest/api/2/issue/key").buildAndExpand().toUri();
+        assertThrows(RuntimeException.class, () -> atlassianRestClient.invokeRestApi(uri, Object.class));
+        verify(authFailures, times(6)).increment();
+    }
+
+
+    @Test
     void testInvokeRestApiSuccessFullResponse() {
-        AtlassianRestClient atlassianRestClient = new AtlassianRestClient(restTemplate, authConfig);
+        AtlassianRestClient atlassianRestClient = new AtlassianRestClient(restTemplate, authConfig, pluginMetrics);
         atlassianRestClient.setSleepTimeMultiplier(1);
         String apiReponse = "{\"api-response\":\"ok\"}";
         ResponseEntity responseEntity = new ResponseEntity(apiReponse, HttpStatus.OK);

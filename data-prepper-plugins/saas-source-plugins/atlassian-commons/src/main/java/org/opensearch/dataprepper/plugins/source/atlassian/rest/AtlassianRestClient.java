@@ -11,7 +11,9 @@
 package org.opensearch.dataprepper.plugins.source.atlassian.rest;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.BadRequestException;
 import org.opensearch.dataprepper.plugins.source.source_crawler.exception.UnauthorizedException;
@@ -31,13 +33,17 @@ import static org.opensearch.dataprepper.plugins.source.atlassian.utils.Constant
 public class AtlassianRestClient {
 
     public static final List<Integer> RETRY_ATTEMPT_SLEEP_TIME = List.of(1, 2, 5, 10, 20, 40);
+    static final String AUTH_FAILURES_COUNTER = "authFailures";
     private int sleepTimeMultiplier = 1000;
+    final Counter authFailures;
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
 
-    public AtlassianRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig) {
+    public AtlassianRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
+                               PluginMetrics pluginMetrics) {
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
+        this.authFailures = pluginMetrics.counter(AUTH_FAILURES_COUNTER);
     }
 
 
@@ -54,6 +60,7 @@ public class AtlassianRestClient {
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnauthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
+                    authFailures.increment();
                     log.error(NOISY, "Token expired. We will try to renew the tokens now", ex);
                     authConfig.renewCredentials();
                 } else if (statusCode == HttpStatus.TOO_MANY_REQUESTS) {
