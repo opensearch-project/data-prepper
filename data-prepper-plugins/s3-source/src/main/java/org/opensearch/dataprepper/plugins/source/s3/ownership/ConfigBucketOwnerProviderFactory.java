@@ -53,13 +53,10 @@ public class ConfigBucketOwnerProviderFactory {
         else if(s3SourceConfig.getAwsAuthenticationOptions() != null && s3SourceConfig.getAwsAuthenticationOptions().getAwsStsRoleArn() != null)
             accountId = extractStsRoleArnAccountId(s3SourceConfig);
         else {
-            final Optional<String> accountIdOptional = defaultAwsCredentialsProvider.resolveCredentials().accountId();
-            if (accountIdOptional.isEmpty()) {
-                throw new InvalidPluginConfigurationException(
-                        "The S3 source is unable to determine a bucket owner. Configure the default_bucket_owner for the account Id that owns the bucket. You may also want to configure bucket_owners if you read from S3 buckets in different accounts.");
-            } else {
-                accountId = accountIdOptional.get();
-            }
+            accountId = defaultAwsCredentialsProvider.resolveCredentials().accountId()
+                    .orElseThrow(() -> new InvalidPluginConfigurationException(
+                            "The S3 source is unable to determine a bucket owner. Configure the default_bucket_owner for the account Id that owns the bucket. You may also want to configure bucket_owners if you read from S3 buckets in different accounts."
+                    ));
         }
 
         return new StaticBucketOwnerProvider(accountId);
