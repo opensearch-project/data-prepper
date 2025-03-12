@@ -17,13 +17,28 @@ public interface ExponentialHistogram extends Metric {
      */
     Double getSum();
 
-
     /**
      * Gets the count of the histogram
      * @return the count, must be equal to the sum of the "count" fields in buckets
      * @since 1.4
      */
     Long getCount();
+
+    /**
+     * Gets the min for the histogram
+     *
+     * @return the min of the values in the population
+     * @since 2.11
+     */
+    Double getMin();
+
+    /**
+     * Gets the max for the histogram
+     *
+     * @return the max of the values in the population
+     * @since 2.11
+     */
+    Double getMax();
 
     /**
      * Gets the aggregation temporality for the histogram
@@ -74,6 +89,14 @@ public interface ExponentialHistogram extends Metric {
      * @since 1.4
      */
     Long getZeroCount();
+
+    /**
+     * Gets the zero threshold of events
+     *
+     * @return the zero threshold
+     * @since 2.11
+     */
+    Double getZeroThreshold();
 
     /**
      * Gets the scale for the histogram

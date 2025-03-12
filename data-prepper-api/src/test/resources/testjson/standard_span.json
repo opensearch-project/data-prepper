@@ -1,0 +1,58 @@
+{
+  "traceId": "testTraceId",
+  "droppedLinksCount": 6,
+  "resource": {
+    "attributes": [
+      {
+        "resourceAttrKey1": "resourceValueKey1",
+        "resourceAttrKey2": 2000
+      }
+    ]
+  },
+  "kind": "testKind",
+  "droppedEventsCount": 5,
+  "serviceName": "testService",
+  "parentSpanId": "testParentSpanId",
+  "spanId": "testSpanId",
+  "traceState": "testTraceState",
+  "scope": {
+    "name": "testScope",
+    "version": "testVersion",
+    "attributes": [
+      {
+        "scopeAttrKey2": 2222,
+        "scopeAttrKey1": "scopeAttrValue1"
+      }
+    ]
+  },
+  "name": "testName",
+  "startTime": "testStartTime",
+  "attributes": {
+    "key1": %s,
+    "key2": %s
+  },
+  "links": [
+    {
+      "traceId": "linkTraceId",
+      "spanId": "linkSpanId",
+      "traceState": "linkTraceState",
+      "attributes": {},
+      "droppedAttributesCount": 0
+    }
+  ],
+  "endTime": "testEndTime",
+  "droppedAttributesCount": 4,
+  "durationInNanos": 123456,
+  "events": [
+    {
+      "name": "spanEventName",
+      "time": "spanEventTime",
+      "attributes": {},
+      "droppedAttributesCount": 0
+    }
+  ],
+  "status": {
+    "statusKey1": "statusValue1",
+    "statusKey2": 2
+  }
+}

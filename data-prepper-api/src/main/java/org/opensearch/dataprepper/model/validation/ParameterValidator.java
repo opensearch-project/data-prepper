@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.model.metric;
+package org.opensearch.dataprepper.model.validation;
 
 import java.util.List;
 import java.util.Map;
@@ -12,9 +12,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-class ParameterValidator {
+public class ParameterValidator {
 
-     void validate(final List<String> requiredKeys,
+     public void validate(final List<String> requiredKeys,
                                 final List<String> requiredNonEmptyKeys,
                                 final List<String> requiredNonNullKeys,
                                 final Map<String, Object> data) {
