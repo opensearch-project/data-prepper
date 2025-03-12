@@ -146,6 +146,7 @@ public class CountAggregateAction implements AggregateAction {
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(groupState)
+                .withEventHandle(aggregateActionInput.getEventHandle())
                 .build();
         } else {
             Integer countValue = (Integer)groupState.get(countKey);
@@ -168,6 +169,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withValue((double)countValue)
                 .withExemplars(List.of(exemplar))
                 .withAttributes(attr)
+                .withEventHandle(aggregateActionInput.getEventHandle())
                 .build(false);
             event = (Event)sum;
         }

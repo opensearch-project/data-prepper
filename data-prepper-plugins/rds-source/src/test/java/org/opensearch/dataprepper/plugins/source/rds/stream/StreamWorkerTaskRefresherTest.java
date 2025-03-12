@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
@@ -64,10 +66,16 @@ class StreamWorkerTaskRefresherTest {
     private StreamCheckpointer streamCheckpointer;
 
     @Mock
-    private BinlogClientFactory binlogClientFactory;
+    private ReplicationLogClientFactory replicationLogClientFactory;
 
     @Mock
-    private BinaryLogClient binlogClient;
+    private BinlogClientWrapper binaryLogClientWrapper;
+
+    @Mock
+    private BinaryLogClient binaryLogClient;
+
+    @Mock
+    private LogicalReplicationClient logicalReplicationClient;
 
     @Mock
     private Buffer<Record<Event>> buffer;
@@ -100,6 +108,9 @@ class StreamWorkerTaskRefresherTest {
     private BinlogEventListener binlogEventListener;
 
     @Mock
+    private LogicalReplicationEventProcessor logicalReplicationEventProcessor;
+
+    @Mock
     private DbTableMetadata dbTableMetadata;
 
     @Mock
@@ -107,122 +118,244 @@ class StreamWorkerTaskRefresherTest {
 
     private StreamWorkerTaskRefresher streamWorkerTaskRefresher;
 
-    @BeforeEach
-    void setUp() {
-        when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
-        when(pluginMetrics.counter(TASK_REFRESH_ERRORS)).thenReturn(taskRefreshErrorsCounter);
-        when(executorServiceSupplier.get()).thenReturn(executorService).thenReturn(newExecutorService);
-        streamWorkerTaskRefresher = createObjectUnderTest();
-    }
-
-    @Test
-    void test_initialize_then_process_stream() {
-        when(binlogClientFactory.create()).thenReturn(binlogClient);
-        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
-        try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
-             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
-            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
-            streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
-                    .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
-                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
-                    .thenReturn(binlogEventListener);
-            streamWorkerTaskRefresher.initialize(sourceConfig);
+    @Nested
+    class TestForMySql {
+        @BeforeEach
+        void setUp() {
+            when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+            when(pluginMetrics.counter(TASK_REFRESH_ERRORS)).thenReturn(taskRefreshErrorsCounter);
+            when(executorServiceSupplier.get()).thenReturn(executorService).thenReturn(newExecutorService);
+            when(sourceConfig.getEngine()).thenReturn(EngineType.MYSQL);
+            streamWorkerTaskRefresher = createObjectUnderTest();
         }
 
-        verify(binlogClientFactory).create();
-        verify(binlogClient).registerEventListener(binlogEventListener);
+        @Test
+        void test_initialize_then_process_stream() {
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(binaryLogClientWrapper);
+            when(binaryLogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
+            final Map<String, Object> progressState = mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+                 MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+                dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                                any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                        .thenReturn(binlogEventListener);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+            }
 
-        ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(executorService).submit(runnableArgumentCaptor.capture());
+            verify(replicationLogClientFactory).create(streamPartition);
+            verify(binaryLogClient).registerEventListener(binlogEventListener);
 
-        Runnable capturedRunnable = runnableArgumentCaptor.getValue();
-        capturedRunnable.run();
-        verify(streamWorker).processStream(streamPartition);
-    }
+            ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+            verify(executorService).submit(runnableArgumentCaptor.capture());
 
-    @Test
-    void test_update_when_credentials_changed_then_refresh_task() {
-        final String username = UUID.randomUUID().toString();
-        final String password = UUID.randomUUID().toString();
-        when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
-        when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
-
-        RdsSourceConfig sourceConfig2 = mock(RdsSourceConfig.class, RETURNS_DEEP_STUBS);
-        final String password2 = UUID.randomUUID().toString();
-        when(sourceConfig2.getAuthenticationConfig().getUsername()).thenReturn(username);
-        when(sourceConfig2.getAuthenticationConfig().getPassword()).thenReturn(password2);
-
-        when(binlogClientFactory.create()).thenReturn(binlogClient).thenReturn(binlogClient);
-        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
-        try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
-             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
-            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
-            streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
-                    .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
-                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
-                    .thenReturn(binlogEventListener);
-            streamWorkerTaskRefresher.initialize(sourceConfig);
-            streamWorkerTaskRefresher.update(sourceConfig2);
+            Runnable capturedRunnable = runnableArgumentCaptor.getValue();
+            capturedRunnable.run();
+            verify(streamWorker).processStream(streamPartition);
         }
 
-        verify(credentialsChangeCounter).increment();
-        verify(executorService).shutdownNow();
+        @Test
+        void test_update_when_credentials_changed_then_refresh_task() {
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
 
-        verify(binlogClientFactory, times(2)).create();
-        verify(binlogClient, times(2)).registerEventListener(binlogEventListener);
+            RdsSourceConfig sourceConfig2 = mock(RdsSourceConfig.class, RETURNS_DEEP_STUBS);
+            final String password2 = UUID.randomUUID().toString();
+            when(sourceConfig2.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig2.getAuthenticationConfig().getPassword()).thenReturn(password2);
+            when(sourceConfig2.getEngine()).thenReturn(EngineType.MYSQL);
 
-        ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(newExecutorService).submit(runnableArgumentCaptor.capture());
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(binaryLogClientWrapper).thenReturn(binaryLogClientWrapper);
+            when(binaryLogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
+            final Map<String, Object> progressState = mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+                 MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+                dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                                any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                        .thenReturn(binlogEventListener);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+                streamWorkerTaskRefresher.update(sourceConfig2);
+            }
 
-        Runnable capturedRunnable = runnableArgumentCaptor.getValue();
-        capturedRunnable.run();
-        verify(streamWorker).processStream(streamPartition);
-    }
+            verify(credentialsChangeCounter).increment();
+            verify(executorService).shutdownNow();
 
-    @Test
-    void test_update_when_credentials_unchanged_then_do_nothing() {
-        final String username = UUID.randomUUID().toString();
-        final String password = UUID.randomUUID().toString();
-        when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
-        when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
+            verify(replicationLogClientFactory, times(2)).create(streamPartition);
+            verify(binaryLogClient, times(2)).registerEventListener(binlogEventListener);
 
-        when(binlogClientFactory.create()).thenReturn(binlogClient);
-        final Map<String, Object> progressState = mockGlobalStateAndProgressState();
-        try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
-             MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
-             MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
-            dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
-            streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(BinaryLogClient.class), eq(pluginMetrics)))
-                    .thenReturn(streamWorker);
-            binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
-                            any(String.class), eq(pluginMetrics), eq(binlogClient), eq(streamCheckpointer),
-                            eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
-                    .thenReturn(binlogEventListener);
-            streamWorkerTaskRefresher.initialize(sourceConfig);
-            streamWorkerTaskRefresher.update(sourceConfig);
+            ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+            verify(newExecutorService).submit(runnableArgumentCaptor.capture());
+
+            Runnable capturedRunnable = runnableArgumentCaptor.getValue();
+            capturedRunnable.run();
+            verify(streamWorker).processStream(streamPartition);
         }
 
-        verify(credentialsChangeCounter, never()).increment();
-        verify(executorService, never()).shutdownNow();
+        @Test
+        void test_update_when_credentials_unchanged_then_do_nothing() {
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
+
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(binaryLogClientWrapper);
+            when(binaryLogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
+            final Map<String, Object> progressState = mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+                 MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+                dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                                any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                        .thenReturn(binlogEventListener);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+                streamWorkerTaskRefresher.update(sourceConfig);
+            }
+
+            verify(credentialsChangeCounter, never()).increment();
+            verify(executorService, never()).shutdownNow();
+        }
+
+        @Test
+        void test_shutdown() {
+            streamWorkerTaskRefresher.shutdown();
+            verify(executorService).shutdownNow();
+        }
+
+        private StreamWorkerTaskRefresher createObjectUnderTest() {
+            final String s3Prefix = UUID.randomUUID().toString();
+
+            return new StreamWorkerTaskRefresher(
+                    sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+        }
     }
 
-    @Test
-    void test_shutdown() {
-        streamWorkerTaskRefresher.shutdown();
-        verify(executorService).shutdownNow();
-    }
+    @Nested
+    class TestForPostgres {
+        @BeforeEach
+        void setUp() {
+            when(pluginMetrics.counter(CREDENTIALS_CHANGED)).thenReturn(credentialsChangeCounter);
+            when(pluginMetrics.counter(TASK_REFRESH_ERRORS)).thenReturn(taskRefreshErrorsCounter);
+            when(executorServiceSupplier.get()).thenReturn(executorService).thenReturn(newExecutorService);
+            when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
+            streamWorkerTaskRefresher = createObjectUnderTest();
+        }
 
-    private StreamWorkerTaskRefresher createObjectUnderTest() {
-        final String s3Prefix = UUID.randomUUID().toString();
+        @Test
+        void test_initialize_then_process_stream() {
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(logicalReplicationClient);
+            mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<LogicalReplicationEventProcessor> logicalReplicationEventProcessorMockedStatic = mockStatic(LogicalReplicationEventProcessor.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                        .thenReturn(logicalReplicationEventProcessor);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+            }
 
-        return new StreamWorkerTaskRefresher(
-                sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, binlogClientFactory, buffer, executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+            verify(replicationLogClientFactory).create(streamPartition);
+
+            ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+            verify(executorService).submit(runnableArgumentCaptor.capture());
+
+            Runnable capturedRunnable = runnableArgumentCaptor.getValue();
+            capturedRunnable.run();
+            verify(streamWorker).processStream(streamPartition);
+        }
+
+        @Test
+        void test_update_when_credentials_changed_then_refresh_task() {
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
+
+            RdsSourceConfig sourceConfig2 = mock(RdsSourceConfig.class, RETURNS_DEEP_STUBS);
+            final String password2 = UUID.randomUUID().toString();
+            when(sourceConfig2.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig2.getAuthenticationConfig().getPassword()).thenReturn(password2);
+            when(sourceConfig2.getEngine()).thenReturn(EngineType.POSTGRES);
+
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(logicalReplicationClient);
+            mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<LogicalReplicationEventProcessor> logicalReplicationEventProcessorMockedStatic = mockStatic(LogicalReplicationEventProcessor.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                        .thenReturn(logicalReplicationEventProcessor);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+                streamWorkerTaskRefresher.update(sourceConfig2);
+            }
+
+            verify(credentialsChangeCounter).increment();
+            verify(executorService).shutdownNow();
+
+            verify(replicationLogClientFactory, times(2)).create(streamPartition);
+
+            ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
+            verify(newExecutorService).submit(runnableArgumentCaptor.capture());
+
+            Runnable capturedRunnable = runnableArgumentCaptor.getValue();
+            capturedRunnable.run();
+            verify(streamWorker).processStream(streamPartition);
+        }
+
+        @Test
+        void test_update_when_credentials_unchanged_then_do_nothing() {
+            final String username = UUID.randomUUID().toString();
+            final String password = UUID.randomUUID().toString();
+            when(sourceConfig.getAuthenticationConfig().getUsername()).thenReturn(username);
+            when(sourceConfig.getAuthenticationConfig().getPassword()).thenReturn(password);
+
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(logicalReplicationClient);
+            mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<LogicalReplicationEventProcessor> logicalReplicationEventProcessorMockedStatic = mockStatic(LogicalReplicationEventProcessor.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                        .thenReturn(logicalReplicationEventProcessor);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+                streamWorkerTaskRefresher.update(sourceConfig);
+            }
+
+            verify(credentialsChangeCounter, never()).increment();
+            verify(executorService, never()).shutdownNow();
+        }
+
+        @Test
+        void test_shutdown() {
+            streamWorkerTaskRefresher.shutdown();
+            verify(executorService).shutdownNow();
+        }
+
+        private StreamWorkerTaskRefresher createObjectUnderTest() {
+            final String s3Prefix = UUID.randomUUID().toString();
+
+            return new StreamWorkerTaskRefresher(
+                    sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
+                    executorServiceSupplier, acknowledgementSetManager, pluginMetrics);
+        }
     }
 
     private Map<String, Object> mockGlobalStateAndProgressState() {

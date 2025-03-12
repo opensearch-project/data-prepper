@@ -22,12 +22,12 @@ import org.opensearch.dataprepper.plugins.processor.obfuscation.action.Obfuscati
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>obfuscate</code> process enables obfuscation of fields inside your documents in order to " +
+@JsonClassDescription("The <code>obfuscate</code> processor enables obfuscation of fields inside your documents in order to " +
         "protect sensitive data.")
 public class ObfuscationProcessorConfig {
 
     @JsonProperty("source")
-    @JsonPropertyDescription("The source field to obfuscate.")
+    @JsonPropertyDescription("The source key to obfuscate. Default action is to mask with <code>*</code>.")
     @NotEmpty
     @NotNull
     @ExampleValues({

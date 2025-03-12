@@ -10,8 +10,10 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.pipeline.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.pipeline.parser.DataPrepperDeserializationProblemHandler;
 import org.opensearch.dataprepper.pipeline.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.EnumDeserializer;
 import org.opensearch.dataprepper.pipeline.parser.EventKeyDeserializer;
@@ -28,10 +30,11 @@ import java.util.Set;
 public class ObjectMapperConfiguration {
     static final Set<Class> TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES = Set.of(
             String.class, Number.class, Long.class, Short.class, Integer.class, Double.class, Float.class,
-            Boolean.class, Character.class);
+            Boolean.class, Character.class, PluginConfigVariable.class);
 
     @Bean(name = "extensionPluginConfigObjectMapper")
-    ObjectMapper extensionPluginConfigObjectMapper() {
+    ObjectMapper extensionPluginConfigObjectMapper(
+            final DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(Enum.class, new EnumDeserializer());
@@ -40,13 +43,15 @@ public class ObjectMapperConfiguration {
 
         return new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
+                .registerModule(simpleModule)
+                .addHandler(dataPrepperDeserializationProblemHandler);
     }
 
     @Bean(name = "pluginConfigObjectMapper")
     ObjectMapper pluginConfigObjectMapper(
             final VariableExpander variableExpander,
-            final EventKeyFactory eventKeyFactory) {
+            final EventKeyFactory eventKeyFactory,
+            final DataPrepperDeserializationProblemHandler dataPrepperDeserializationProblemHandler) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
         simpleModule.addDeserializer(ByteCount.class, new ByteCountDeserializer());
@@ -57,6 +62,7 @@ public class ObjectMapperConfiguration {
 
         return new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
+                .registerModule(simpleModule)
+                .addHandler(dataPrepperDeserializationProblemHandler);
     }
 }

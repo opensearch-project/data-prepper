@@ -25,6 +25,11 @@ class GenericRegexMatchOperator implements Operator<Boolean> {
     }
 
     @Override
+    public boolean isBooleanOperator() {
+        return true;
+    }
+
+    @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
         return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_regexOperatorExpression;
     }

@@ -98,7 +98,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout) {
         final Optional<SourcePartitionStoreItem> acquiredAssignedItem = dynamoDbClientWrapper.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
-                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED), 1);
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED), 1, dynamoStoreSettings.getTtl());
 
         if (acquiredAssignedItem.isPresent()) {
             return acquiredAssignedItem;
@@ -106,7 +106,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
         final Optional<SourcePartitionStoreItem> acquiredUnassignedItem = dynamoDbClientWrapper.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.UNASSIGNED,
-                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED), 5);
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED), 5, dynamoStoreSettings.getTtl());
 
         if (acquiredUnassignedItem.isPresent()) {
             return acquiredUnassignedItem;
@@ -114,7 +114,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
         return dynamoDbClientWrapper.getAvailablePartition(
                 ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED,
-                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED), 1);
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED), 1, dynamoStoreSettings.getTtl());
     }
 
     @Override

@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 /**
  * Represents the object key for an object exported to S3 by RDS.
- * The object key has this structure: "{prefix}/{export task ID}/{database name}/{table name}/{numbered folder}/{file name}"
+ * The object key has this structure: "{prefix}/{export task ID}/{database name}/{full table name}/{numbered folder}/{file name}"
  */
 public class ExportObjectKey {
 
@@ -18,14 +18,21 @@ public class ExportObjectKey {
     private final String prefix;
     private final String exportTaskId;
     private final String databaseName;
+
+    /**
+     * schemaName is specific for Postgres; For MySQL, this schemaName has the same value as databaseName
+     */
+    private final String schemaName;
+
     private final String tableName;
     private final String numberedFolder;
     private final String fileName;
 
-    ExportObjectKey(final String prefix, final String exportTaskId, final String databaseName, final String tableName, final String numberedFolder, final String fileName) {
+    ExportObjectKey(final String prefix, final String exportTaskId, final String databaseName, final String schemaName, final String tableName, final String numberedFolder, final String fileName) {
         this.prefix = prefix;
         this.exportTaskId = exportTaskId;
         this.databaseName = databaseName;
+        this.schemaName = schemaName;
         this.tableName = tableName;
         this.numberedFolder = numberedFolder;
         this.fileName = fileName;
@@ -42,13 +49,14 @@ public class ExportObjectKey {
                 .collect(Collectors.joining(S3_PATH_DELIMITER));
         final String exportTaskId = parts[parts.length - 5];
         final String databaseName = parts[parts.length - 4];
-        // fullTableName is in the format of "databaseName.tableName"
+        // fullTableName is in the format of "databaseName.tableName" for MySQL and "schemaName.tableName" for Postgres
         final String fullTableName = parts[parts.length - 3];
+        final String schemaName = fullTableName.split("\\.")[0];
         final String tableName = fullTableName.split("\\.")[1];
         final String numberedFolder = parts[parts.length - 2];
         final String fileName = parts[parts.length - 1];
 
-        return new ExportObjectKey(prefix, exportTaskId, databaseName, tableName, numberedFolder, fileName);
+        return new ExportObjectKey(prefix, exportTaskId, databaseName, schemaName, tableName, numberedFolder, fileName);
     }
 
     public String getPrefix() {
@@ -61,6 +69,14 @@ public class ExportObjectKey {
 
     public String getDatabaseName() {
         return databaseName;
+    }
+
+    /**
+     * schemaName is specific for Postgres; For MySQL, this schemaName has the same value as databaseName
+     * @return schemaName
+     */
+    public String getSchemaName() {
+        return schemaName;
     }
 
     public String getTableName() {

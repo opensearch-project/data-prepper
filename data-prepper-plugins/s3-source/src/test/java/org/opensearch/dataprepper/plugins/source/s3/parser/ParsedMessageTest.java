@@ -120,6 +120,7 @@ class ParsedMessageTest {
             assertThat(parsedMessage.getEventTime(), equalTo(testEventTime));
             assertThat(parsedMessage.isFailedParsing(), equalTo(false));
             assertThat(parsedMessage.isEmptyNotification(), equalTo(false));
+            assertThat(parsedMessage.isShouldSkipProcessing(), equalTo(false));
         }
 
         @Test
@@ -132,6 +133,13 @@ class ParsedMessageTest {
             assertThat(actualString, notNullValue());
             assertThat(actualString, containsString(messageId));
             assertThat(actualString, containsString(testDecodedObjectKey));
+        }
+
+        @Test
+        void test_parsed_message_with_null_object_size_defaults_to_zero() {
+            when(s3ObjectEntity.getSizeAsLong()).thenReturn(null);
+            final ParsedMessage parsedMessage = createObjectUnderTest();
+            assertThat(parsedMessage.getObjectSize(), equalTo(0L));
         }
     }
 

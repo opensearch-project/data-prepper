@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,5 +43,20 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
     @Override
     public String getPrefix() {
         return AWS_SECRETS_PREFIX;
+    }
+
+    @Override
+    public PluginConfigVariable translateToPluginConfigVariable(String value) {
+        final Matcher matcher = SECRETS_REF_PATTERN.matcher(value);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(String.format(
+                    "Unable to parse %s or %s according to pattern %s",
+                    SECRET_CONFIGURATION_ID_GROUP, SECRET_KEY_GROUP, SECRETS_REF_PATTERN.pattern()));
+        }
+        final String secretId = matcher.group(SECRET_CONFIGURATION_ID_GROUP);
+        final String secretKey = matcher.group(SECRET_KEY_GROUP);
+        final Object secretValue = secretKey != null ? secretsSupplier.retrieveValue(secretId, secretKey) :
+                secretsSupplier.retrieveValue(secretId);
+        return new AwsPluginConfigVariable(secretsSupplier, secretId, secretKey, secretValue);
     }
 }

@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * Accumulates Bulk Requests.
  *
- * @param <O>
- * @param <R>
+ * @param <O> OperationType
+ * @param <R> RequestType
  */
 public interface AccumulatingBulkRequest<O, R> {
     long estimateSizeInBytesWithDocument(O documentOrOperation);

@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.List;
 
 @JsonPropertyOrder
-@JsonClassDescription("The <code>copy_values</code> processor copies values within an event to other fields within the event.")
+@JsonClassDescription("The <code>copy_values</code> processor copies values from an event to another key in an event.")
 public class CopyValueProcessorConfig {
     static final String FROM_LIST_KEY = "from_list";
     static final String TO_LIST_KEY = "to_list";
@@ -30,13 +30,13 @@ public class CopyValueProcessorConfig {
         @NotEmpty
         @NotNull
         @JsonProperty("from_key")
-        @JsonPropertyDescription("The key of the entry to be copied.")
+        @JsonPropertyDescription("The key of the entry to be copied. This must be configured.")
         private String fromKey;
 
         @NotEmpty
         @NotNull
         @JsonProperty("to_key")
-        @JsonPropertyDescription("The key of the new entry to be added.")
+        @JsonPropertyDescription("The key of the new entry to be added. This must be configured.")
         private String toKey;
 
         @JsonProperty("overwrite_if_to_key_exists")
@@ -86,14 +86,16 @@ public class CopyValueProcessorConfig {
     private List<Entry> entries;
 
     @JsonProperty(FROM_LIST_KEY)
-    @JsonPropertyDescription("The key of the list of objects to be copied. <code>to_list</code> must also be defined.")
+    @JsonPropertyDescription("The key of the list of objects to be copied. " +
+            "Both <code>from_key</code> and <code>to_key</code> must be configured and will be applied on the corresponding list.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = TO_LIST_KEY)
     })
     private String fromList;
 
     @JsonProperty(TO_LIST_KEY)
-    @JsonPropertyDescription("The key of the new list to be added. <code>from_list</code> must also be defined.")
+    @JsonPropertyDescription("The key of the new list to be added. " +
+            "Both <code>from_key</code> and <code>to_key</code> must be configured and will be applied on the corresponding list.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FROM_LIST_KEY)
     })

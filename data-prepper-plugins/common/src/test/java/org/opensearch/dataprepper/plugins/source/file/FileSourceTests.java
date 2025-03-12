@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -27,6 +28,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +76,9 @@ public class FileSourceTests {
 
     @Mock
     private PluginFactory pluginFactory;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     @BeforeEach
     void setUp() {
@@ -130,7 +135,7 @@ public class FileSourceTests {
 
 
         @BeforeEach
-        public void setup() {
+        public void setup() throws JsonProcessingException {
             expectedEventsPlain = new ArrayList<>();
             expectedEventsJson = new ArrayList<>();
             expectedEventsInvalidJson = new ArrayList<>();
@@ -167,13 +172,15 @@ public class FileSourceTests {
             buffer = getBuffer();
         }
 
-        private BlockingBuffer<Record<Object>> getBuffer() {
+        private BlockingBuffer<Record<Object>> getBuffer() throws JsonProcessingException {
             final HashMap<String, Object> integerHashMap = new HashMap<>();
             integerHashMap.put("buffer_size", 2);
             integerHashMap.put("batch_size", 2);
-            final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
-            pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
-            return new BlockingBuffer<>(pluginSetting);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String json = objectMapper.writeValueAsString(integerHashMap);
+            BlockingBufferConfig blockingBufferConfig = objectMapper.readValue(json, BlockingBufferConfig.class);
+            when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+            return new BlockingBuffer<>(blockingBufferConfig, pipelineDescription);
         }
 
         @Test

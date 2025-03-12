@@ -68,6 +68,7 @@ public class BufferAccumulator<T extends Record<?>> {
 
     public void flush() throws Exception {
         try {
+            LOG.debug("Flushing buffer accumulator");
             flushAccumulatedToBuffer();
         } catch (final TimeoutException timeoutException) {
             flushWithBackoff();
@@ -80,11 +81,13 @@ public class BufferAccumulator<T extends Record<?>> {
         boolean flushedSuccessfully;
 
         for (int retryCount = 0; retryCount < MAX_FLUSH_RETRIES_ON_IO_EXCEPTION; retryCount++) {
+            LOG.debug("Retrying buffer flush on retry count {}", retryCount);
             final ScheduledFuture<Boolean> flushBufferFuture = scheduledExecutorService.schedule(() -> {
                 try {
                     flushAccumulatedToBuffer();
                     return true;
                 } catch (final TimeoutException e) {
+                    LOG.debug("Timed out retrying buffer accumulator");
                     return false;
                 }
             }, nextDelay, TimeUnit.MILLISECONDS);

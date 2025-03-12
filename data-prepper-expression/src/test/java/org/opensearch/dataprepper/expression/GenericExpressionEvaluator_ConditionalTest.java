@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,7 +76,7 @@ class GenericExpressionEvaluator_ConditionalTest {
 
         doThrow(new RuntimeException()).when(parser).parse(eq(statement));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluateConditional(statement, null));
+        assertThrows(ExpressionParsingException.class, () -> statementEvaluator.evaluateConditional(statement, null));
 
         verify(parser).parse(eq(statement));
         verify(evaluator, times(0)).evaluate(any(), any());
@@ -90,7 +91,7 @@ class GenericExpressionEvaluator_ConditionalTest {
         doReturn(parseTree).when(parser).parse(eq(statement));
         doThrow(new RuntimeException()).when(evaluator).evaluate(eq(parseTree), eq(event));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluateConditional(statement, event));
+        assertThat(statementEvaluator.evaluateConditional(statement, event), equalTo(false));
 
         verify(parser).parse(eq(statement));
         verify(evaluator).evaluate(eq(parseTree), eq(event));

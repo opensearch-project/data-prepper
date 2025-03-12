@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ResyncPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ResyncProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyAction;
@@ -75,8 +76,10 @@ class CascadingActionDetectorTest {
     @Test
     void testGetParentTableMap_returns_only_foreign_relations_with_cascading_actions() {
         final StreamProgressState progressState = mock(StreamProgressState.class);
+        final MySqlStreamState mySqlStreamState = mock(MySqlStreamState.class);
         when(streamPartition.getProgressState()).thenReturn(Optional.of(progressState));
-        when(progressState.getForeignKeyRelations()).thenReturn(List.of(foreignKeyRelationWithCascading, foreignKeyRelationWithoutCascading));
+        when(progressState.getMySqlStreamState()).thenReturn(mySqlStreamState);
+        when(mySqlStreamState.getForeignKeyRelations()).thenReturn(List.of(foreignKeyRelationWithCascading, foreignKeyRelationWithoutCascading));
 
         Map<String, ParentTable> actualParentTableMap = objectUnderTest.getParentTableMap(streamPartition);
 

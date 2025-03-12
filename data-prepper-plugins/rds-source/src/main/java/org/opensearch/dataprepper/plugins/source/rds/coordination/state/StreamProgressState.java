@@ -6,28 +6,44 @@
 package org.opensearch.dataprepper.plugins.source.rds.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
-import org.opensearch.dataprepper.plugins.source.rds.model.ForeignKeyRelation;
 
 import java.util.List;
+import java.util.Map;
 
 public class StreamProgressState {
 
-    @JsonProperty("currentPosition")
-    private BinlogCoordinate currentPosition;
+    @JsonProperty("engineType")
+    private String engineType;
 
     @JsonProperty("waitForExport")
     private boolean waitForExport = false;
 
-    @JsonProperty("foreignKeyRelations")
-    private List<ForeignKeyRelation> foreignKeyRelations;
+    /**
+     * Map of table name to primary keys
+     */
+    @JsonProperty("primaryKeyMap")
+    private Map<String, List<String>> primaryKeyMap;
 
-    public BinlogCoordinate getCurrentPosition() {
-        return currentPosition;
+    @JsonProperty("mySqlStreamState")
+    private MySqlStreamState mySqlStreamState;
+
+    @JsonProperty("postgresStreamState")
+    private PostgresStreamState postgresStreamState;
+
+    public String getEngineType() {
+        return engineType;
     }
 
-    public void setCurrentPosition(BinlogCoordinate currentPosition) {
-        this.currentPosition = currentPosition;
+    public void setEngineType(String engineType) {
+        this.engineType = engineType;
+    }
+
+    public Map<String, List<String>> getPrimaryKeyMap() {
+        return primaryKeyMap;
+    }
+
+    public void setPrimaryKeyMap(Map<String, List<String>> primaryKeyMap) {
+        this.primaryKeyMap = primaryKeyMap;
     }
 
     public boolean shouldWaitForExport() {
@@ -38,11 +54,19 @@ public class StreamProgressState {
         this.waitForExport = waitForExport;
     }
 
-    public List<ForeignKeyRelation> getForeignKeyRelations() {
-        return foreignKeyRelations;
+    public MySqlStreamState getMySqlStreamState() {
+        return mySqlStreamState;
     }
 
-    public void setForeignKeyRelations(List<ForeignKeyRelation> foreignKeyRelations) {
-        this.foreignKeyRelations = foreignKeyRelations;
+    public void setMySqlStreamState(MySqlStreamState mySqlStreamState) {
+        this.mySqlStreamState = mySqlStreamState;
+    }
+
+    public PostgresStreamState getPostgresStreamState() {
+        return postgresStreamState;
+    }
+
+    public void setPostgresStreamState(PostgresStreamState postgresStreamState) {
+        this.postgresStreamState = postgresStreamState;
     }
 }

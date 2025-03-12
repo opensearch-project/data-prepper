@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -41,6 +42,7 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
     private final PluginConfigurationObservableFactory pluginConfigurationObservableFactory;
     private final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers;
+    private final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers;
 
     @Inject
     DefaultPluginFactory(
@@ -49,8 +51,10 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginConfigurationConverter pluginConfigurationConverter,
             final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             final PluginConfigurationObservableFactory pluginConfigurationObservableFactory,
-            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers) {
+            final ApplicationContextToTypedSuppliers applicationContextToTypedSuppliers,
+            final List<Consumer<DefinedPlugin<?>>> definedPluginConsumers) {
         this.applicationContextToTypedSuppliers = applicationContextToTypedSuppliers;
+        this.definedPluginConsumers = definedPluginConsumers;
         Objects.requireNonNull(pluginProviderLoader);
         Objects.requireNonNull(pluginConfigurationObservableFactory);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -60,14 +64,14 @@ public class DefaultPluginFactory implements PluginFactory {
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
         this.pluginConfigurationObservableFactory = pluginConfigurationObservableFactory;
 
-        if(pluginProviders.isEmpty()) {
+        if (pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
                     "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
         }
     }
 
     @Override
-    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object ... args) {
+    public <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final Object... args) {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
@@ -96,7 +100,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         final Integer numberOfInstances = numberOfInstancesFunction.apply(pluginClass);
 
-        if(numberOfInstances == null || numberOfInstances < 0)
+        if (numberOfInstances == null || numberOfInstances < 0)
             throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
 
         final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass, null);
@@ -117,7 +121,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
 
         Class[] markersToScan = pluginAnnotation.packagesToScan();
-        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan, configuration);
+        BeanFactory beanFactory = pluginBeanFactoryProvider.createPluginSpecificContext(markersToScan, configuration, pluginSetting);
 
         return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
@@ -140,15 +144,13 @@ public class DefaultPluginFactory implements PluginFactory {
                 .orElseThrow(() -> new NoPluginFoundException(
                         "Unable to find a plugin named '" + pluginName + "'. Please ensure that plugin is annotated with appropriate values."));
 
-        logDeprecatedPluginsNames(pluginClass, pluginName);
+        handleDefinedPlugins(pluginClass, pluginName);
         return pluginClass;
     }
 
-    private <T> void logDeprecatedPluginsNames(final Class<? extends T> pluginClass, final String pluginName) {
-        final String deprecatedName = pluginClass.getAnnotation(DataPrepperPlugin.class).deprecatedName();
-        final String name = pluginClass.getAnnotation(DataPrepperPlugin.class).name();
-        if (deprecatedName.equals(pluginName)) {
-            LOG.warn("Plugin name '{}' is deprecated and will be removed in the next major release. Consider using the updated plugin name '{}'.", deprecatedName, name);
-        }
+    private <T> void handleDefinedPlugins(final Class<? extends T> pluginClass, final String pluginName) {
+        final DefinedPlugin<? extends T> definedPlugin = new DefinedPlugin<>(pluginClass, pluginName);
+
+        definedPluginConsumers.forEach(definedPluginConsumer -> definedPluginConsumer.accept(definedPlugin));
     }
 }

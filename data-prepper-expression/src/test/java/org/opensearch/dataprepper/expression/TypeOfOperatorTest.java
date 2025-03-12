@@ -44,6 +44,7 @@ class TypeOfOperatorTest {
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
+        assertThat(objectUnderTest.isBooleanOperator(), is(true));
     }
 
     @Test

@@ -45,7 +45,7 @@ public class InstanceApiStrategy implements RdsApiStrategy {
                     .endpoint(dbInstance.endpoint().address())
                     .port(dbInstance.endpoint().port());
 
-            if (dbInstance.hasReadReplicaDBInstanceIdentifiers()) {
+            if (!dbInstance.readReplicaDBInstanceIdentifiers().isEmpty()) {
                 final DescribeDbInstancesRequest readerInstanceRequest = DescribeDbInstancesRequest.builder()
                         .dbInstanceIdentifier(dbInstance.readReplicaDBInstanceIdentifiers().get(0))
                         .build();

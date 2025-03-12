@@ -93,6 +93,8 @@ public class S3OutputStream extends PositionOutputStream {
      * @param s3Client the AmazonS3 client
      * @param bucketSupplier  name of the bucket
      * @param keySupplier     path within the bucket
+     * @param defaultBucket default bucket
+     * @param bucketOwnerProvider bucket owner provider
      */
     public S3OutputStream(final S3AsyncClient s3Client,
                           final Supplier<String> bucketSupplier,

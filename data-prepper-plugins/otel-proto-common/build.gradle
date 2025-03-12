@@ -7,6 +7,10 @@ plugins {
     id 'java'
 }
 
+test {
+    jvmArgs '-Xmx512m'
+}
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation libs.opentelemetry.proto
@@ -15,5 +19,5 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation libs.commons.lang3
     implementation libs.commons.codec
-    testImplementation 'org.assertj:assertj-core:3.25.3'
+    testImplementation 'org.assertj:assertj-core:3.27.0'
 }

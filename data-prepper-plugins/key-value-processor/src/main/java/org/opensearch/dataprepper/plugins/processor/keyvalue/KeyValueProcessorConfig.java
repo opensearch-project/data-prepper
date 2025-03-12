@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
+import org.opensearch.dataprepper.model.annotations.ValidRegex;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,7 @@ public class KeyValueProcessorConfig {
     })
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
+    @ValidRegex(message = "The value of field_delimiter_regex is not a valid regex string")
     @JsonProperty(FIELD_DELIMITER_REGEX_KEY)
     @JsonPropertyDescription("A regular expression specifying the delimiter that separates key-value pairs. " +
             "For example, to split on multiple <code>&amp;</code> characters use <code>&amp;+</code>. " +
@@ -93,6 +95,7 @@ public class KeyValueProcessorConfig {
     })
     private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
 
+    @ValidRegex(message = "The value of key_value_delimiter_regex is not a valid regex string")
     @JsonProperty(KEY_VALUE_DELIMITER_REGEX_KEY)
     @JsonPropertyDescription("A regular expression specifying the delimiter that separates keys from their values within a key-value pair. " +
             "For example, to split on multiple <code>=</code> characters use <code>=+</code>. " +
@@ -124,13 +127,13 @@ public class KeyValueProcessorConfig {
     })
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
-    @JsonProperty(value = "include_keys", defaultValue = "[]")
+    @JsonProperty("include_keys")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
-    @JsonProperty(value = "exclude_keys", defaultValue = "[]")
+    @JsonProperty("exclude_keys")
     @JsonPropertyDescription("An array specifying the parsed keys that should be excluded from the destination field. " +
             "By default, no keys will be excluded.")
     @NotNull
@@ -142,6 +145,7 @@ public class KeyValueProcessorConfig {
     })
     private String prefix = null;
 
+    @ValidRegex(message = "The value of delete_key_regex is not a valid regex string")
     @JsonProperty("delete_key_regex")
     @JsonPropertyDescription("A regular expression specifying characters to delete from the key. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
@@ -152,6 +156,7 @@ public class KeyValueProcessorConfig {
     })
     private String deleteKeyRegex;
 
+    @ValidRegex(message = "The value of delete_value_regex is not a valid regex string")
     @JsonProperty("delete_value_regex")
     @JsonPropertyDescription("A regular expression specifying characters to delete from the value. " +
             "Special regular expression characters such as <code>[</code> and <code>]</code> must be escaped with <code>\\\\</code>. " +
@@ -195,8 +200,7 @@ public class KeyValueProcessorConfig {
             "If this flag is enabled, then the content between the delimiters is considered to be one entity and " +
             "they are not parsed as key-value pairs. The following characters are used a group delimiters: " +
             "<code>{...}</code>, <code>[...]</code>, <code>&lt;...&gt;</code>, <code>(...)</code>, <code>\"...\"</code>, <code>'...'</code>, <code>http://... (space)</code>, and <code>https:// (space)</code>. " +
-            "Default is <code>false</code>. For example, if <code>value_grouping</code> is <code>true</code>, then " +
-            "<code>{\"key1=[a=b,c=d]&amp;key2=value2\"}</code> parses to <code>{\"key1\": \"[a=b,c=d]\", \"key2\": \"value2\"}</code>.")
+            "Default is <code>false</code>.")
     @AlsoRequired(values = {
             @AlsoRequired.Required(name = FIELD_DELIMITER_REGEX_KEY, allowedValues = {"null"})
     })

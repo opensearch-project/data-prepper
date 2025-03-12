@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -5,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.jira.utils.Constants;
 
 import java.time.Instant;
 import java.util.Map;
@@ -85,12 +96,12 @@ public class JiraItemInfoTest {
 
     @Test
     void testGetLastModifiedAt() {
-        when(metadata.getOrDefault("updated", "0")).thenReturn("5");
-        when(metadata.getOrDefault("created", "0")).thenReturn("0");
+        when(metadata.get(Constants.UPDATED)).thenReturn("5");
+        when(metadata.get(Constants.CREATED)).thenReturn("0");
         assertEquals(Instant.ofEpochMilli(5), jiraItemInfo.getLastModifiedAt());
 
-        when(metadata.getOrDefault("updated", "0")).thenReturn("5");
-        when(metadata.getOrDefault("created", "0")).thenReturn("7");
+        when(metadata.get(Constants.UPDATED)).thenReturn("5");
+        when(metadata.get(Constants.CREATED)).thenReturn("7");
         assertEquals(Instant.ofEpochMilli(7), jiraItemInfo.getLastModifiedAt());
     }
 

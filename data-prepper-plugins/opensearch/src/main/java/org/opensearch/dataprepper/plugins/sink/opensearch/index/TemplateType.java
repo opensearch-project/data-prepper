@@ -46,7 +46,7 @@ public enum TemplateType {
         return factoryFunction.apply(indexTemplateAPIWrapper);
     }
 
-    String getTypeName() {
+    public String getTypeName() {
         return name;
     }
 }

@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
@@ -53,6 +54,7 @@ public class ExportScheduler implements Runnable {
     static final String EXPORT_JOB_SUCCESS_COUNT = "exportJobSuccess";
     static final String EXPORT_JOB_FAILURE_COUNT = "exportJobFailure";
     static final String EXPORT_S3_OBJECTS_TOTAL_COUNT = "exportS3ObjectsTotal";
+    static final String DOT_DELIMITER = ".";
 
     private final S3Client s3Client;
     private final PluginMetrics pluginMetrics;
@@ -64,6 +66,8 @@ public class ExportScheduler implements Runnable {
     private final Counter exportJobSuccessCounter;
     private final Counter exportJobFailureCounter;
     private final Counter exportS3ObjectsTotalCounter;
+
+    private EngineType engineType;
 
     private volatile boolean shutdownRequested = false;
 
@@ -133,6 +137,7 @@ public class ExportScheduler implements Runnable {
 
     private String getOrCreateExportTaskId(ExportPartition exportPartition) {
         ExportProgressState progressState = exportPartition.getProgressState().get();
+        engineType = EngineType.fromString(progressState.getEngineType());
 
         if (progressState.getExportTaskId() != null) {
             LOG.info("Export task has already created for db {}", exportPartition.getDbIdentifier());
@@ -315,11 +320,11 @@ public class ExportScheduler implements Runnable {
         for (final String objectKey : dataFileObjectKeys) {
             final DataFileProgressState progressState = new DataFileProgressState();
             final ExportObjectKey exportObjectKey = ExportObjectKey.fromString(objectKey);
-            final String database = exportObjectKey.getDatabaseName();
-            final String table = exportObjectKey.getTableName();
 
-            progressState.setSourceDatabase(database);
-            progressState.setSourceTable(table);
+            progressState.setEngineType(engineType.toString());
+            progressState.setSourceDatabase(exportObjectKey.getDatabaseName());
+            progressState.setSourceSchema(exportObjectKey.getSchemaName());
+            progressState.setSourceTable(exportObjectKey.getTableName());
             progressState.setSnapshotTime(snapshotTime);
             progressState.setPrimaryKeyMap(primaryKeyMap);
 

@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import lombok.Getter;
@@ -66,10 +76,26 @@ public class JiraItemInfo implements ItemInfo {
 
     @Override
     public Instant getLastModifiedAt() {
-        long updatedAtMillis = Long.parseLong((String) this.metadata.getOrDefault(Constants.UPDATED, "0"));
-        long createdAtMillis = Long.parseLong((String) this.metadata.getOrDefault(Constants.CREATED, "0"));
+        long updatedAtMillis = getMetadataField(Constants.UPDATED);
+        long createdAtMillis = getMetadataField(Constants.CREATED);
         return createdAtMillis > updatedAtMillis ?
                 Instant.ofEpochMilli(createdAtMillis) : Instant.ofEpochMilli(updatedAtMillis);
+    }
+
+    private Long getMetadataField(String fieldName) {
+        Object value = this.metadata.get(fieldName);
+        if (value == null) {
+            return 0L;
+        } else if (value instanceof Long) {
+            return (Long) value;
+        } else if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (Exception e) {
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     public static class JiraItemInfoBuilder {

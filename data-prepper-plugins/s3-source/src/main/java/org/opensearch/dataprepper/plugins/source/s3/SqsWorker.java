@@ -30,6 +30,7 @@ import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
@@ -156,6 +157,9 @@ public class SqsWorker implements Runnable {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
             final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
             failedAttemptCount = 0;
+            if (messages.isEmpty()) {
+                sqsMessageDelayTimer.record(Duration.ZERO);
+            }
             return messages;
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
@@ -186,6 +190,7 @@ public class SqsWorker implements Runnable {
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
                 .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
                 .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
+                .attributeNamesWithStrings(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT.toString())
                 .build();
     }
 
@@ -194,6 +199,7 @@ public class SqsWorker implements Runnable {
         final List<ParsedMessage> parsedMessagesToRead = new ArrayList<>();
         final Map<ParsedMessage, AcknowledgementSet> messageAcknowledgementSetMap = new HashMap<>();
         final Map<ParsedMessage, List<DeleteMessageBatchRequestEntry>> messageWaitingForAcknowledgementsMap = new HashMap<>();
+        final Map<ParsedMessage, List<S3ObjectReference>> messagesWaitingForS3ObjectDeletion = new HashMap<>();
 
         for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
             if (parsedMessage.isFailedParsing()) {
@@ -228,7 +234,22 @@ public class SqsWorker implements Runnable {
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
         
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            final int approximateReceiveCount = getApproximateReceiveCount(parsedMessage.getMessage());
+            if (s3SourceConfig.getSqsOptions().getMaxReceiveAttempts() != null &&
+                    approximateReceiveCount > s3SourceConfig.getSqsOptions().getMaxReceiveAttempts()) {
+                deleteSqsMessages(List.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage())));
+                parsedMessage.setShouldSkipProcessing(true);
+                continue;
+            }
+
+            if (approximateReceiveCount <= 1) {
+                sqsMessageDelayTimer.record(Duration.between(
+                        Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
+                        Instant.now()
+                ));
+            }
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
+            List<S3ObjectReference> s3ObjectDeletionWaitingForAcknowledgments = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
             final int visibilityTimeout = (int)sqsOptions.getVisibilityTimeout().getSeconds();
             final int maxVisibilityTimeout = (int)sqsOptions.getVisibilityDuplicateProtectionTimeout().getSeconds();
@@ -247,7 +268,10 @@ public class SqsWorker implements Runnable {
                             parsedMessageVisibilityTimesMap.remove(parsedMessage);
                         }
                         if (result == true) {
-                            deleteSqsMessages(waitingForAcknowledgements);
+                            final boolean successfullyDeletedAllMessages = deleteSqsMessages(waitingForAcknowledgements);
+                            if (successfullyDeletedAllMessages && s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                                deleteS3Objects(s3ObjectDeletionWaitingForAcknowledgments);
+                            }
                         }
                     },
                     Duration.ofSeconds(expiryTimeout));
@@ -266,6 +290,7 @@ public class SqsWorker implements Runnable {
                 }
                 messageAcknowledgementSetMap.put(parsedMessage, acknowledgementSet);
                 messageWaitingForAcknowledgementsMap.put(parsedMessage, waitingForAcknowledgements);
+                messagesWaitingForS3ObjectDeletion.put(parsedMessage, s3ObjectDeletionWaitingForAcknowledgments);
             }
         }
         
@@ -275,12 +300,20 @@ public class SqsWorker implements Runnable {
 
         // Use a separate loop for processing the S3 objects
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            if (parsedMessage.isShouldSkipProcessing()) {
+                continue;
+            }
+
             final AcknowledgementSet acknowledgementSet = messageAcknowledgementSetMap.get(parsedMessage);
             final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = messageWaitingForAcknowledgementsMap.get(parsedMessage);
+            final List<S3ObjectReference> s3ObjectDeletionsWaitingForAcknowledgments = messagesWaitingForS3ObjectDeletion.get(parsedMessage);
             final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.getBucketName(), parsedMessage.getObjectKey());
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
+                if (deleteMessageBatchRequestEntry.isPresent() && s3SourceConfig.isDeleteS3ObjectsOnRead()) {
+                    s3ObjectDeletionsWaitingForAcknowledgments.add(s3ObjectReference);
+                }
                 acknowledgementSet.complete();
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
@@ -318,10 +351,6 @@ public class SqsWorker implements Runnable {
         // SQS messages won't be deleted if we are unable to process S3Objects because of an exception
         try {
             s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
-            sqsMessageDelayTimer.record(Duration.between(
-                    Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
-                    Instant.now()
-            ));
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
         } catch (final Exception e) {
             LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());
@@ -330,11 +359,11 @@ public class SqsWorker implements Runnable {
         }
     }
 
-    private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+    private boolean deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
         if(isStopped)
-            return;
+            return false;
         if (deleteMessageBatchRequestEntryCollection.size() == 0) {
-            return;
+            return false;
         }
         final DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
         try {
@@ -358,6 +387,7 @@ public class SqsWorker implements Runnable {
                             .map(failed -> failed.toString())
                             .collect(Collectors.joining(", "));
                     LOG.error("Failed to delete {} messages from SQS with errors: [{}].", failedDeleteCount, failedMessages);
+                    return false;
                 }
             }
 
@@ -367,6 +397,21 @@ public class SqsWorker implements Runnable {
             LOG.error("Failed to delete {} messages from SQS due to {}.", failedMessageCount, e.getMessage());
             if(e instanceof StsException) {
                 applyBackoff();
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private void deleteS3Objects(final List<S3ObjectReference> objectsToDelete) {
+        for (final S3ObjectReference s3ObjectReference : objectsToDelete) {
+            try {
+                s3Service.deleteS3Object(s3ObjectReference);
+            } catch (final Exception e) {
+                LOG.error("Received an exception while attempting to delete object {} from bucket {}: {}",
+                        s3ObjectReference.getKey(), s3ObjectReference.getBucketName(), e.getMessage());
             }
         }
     }
@@ -397,6 +442,11 @@ public class SqsWorker implements Runnable {
         return S3ObjectReference
                 .bucketAndKey(bucketName, objectKey)
                 .build();
+    }
+
+    private int getApproximateReceiveCount(final Message message) {
+        return message.attributes() != null && message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT) != null ?
+                Integer.parseInt(message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT)) : 0;
     }
 
     void stop() {
