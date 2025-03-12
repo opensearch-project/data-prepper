@@ -23,8 +23,10 @@ import java.time.Instant;
  
 public class OTelLogsJsonDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
+    private boolean opensearchMode;
     
-    public OTelLogsJsonDecoder() {
+    public OTelLogsJsonDecoder(final boolean opensearchMode) {
+        this.opensearchMode = opensearchMode;
         otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
     }
 
@@ -33,7 +35,7 @@ public class OTelLogsJsonDecoder implements ByteDecoder {
         ExportLogsServiceRequest.Builder builder = ExportLogsServiceRequest.newBuilder();
         JsonFormat.parser().merge(reader, builder);
         ExportLogsServiceRequest request = builder.build(); 
-        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs);
+        List<OpenTelemetryLog> logs = otelProtoDecoder.parseExportLogsServiceRequest(request, timeReceivedMs, opensearchMode);
         for (OpenTelemetryLog log: logs) {
             eventConsumer.accept(new Record<>(log));
         }

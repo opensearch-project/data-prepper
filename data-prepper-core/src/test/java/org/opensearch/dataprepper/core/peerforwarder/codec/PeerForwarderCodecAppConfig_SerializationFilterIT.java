@@ -524,7 +524,7 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             return Stream.of(
                     arguments(JacksonEvent.builder()),
-                    arguments(JacksonSpan.builder()
+                    arguments(JacksonSpan.builder(true)
                             .withTraceId(UUID.randomUUID().toString())
                             .withTraceGroup(UUID.randomUUID().toString())
                             .withSpanId(UUID.randomUUID().toString())
@@ -536,33 +536,33 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                             .withTraceGroupFields(DefaultTraceGroupFields.builder().build())
                     ),
                     arguments(JacksonLog.builder()),
-                    arguments(JacksonOtelLog.builder()),
-                    arguments(JacksonExponentialHistogram.builder()
+                    arguments(JacksonOtelLog.builder(true)),
+                    arguments(JacksonExponentialHistogram.builder(true)
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
                             .withSum(10.0)
                     ),
-                    arguments(JacksonGauge.builder()
+                    arguments(JacksonGauge.builder(true)
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
                             .withValue(10.0)
                     ),
-                    arguments(JacksonHistogram.builder()
+                    arguments(JacksonHistogram.builder(true)
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
                             .withSum(10.0)
                     ),
-                    arguments(JacksonSum.builder()
+                    arguments(JacksonSum.builder(true)
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
                             .withValue(10.0)
                             .withIsMonotonic(true)
                     ),
-                    arguments(JacksonSummary.builder()
+                    arguments(JacksonSummary.builder(true)
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())

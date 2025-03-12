@@ -33,6 +33,7 @@ public class OTelLogsSourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
+    static final String OPENSEARCH_MODE = "opensearch_mode";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21892;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -54,6 +55,9 @@ public class OTelLogsSourceConfig {
     @JsonProperty(PATH)
     @Size(min = 1, message = "path length should be at least 1")
     private String path;
+
+    @JsonProperty(OPENSEARCH_MODE)
+    private boolean opensearchMode = true;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheck = DEFAULT_HEALTH_CHECK;
@@ -146,6 +150,10 @@ public class OTelLogsSourceConfig {
 
     public int getRequestTimeoutInMillis() {
         return requestTimeoutInMillis;
+    }
+
+    public boolean getOpensearchMode() {
+        return opensearchMode;
     }
 
     public int getPort() {

@@ -65,6 +65,30 @@ public interface Span extends Event {
     String getStartTime();
 
     /**
+     * Gets the scope of this log event.
+     *
+     * @return the scope
+     * @since 2.11
+     */
+    Map<String, Object> getScope();
+
+    /**
+     * Gets the resource of this log event.
+     *
+     * @return the resource
+     * @since 2.11
+     */
+    Map<String, Object> getResource();
+
+    /**
+     * Gets the resource of this log event.
+     *
+     * @return the resource
+     * @since 2.11
+     */
+    Map<String, Object> getStatus();
+
+    /**
      * Gets ISO8601 representation of the end time.
      * @return the end time
      * @since 1.2
@@ -153,4 +177,11 @@ public interface Span extends Event {
      * @since 1.3
      */
     void setTraceGroupFields(TraceGroupFields traceGroupFields);
+
+    /**
+     * gets opensearch mode flag
+     * @return the value of flatten attributes
+     * @since 2.11
+     */
+    boolean getOpensearchMode();
 }
