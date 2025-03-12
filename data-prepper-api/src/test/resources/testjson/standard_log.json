@@ -1,0 +1,37 @@
+{
+  "traceId": "1234",
+  "spanId": "4321",
+  "instrumentationScope":{
+        "name":"testScope",
+        "version":"testVersion",
+        "attributes":[
+          {
+            "scopeAttrKey1":"scopeAttrValue1",
+            "scopeAttrKey2":2222
+          }
+        ]
+    },
+  "resource":{
+        "attributes":[
+          {
+            "resourceAttrKey1":"resourceAttrValue1",
+            "resourceAttrKey2":2000
+          }
+        ]
+  },
+  "flags": 1,
+  "time": "2022-01-02T00:00:00Z",
+  "severityNumber": 2,
+  "droppedAttributesCount": 4,
+  "serviceName": "service",
+  "body": {
+    "log": "message"
+  },
+  "attributes": {
+    "key1" : %s,
+    "key2": "%s"
+  },
+  "observedTimestamp": "2022-01-01T00:00:00Z",
+  "schemaUrl": "schema"
+}
+

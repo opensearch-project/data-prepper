@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A Jackson implementation for {@link Span}. This class extends the {@link JacksonEvent}.
@@ -35,6 +33,9 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class JacksonSpan extends JacksonEvent implements Span {
 
+    private static final String STATUS_KEY = "status";
+    private static final String SCOPE_KEY = "scope";
+    private static final String RESOURCE_KEY = "resource";
     private static final String TRACE_ID_KEY = "traceId";
     private static final String SPAN_ID_KEY = "spanId";
     private static final String TRACE_STATE_KEY = "traceState";
@@ -81,13 +82,12 @@ public class JacksonSpan extends JacksonEvent implements Span {
     }
 
     protected void checkAndSetDefaultValues() {
-        Map<String, Object> data = toMap();
-        data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-        data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
-        data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
-        data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
-        data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
-        data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
+        putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
+        putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class, 0);
+        putIfAbsent(LINKS_KEY, LinkedList.class, new LinkedList<>());
+        putIfAbsent(DROPPED_LINKS_COUNT_KEY, Integer.class, 0);
+        putIfAbsent(EVENTS_KEY, LinkedList.class, new LinkedList<>());
+        putIfAbsent(DROPPED_EVENTS_COUNT_KEY, Integer.class, 0);
     }
 
     @Override
@@ -118,6 +118,21 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public String getKind() {
         return this.get(KIND_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getStatus() {
+        return this.get(STATUS_KEY, Map.class);
     }
 
     @Override
@@ -355,6 +370,42 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
+         * Sets the status of the log event
+         *
+         * @param status status to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withStatus(final Map<String, Object> status) {
+            data.put(STATUS_KEY, status);
+            return this;
+        }
+
+        /**
+         * Sets the scope of the log event
+         *
+         * @param scope scope to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withScope(final Map<String, Object> scope) {
+            data.put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        /**
+         * Sets the resource of the log event
+         *
+         * @param resource resource to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withResource(final Map<String, Object> resource) {
+            data.put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
+        /**
          * Sets the start time of the span
          *
          * @param startTime start time
@@ -510,6 +561,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
             return this;
         }
 
+        protected void populateEvent() {
+            super.withData(data);
+            this.withEventType(EventType.TRACE.toString());
+        }
+
         /**
          * Returns a newly created {@link JacksonSpan}
          *
@@ -518,8 +574,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         @Override
         public JacksonSpan build() {
-            super.withData(data);
-            this.withEventType(EventType.TRACE.toString());
+            populateEvent();
             return new JacksonSpan(this);
         }
 

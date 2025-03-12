@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,23 +28,26 @@ import static org.hamcrest.Matchers.is;
 
 public class JacksonOtelLogTest {
 
-    private static final String TEST_KEY2 = UUID.randomUUID().toString();
-    private static final Long TEST_TIME_KEY1 = new Date().getTime();
-    private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
+    protected static final String TEST_KEY2 = UUID.randomUUID().toString();
+    protected static final Long TEST_TIME_KEY1 = new Date().getTime();
+    protected static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", TEST_TIME_KEY1,
             "key2", TEST_KEY2);
 
-    private static final String TEST_SERVICE_NAME = "service";
-    private static final String TEST_OBSERVED_TIME = "2022-01-01T00:00:00Z";
-    private static final String TEST_TIME = "2022-01-02T00:00:00Z";
-    private static final String TEST_SCHEMA_URL = "schema";
-    private static final Integer TEST_FLAGS = 1;
-    private static final String TEST_TRACE_ID = "1234";
-    private static final String TEST_SPAN_ID = "4321";
-    private static final Integer TEST_SEVERITY_NUMBER = 2;
-    private static final String TEST_SEVERITY_TEXT = "severity";
-    private static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 4;
-    private static final Object TEST_BODY = Map.of("log", "message");
+    private static final Map<String, Object> TEST_SCOPE = ImmutableMap.of("name", UUID.randomUUID().toString(), "version", UUID.randomUUID().toString(), "attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
+    private static final Map<String, Object> TEST_RESOURCE = ImmutableMap.of("attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
+
+    protected static final String TEST_SERVICE_NAME = "service";
+    protected static final String TEST_OBSERVED_TIME = "2022-01-01T00:00:00Z";
+    protected static final String TEST_TIME = "2022-01-02T00:00:00Z";
+    protected static final String TEST_SCHEMA_URL = "schema";
+    protected static final Integer TEST_FLAGS = 1;
+    protected static final String TEST_TRACE_ID = "1234";
+    protected static final String TEST_SPAN_ID = "4321";
+    protected static final Integer TEST_SEVERITY_NUMBER = 2;
+    protected static final String TEST_SEVERITY_TEXT = "severity";
+    protected static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 4;
+    protected static final Object TEST_BODY = Map.of("log", "message");
 
     private JacksonOtelLog log;
     private JacksonOtelLog.Builder builder = JacksonOtelLog.builder();
@@ -59,6 +63,8 @@ public class JacksonOtelLogTest {
                 .withFlags(TEST_FLAGS)
                 .withTraceId(TEST_TRACE_ID)
                 .withSpanId(TEST_SPAN_ID)
+                .withScope(TEST_SCOPE)
+                .withResource(TEST_RESOURCE)
                 .withSeverityNumber(TEST_SEVERITY_NUMBER)
                 .withSeverityText(TEST_SEVERITY_TEXT)
                 .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
@@ -143,6 +149,18 @@ public class JacksonOtelLogTest {
     }
 
     @Test
+    public void testGetScope() {
+        final Map<String, Object> scope = log.getScope();
+        assertThat(scope, is(equalTo(TEST_SCOPE)));
+    }
+
+    @Test
+    public void testGetResource() {
+        final Map<String, Object> resource = log.getResource();
+        assertThat(resource, is(equalTo(TEST_RESOURCE)));
+    }
+
+    @Test
     public void testGetAttributes() {
         final Map<String, Object> attributes = log.getAttributes();
         TEST_ATTRIBUTES.keySet().forEach(key -> {
@@ -161,7 +179,7 @@ public class JacksonOtelLogTest {
 
 
     @Test
-    public void testHistogramToJsonString() throws JSONException {
+    public void testLogToJsonString() throws JSONException {
         final String actual = log.toJsonString();
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/log.json"));
         String expected = String.format(file, TEST_TIME_KEY1, TEST_KEY2);

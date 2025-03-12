@@ -37,10 +37,6 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
-    protected void checkAndSetDefaultValues() {
-        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -103,9 +99,7 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
          * @since 2.1
          */
         public JacksonGauge build(boolean flattenAttributes) {
-            this.withEventKind(Metric.KIND.GAUGE.toString());
-            this.withData(data);
-            this.withEventType(EventType.METRIC.toString());
+            populateEvent(KIND.GAUGE.toString());
             return new JacksonGauge(this, flattenAttributes);
         }
 

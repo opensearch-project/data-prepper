@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.model.log;
 
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-
 /**
  * A Jackson Standard implementation for {@link OpenTelemetryLog}.
  *
@@ -18,9 +16,22 @@ public class JacksonStandardOTelLog extends JacksonOtelLog {
         super(builder);
     }
 
+    public static JacksonStandardOTelLog.Builder builder() {
+        return new JacksonStandardOTelLog.Builder();
+    }
 
     @Override
     public String toJsonString() {
-        return ((JacksonEvent)this).toJsonString();
+        return getJsonNode().toString();
+    }
+
+    public static class Builder extends JacksonOtelLog.Builder {
+
+        @Override
+        public JacksonOtelLog build() {
+            populateEvent();
+            return new JacksonStandardOTelLog(this);
+        }
+
     }
 }

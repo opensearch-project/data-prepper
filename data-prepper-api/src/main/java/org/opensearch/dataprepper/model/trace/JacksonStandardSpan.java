@@ -5,11 +5,9 @@
 
 package org.opensearch.dataprepper.model.trace;
 
-import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,26 +16,40 @@ public class JacksonStandardSpan extends JacksonSpan {
         super(builder);
     }
     
+    public static JacksonStandardSpan.Builder builder() {
+        return new JacksonStandardSpan.Builder();
+    }
+
     @Override
     protected void validateParameters() {
-        Map<String, Object> data = toMap();
-        REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
-            final String value = (String) data.get(key);
-            checkNotNull(value, key + " cannot be null");
-            checkArgument(!value.isEmpty(), key + " cannot be an empty string");
-        });
-
+        new ParameterValidator().validate(Collections.emptyList(), REQUIRED_NON_EMPTY_KEYS, Collections.emptyList(), (HashMap<String, Object>)toMap());
     }
 
     @Override
     protected void checkAndSetDefaultValues() {
-        Map<String, Object> data = toMap();
-        data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+        putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
     }
 
     @Override
     public String toJsonString() {
-        return ((JacksonEvent)this).toJsonString();
+        return getJsonNode().toString();
     }
 
+    public static class Builder extends JacksonSpan.Builder {
+        @Override
+        public Builder withTraceGroup(final String traceGroup) {
+            return this;
+        }
+
+        @Override
+        public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
+            return this;
+        }
+
+        @Override
+        public JacksonSpan build() {
+            populateEvent();
+            return new JacksonStandardSpan(this);
+        }
+    }
 }

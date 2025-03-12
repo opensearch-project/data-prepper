@@ -43,10 +43,6 @@ public class JacksonSum extends JacksonMetric implements Sum {
         return new JacksonSum.Builder();
     }
 
-    protected void checkAndSetDefaultValues() {
-        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-    }
-
     @Override
     public Double getValue() {
         return this.get(VALUE_KEY, Double.class);
@@ -137,9 +133,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 2.1
          */
         public JacksonSum build(boolean flattenAttributes) {
-            this.withData(data);
-            this.withEventType(EventType.METRIC.toString());
-            this.withEventKind(Metric.KIND.SUM.toString());
+            populateEvent(KIND.SUM.toString());
 
             return new JacksonSum(this, flattenAttributes);
         }

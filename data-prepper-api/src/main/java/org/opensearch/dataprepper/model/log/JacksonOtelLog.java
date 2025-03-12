@@ -25,6 +25,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
     protected static final String OBSERVED_TIME_KEY = "observedTimestamp";
+    protected static final String SCOPE_KEY = "instrumentationScope";
+    protected static final String RESOURCE_KEY = "resource";
     protected static final String TIME_KEY = "time";
     protected static final String SERVICE_NAME_KEY = "serviceName";
     protected static final String ATTRIBUTES_KEY = "attributes";
@@ -33,12 +35,13 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     protected static final String BODY_KEY = "body";
     protected static final String SPAN_ID_KEY = "spanId";
     protected static final String TRACE_ID_KEY = "traceId";
+    protected static final String SEVERITY_KEY = "severity";
     protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
     protected static final String SEVERITY_TEXT_KEY = "severityText";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
 
     protected void checkAndSetDefaultValues() {
-        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+        putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
     }
 
     protected JacksonOtelLog(final JacksonOtelLog.Builder builder) {
@@ -96,6 +99,16 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     @Override
     public String getSeverityText() {
         return this.get(SEVERITY_TEXT_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
     }
 
     @Override
@@ -226,6 +239,30 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
         }
 
         /**
+         * Sets the scope of the log event
+         *
+         * @param scope scope to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withScope(final Map<String, Object> scope) {
+            data.put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        /**
+         * Sets the resource of the log event
+         *
+         * @param resource resource to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public Builder withResource(final Map<String, Object> resource) {
+            data.put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
+        /**
          * Sets the flags that are associated with this log event
          *
          * @param flags sets the flags for this log
@@ -309,6 +346,11 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
             return getThis();
         }
 
+        protected void populateEvent() {
+            this.withEventType(EventType.LOG.toString());
+            this.withData(data);
+        }
+
         /**
          * Returns a newly created {@link JacksonOtelLog}.
          *
@@ -316,8 +358,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * @since 2.1
          */
         public JacksonOtelLog build() {
-            this.withEventType(EventType.LOG.toString());
-            this.withData(data);
+            populateEvent();
             return new JacksonOtelLog(this);
         }
     }

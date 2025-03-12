@@ -43,20 +43,12 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     protected JacksonHistogram(JacksonHistogram.Builder builder, boolean flattenAttributes) {
         super(builder, flattenAttributes);
         checkAndSetDefaultValues();
-
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
     public static JacksonHistogram.Builder builder() {
         return new JacksonHistogram.Builder();
-    }
-
-    protected void validateParameters() {
-        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
-    }
-
-    protected void checkAndSetDefaultValues() {
-        toMap().computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
     }
 
     @Override
@@ -263,9 +255,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 2.1
          */
         public JacksonHistogram build(boolean flattenAttributes) {
-            this.withData(data);
-            this.withEventKind(KIND.HISTOGRAM.toString());
-            this.withEventType(EventType.METRIC.toString());
+            populateEvent(KIND.HISTOGRAM.toString());
 
             return new JacksonHistogram(this, flattenAttributes);
         }
