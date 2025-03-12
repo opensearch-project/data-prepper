@@ -140,6 +140,7 @@ public class S3DlqWriterTest {
         when(config.getKeyPathPrefix()).thenReturn(keyPathPrefix);
         when(config.getS3Client()).thenReturn(s3Client);
         when(config.getBucket()).thenReturn(bucket);
+        when(config.getBucketOwner()).thenReturn(UUID.randomUUID().toString());
         when(dlqS3RequestTimer.recordCallable(any(Callable.class))).thenAnswer(a -> {
             try {
                 return a.getArgument(0, Callable.class).call();
@@ -161,6 +162,7 @@ public class S3DlqWriterTest {
         assertThat(putObjectRequest.bucket(), is(equalTo(bucket)));
         assertThat(putObjectRequest.key(), startsWith(String.format("%s-%s-%s", expectedKeyPrefix, pipelineName, pluginId)));
         assertThat(putObjectRequest.key(), endsWith(".json"));
+        assertThat(putObjectRequest.expectedBucketOwner(), equalTo(config.getBucketOwner()));
         verify(dlqS3RequestSuccessCounter).increment();
         verify(dlqS3RecordsSuccessCounter).increment(dlqObjects.size());
     }
