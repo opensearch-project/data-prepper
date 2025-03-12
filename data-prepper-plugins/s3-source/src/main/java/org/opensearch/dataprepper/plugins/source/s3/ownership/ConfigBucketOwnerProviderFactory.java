@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.plugins.source.s3.StsArnRole;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 import java.net.MalformedURLException;
-import java.util.Optional;
 
 /**
  * Produces a {@link BucketOwnerProvider} from the S3 source configuration as
