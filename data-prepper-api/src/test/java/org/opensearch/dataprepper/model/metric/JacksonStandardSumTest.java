@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -39,6 +40,7 @@ public class JacksonStandardSumTest extends JacksonSumTest {
         String attrKey = UUID.randomUUID().toString();
         String attrVal = UUID.randomUUID().toString();
         jacksonSum = createObjectUnderTest(Map.of(attrKey, attrVal));
+        assertThat(jacksonSum, instanceOf(JacksonStandardSum.class));
         final String jsonResult = jacksonSum.toJsonString();
         String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
 

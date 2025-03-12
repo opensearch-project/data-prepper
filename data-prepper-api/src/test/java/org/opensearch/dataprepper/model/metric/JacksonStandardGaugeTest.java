@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.util.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONAssert;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -44,6 +45,7 @@ public class JacksonStandardGaugeTest extends JacksonGaugeTest {
     @Override
     public void testGaugeToJsonString() throws Exception {
         jacksonGauge = createObjectUnderTest(null);
+        assertThat(jacksonGauge, instanceOf(JacksonStandardGauge.class));
         final String jsonResult = jacksonGauge.toJsonString();
         final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
 

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 
 import org.junit.jupiter.api.Test;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -89,6 +90,7 @@ public class JacksonStandardSpanTest extends JacksonSpanTest {
     @Override
     public void testToJsonStringAllParameters() throws JsonProcessingException, JSONException {
         jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
+        assertThat(jacksonSpan, instanceOf(JacksonStandardSpan.class));
         final String actual = jacksonSpan.toJsonString();
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/standard_span.json"));
         String expected = String.format(file, TEST_TIME_KEY1, TEST_KEY2);

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.equalTo;
 import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -52,6 +53,7 @@ public class JacksonStandardOTelLogTest extends JacksonOtelLogTest {
         JacksonOtelLog testLog = JacksonStandardOTelLog.builder()
                 .withAttributes(Map.of("key", "value"))
                 .build();
+        assertThat(testLog, instanceOf(JacksonStandardOTelLog.class));
         assertThat(testLog.toJsonString(), equalTo("{\"attributes\":{\"key\":\"value\"}}"));
 
         testLog.put("attributes", "a string");
