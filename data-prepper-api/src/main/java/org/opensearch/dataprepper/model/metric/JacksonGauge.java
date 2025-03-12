@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
 
     protected JacksonGauge(Builder builder, boolean flattenAttributes) {
         super(builder, flattenAttributes);
+        checkAndSetDefaultValues();
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
@@ -96,16 +99,9 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
          * @since 2.1
          */
         public JacksonGauge build(boolean flattenAttributes) {
-            this.withEventKind(Metric.KIND.GAUGE.toString());
-            this.withData(data);
-            this.withEventType(EventType.METRIC.toString());
-            checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            populateEvent(KIND.GAUGE.toString());
             return new JacksonGauge(this, flattenAttributes);
         }
 
-        private void checkAndSetDefaultValues() {
-            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-        }
     }
 }
