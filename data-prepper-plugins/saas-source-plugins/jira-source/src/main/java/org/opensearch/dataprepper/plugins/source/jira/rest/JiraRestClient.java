@@ -52,7 +52,7 @@ public class JiraRestClient extends AtlassianRestClient {
     private final Counter searchRequestsFailedCounter;
 
     public JiraRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig, PluginMetrics pluginMetrics) {
-        super(restTemplate, authConfig);
+        super(restTemplate, authConfig, pluginMetrics);
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 
