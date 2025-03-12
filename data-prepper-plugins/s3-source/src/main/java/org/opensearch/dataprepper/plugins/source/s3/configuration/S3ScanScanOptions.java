@@ -40,9 +40,6 @@ public class S3ScanScanOptions {
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
-    @JsonProperty("metadata_only")
-    private boolean metadata_only = false;
-
     @JsonProperty("buckets")
     @Valid
     private List<S3ScanBucketOptions> buckets;
@@ -93,5 +90,4 @@ public class S3ScanScanOptions {
 
     public Duration getAcknowledgmentTimeout() { return acknowledgmentTimeout; }
 
-    public boolean getMetdataOnly() { return metadata_only; }
 }

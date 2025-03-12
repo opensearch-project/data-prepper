@@ -147,7 +147,6 @@ public class S3ScanObjectWorkerIT {
         buffer = mock(Buffer.class);
         recordsReceived = 0;
 
-        //s3ScanBucketOptions = mock(S3ScanBucketOptions.class);
         s3ObjectPluginMetrics = mock(S3ObjectPluginMetrics.class);
         final Counter counter = mock(Counter.class);
         final DistributionSummary distributionSummary = mock(DistributionSummary.class);
@@ -216,7 +215,6 @@ public class S3ScanObjectWorkerIT {
         when(pluginMetrics.counter(S3_OBJECTS_DELETE_FAILED_METRIC_NAME)).thenReturn(s3DeleteFailedCounter);
         S3ObjectDeleteWorker s3ObjectDeleteWorker = new S3ObjectDeleteWorker(s3Client, pluginMetrics);
 
-        //when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(s3ScanBucketOptions));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         lenient().when(s3ScanSchedulingOptions.getInterval()).thenReturn(Duration.ofHours(1));
