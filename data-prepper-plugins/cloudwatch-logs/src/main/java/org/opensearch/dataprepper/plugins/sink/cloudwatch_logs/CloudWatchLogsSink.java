@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -86,7 +87,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     }
 
     @Override
-    public void doOutput(Collection<Record<Event>> records) {
+    public void doOutput(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         cloudWatchLogsService.processLogEvents(records);
     }
 

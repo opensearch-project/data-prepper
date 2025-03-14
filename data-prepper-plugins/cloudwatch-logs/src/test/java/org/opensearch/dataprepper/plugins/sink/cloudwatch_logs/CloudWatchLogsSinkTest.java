@@ -108,7 +108,7 @@ class CloudWatchLogsSinkTest {
             testCloudWatchSink.doInitialize();
             Collection<Record<Event>> spyEvents = getMockedRecords();
 
-            testCloudWatchSink.doOutput(spyEvents);
+            testCloudWatchSink.doOutput(spyEvents, null);
 
             for (Record<Event> spyEvent : spyEvents) {
                 verify(spyEvent, atLeast(1)).getData();
@@ -129,7 +129,7 @@ class CloudWatchLogsSinkTest {
 
             assertTrue(spyEvents.isEmpty());
 
-            testCloudWatchSink.doOutput(spyEvents);
+            testCloudWatchSink.doOutput(spyEvents, null);
             verify(spyEvents, times(2)).isEmpty();
         }
     }
