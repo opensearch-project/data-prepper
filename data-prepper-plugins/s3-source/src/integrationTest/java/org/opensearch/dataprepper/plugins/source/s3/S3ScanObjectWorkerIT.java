@@ -449,17 +449,16 @@ public class S3ScanObjectWorkerIT {
 
     @Test
     public void processS3Object_test_multiple_dataselections_on_multiple_buckets() throws Exception {
-        String bucket2 = System.getProperty("tests.s3source.bucket2");
-        S3ObjectGenerator s3ObjectGenerator2 = new S3ObjectGenerator(s3Client, bucket2);
         String keyPrefix = "s3source/s3-scan/dataMetadataTest/" + Instant.now().toEpochMilli();
         final String bucketOptionYaml = "name: " + bucket + "\n" +
                 "filter:\n" +
                 "  include_prefix:\n" +
                 "    - " + keyPrefix;
-        final String bucketOptionYaml2 = "name: " + bucket2 + "\n" +
+        String keyPrefix2 = "s3source/s3-scan/dataTest/" + Instant.now().toEpochMilli();
+        final String bucketOptionYaml2 = "name: " + bucket + "\n" +
                 "filter:\n" +
                 "  include_prefix:\n" +
-                "    - " + keyPrefix;
+                "    - " + keyPrefix2;
         S3ScanBucketOption s3BucketOption1 = objectMapper.readValue(bucketOptionYaml, S3ScanBucketOption.class);
         final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
                 .setBucketOption(s3BucketOption1)
@@ -499,9 +498,9 @@ public class S3ScanObjectWorkerIT {
             s3ObjectGenerator.write(1, key, recordsGenerator, Boolean.FALSE);
         }
     
-        final String key2 = keyPrefix +"/datatest."+recordsGenerator.getFileExtension();
+        final String key2 = keyPrefix2 +"/datatest."+recordsGenerator.getFileExtension();
         int numberOfRecordsInObject = 100;
-        s3ObjectGenerator2.write(numberOfRecordsInObject, key2, recordsGenerator, Boolean.FALSE);
+        s3ObjectGenerator.write(numberOfRecordsInObject, key2, recordsGenerator, Boolean.FALSE);
         int numberOfObjects = numberOfMetadataObjects + numberOfRecordsInObject;
 
         final S3ObjectRequest s3ObjectRequest = new S3ObjectRequest.Builder(buffer, numberOfObjectsToAccumulate,
@@ -532,10 +531,6 @@ public class S3ScanObjectWorkerIT {
                             .key(deleteKey).build();
             s3Client.deleteObject(deleteObjectRequest);
         }
-        final DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                        .bucket(bucket2)
-                        .key(key2).build();
-        s3Client.deleteObject(deleteObjectRequest);
 
     }
 

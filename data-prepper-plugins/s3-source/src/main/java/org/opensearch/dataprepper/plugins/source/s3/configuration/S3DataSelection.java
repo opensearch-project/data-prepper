@@ -31,7 +31,7 @@ public enum S3DataSelection {
 
     @JsonCreator
     public static S3DataSelection fromOptionValue(final String name) {
-        return S3_DATA_SELECTION_MAP.get(name.toLowerCase());
+        return S3_DATA_SELECTION_MAP.get(name);
     }
 }
 
