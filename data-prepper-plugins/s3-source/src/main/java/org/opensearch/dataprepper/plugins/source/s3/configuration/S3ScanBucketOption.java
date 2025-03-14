@@ -28,6 +28,9 @@ public class S3ScanBucketOption {
     @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String name;
 
+    @JsonProperty("data_selection")
+    private S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
+
     @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
@@ -50,6 +53,10 @@ public class S3ScanBucketOption {
     @AssertFalse(message = "bucket start_time or end_time cannot be used along with range")
     public boolean hasValidTimeAndRangeOptions() {
         return (startTime != null || endTime != null) && range != null;
+    }
+
+    public S3DataSelection getDataSelection() {
+        return dataSelection;
     }
 
     public String getName() {

@@ -37,6 +37,10 @@ public class S3InputFile implements InputFile {
         this.s3ObjectPluginMetrics = s3ObjectPluginMetrics;
     }
 
+    public S3ObjectReference getObjectReference() {
+        return s3ObjectReference;
+    }
+
     /**
      * Note: this may be stale if file was deleted since metadata is cached for size/existence checks.
      *

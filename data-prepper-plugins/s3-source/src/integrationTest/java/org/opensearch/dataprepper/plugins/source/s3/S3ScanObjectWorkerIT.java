@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -35,6 +41,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.core.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectCSVOption;
@@ -47,10 +54,12 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompressionType;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -104,6 +113,8 @@ public class S3ScanObjectWorkerIT {
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
     private PluginMetrics pluginMetrics;
+    @Mock
+    private S3ScanBucketOptions s3ScanBucketOptions;
     @Mock
     private S3ScanScanOptions s3ScanScanOptions;
     @Mock
@@ -177,7 +188,7 @@ public class S3ScanObjectWorkerIT {
                                                    final int numberOfRecordsToAccumulate,
                                                    final String expression,
                                                    final boolean shouldCompress,
-                                                   final ScanOptions scanOptions,
+                                                   final List<ScanOptions> scanOptions,
                                                    final boolean isSelectEnabled) throws JsonProcessingException {
         final String fileExtension = recordsGenerator.getFileExtension();
         final String csvYaml ="file_header_info: none";
@@ -212,7 +223,7 @@ public class S3ScanObjectWorkerIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
 
-        return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
+        return new ScanObjectWorker(s3Client, scanOptions, createObjectUnderTest(s3ObjectRequest)
         ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
     }
 
@@ -254,7 +265,7 @@ public class S3ScanObjectWorkerIT {
                 numberOfRecordsToAccumulate,
                 expression,
                 Boolean.FALSE,
-                startTimeAndRangeScanOptions,
+                List.of(startTimeAndRangeScanOptions),
                 Boolean.TRUE);
 
         final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -291,7 +302,7 @@ public class S3ScanObjectWorkerIT {
                 numberOfRecordsToAccumulate,
                 recordsGenerator.getS3SelectExpression(),
                 shouldCompress,
-                scanOptions.build(),
+                List.of(scanOptions.build()),
                 ThreadLocalRandom.current().nextBoolean());
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
@@ -341,7 +352,7 @@ public class S3ScanObjectWorkerIT {
                 numberOfRecordsToAccumulate,
                 recordsGenerator.getS3SelectExpression(),
                 shouldCompress,
-                s3ScanOptionsBuilder.build(),
+                List.of(s3ScanOptionsBuilder.build()),
                 ThreadLocalRandom.current().nextBoolean());
 
 
@@ -366,6 +377,163 @@ public class S3ScanObjectWorkerIT {
 
         executorService.shutdownNow();
     }
+
+    @Test
+    public void processS3Object_test_metadata_only() throws Exception {
+        String keyPrefix = "s3source/s3-scan/metadataTest/" + Instant.now().toEpochMilli();
+        final String bucketOptionYaml = "name: " + bucket + "\n" +
+                "data_selection: metadata_only\n"+
+                "filter:\n" +
+                "  include_prefix:\n" +
+                "    - " + keyPrefix;
+        S3ScanBucketOption s3BucketOption = objectMapper.readValue(bucketOptionYaml, S3ScanBucketOption.class);
+        final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
+                .setBucketOption(s3BucketOption)
+                .setStartDateTime(LocalDateTime.now().minusDays(1))
+                .setEndDateTime(LocalDateTime.now().plus(Duration.ofMinutes(5)))
+                .build();
+        recordsReceived = 0;
+        lenient().doAnswer(a -> {
+            final Collection<Record<Event>> recordsCollection = a.getArgument(0);
+            recordsReceived += recordsCollection.size();
+            return null;
+        }).when(buffer).writeAll(anyCollection(), anyInt());
+        when(s3ScanBucketOptions.getS3ScanBucketOption()).thenReturn(s3BucketOption);
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(s3ScanBucketOptions));
+
+        when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
+        lenient().when(s3ScanSchedulingOptions.getInterval()).thenReturn(Duration.ofHours(1));
+        lenient().when(s3ScanSchedulingOptions.getCount()).thenReturn(1);
+
+        int numberOfObjects = 10;
+        int numberOfObjectsToAccumulate = 1;
+        final RecordsGenerator recordsGenerator = new NewlineDelimitedRecordsGenerator();
+        final List<String> keyList = new ArrayList<>();
+        for (int i = 0; i < numberOfObjects; i++) {
+            final String key = keyPrefix +"/test"+i+"."+recordsGenerator.getFileExtension();
+            keyList.add(key);
+            s3ObjectGenerator.write(1, key, recordsGenerator, Boolean.FALSE);
+        }
+        final S3ObjectRequest s3ObjectRequest = new S3ObjectRequest.Builder(buffer, numberOfObjectsToAccumulate,
+                Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics)
+                .bucketOwnerProvider(bucketOwnerProvider)
+                .s3Client(s3Client)
+                .build();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+        acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
+        final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
+                1,
+                null,
+                Boolean.FALSE,
+                List.of(startTimeAndRangeScanOptions),
+                Boolean.TRUE);
+
+        final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.submit(objectUnderTest::run);
+
+        await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfObjects));
+        final int expectedWrites = numberOfObjects / numberOfObjectsToAccumulate + (numberOfObjects % numberOfObjectsToAccumulate != 0 ? 1 : 0);
+        verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
+
+        assertThat(recordsReceived, equalTo(numberOfObjects));
+
+        for (String deleteKey: keyList) {
+            final DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(deleteKey).build();
+            s3Client.deleteObject(deleteObjectRequest);
+        }
+
+    }
+
+    @Test
+    public void processS3Object_test_multiple_dataselections_on_multiple_buckets() throws Exception {
+        String keyPrefix = "s3source/s3-scan/dataMetadataTest/" + Instant.now().toEpochMilli();
+        final String bucketOptionYaml = "name: " + bucket + "\n" +
+                "filter:\n" +
+                "  include_prefix:\n" +
+                "    - " + keyPrefix;
+        String keyPrefix2 = "s3source/s3-scan/dataTest/" + Instant.now().toEpochMilli();
+        final String bucketOptionYaml2 = "name: " + bucket + "\n" +
+                "filter:\n" +
+                "  include_prefix:\n" +
+                "    - " + keyPrefix2;
+        S3ScanBucketOption s3BucketOption1 = objectMapper.readValue(bucketOptionYaml, S3ScanBucketOption.class);
+        final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
+                .setBucketOption(s3BucketOption1)
+                .setStartDateTime(LocalDateTime.now().minusDays(1))
+                .setEndDateTime(LocalDateTime.now().plus(Duration.ofMinutes(5)))
+                .build();
+        S3ScanBucketOption s3BucketOption2 = objectMapper.readValue(bucketOptionYaml2, S3ScanBucketOption.class);
+        final ScanOptions startTimeAndRangeScanOptions2 = new ScanOptions.Builder()
+                .setBucketOption(s3BucketOption2)
+                .setStartDateTime(LocalDateTime.now().minusDays(1))
+                .setEndDateTime(LocalDateTime.now().plus(Duration.ofMinutes(5)))
+                .build();
+        recordsReceived = 0;
+        lenient().doAnswer(a -> {
+            final Collection<Record<Event>> recordsCollection = a.getArgument(0);
+            recordsReceived += recordsCollection.size();
+            return null;
+        }).when(buffer).writeAll(anyCollection(), anyInt());
+        when(s3ScanBucketOptions.getS3ScanBucketOption()).thenReturn(s3BucketOption1);
+
+        S3ScanBucketOptions s3ScanBucketOptions2 = mock(S3ScanBucketOptions.class);
+        when(s3ScanBucketOptions2.getS3ScanBucketOption()).thenReturn(s3BucketOption2);
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(s3ScanBucketOptions, s3ScanBucketOptions2));
+
+        when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
+        lenient().when(s3ScanSchedulingOptions.getInterval()).thenReturn(Duration.ofHours(1));
+        lenient().when(s3ScanSchedulingOptions.getCount()).thenReturn(1);
+
+        int numberOfMetadataObjects = 10;
+        int numberOfObjectsToAccumulate = 1;
+        final RecordsGenerator recordsGenerator = new NewlineDelimitedRecordsGenerator();
+        final List<String> keyList = new ArrayList<>();
+        for (int i = 0; i < numberOfMetadataObjects; i++) {
+            final String key = keyPrefix +"/test"+i+"."+recordsGenerator.getFileExtension();
+            keyList.add(key);
+            s3ObjectGenerator.write(1, key, recordsGenerator, Boolean.FALSE);
+        }
+    
+        final String key2 = keyPrefix2 +"/datatest."+recordsGenerator.getFileExtension();
+        int numberOfRecordsInObject = 100;
+        s3ObjectGenerator.write(numberOfRecordsInObject, key2, recordsGenerator, Boolean.FALSE);
+        int numberOfObjects = numberOfMetadataObjects + numberOfRecordsInObject;
+
+        final S3ObjectRequest s3ObjectRequest = new S3ObjectRequest.Builder(buffer, numberOfObjectsToAccumulate,
+                Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics)
+                .bucketOwnerProvider(bucketOwnerProvider)
+                .s3Client(s3Client)
+                .build();
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+        acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
+        final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
+                1,
+                null,
+                Boolean.FALSE,
+                List.of(startTimeAndRangeScanOptions, startTimeAndRangeScanOptions2),
+                Boolean.TRUE);
+
+        final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.submit(objectUnderTest::run);
+
+        await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfObjects));
+        final int expectedWrites = numberOfObjects / numberOfObjectsToAccumulate + (numberOfObjects % numberOfObjectsToAccumulate != 0 ? 1 : 0);
+        verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
+
+        assertThat(recordsReceived, equalTo(numberOfObjects));
+        for (String deleteKey: keyList) {
+            final DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(deleteKey).build();
+            s3Client.deleteObject(deleteObjectRequest);
+        }
+
+    }
+
 
     private String getKeyString(final String keyPrefix ,
                                 final RecordsGenerator recordsGenerator,
