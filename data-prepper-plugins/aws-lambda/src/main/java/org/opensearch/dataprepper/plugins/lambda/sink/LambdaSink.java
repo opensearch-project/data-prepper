@@ -177,7 +177,8 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doOutput(final Collection<Record<Event>> records, final PipelineIf failurePipeline) {
-        if (records.isEmpty()) {
+        if (!sinkInitialized) {
+            LOG.warn("LambdaSink doOutput called before initialization");
             return;
         }
         reentrantLock.lock();
