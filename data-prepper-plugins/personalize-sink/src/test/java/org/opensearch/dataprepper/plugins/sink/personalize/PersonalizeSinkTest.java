@@ -80,6 +80,6 @@ class PersonalizeSinkTest {
         Assertions.assertNotNull(personalizeSink);
         personalizeSink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
-        personalizeSink.doOutput(records);
+        personalizeSink.doOutput(records, null);
     }
 }

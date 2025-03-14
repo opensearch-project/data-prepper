@@ -128,7 +128,7 @@ class S3SinkTest {
         Assertions.assertNotNull(s3Sink);
         s3Sink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
-        s3Sink.doOutput(records);
+        s3Sink.doOutput(records, null);
     }
 
     @Test
