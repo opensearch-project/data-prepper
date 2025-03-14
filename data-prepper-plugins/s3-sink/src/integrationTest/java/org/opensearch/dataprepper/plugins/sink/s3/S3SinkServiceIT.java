@@ -192,7 +192,7 @@ class S3SinkServiceIT {
 
         int s3ObjectCountBeforeIngest = gets3ObjectCount();
         S3SinkService s3SinkService = createObjectUnderTest();
-        s3SinkService.output(setEventQueue());
+        s3SinkService.output(setEventQueue(), null);
         int s3ObjectCountAfterIngest = gets3ObjectCount();
         assertThat(s3ObjectCountAfterIngest, equalTo(s3ObjectCountBeforeIngest + 1));
     }
@@ -210,7 +210,7 @@ class S3SinkServiceIT {
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
 
-        s3SinkService.output(recordsData);
+        s3SinkService.output(recordsData, null);
         String objectData = new String(getS3Object());
 
         final ObjectMapper objectMapperForDeserialization = new ObjectMapper();
@@ -242,7 +242,7 @@ class S3SinkServiceIT {
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
 
-        s3SinkService.output(recordsData);
+        s3SinkService.output(recordsData, null);
         byte[] s3ObjectBytes = getS3Object();
 
         ByteArrayInputStream s3ObjectInputStream = new ByteArrayInputStream(s3ObjectBytes);
@@ -373,7 +373,7 @@ class S3SinkServiceIT {
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = getRecordList();
 
-        s3SinkService.output(recordsData);
+        s3SinkService.output(recordsData, null);
 
         List<HashMap<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(getS3Object()));
         int index = 0;
