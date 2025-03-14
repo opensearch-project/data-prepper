@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -21,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
@@ -31,6 +35,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class WorkerSchedulerTest {
 
+    private final String pluginName = "sampleTestPlugin";
     @Mock
     Buffer<Record<Event>> buffer;
     @Mock
@@ -39,14 +44,19 @@ public class WorkerSchedulerTest {
     private CrawlerSourceConfig sourceConfig;
     @Mock
     private Crawler crawler;
-
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private AcknowledgementSet acknowledgementSet;
     @Mock
     private SourcePartitionStoreItem sourcePartitionStoreItem;
 
-
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -58,12 +68,15 @@ public class WorkerSchedulerTest {
 
     @Test
     void testLeaderPartitionsCreation() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
 
         String sourceId = UUID.randomUUID() + "|" + SaasSourcePartition.PARTITION_TYPE;
         String state = "{\"keyAttributes\":{\"project\":\"project-1\"},\"totalItems\":0,\"loadedItems\":20,\"exportStartTime\":1729391235717,\"itemIds\":[\"GTMS-25\",\"GTMS-24\"]}";
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
         when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
+        when(sourceConfig.isAcknowledgments()).thenReturn(true);
+        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
         PartitionFactory factory = new PartitionFactory();
         EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.of(sourcePartition));
@@ -76,13 +89,14 @@ public class WorkerSchedulerTest {
 
         // Check if crawler was invoked and updated leader lease renewal time
         SaasWorkerProgressState stateObj = (SaasWorkerProgressState) sourcePartition.getProgressState().get();
-        verify(crawler, atLeast(1)).executePartition(stateObj, buffer, sourceConfig);
+        verify(crawler, atLeast(1)).executePartition(stateObj, buffer, acknowledgementSet);
         verify(coordinator, atLeast(1)).completePartition(eq(sourcePartition));
     }
 
     @Test
     void testEmptyProgressState() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
 
         String sourceId = UUID.randomUUID() + "|" + SaasSourcePartition.PARTITION_TYPE;
         when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(null);
@@ -104,7 +118,8 @@ public class WorkerSchedulerTest {
 
     @Test
     void testExceptionWhileAcquiringWorkerPartition() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -119,8 +134,8 @@ public class WorkerSchedulerTest {
 
     @Test
     void testWhenNoPartitionToWorkOn() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
-        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.empty());
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(workerScheduler);
@@ -135,7 +150,8 @@ public class WorkerSchedulerTest {
 
     @Test
     void testRetryBackOffTriggeredWhenExceptionOccurred() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(buffer, coordinator, sourceConfig, crawler);
+        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
+                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
         given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();

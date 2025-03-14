@@ -30,12 +30,12 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataType;
+import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.DataTypeHelper;
-import org.opensearch.dataprepper.plugins.source.rds.datatype.MySQLDataType;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
+import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,18 +45,21 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(BinlogEventListener.class);
 
+    static final int DEFAULT_NUM_WORKERS = 1;
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String DATA_PREPPER_EVENT_TYPE = "event";
@@ -65,6 +68,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String REPLICATION_LOG_PROCESSING_ERROR_COUNT = "replicationLogEntryProcessingErrors";
     static final String SEPARATOR = ".";
 
     /**
@@ -82,7 +86,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final StreamRecordConverter recordConverter;
     private final BinaryLogClient binaryLogClient;
     private final Buffer<Record<Event>> buffer;
-    private final List<String> tableNames;
+    private final Set<String> tableNames;
     private final String s3Prefix;
     private final boolean isAcknowledgmentsEnabled;
     private final PluginMetrics pluginMetrics;
@@ -97,7 +101,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
     private final Timer eventProcessingTimer;
-
+    private final Counter eventProcessingErrorCounter;
 
     /**
      * currentBinlogCoordinate is the coordinate where next event will start
@@ -120,17 +124,18 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.s3Prefix = s3Prefix;
-        tableNames = sourceConfig.getTableNames();
+        tableNames = dbTableMetadata.getTableColumnDataTypeMap().keySet();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();
         binlogEventExecutorService = Executors.newFixedThreadPool(
-                sourceConfig.getStream().getNumWorkers(), BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
+                DEFAULT_NUM_WORKERS, BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-binlog-processor"));
 
         this.dbTableMetadata = dbTableMetadata;
         this.streamCheckpointManager = new StreamCheckpointManager(
                 streamCheckpointer, sourceConfig.isAcknowledgmentsEnabled(),
-                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout());
+                acknowledgementSetManager, this::stopClient, sourceConfig.getStreamAcknowledgmentTimeout(),
+                sourceConfig.getEngine(), pluginMetrics);
         streamCheckpointManager.start();
 
         this.cascadeActionDetector = cascadeActionDetector;
@@ -141,6 +146,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
+        eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
     public static BinlogEventListener create(final StreamPartition streamPartition,
@@ -200,7 +206,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
         // Trigger a checkpoint update for this rotate when there're no row mutation events being processed
         if (streamCheckpointManager.getChangeEventStatuses().isEmpty()) {
-            ChangeEventStatus changeEventStatus = streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate);
+            ChangeEventStatus changeEventStatus = streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate, 0);
             if (isAcknowledgmentsEnabled) {
                 changeEventStatus.setAcknowledgmentStatus(ChangeEventStatus.AcknowledgmentStatus.POSITIVE_ACK);
             }
@@ -209,17 +215,28 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final TableMapEventData eventData = event.getData();
+        final String databaseName = eventData.getDatabase();
+        final String tableName = eventData.getTable();
+        final String fullTableName = databaseName + SEPARATOR + tableName;
+
+        if (!isTableOfInterest(fullTableName)) {
+            return;
+        }
+
         final TableMapEventMetadata tableMapEventMetadata = eventData.getEventMetadata();
         final List<String> columnNames = tableMapEventMetadata.getColumnNames();
         final List<String> primaryKeys = tableMapEventMetadata.getSimplePrimaryKeys().stream()
                 .map(columnNames::get)
                 .collect(Collectors.toList());
-        final TableMetadata tableMetadata = new TableMetadata(
-                eventData.getTable(), eventData.getDatabase(), columnNames, primaryKeys,
-                getSetStrValues(eventData), getEnumStrValues(eventData));
-        if (isTableOfInterest(tableMetadata.getFullTableName())) {
-            tableMetadataMap.put(eventData.getTableId(), tableMetadata);
-        }
+        final TableMetadata tableMetadata = TableMetadata.builder()
+                .withTableName(tableName)
+                .withDatabaseName(databaseName)
+                .withColumnNames(columnNames)
+                .withPrimaryKeys(primaryKeys)
+                .withSetStrValues(getSetStrValues(eventData))
+                .withEnumStrValues(getEnumStrValues(eventData))
+                .build();
+        tableMetadataMap.put(eventData.getTableId(), tableMetadata);
     }
 
     private Map<String, String[]> getSetStrValues(final TableMapEventData eventData) {
@@ -347,9 +364,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             LOG.debug("Current binlog coordinate after receiving a row change event: " + currentBinlogCoordinate);
         }
 
+        final long recordCount = rows.size();
         AcknowledgementSet acknowledgementSet = null;
         if (isAcknowledgmentsEnabled) {
-            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(currentBinlogCoordinate);
+            acknowledgementSet = streamCheckpointManager.createAcknowledgmentSet(currentBinlogCoordinate, recordCount);
         }
 
         final long bytes = event.toString().getBytes().length;
@@ -370,7 +388,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             for (int i = 0; i < rowDataArray.length; i++) {
                 final Map<String, String> tbColumnDatatypeMap = dbTableMetadata.getTableColumnDataTypeMap().get(tableMetadata.getFullTableName());
                 final String columnDataType = tbColumnDatatypeMap.get(columnNames.get(i));
-                final Object data =  DataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
+                final Object data =  MySQLDataTypeHelper.getDataByColumnType(MySQLDataType.byDataType(columnDataType), columnNames.get(i),
                         rowDataArray[i], tableMetadata);
                 rowDataMap.put(columnNames.get(i), data);
             }
@@ -382,6 +400,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
             final Event pipelineEvent = recordConverter.convert(
                     dataPrepperEvent,
+                    tableMetadata.getDatabaseName(),
                     tableMetadata.getDatabaseName(),
                     tableMetadata.getTableName(),
                     bulkAction,
@@ -398,12 +417,12 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         if (isAcknowledgmentsEnabled) {
             acknowledgementSet.complete();
         } else {
-            streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate);
+            streamCheckpointManager.saveChangeEventsStatus(currentBinlogCoordinate, recordCount);
         }
     }
 
     private boolean isTableOfInterest(String tableName) {
-        return new HashSet<>(tableNames).contains(tableName);
+        return tableNames.contains(tableName);
     }
 
     private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator, AcknowledgementSet acknowledgementSet) {
@@ -447,7 +466,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             eventProcessingTimer.record(() -> function.accept(event));
         } catch (Exception e) {
-            LOG.error("Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            LOG.error(NOISY, "Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            eventProcessingErrorCounter.increment();
         }
     }
 }

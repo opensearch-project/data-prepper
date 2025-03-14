@@ -11,10 +11,13 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
@@ -22,21 +25,21 @@ public class StreamWorker {
     private static final int DEFAULT_EXPORT_COMPLETE_WAIT_INTERVAL_MILLIS = 60_000;
 
     private final EnhancedSourceCoordinator sourceCoordinator;
-    private final BinaryLogClient binaryLogClient;
+    private final ReplicationLogClient replicationLogClient;
     private final PluginMetrics pluginMetrics;
 
     StreamWorker(final EnhancedSourceCoordinator sourceCoordinator,
-                 final BinaryLogClient binaryLogClient,
+                 final ReplicationLogClient replicationLogClient,
                  final PluginMetrics pluginMetrics) {
         this.sourceCoordinator = sourceCoordinator;
-        this.binaryLogClient = binaryLogClient;
+        this.replicationLogClient = replicationLogClient;
         this.pluginMetrics = pluginMetrics;
     }
 
     public static StreamWorker create(final EnhancedSourceCoordinator sourceCoordinator,
-                                      final BinaryLogClient binaryLogClient,
+                                      final ReplicationLogClient replicationLogClient,
                                       final PluginMetrics pluginMetrics) {
-        return new StreamWorker(sourceCoordinator, binaryLogClient, pluginMetrics);
+        return new StreamWorker(sourceCoordinator, replicationLogClient, pluginMetrics);
     }
 
     public void processStream(final StreamPartition streamPartition) {
@@ -51,19 +54,29 @@ public class StreamWorker {
             }
         }
 
-        setStartBinlogPosition(streamPartition);
+        if (replicationLogClient instanceof BinlogClientWrapper) {
+            setStartBinlogPosition(streamPartition);
+        } else {
+            setStartLsn(streamPartition);
+        }
 
         try {
             LOG.info("Connect to database to read change events.");
-            binaryLogClient.connect();
+            replicationLogClient.connect();
         } catch (Exception e) {
+            LOG.warn(NOISY, "Error while connecting to replication stream, will retry.", e);
+            sourceCoordinator.giveUpPartition(streamPartition);
             throw new RuntimeException(e);
         } finally {
-            try {
-                binaryLogClient.disconnect();
-            } catch (Exception e) {
-                LOG.error("Binary log client failed to disconnect.", e);
-            }
+            shutdown();
+        }
+    }
+
+    public void shutdown() {
+        try {
+            replicationLogClient.disconnect();
+        } catch (Exception e) {
+            LOG.error("Replication log client failed to disconnect.", e);
         }
     }
 
@@ -83,15 +96,26 @@ public class StreamWorker {
     }
 
     private void setStartBinlogPosition(final StreamPartition streamPartition) {
-        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getCurrentPosition();
+        final BinlogCoordinate startBinlogPosition = streamPartition.getProgressState().get().getMySqlStreamState().getCurrentPosition();
 
         // set start of binlog stream to current position if exists
         if (startBinlogPosition != null) {
             final String binlogFilename = startBinlogPosition.getBinlogFilename();
             final long binlogPosition = startBinlogPosition.getBinlogPosition();
             LOG.debug("Will start binlog stream from binlog file {} and position {}.", binlogFilename, binlogPosition);
+            BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
             binaryLogClient.setBinlogFilename(binlogFilename);
             binaryLogClient.setBinlogPosition(binlogPosition);
+        }
+    }
+
+    private void setStartLsn(final StreamPartition streamPartition) {
+        final String startLsn = streamPartition.getProgressState().get().getPostgresStreamState().getCurrentLsn();
+
+        if (startLsn != null) {
+            LOG.debug("Will start logical replication from LSN {}", startLsn);
+            LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
+            logicalReplicationClient.setStartLsn(LogSequenceNumber.valueOf(startLsn));
         }
     }
 }

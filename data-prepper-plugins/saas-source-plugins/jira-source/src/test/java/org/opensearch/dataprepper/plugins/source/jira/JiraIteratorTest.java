@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -5,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.jira.models.IssueBean;
 import org.opensearch.dataprepper.plugins.source.jira.models.SearchResults;
 import org.opensearch.dataprepper.plugins.source.jira.rest.JiraRestClient;
@@ -18,6 +29,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,8 +46,6 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.UPD
 @ExtendWith(MockitoExtension.class)
 public class JiraIteratorTest {
 
-    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
-
     @Mock
     private SearchResults mockSearchResults;
     @Mock
@@ -43,12 +53,13 @@ public class JiraIteratorTest {
     private JiraService jiraService;
     @Mock
     private JiraSourceConfig jiraSourceConfig;
-
     private JiraIterator jiraIterator;
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @BeforeEach
     void setUp() {
-        jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient));
+        jiraService = spy(new JiraService(jiraSourceConfig, jiraRestClient,
+                PluginMetrics.fromNames("jiraIteratorTest", "jira")));
     }
 
     public JiraIterator createObjectUnderTest() {
@@ -62,7 +73,7 @@ public class JiraIteratorTest {
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         when(mockSearchResults.getIssues()).thenReturn(new ArrayList<>());
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
         assertFalse(jiraIterator.hasNext());
     }
 
@@ -93,7 +104,7 @@ public class JiraIteratorTest {
         mockIssues.add(issue1);
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);
@@ -102,12 +113,44 @@ public class JiraIteratorTest {
     }
 
     @Test
-    void testItemInfoQueueEmpty(){
+    void testStartCrawlerThreads() {
+        jiraIterator = createObjectUnderTest();
+        jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.hasNext();
+        jiraIterator.hasNext();
+        assertEquals(1, jiraIterator.showFutureList().size());
+    }
+
+    @Test
+    void testFuturesCompleted() throws InterruptedException {
+        jiraIterator = createObjectUnderTest();
+        List<IssueBean> mockIssues = new ArrayList<>();
+        IssueBean issue1 = createIssueBean(false);
+        mockIssues.add(issue1);
+        IssueBean issue2 = createIssueBean(false);
+        mockIssues.add(issue2);
+        IssueBean issue3 = createIssueBean(false);
+        mockIssues.add(issue3);
+        when(mockSearchResults.getIssues()).thenReturn(mockIssues);
+        when(mockSearchResults.getTotal()).thenReturn(0);
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
+
+        jiraIterator.initialize(Instant.ofEpochSecond(0));
+        jiraIterator.setCrawlerQWaitTimeMillis(1);
+        jiraIterator.hasNext();
+
+        Thread.sleep(1);
+        jiraIterator.showFutureList().forEach(future -> assertTrue(future.isDone()));
+        assertEquals(jiraIterator.showItemInfoQueue().size(), mockIssues.size());
+    }
+
+    @Test
+    void testItemInfoQueueEmpty() {
         jiraIterator = createObjectUnderTest();
         List<IssueBean> mockIssues = new ArrayList<>();
         when(mockSearchResults.getIssues()).thenReturn(mockIssues);
         when(mockSearchResults.getTotal()).thenReturn(0);
-        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt(), any(JiraSourceConfig.class));
+        doReturn(mockSearchResults).when(jiraRestClient).getAllIssues(any(StringBuilder.class), anyInt());
 
         jiraIterator.initialize(Instant.ofEpochSecond(0));
         jiraIterator.setCrawlerQWaitTimeMillis(1);

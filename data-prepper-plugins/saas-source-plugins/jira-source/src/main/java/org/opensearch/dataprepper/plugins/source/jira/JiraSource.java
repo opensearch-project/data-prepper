@@ -1,3 +1,13 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.plugins.source.jira;
 
 
@@ -10,7 +20,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.source.jira.rest.auth.JiraAuthConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig;
+import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
@@ -29,18 +40,18 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PLU
 @DataPrepperPlugin(name = PLUGIN_NAME,
         pluginType = Source.class,
         pluginConfigurationType = JiraSourceConfig.class,
-        packagesToScan = {CrawlerApplicationContextMarker.class, JiraSource.class}
+        packagesToScan = {CrawlerApplicationContextMarker.class, AtlassianSourceConfig.class, JiraSource.class}
 )
 public class JiraSource extends CrawlerSourcePlugin {
 
     private static final Logger log = LoggerFactory.getLogger(JiraSource.class);
     private final JiraSourceConfig jiraSourceConfig;
-    private final JiraAuthConfig jiraOauthConfig;
+    private final AtlassianAuthConfig jiraOauthConfig;
 
     @DataPrepperPluginConstructor
     public JiraSource(final PluginMetrics pluginMetrics,
                       final JiraSourceConfig jiraSourceConfig,
-                      final JiraAuthConfig jiraOauthConfig,
+                      final AtlassianAuthConfig jiraOauthConfig,
                       final PluginFactory pluginFactory,
                       final AcknowledgementSetManager acknowledgementSetManager,
                       Crawler crawler,

@@ -269,7 +269,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('software.amazon.awssdk:bom:2.25.11')
+        implementation platform('software.amazon.awssdk:bom:2.30.23')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
     }
 }
@@ -350,7 +350,8 @@ coreProjects.each { coreProject ->
     def assembleTasks = collectTasksRecursively(coreProject, 'assemble')
     def publishTasks = collectTasksRecursively(coreProject, 'publish')
 
-    // Add these tasks as dependencies of the release task
-    release.dependsOn assembleTasks
-    release.dependsOn publishTasks
+    // Explicitly declare release task for better gradle compatibility
+    def releaseTask = tasks.named('release').get()
+    releaseTask.dependsOn assembleTasks
+    releaseTask.dependsOn publishTasks
 }

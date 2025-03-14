@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonInputConfig;
 import org.opensearch.dataprepper.plugins.kinesis.extension.KinesisLeaseConfig;
@@ -70,9 +72,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME;
-import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSED;
-import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSING_ERRORS;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_CHECKPOINT_FAILURES;
+import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.kinesis.source.processor.KinesisRecordProcessor.KINESIS_STREAM_TAG_KEY;
 
 public class KinesisSourceIT {
@@ -83,6 +87,8 @@ public class KinesisSourceIT {
     private static final String codec_plugin_name = "ndjson";
     private static final String LEASE_TABLE_PREFIX = "kinesis-lease-table";
     private static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 10;
+    private static final int MAX_INITIALIZATION_ATTEMPTS = 3;
+    private static final Duration BUFFER_TIMEOUT = Duration.ofMillis(1);
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
@@ -141,6 +147,12 @@ public class KinesisSourceIT {
     @Mock
     private Counter checkpointFailures;
 
+    @Mock
+    private DistributionSummary bytesReceivedSummary;
+
+    @Mock
+    private DistributionSummary bytesProcessedSummary;
+
     private KinesisClient kinesisClient;
 
     private DynamoDbClient dynamoDbClient;
@@ -165,6 +177,7 @@ public class KinesisSourceIT {
         when(kinesisStreamConfig.getName()).thenReturn(streamName);
         when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(CHECKPOINT_INTERVAL);
         when(kinesisStreamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.TRIM_HORIZON);
+        when(kinesisStreamConfig.getCompression()).thenReturn(CompressionOption.NONE);
         when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.ENHANCED_FAN_OUT);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
         when(kinesisLeaseConfig.getLeaseCoordinationTable()).thenReturn(kinesisLeaseCoordinationTableConfig);
@@ -179,7 +192,8 @@ public class KinesisSourceIT {
         when(kinesisSourceConfig.getCodec()).thenReturn(pluginModel);
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
         when(kinesisSourceConfig.getNumberOfRecordsToAccumulate()).thenReturn(NUMBER_OF_RECORDS_TO_ACCUMULATE);
-        when(kinesisSourceConfig.getBufferTimeout()).thenReturn(Duration.ofMillis(1));
+        when(kinesisSourceConfig.getBufferTimeout()).thenReturn(BUFFER_TIMEOUT);
+        when(kinesisSourceConfig.getMaxInitializationAttempts()).thenReturn(MAX_INITIALIZATION_ATTEMPTS);
 
         kinesisClientFactory = mock(KinesisClientFactory.class);
         when(kinesisClientFactory.buildDynamoDBClient(kinesisLeaseCoordinationTableConfig.getAwsRegion())).thenReturn(DynamoDbAsyncClient.builder()
@@ -204,10 +218,10 @@ public class KinesisSourceIT {
         when(pluginMetrics.counterWithTags(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamName))
                 .thenReturn(acknowledgementSetFailures);
 
-        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED, KINESIS_STREAM_TAG_KEY, streamName))
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamName))
                 .thenReturn(recordsProcessed);
 
-        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS, KINESIS_STREAM_TAG_KEY, streamName))
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamName))
                 .thenReturn(recordProcessingErrors);
 
         when(pluginMetrics.counterWithTags(KINESIS_CHECKPOINT_FAILURES, KINESIS_STREAM_TAG_KEY, streamName))
@@ -215,6 +229,9 @@ public class KinesisSourceIT {
 
         kinesisClient = KinesisClient.builder().region(Region.of(System.getProperty(AWS_REGION))).build();
         dynamoDbClient = DynamoDbClient.builder().region(Region.of(System.getProperty(AWS_REGION))).build();
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME)).thenReturn(bytesReceivedSummary);
+
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME)).thenReturn(bytesProcessedSummary);
         kinesisIngester = new KinesisIngester(kinesisClient, streamName, dynamoDbClient, leaseTableName);
 
         kinesisIngester.createStream();

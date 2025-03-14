@@ -36,12 +36,13 @@ import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.KinesisServiceClientConfiguration;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamRequest;
-import software.amazon.awssdk.services.kinesis.model.DescribeStreamResponse;
-import software.amazon.awssdk.services.kinesis.model.StreamDescription;
+import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryRequest;
+import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
+import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 import software.amazon.kinesis.common.InitialPositionInStream;
 import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.metrics.MetricsLevel;
+import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -165,21 +166,22 @@ public class KinesisServiceTest {
         when(awsAuthenticationConfig.getAwsStsExternalId()).thenReturn(UUID.randomUUID().toString());
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         when(awsAuthenticationConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
-        StreamDescription streamDescription = StreamDescription.builder()
+        StreamDescriptionSummary streamDescriptionSummary = StreamDescriptionSummary.builder()
                 .streamARN(String.format(streamArnFormat, awsAccountId, streamId))
                 .streamCreationTimestamp(streamCreationTime)
                 .streamName(streamId)
                 .build();
 
-        DescribeStreamRequest describeStreamRequest = DescribeStreamRequest.builder()
+        DescribeStreamSummaryRequest describeStreamSummaryRequest = DescribeStreamSummaryRequest.builder()
                 .streamName(streamId)
                 .build();
 
-        DescribeStreamResponse describeStreamResponse = DescribeStreamResponse.builder()
-                .streamDescription(streamDescription)
+        DescribeStreamSummaryResponse describeStreamSummaryResponse = DescribeStreamSummaryResponse.builder()
+                .streamDescriptionSummary(streamDescriptionSummary)
                 .build();
 
-        when(kinesisClient.describeStream(describeStreamRequest)).thenReturn(CompletableFuture.completedFuture(describeStreamResponse));
+        when(kinesisClient.describeStreamSummary(describeStreamSummaryRequest))
+                .thenReturn(CompletableFuture.completedFuture(describeStreamSummaryResponse));
 
         when(kinesisSourceConfig.getAwsAuthenticationConfig()).thenReturn(awsAuthenticationConfig);
         when(kinesisStreamConfig.getName()).thenReturn(streamId);
@@ -271,6 +273,30 @@ public class KinesisServiceTest {
         assertNotNull(schedulerObjectUnderTest.metricsConfig());
         assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
         assertNotNull(schedulerObjectUnderTest.processorConfig());
+        assertNotNull(schedulerObjectUnderTest.retrievalConfig());
+        verify(workerIdentifierGenerator, times(1)).generate();
+    }
+
+    @Test
+    void testCreateSchedulerWithPollingStrategyAndPollingConfig() {
+        when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
+        when(kinesisSourceConfig.getPollingConfig()).thenReturn(kinesisStreamPollingConfig);
+        KinesisService kinesisService = new KinesisService(kinesisSourceConfig, kinesisClientFactory, pluginMetrics, pluginFactory,
+            pipelineDescription, acknowledgementSetManager, kinesisLeaseConfigSupplier, workerIdentifierGenerator);
+        Scheduler schedulerObjectUnderTest = kinesisService.createScheduler(buffer);
+
+        assertEquals(kinesisService.getApplicationName(), pipelineName);
+        assertNotNull(schedulerObjectUnderTest);
+        assertNotNull(schedulerObjectUnderTest.checkpointConfig());
+        assertNotNull(schedulerObjectUnderTest.leaseManagementConfig());
+        assertSame(schedulerObjectUnderTest.leaseManagementConfig().initialPositionInStream().getInitialPositionInStream(), InitialPositionInStream.TRIM_HORIZON);
+        assertNotNull(schedulerObjectUnderTest.lifecycleConfig());
+        assertNotNull(schedulerObjectUnderTest.metricsConfig());
+        assertSame(schedulerObjectUnderTest.metricsConfig().metricsLevel(), MetricsLevel.DETAILED);
+        assertNotNull(schedulerObjectUnderTest.processorConfig());
+        assertNotNull(schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig());
+        assertEquals(((PollingConfig)schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig()).maxRecords(), kinesisStreamPollingConfig.getMaxPollingRecords());
+        assertEquals(((PollingConfig)schedulerObjectUnderTest.retrievalConfig().retrievalSpecificConfig()).idleTimeBetweenReadsInMillis(), kinesisStreamPollingConfig.getIdleTimeBetweenReads().toMillis());
         assertNotNull(schedulerObjectUnderTest.retrievalConfig());
         verify(workerIdentifierGenerator, times(1)).generate();
     }

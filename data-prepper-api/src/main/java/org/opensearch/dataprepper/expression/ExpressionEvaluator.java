@@ -27,11 +27,17 @@ public interface ExpressionEvaluator {
     Object evaluate(final String statement, final Event context);
 
     default Boolean evaluateConditional(final String statement, final Event context) {
-        final Object result = evaluate(statement, context);
-        if (result instanceof Boolean) {
-            return (Boolean) result;
-        } else {
-            throw new ClassCastException("Unexpected expression return type of " + result.getClass());
+        Object result;
+        try {
+            result = evaluate(statement, context);
+            if (result instanceof Boolean) {
+                return (Boolean) result;
+            }
+            throw new ClassCastException("Unexpected expression return value of " + result);
+        } catch (ExpressionParsingException e) {
+            throw e;
+        } catch (ExpressionEvaluationException e) {
+            return false;
         }
     }
 

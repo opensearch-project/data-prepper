@@ -26,6 +26,11 @@ class NumericCompareOperator implements Operator<Boolean> {
     }
 
     @Override
+    public boolean isBooleanOperator() {
+        return true;
+    }
+
+    @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
         return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_relationalOperatorExpression;
     }
@@ -40,6 +45,7 @@ class NumericCompareOperator implements Operator<Boolean> {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];
+        checkArgument(leftValue != null && rightValue != null, displayName + " requires operands length needs to be non-null.");
         final Class<?> leftValueClass = leftValue.getClass();
         final Class<?> rightValueClass = rightValue.getClass();
         if (!operandsToOperationMap.containsKey(leftValueClass)) {

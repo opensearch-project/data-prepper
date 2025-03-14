@@ -9,6 +9,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
@@ -384,6 +386,34 @@ class PipelineTests {
 
         assertEquals(1, testPipeline.getSinks().size());
         assertEquals(testSink, testPipeline.getSinks().iterator().next());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testAreAcknowledgementsEnabled(Boolean isEnabled) {
+        final Source source = mock(Source.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(source.areAcknowledgementsEnabled()).thenReturn(isEnabled);
+        when(buffer.areAcknowledgementsEnabled()).thenReturn(isEnabled);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, source, buffer, Collections.emptyList(),
+                Collections.emptyList(), router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        assertEquals(isEnabled, testPipeline.areAcknowledgementsEnabled());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testAreAcknowledgementsEnabledWhenEitherSourceOrBufferHasAcknowledgementsEnabled(Boolean isEnabled) {
+        final Source source = mock(Source.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(source.areAcknowledgementsEnabled()).thenReturn(!isEnabled);
+        when(buffer.areAcknowledgementsEnabled()).thenReturn(isEnabled);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, source, buffer, Collections.emptyList(),
+                Collections.emptyList(), router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        assertTrue(testPipeline.areAcknowledgementsEnabled());
     }
 
     @Nested

@@ -117,6 +117,24 @@ public class S3SourceConfig {
         return true;
     }
 
+    @AssertTrue(message = "acknowledgments must be enabled when using delete_s3_objects_on_read")
+    boolean isAcknowledgmentsEnabledWithDeleteS3ObjectsOnRead() {
+        if (deleteS3ObjectsOnRead && !acknowledgments) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @AssertTrue(message = "s3_select is not supported with delete_s3_objects_on_read")
+    boolean isS3SelectNotUsingDeleteS3ObjectsOnRead() {
+        if (s3SelectOptions != null && deleteS3ObjectsOnRead) {
+            return false;
+        }
+
+        return true;
+    }
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }

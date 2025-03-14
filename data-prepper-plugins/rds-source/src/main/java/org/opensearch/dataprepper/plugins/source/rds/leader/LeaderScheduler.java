@@ -8,24 +8,31 @@ package org.opensearch.dataprepper.plugins.source.rds.leader;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.MySqlStreamState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.opensearch.dataprepper.plugins.source.rds.RdsService.S3_PATH_DELIMITER;
 
@@ -39,21 +46,24 @@ public class LeaderScheduler implements Runnable {
     private final RdsSourceConfig sourceConfig;
     private final String s3Prefix;
     private final SchemaManager schemaManager;
-    private final DbTableMetadata dbTableMetadataMetadata;
+    private final DbTableMetadata dbTableMetadata;
 
     private LeaderPartition leaderPartition;
+    private List<String> tableNames;
+    private StreamPartition streamPartition = null;
     private volatile boolean shutdownRequested = false;
 
     public LeaderScheduler(final EnhancedSourceCoordinator sourceCoordinator,
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
                            final SchemaManager schemaManager,
-                           final DbTableMetadata dbTableMetadataMetadata) {
+                           final DbTableMetadata dbTableMetadata) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
         this.schemaManager = schemaManager;
-        this.dbTableMetadataMetadata = dbTableMetadataMetadata;
+        this.dbTableMetadata = dbTableMetadata;
+        tableNames = new ArrayList<>(dbTableMetadata.getTableColumnDataTypeMap().keySet());
     }
 
     @Override
@@ -75,6 +85,7 @@ public class LeaderScheduler implements Runnable {
                 if (leaderPartition != null) {
                     LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
                     if (!leaderProgressState.isInitialized()) {
+                        LOG.info("Performing initialization as LEADER node.");
                         init();
                     }
                 }
@@ -105,6 +116,21 @@ public class LeaderScheduler implements Runnable {
 
     public void shutdown() {
         shutdownRequested = true;
+
+        // Clean up publication and replication slot for Postgres
+        if (streamPartition != null) {
+            streamPartition.getProgressState().ifPresent(progressState -> {
+                if (EngineType.fromString(progressState.getEngineType()).isPostgres()) {
+                    final PostgresStreamState postgresStreamState = progressState.getPostgresStreamState();
+                    final String publicationName = postgresStreamState.getPublicationName();
+                    final String replicationSlotName = postgresStreamState.getReplicationSlotName();
+                    LOG.info("Cleaned up logical replication slot {} and publication {}",
+                            replicationSlotName, publicationName);
+                    ((PostgresSchemaManager) schemaManager).deleteLogicalReplicationSlot(
+                            publicationName, replicationSlotName);
+                }
+            });
+        }
     }
 
     private void init() {
@@ -113,7 +139,7 @@ public class LeaderScheduler implements Runnable {
         // Create a Global state in the coordination table for rds cluster/instance information.
         // Global State here is designed to be able to read whenever needed
         // So that the jobs can refer to the configuration.
-        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), dbTableMetadataMetadata.toMap()));
+        sourceCoordinator.createPartition(new GlobalState(sourceConfig.getDbIdentifier(), dbTableMetadata.toMap()));
         LOG.debug("Created global state for DB: {}", sourceConfig.getDbIdentifier());
 
         if (sourceConfig.isExportEnabled()) {
@@ -133,11 +159,12 @@ public class LeaderScheduler implements Runnable {
 
     private void createExportPartition(RdsSourceConfig sourceConfig) {
         ExportProgressState progressState = new ExportProgressState();
+        progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setIamRoleArn(sourceConfig.getExport().getIamRoleArn());
         progressState.setBucket(sourceConfig.getS3Bucket());
         // This prefix is for data exported from RDS
         progressState.setPrefix(getS3PrefixForExport(s3Prefix));
-        progressState.setTables(sourceConfig.getTableNames());
+        progressState.setTables(tableNames);
         progressState.setKmsKeyId(sourceConfig.getExport().getKmsKeyId());
         progressState.setPrimaryKeyMap(getPrimaryKeyMap());
         ExportPartition exportPartition = new ExportPartition(sourceConfig.getDbIdentifier(), sourceConfig.isCluster(), progressState);
@@ -149,25 +176,50 @@ public class LeaderScheduler implements Runnable {
     }
 
     private Map<String, List<String>> getPrimaryKeyMap() {
-        return sourceConfig.getTableNames().stream()
-                .collect(Collectors.toMap(
-                        fullTableName -> fullTableName,
-                        fullTableName -> schemaManager.getPrimaryKeys(fullTableName.split("\\.")[0], fullTableName.split("\\.")[1])
-                ));
+        return schemaManager.getPrimaryKeys(tableNames);
+    }
+
+    private Map<String, Set<String>> getPostgresEnumColumnsByTable() {
+        return ((PostgresSchemaManager) schemaManager).getEnumColumns(tableNames);
     }
 
     private void createStreamPartition(RdsSourceConfig sourceConfig) {
         final StreamProgressState progressState = new StreamProgressState();
+        progressState.setEngineType(sourceConfig.getEngine().toString());
         progressState.setWaitForExport(sourceConfig.isExportEnabled());
-        getCurrentBinlogPosition().ifPresent(progressState::setCurrentPosition);
-        progressState.setForeignKeyRelations(schemaManager.getForeignKeyRelations(sourceConfig.getTableNames()));
-        StreamPartition streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
+        progressState.setPrimaryKeyMap(getPrimaryKeyMap());
+        if (sourceConfig.getEngine().isMySql()) {
+            final MySqlStreamState mySqlStreamState = new MySqlStreamState();
+            getCurrentBinlogPosition().ifPresent(mySqlStreamState::setCurrentPosition);
+            mySqlStreamState.setForeignKeyRelations(((MySqlSchemaManager)schemaManager).getForeignKeyRelations(tableNames));
+            progressState.setMySqlStreamState(mySqlStreamState);
+        } else {
+            // Postgres
+            // Create replication slot, which will mark the starting point for stream
+            final String publicationName = generatePublicationName();
+            final String slotName = generateReplicationSlotName();
+            ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(tableNames, publicationName, slotName);
+            final PostgresStreamState postgresStreamState = new PostgresStreamState();
+            postgresStreamState.setPublicationName(publicationName);
+            postgresStreamState.setReplicationSlotName(slotName);
+            postgresStreamState.setEnumColumnsByTable(getPostgresEnumColumnsByTable());
+            progressState.setPostgresStreamState(postgresStreamState);
+        }
+        streamPartition = new StreamPartition(sourceConfig.getDbIdentifier(), progressState);
         sourceCoordinator.createPartition(streamPartition);
     }
 
     private Optional<BinlogCoordinate> getCurrentBinlogPosition() {
-        Optional<BinlogCoordinate> binlogCoordinate = schemaManager.getCurrentBinaryLogPosition();
+        Optional<BinlogCoordinate> binlogCoordinate = ((MySqlSchemaManager)schemaManager).getCurrentBinaryLogPosition();
         LOG.debug("Current binlog position: {}", binlogCoordinate.orElse(null));
         return binlogCoordinate;
+    }
+
+    private String generatePublicationName() {
+        return "data_prepper_publication_" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    private String generateReplicationSlotName() {
+        return "data_prepper_slot_" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

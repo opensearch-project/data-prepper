@@ -458,7 +458,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     public String getAccountIdFromRole(final String roleArn) {
-        return Arn.fromString(roleArn).accountId().orElse(null);
+        if (roleArn == null)
+            return null;
+        try {
+            return Arn.fromString(roleArn).accountId().orElse(null);
+        } catch (Exception e) {
+            LOG.warn("Malformatted role ARN for dynamic transformation: {}", roleArn);
+            return null;
+        }
     }
 
     /**
@@ -486,9 +493,9 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
      * Replaces template node in the jsonPath with the node from
      * original json.
      *
-     * @param root
-     * @param jsonPath
-     * @param newNode
+     * @param root json root node
+     * @param jsonPath json path
+     * @param newNode new node to be repalces with
      */
     public void replaceNode(JsonNode root, String jsonPath, JsonNode newNode) {
         try {

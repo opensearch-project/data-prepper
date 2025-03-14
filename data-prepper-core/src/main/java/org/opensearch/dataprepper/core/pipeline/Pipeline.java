@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
@@ -205,6 +206,14 @@ public class Pipeline implements PipelineIf {
         return processorSets;
     }
 
+    /**
+     * @return a flat list of {@link Processor} of this pipeline or an empty list.
+     */
+    @VisibleForTesting
+    public List<Processor> getProcessors() {
+        return getProcessorSets().stream().flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
     public int getReadBatchTimeoutInMillis() {
         return readBatchTimeoutInMillis;
     }
@@ -358,7 +367,7 @@ public class Pipeline implements PipelineIf {
      * @param records records that needs to published to each sink
      * @return List of Future, each future for each sink
      */
-    List<Future<Void>> publishToSinks(final Collection<Record> records) {
+    public List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
 
@@ -375,5 +384,9 @@ public class Pipeline implements PipelineIf {
                 }, null))
             );
         return sinkFutures;
+    }
+
+    public boolean areAcknowledgementsEnabled() {
+        return source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled();
     }
 }

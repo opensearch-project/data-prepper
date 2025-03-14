@@ -1,0 +1,35 @@
+{
+  "unit": "unit",
+  "exemplars": [
+    {
+      "time": "1970-01-01T00:00:00Z",
+      "value": 2.0,
+      "attributes": {
+        "test": "value"
+      },
+      "spanId": "xsdf",
+      "traceId": "abcd"
+    },
+    {
+      "time": "1971-01-01T00:00:00Z",
+      "value": 5.0,
+      "attributes": {
+        "test": "value"
+      },
+      "spanId": "xsdt",
+      "traceId": "asdf"
+    }
+  ],
+  "kind": "GAUGE",
+  "name": "name",
+  "description": "description",
+  "startTime": "2022-01-01T00:00:00Z",
+  "time": "2022-01-02T00:00:00Z",
+  "serviceName": "service",
+  "value": 1.0,
+  "schemaUrl": "schema",
+  "attributes" : {
+      "key1": %s,
+      "key2": "%s"
+  }
+}

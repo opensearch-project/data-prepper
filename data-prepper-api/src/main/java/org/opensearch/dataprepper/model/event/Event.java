@@ -111,6 +111,18 @@ public interface Event extends Serializable {
     void clear();
 
     /**
+     * Merges another Event into the current Event.
+     * The values from the other Event will overwrite the values in the current Event for all keys in the current Event.
+     * If the other Event has keys that are not in the current Event, they will be unmodified.
+     *
+     * @param other the other Event to merge into this Event
+     * @throws IllegalArgumentException if the input event is not compatible to merge.
+     * @throws UnsupportedOperationException if the current Event does not support merging.
+     * @since 2.11
+     */
+    void merge(Event other);
+
+    /**
      * Generates a serialized Json string of the entire Event
      *
      * @return Json string of the event
@@ -234,6 +246,11 @@ public interface Event extends Serializable {
      * @since 2.2
      */
     EventHandle getEventHandle();
+
+    default void putIfAbsent(final String key, final Class clazz, final Object value) {
+        if (get(key, clazz) == null)
+            put(key, value);
+    }
 
     JsonStringBuilder jsonBuilder();
 

@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -36,9 +37,9 @@ public interface CrawlerClient {
     /**
      * Method for executing a particular partition or a chunk of work
      *
-     * @param state        worker node state holds the details of this particular chunk of work
-     * @param buffer       pipeline buffer to write the results into
-     * @param sourceConfig pipeline configuration from the yaml
+     * @param state              worker node state holds the details of this particular chunk of work
+     * @param buffer             pipeline buffer to write the results into
+     * @param acknowledgementSet acknowledgement set to be used to track the completion of the partition
      */
-    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, CrawlerSourceConfig sourceConfig);
+    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet);
 }

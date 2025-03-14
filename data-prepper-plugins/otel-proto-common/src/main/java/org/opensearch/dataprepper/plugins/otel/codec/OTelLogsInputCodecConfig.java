@@ -25,12 +25,21 @@ public class OTelLogsInputCodecConfig {
     @NotNull
     private OTelLogsFormatOption format = DEFAULT_FORMAT;
  
+    @JsonProperty(value = "length_prefixed_encoding", defaultValue = "false")
+    @JsonPropertyDescription("Specifies if the length precedes the data in otlp_proto format")
+    private boolean lengthPrefixedEncoding;
+
     public OTelLogsFormatOption getFormat() {
          return format;
     }
 
-    @AssertTrue(message = "format must be json.")
+    @AssertTrue(message = "Not a valid format.")
     boolean isValidFormat() {
         return format != null;
     }    
+
+    public boolean getLengthPrefixedEncoding() {
+        return lengthPrefixedEncoding;
+    }
+
 }

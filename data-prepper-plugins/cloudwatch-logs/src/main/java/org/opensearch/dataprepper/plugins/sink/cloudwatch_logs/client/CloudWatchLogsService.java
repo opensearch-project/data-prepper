@@ -60,6 +60,19 @@ public class CloudWatchLogsService {
      */
     public void processLogEvents(final Collection<Record<Event>> logs) {
             sinkStopWatch.startIfNotRunning();
+            if (logs.isEmpty() && buffer.getEventCount() > 0) {
+                processLock.lock();
+                try {
+                    if (cloudWatchLogsLimits.isGreaterThanLimitReached(sinkStopWatch.getElapsedTimeInSeconds(),
+                            buffer.getBufferSize(), buffer.getEventCount())) {
+                        stageLogEvents();
+                    }
+                } finally {
+                    processLock.unlock();
+                }
+                return;
+            }
+
             for (Record<Event> log : logs) {
                 String logString = log.getData().toJsonString();
                 int logLength = logString.length();

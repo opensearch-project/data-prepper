@@ -77,9 +77,11 @@ public abstract class RecordConverter {
     /**
      * Add event record to buffer
      *
+     * @param acknowledgementSet      acknowledgement set
      * @param data                    A map to hold event data, note that it may be empty.
      * @param keys                    A map to hold the keys (partition key and sort key)
      * @param eventCreationTimeMillis Creation timestamp of the event
+     * @param eventVersionNumber      Event version number
      * @param eventName               Event name
      * @param userIdentity            UserIdentity for TTL based deletes
      * @throws Exception Exception if failed to write to buffer.

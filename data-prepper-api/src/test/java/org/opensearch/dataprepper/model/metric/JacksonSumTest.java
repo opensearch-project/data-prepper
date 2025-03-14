@@ -28,20 +28,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonSumTest {
 
-    private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
+    protected static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", new Date().getTime(),
             "key2", UUID.randomUUID().toString());
-    private static final String TEST_SERVICE_NAME = "service";
-    private static final String TEST_NAME = "name";
-    private static final String TEST_DESCRIPTION = "description";
-    private static final String TEST_UNIT_NAME = "unit";
-    private static final String TEST_START_TIME = UUID.randomUUID().toString();
-    private static final String TEST_TIME = UUID.randomUUID().toString();
-    private static final String TEST_AGGREGATION_TEMPORALITY = "TESTTEMPORALITY";
-    private static final String TEST_EVENT_KIND = Metric.KIND.SUM.name();
-    private static final boolean TEST_IS_MONOTONIC = true;
-    private static final Double TEST_VALUE = 1D;
-    private static final String TEST_SCHEMA_URL = "schema";
+    protected static final String TEST_SERVICE_NAME = "service";
+    protected static final String TEST_NAME = "name";
+    protected static final String TEST_DESCRIPTION = "description";
+    protected static final String TEST_UNIT_NAME = "unit";
+    protected static final String TEST_START_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_AGGREGATION_TEMPORALITY = "TESTTEMPORALITY";
+    protected static final String TEST_EVENT_KIND = Metric.KIND.SUM.name();
+    protected static final boolean TEST_IS_MONOTONIC = true;
+    protected static final Double TEST_VALUE = 1D;
+    protected static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonSum sum;
 

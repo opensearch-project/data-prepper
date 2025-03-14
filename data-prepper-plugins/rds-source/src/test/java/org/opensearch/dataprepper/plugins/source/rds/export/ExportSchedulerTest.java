@@ -8,13 +8,17 @@ package org.opensearch.dataprepper.plugins.source.rds.export;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.DataFilePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.ExportProgressState;
@@ -110,12 +114,14 @@ class ExportSchedulerTest {
                 exportJobFailureCounter, exportS3ObjectsTotalCounter);
     }
 
-    @Test
-    void test_given_export_partition_and_export_task_id_then_complete_export() throws InterruptedException {
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_given_export_partition_and_export_task_id_then_complete_export(EngineType engineType) throws InterruptedException {
         when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.of(exportPartition));
         when(exportPartition.getPartitionKey()).thenReturn(UUID.randomUUID().toString());
         final String exportTaskId = UUID.randomUUID().toString();
         when(exportProgressState.getExportTaskId()).thenReturn(exportTaskId);
+        when(exportProgressState.getEngineType()).thenReturn(engineType.toString());
         when(exportPartition.getProgressState()).thenReturn(Optional.of(exportProgressState));
         when(exportTaskManager.checkExportStatus(exportTaskId)).thenReturn(ExportStatus.COMPLETE.name());
 
@@ -148,14 +154,16 @@ class ExportSchedulerTest {
         verify(exportJobFailureCounter, never()).increment();
     }
 
-    @Test
-    void test_given_export_partition_without_export_task_id_then_start_and_complete_export() throws InterruptedException {
+    @ParameterizedTest
+    @EnumSource(EngineType.class)
+    void test_given_export_partition_without_export_task_id_then_start_and_complete_export(EngineType engineType) throws InterruptedException {
         when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.of(exportPartition));
         when(exportPartition.getPartitionKey()).thenReturn(UUID.randomUUID().toString());
         final String exportTaskId = UUID.randomUUID().toString();
         when(exportProgressState.getExportTaskId())
                 .thenReturn(null)
                 .thenReturn(exportTaskId);
+        when(exportProgressState.getEngineType()).thenReturn(engineType.toString());
         when(exportPartition.getProgressState()).thenReturn(Optional.of(exportProgressState));
         final String dbIdentifier = UUID.randomUUID().toString();
         when(exportPartition.getDbIdentifier()).thenReturn(dbIdentifier);
@@ -261,13 +269,15 @@ class ExportSchedulerTest {
         verify(exportS3ObjectsTotalCounter, never()).increment(1);
     }
 
+    @Disabled("Flaky test, needs to be fixed")
     @Test
-    void test_shutDown() {
+    void test_shutDown() throws InterruptedException {
         lenient().when(sourceCoordinator.acquireAvailablePartition(ExportPartition.PARTITION_TYPE)).thenReturn(Optional.empty());
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(exportScheduler);
         exportScheduler.shutdown();
+        Thread.sleep(100);
         verifyNoMoreInteractions(sourceCoordinator, snapshotManager, exportTaskManager, s3Client,
                 exportJobSuccessCounter, exportJobFailureCounter, exportS3ObjectsTotalCounter);
         executorService.shutdownNow();

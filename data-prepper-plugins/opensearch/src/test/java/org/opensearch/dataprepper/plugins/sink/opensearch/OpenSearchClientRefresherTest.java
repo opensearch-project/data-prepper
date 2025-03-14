@@ -9,8 +9,8 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 
 import java.util.function.Function;
 
@@ -75,7 +75,7 @@ class OpenSearchClientRefresherTest {
         verify(clientFunction, times(1)).apply(any());
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         when(newConnectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(newConnectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
@@ -97,7 +97,7 @@ class OpenSearchClientRefresherTest {
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(authConfig.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         final AuthConfig newAuthConfig = mock(AuthConfig.class);
         when(newConnectionConfiguration.getAuthConfig()).thenReturn(newAuthConfig);
@@ -121,7 +121,7 @@ class OpenSearchClientRefresherTest {
         verify(clientFunction, times(1)).apply(any());
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         when(newConnectionConfiguration.getUsername()).thenReturn(TEST_USERNAME + "_changed");
         final OpenSearchClient newClient = mock(OpenSearchClient.class);
@@ -147,7 +147,7 @@ class OpenSearchClientRefresherTest {
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(authConfig.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         final AuthConfig newAuthConfig = mock(AuthConfig.class);
         when(newConnectionConfiguration.getAuthConfig()).thenReturn(newAuthConfig);
@@ -174,7 +174,7 @@ class OpenSearchClientRefresherTest {
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         when(newConnectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(newConnectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD + "_changed");
@@ -201,7 +201,7 @@ class OpenSearchClientRefresherTest {
         when(connectionConfiguration.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getUsername()).thenReturn(TEST_USERNAME);
         when(authConfig.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         final AuthConfig newAuthConfig = mock(AuthConfig.class);
         when(newConnectionConfiguration.getAuthConfig()).thenReturn(newAuthConfig);
@@ -230,7 +230,7 @@ class OpenSearchClientRefresherTest {
         assertThat(objectUnderTest.get(), equalTo(openSearchClient));
         when(connectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(connectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD);
-        final PluginSetting newConfig = mock(PluginSetting.class);
+        final OpenSearchSinkConfig newConfig = mock(OpenSearchSinkConfig.class);
         final ConnectionConfiguration newConnectionConfiguration = mock(ConnectionConfiguration.class);
         when(newConnectionConfiguration.getUsername()).thenReturn(TEST_USERNAME);
         when(newConnectionConfiguration.getPassword()).thenReturn(TEST_PASSWORD + "_changed");

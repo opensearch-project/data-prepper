@@ -13,6 +13,8 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDeco
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.FailurePipelineSource;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
+import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
@@ -184,10 +186,6 @@ public class PipelineTransformer {
                     .map(this::buildRoutedSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
-                    .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
-                    .collect(Collectors.toList());
-
             final List<PluginError> invalidRouteExpressions = pipelineConfiguration.getRoutes()
                     .stream().filter(route -> !expressionEvaluator.isValidExpressionStatement(route.getCondition()))
                     .map(route -> PluginError.builder()
@@ -198,8 +196,12 @@ public class PipelineTransformer {
                             .build())
                     .collect(Collectors.toList());
 
-            if (!subPipelinePluginErrors.isEmpty() || !invalidRouteExpressions.isEmpty()) {
-                subPipelinePluginErrors.addAll(invalidRouteExpressions);
+            invalidRouteExpressions.forEach(pluginErrorCollector::collectPluginError);
+            final List<PluginError> subPipelinePluginErrors = pluginErrorCollector.getPluginErrors()
+                    .stream().filter(pluginError -> pipelineName.equals(pluginError.getPipelineName()))
+                    .collect(Collectors.toList());
+
+            if (!subPipelinePluginErrors.isEmpty()) {
                 pluginErrorsHandler.handleErrors(subPipelinePluginErrors);
                 throw new InvalidPluginConfigurationException(
                         String.format("One or more plugins are not configured correctly in the pipeline: %s.\n",
@@ -235,6 +237,11 @@ public class PipelineTransformer {
                     eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
+
+            if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+                ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline));
+            }
+
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

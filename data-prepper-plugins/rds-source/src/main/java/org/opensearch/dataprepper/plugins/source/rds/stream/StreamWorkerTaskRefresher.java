@@ -38,7 +38,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     private final StreamPartition streamPartition;
     private final StreamCheckpointer streamCheckpointer;
     private final String s3Prefix;
-    private final BinlogClientFactory binlogClientFactory;
+    private final ReplicationLogClientFactory replicationLogClientFactory;
     private final Buffer<Record<Event>> buffer;
     private final Supplier<ExecutorService> executorServiceSupplier;
     private final PluginMetrics pluginMetrics;
@@ -48,12 +48,13 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
 
     private ExecutorService executorService;
     private RdsSourceConfig currentSourceConfig;
+    private StreamWorker streamWorker;
 
     public StreamWorkerTaskRefresher(final EnhancedSourceCoordinator sourceCoordinator,
                                      final StreamPartition streamPartition,
                                      final StreamCheckpointer streamCheckpointer,
                                      final String s3Prefix,
-                                     final BinlogClientFactory binlogClientFactory,
+                                     final ReplicationLogClientFactory replicationLogClientFactory,
                                      final Buffer<Record<Event>> buffer,
                                      final Supplier<ExecutorService> executorServiceSupplier,
                                      final AcknowledgementSetManager acknowledgementSetManager,
@@ -67,7 +68,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         executorService = executorServiceSupplier.get();
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.binlogClientFactory = binlogClientFactory;
+        this.replicationLogClientFactory = replicationLogClientFactory;
         this.credentialsChangeCounter = pluginMetrics.counter(CREDENTIALS_CHANGED);
         this.taskRefreshErrorsCounter = pluginMetrics.counter(TASK_REFRESH_ERRORS);
     }
@@ -76,7 +77,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
                                                    final StreamPartition streamPartition,
                                                    final StreamCheckpointer streamCheckpointer,
                                                    final String s3Prefix,
-                                                   final BinlogClientFactory binlogClientFactory,
+                                                   final ReplicationLogClientFactory binlogClientFactory,
                                                    final Buffer<Record<Event>> buffer,
                                                    final Supplier<ExecutorService> executorServiceSupplier,
                                                    final AcknowledgementSetManager acknowledgementSetManager,
@@ -96,10 +97,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             LOG.info("Database credentials were updated. Refreshing stream worker...");
             credentialsChangeCounter.increment();
             try {
+                streamWorker.shutdown();
                 executorService.shutdownNow();
                 executorService = executorServiceSupplier.get();
-                binlogClientFactory.setCredentials(
-                        sourceConfig.getAuthenticationConfig().getUsername(), sourceConfig.getAuthenticationConfig().getPassword());
+                replicationLogClientFactory.updateCredentials(sourceConfig);
 
                 refreshTask(sourceConfig);
 
@@ -117,13 +118,22 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     }
 
     private void refreshTask(RdsSourceConfig sourceConfig) {
-        final BinaryLogClient binaryLogClient = binlogClientFactory.create();
         final DbTableMetadata dbTableMetadata = getDBTableMetadata(streamPartition);
         final CascadingActionDetector cascadeActionDetector = new CascadingActionDetector(sourceCoordinator);
-        binaryLogClient.registerEventListener(BinlogEventListener.create(
-                streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
-                streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
-        final StreamWorker streamWorker = StreamWorker.create(sourceCoordinator, binaryLogClient, pluginMetrics);
+
+        final ReplicationLogClient replicationLogClient = replicationLogClientFactory.create(streamPartition);
+        if (sourceConfig.getEngine().isMySql()) {
+            final BinaryLogClient binaryLogClient = ((BinlogClientWrapper) replicationLogClient).getBinlogClient();
+            binaryLogClient.registerEventListener(BinlogEventListener.create(
+                    streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
+                    streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
+        } else {
+            final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
+            logicalReplicationClient.setEventProcessor(LogicalReplicationEventProcessor.create(
+                    streamPartition, sourceConfig, buffer, s3Prefix, pluginMetrics, logicalReplicationClient,
+                    streamCheckpointer, acknowledgementSetManager));
+        }
+        streamWorker = StreamWorker.create(sourceCoordinator, replicationLogClient, pluginMetrics);
         executorService.submit(() -> streamWorker.processStream(streamPartition));
     }
 
@@ -140,4 +150,3 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
         return DbTableMetadata.fromMap(globalState.getProgressState().get());
     }
 }
-

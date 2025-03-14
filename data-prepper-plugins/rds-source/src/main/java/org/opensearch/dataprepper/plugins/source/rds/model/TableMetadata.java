@@ -12,29 +12,32 @@ import java.util.Map;
 public class TableMetadata {
     public static final String DOT_DELIMITER = ".";
 
-    private String databaseName;
-    private String tableName;
-    private List<String> columnNames;
-    private List<String> primaryKeys;
-    private Map<String, String[]> setStrValues;
-    private Map<String, String[]> enumStrValues;
+    private final String databaseName;
+    private final String schemaName;
+    private final String tableName;
+    private final List<String> columnNames;
+    private final List<String> columnTypes;
+    private final List<String> primaryKeys;
+    private final Map<String, String[]> setStrValues;
+    private final Map<String, String[]> enumStrValues;
 
-    public TableMetadata(String tableName, String databaseName, List<String> columnNames, List<String> primaryKeys) {
-        this(tableName, databaseName, columnNames, primaryKeys, Collections.emptyMap(), Collections.emptyMap());
-    }
-
-    public TableMetadata(String tableName, String databaseName, List<String> columnNames, List<String> primaryKeys,
-                         Map<String, String[]> setStrValues, Map<String, String[]> enumStrValues) {
-        this.tableName = tableName;
-        this.databaseName = databaseName;
-        this.columnNames = columnNames;
-        this.primaryKeys = primaryKeys;
-        this.setStrValues = setStrValues;
-        this.enumStrValues = enumStrValues;
+    private TableMetadata(final Builder builder) {
+        this.databaseName = builder.databaseName;
+        this.schemaName = builder.schemaName != null ? builder.schemaName : builder.databaseName;
+        this.tableName = builder.tableName;
+        this.columnNames = builder.columnNames;
+        this.columnTypes = builder.columnTypes;
+        this.primaryKeys = builder.primaryKeys;
+        this.setStrValues = builder.setStrValues;
+        this.enumStrValues = builder.enumStrValues;
     }
 
     public String getDatabaseName() {
         return databaseName;
+    }
+
+    public String getSchemaName() {
+        return schemaName;
     }
 
     public String getTableName() {
@@ -49,39 +52,81 @@ public class TableMetadata {
         return columnNames;
     }
 
+    public List<String> getColumnTypes() {
+        return columnTypes;
+    }
+
     public List<String> getPrimaryKeys() {
         return primaryKeys;
-    }
-
-    public void setDatabaseName(String databaseName) {
-        this.databaseName = databaseName;
-    }
-
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
-    public void setColumnNames(List<String> columnNames) {
-        this.columnNames = columnNames;
-    }
-
-    public void setPrimaryKeys(List<String> primaryKeys) {
-        this.primaryKeys = primaryKeys;
     }
 
     public Map<String, String[]> getSetStrValues() {
         return setStrValues;
     }
 
-    public void setSetStrValues(Map<String, String[]> setStrValues) {
-        this.setStrValues = setStrValues;
-    }
-
     public Map<String, String[]> getEnumStrValues() {
         return enumStrValues;
     }
 
-    public void setEnumStrValues(Map<String, String[]> enumStrValues) {
-        this.enumStrValues = enumStrValues;
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String databaseName;
+        private String schemaName;
+        private String tableName;
+        private List<String> columnNames = Collections.emptyList();
+        private List<String> columnTypes = Collections.emptyList();
+        private List<String> primaryKeys = Collections.emptyList();
+        private Map<String, String[]> setStrValues = Collections.emptyMap();
+        private Map<String, String[]> enumStrValues = Collections.emptyMap();
+
+        private Builder() {
+        }
+
+        public Builder withDatabaseName(String databaseName) {
+            this.databaseName = databaseName;
+            return this;
+        }
+
+        public Builder withSchemaName(String schemaName) {
+            this.schemaName = schemaName;
+            return this;
+        }
+
+        public Builder withTableName(String tableName) {
+            this.tableName = tableName;
+            return this;
+        }
+
+        public Builder withColumnNames(List<String> columnNames) {
+            this.columnNames = columnNames;
+            return this;
+        }
+
+        public Builder withColumnTypes(List<String> columnTypes) {
+            this.columnTypes = columnTypes;
+            return this;
+        }
+
+        public Builder withPrimaryKeys(List<String> primaryKeys) {
+            this.primaryKeys = primaryKeys;
+            return this;
+        }
+
+        public Builder withSetStrValues(Map<String, String[]> setStrValues) {
+            this.setStrValues = setStrValues;
+            return this;
+        }
+
+        public Builder withEnumStrValues(Map<String, String[]> enumStrValues) {
+            this.enumStrValues = enumStrValues;
+            return this;
+        }
+
+        public TableMetadata build() {
+            return new TableMetadata(this);
+        }
     }
 }

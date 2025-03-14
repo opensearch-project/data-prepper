@@ -25,6 +25,7 @@ public interface SerializedJson extends SizedDocument {
      * @param jsonString The serialized JSON string which forms this JSON data.
      * @param docId Optional documment ID string
      * @param routingField Optional routing field string
+     * @param pipelineField pipeline Field
      * @return A new {@link SerializedJson}.
      */
     static SerializedJson fromStringAndOptionals(String jsonString, String docId, String routingField, String pipelineField) {

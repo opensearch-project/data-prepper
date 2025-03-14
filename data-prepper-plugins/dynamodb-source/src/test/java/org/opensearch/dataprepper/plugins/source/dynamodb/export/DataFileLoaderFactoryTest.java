@@ -8,10 +8,12 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.export;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -27,10 +29,16 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.export.DataFileLoaderFactory.ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME;
 
 @ExtendWith(MockitoExtension.class)
 class DataFileLoaderFactoryTest {
@@ -100,9 +108,21 @@ class DataFileLoaderFactoryTest {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
 
+        final ArgumentCaptor<Consumer> progressCheckConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        doNothing().when(acknowledgementSet).addProgressCheck(any(Consumer.class), any(Duration.class));
+
         DataFileLoaderFactory loaderFactory = new DataFileLoaderFactory(coordinator, s3Client, pluginMetrics, buffer);
 
         Runnable loader = loaderFactory.createDataFileLoader(dataFilePartition, tableInfo, acknowledgementSet, acknowledgmentTimeout);
         assertThat(loader, notNullValue());
+
+        verify(acknowledgementSet).addProgressCheck(progressCheckConsumerArgumentCaptor.capture(), any(Duration.class));
+
+        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckConsumerArgumentCaptor.getValue();
+
+
+        progressCheckConsumer.accept(mock(ProgressCheck.class));
+
+        verify(acknowledgementSet).increaseExpiry(eq(ACKNOWLEDGMENT_EXPIRY_INCREASE_TIME));
     }
 }

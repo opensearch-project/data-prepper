@@ -4,11 +4,15 @@
  */
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,12 +22,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -42,25 +52,40 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
+import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
 import org.opensearch.dataprepper.plugins.lambda.common.config.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.lambda.common.util.CountingRetryCondition;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
+import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 
+import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -84,7 +109,15 @@ public class LambdaProcessorIT {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
     @Mock
-    private Counter testCounter;
+    private Counter numberOfRecordsSuccessCounter;
+    @Mock
+    private Counter numberOfRequestsSuccessCounter;
+    @Mock
+    private Counter numberOfRecordsFailedCounter;
+    @Mock
+    private Counter numberOfRequestsFailedCounter;
+    @Mock
+    private Counter batchExceedingThresholdCounter;
     @Mock
     private Timer testTimer;
 
@@ -102,20 +135,6 @@ public class LambdaProcessorIT {
         pluginSetting = mock(PluginSetting.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
         when(pluginSetting.getName()).thenReturn("name");
-        testCounter = mock(Counter.class);
-        try {
-            lenient().doAnswer(args -> {
-                return null;
-            }).when(testCounter).increment(any(Double.class));
-        } catch (Exception e) {
-        }
-        try {
-            lenient().doAnswer(args -> {
-                return null;
-            }).when(testTimer).record(any(Long.class), any(TimeUnit.class));
-        } catch (Exception e) {
-        }
-        when(pluginMetrics.counter(any())).thenReturn(testCounter);
         testTimer = mock(Timer.class);
         when(pluginMetrics.timer(any())).thenReturn(testTimer);
         lambdaProcessorConfig = mock(LambdaProcessorConfig.class);
@@ -149,6 +168,28 @@ public class LambdaProcessorIT {
         when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(null);
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(null);
         when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+    }
+
+    private void populatePrivateFields(LambdaProcessor lambdaProcessor) throws Exception {
+        // Use reflection to set the private fields
+        setPrivateField(lambdaProcessor, "numberOfRecordsSuccessCounter",
+                numberOfRecordsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRecordsFailedCounter",
+                numberOfRecordsFailedCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsSuccessCounter",
+                numberOfRequestsSuccessCounter);
+        setPrivateField(lambdaProcessor, "numberOfRequestsFailedCounter",
+                numberOfRequestsFailedCounter);
+        setPrivateField(lambdaProcessor, "batchExceedingThresholdCounter",
+                batchExceedingThresholdCounter);
+    }
+
+    // Helper method to set private fields via reflection
+    private void setPrivateField(Object targetObject, String fieldName, Object value)
+            throws Exception {
+        Field field = targetObject.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(targetObject, value);
     }
 
     @ParameterizedTest
@@ -372,5 +413,311 @@ public class LambdaProcessorIT {
             records.add(new Record<>(event));
         }
         return records;
+    }
+
+    @Test
+    void testRetryLogicWithThrottlingUsingMultipleThreads() throws Exception {
+        /*
+         * This test tries to create multiple parallel Lambda invocations
+         * while concurrency=1. The first invocation "occupies" the single concurrency slot
+         * The subsequent invocations should then get a 429 TooManyRequestsException,
+         * triggering our CountingRetryCondition.
+         */
+
+        /* Lambda handler function looks like this:
+           def lambda_handler(event, context):
+                # Simulate a slow operation so that
+                # if concurrency = 1, multiple parallel invocations
+                # will result in TooManyRequestsException for the second+ invocation.
+                time.sleep(10)
+
+                # Return a simple success response
+                return {
+                    "statusCode": 200,
+                    "body": "Hello from concurrency-limited Lambda!"
+                }
+
+         */
+
+        functionName = "lambdaExceptionSimulation";
+        // Create a CountingRetryCondition
+        CountingRetryCondition countingRetryCondition = new CountingRetryCondition();
+
+        // Configure a LambdaProcessorConfig
+
+        // We'll set invocation type to RequestResponse
+        InvocationType invocationType = mock(InvocationType.class);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getInvocationType()).thenReturn(invocationType);
+
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        // If your code uses "responseEventsMatch", you can set it:
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true);
+
+        // Set up mock ClientOptions for concurrency + small retries
+        ClientOptions clientOptions = mock(ClientOptions.class);
+        when(clientOptions.getMaxConnectionRetries()).thenReturn(3); // up to 3 retries
+        when(clientOptions.getMaxConcurrency()).thenReturn(5);
+        when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(5));
+        when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(30));
+        when(lambdaProcessorConfig.getClientOptions()).thenReturn(clientOptions);
+
+        // AWS auth
+        AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(lambdaRegion));
+        when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(role);
+        when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(null);
+        when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(null);
+        when(lambdaProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+
+        // Setup the mock for getProvider
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+
+        // Mock the factory to inject our CountingRetryCondition into the LambdaAsyncClient
+        try (MockedStatic<LambdaClientFactory> mockedFactory = mockStatic(LambdaClientFactory.class)) {
+
+            LambdaAsyncClient clientWithCountingCondition = LambdaAsyncClient.builder()
+                    .region(Region.of(lambdaRegion))
+                    .credentialsProvider(awsCredentialsProvider)
+                    .overrideConfiguration(ClientOverrideConfiguration.builder()
+                            .retryPolicy(
+                                    RetryPolicy.builder()
+                                            .retryCondition(countingRetryCondition)
+                                            .numRetries(3)
+                                            .build()
+                            )
+                            .build())
+                    // netty concurrency = 5 to allow parallel requests
+                    .httpClient(NettyNioAsyncHttpClient.builder()
+                            .maxConcurrency(5)
+                            .build())
+                    .build();
+
+            mockedFactory.when(() ->
+                            LambdaClientFactory.createAsyncLambdaClient(
+                                    any(AwsAuthenticationOptions.class),
+                                    any(AwsCredentialsSupplier.class),
+                                    any(ClientOptions.class)))
+                    .thenReturn(clientWithCountingCondition);
+
+            // 7) Instantiate the real LambdaProcessor
+            when(pluginSetting.getName()).thenReturn("lambda-processor");
+            when(pluginSetting.getPipelineName()).thenReturn("test-pipeline");
+            lambdaProcessor = new LambdaProcessor(
+                    pluginFactory,
+                    pluginSetting,
+                    lambdaProcessorConfig,
+                    awsCredentialsSupplier,
+                    expressionEvaluator
+            );
+
+            // Create multiple parallel tasks to call doExecute(...)
+            // Each doExecute() invocation sends records to Lambda in an async manner.
+            int parallelInvocations = 5;
+            ExecutorService executor = Executors.newFixedThreadPool(parallelInvocations);
+
+            List<Future<Collection<Record<Event>>>> futures = new ArrayList<>();
+            for (int i = 0; i < parallelInvocations; i++) {
+                // Each subset of records calls the processor
+                List<Record<Event>> records = createRecords(2);
+                Future<Collection<Record<Event>>> future = executor.submit(() -> {
+                    return lambdaProcessor.doExecute(records);
+                });
+                futures.add(future);
+            }
+
+            // Wait for all tasks to complete
+            executor.shutdown();
+            boolean finishedInTime = executor.awaitTermination(5, TimeUnit.MINUTES);
+            if (!finishedInTime) {
+                throw new RuntimeException("Test timed out waiting for executor tasks to complete.");
+            }
+
+            // Check results or handle exceptions
+            for (Future<Collection<Record<Event>>> f : futures) {
+                try {
+                    Collection<Record<Event>> out = f.get();
+                } catch (ExecutionException ee) {
+                    // A 429 from AWS will be thrown as TooManyRequestsException
+                    // If all retries failed, we might see an exception here.
+                }
+            }
+
+            // Finally, check that we had at least one retry
+            // If concurrency=1 is truly enforced, at least some calls should have gotten a 429
+            // -> triggered CountingRetryCondition
+            int retryCount = countingRetryCondition.getRetryCount();
+            assertTrue(
+                    retryCount > 0,
+                    "Should have at least one retry due to concurrency-based throttling (429)."
+            );
+        }
+    }
+
+    @Test
+    public void testLargePayloadBehaviourException() throws Exception {
+        ClientOptions clientOptions = mock(ClientOptions.class);
+        when(clientOptions.getMaxConnectionRetries()).thenReturn(3); // up to 3 retries
+        when(clientOptions.getMaxConcurrency()).thenReturn(5);
+        when(clientOptions.getConnectionTimeout()).thenReturn(Duration.ofSeconds(5));
+        when(clientOptions.getApiCallTimeout()).thenReturn(Duration.ofSeconds(30));
+        LambdaAsyncClient lambdaAsyncClient = LambdaClientFactory.createAsyncLambdaClient(
+                lambdaProcessorConfig.getAwsAuthenticationOptions(),
+                awsCredentialsSupplier,
+                clientOptions
+        );
+
+        // Configure the mocked ThresholdOptions to use our threshold.
+        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
+        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
+
+
+        final int largeEventSizeBytes = 10 * 1024 * 1024;
+        final List<Record<Event>> records = new ArrayList<>();
+        Record record  = createLargeRecord(largeEventSizeBytes);
+        records.add(record);
+
+        List<Map<String, Object>> eventDataList = records.stream()
+                .map(rec -> rec.getData().toMap())
+                .collect(Collectors.toList());
+        SdkBytes sdkBytes = SdkBytes.fromByteArray(new ObjectMapper().writeValueAsBytes(eventDataList));
+        InvokeRequest requestPayload = InvokeRequest.builder()
+                .invocationType("RequestResponse")
+                .functionName(functionName)
+                .payload(sdkBytes)
+                .build();
+        CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
+        //Lambda should throw an exception
+        ExecutionException executionException = assertThrows(ExecutionException.class,()-> future.get());
+        // Assert that the underlying cause is a LambdaException with a payload size error message.
+        Throwable cause = executionException.getCause();
+        assertNotNull(cause);
+        assertTrue(cause instanceof software.amazon.awssdk.services.lambda.model.LambdaException);
+    }
+
+    @Test
+    public void testLargePayloadBatching() throws Exception {
+        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+
+        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
+        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        List<Record<Event>> records = new ArrayList<>();
+        int twoMB = 2*1024*1024;
+        // 5 mb limit and 3 2MB payloads should create 2 separate batches
+        for(int i = 0; i < 3; i++){
+            records.add(createLargeRecord(twoMB));
+        }
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        assertEquals(3, results.size());
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+        verify(numberOfRequestsFailedCounter, never()).increment();
+    }
+
+    @Test
+    public void testLargeMultiplePayloadBatching() throws Exception {
+        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+
+        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
+        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        int oneMB = 1*1024*1024;
+        int sevenMB = 7*1024*1024;
+
+        Record<Event> oneMbrecord = createLargeRecord(oneMB);
+        Record<Event> sevenMbrecord = createLargeRecord(sevenMB);
+
+        List<Record<Event>> records = List.of(oneMbrecord,sevenMbrecord,oneMbrecord);
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        assertEquals(3, results.size());
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
+        verify(batchExceedingThresholdCounter, times(1)).increment();
+    }
+
+    @Test
+    public void testPayloadSizeBasedBatching() throws Exception {
+        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+
+        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
+        when(thresholdOptions.getEventCount()).thenReturn(1000);
+        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        List<Record<Event>> records = new ArrayList<>();
+        int kb_100 = 100*1024;
+
+        for(int i = 0; i < 100; i++){
+            records.add(createLargeRecord(kb_100));
+        }
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        assertEquals(100, results.size());
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+        verify(numberOfRequestsFailedCounter, never()).increment();
+    }
+
+    @Test
+    public void testPayloadEventBasedBatching() throws Exception {
+        final BatchOptions batchOptions = lambdaProcessorConfig.getBatchOptions();
+        when(lambdaProcessorConfig.getFunctionName()).thenReturn(functionName);
+        when(invocationType.getAwsLambdaValue()).thenReturn(InvocationType.REQUEST_RESPONSE.getAwsLambdaValue());
+        when(lambdaProcessorConfig.getResponseEventsMatch()).thenReturn(true); // Strict mode
+        when(lambdaProcessorConfig.getTagsOnFailure()).thenReturn(Collections.singletonList("lambda_failure"));
+
+        final ThresholdOptions thresholdOptions = batchOptions.getThresholdOptions();
+        when(thresholdOptions.getEventCount()).thenReturn(100);
+        when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(100));
+        when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("5mb"));
+        lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        List<Record<Event>> records = createRecords(2000);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+
+        assertEquals(2000, results.size());
+        verify(numberOfRequestsSuccessCounter, times(20)).increment();
+        verify(numberOfRequestsFailedCounter, never()).increment();
+    }
+
+    private Record<Event> createLargeRecord(final int sizeInBytes) {
+        final StringBuilder sb = new StringBuilder(sizeInBytes);
+        for (int i = 0; i < sizeInBytes; i++) {
+            sb.append("a");
+        }
+        final String payload = sb.toString();
+        final Map<String, Object> data = new HashMap<>();
+        data.put("payload", payload);
+        final Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("test")
+                .build();
+        return new Record<>(event);
     }
 }
