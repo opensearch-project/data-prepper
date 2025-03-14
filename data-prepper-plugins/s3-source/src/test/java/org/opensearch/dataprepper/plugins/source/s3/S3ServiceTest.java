@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.io.IOException;
 
@@ -28,13 +29,13 @@ public class S3ServiceTest {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final S3ObjectReference s3ObjectReference = mock(S3ObjectReference.class);
 
-        doNothing().when(s3ObjectHandler).parseS3Object(eq(s3ObjectReference), eq(acknowledgementSet), eq(null), eq(null));
+        doNothing().when(s3ObjectHandler).processS3Object(eq(s3ObjectReference), eq(S3DataSelection.DATA_AND_METADATA), eq(acknowledgementSet), eq(null), eq(null));
 
         final S3Service objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.addS3Object(s3ObjectReference, acknowledgementSet);
 
-        verify(s3ObjectHandler).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        verify(s3ObjectHandler).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
     }
 
     @Test

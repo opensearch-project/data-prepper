@@ -99,7 +99,6 @@ public class SqsWorker implements Runnable {
         sqsMessageParser = new SqsMessageParser(s3SourceConfig);
         failedAttemptCount = 0;
         parsedMessageVisibilityTimesMap = new HashMap<>();
-
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
@@ -148,7 +147,6 @@ public class SqsWorker implements Runnable {
                 deleteSqsMessages(deleteMessageBatchRequestEntries);
             }
         }
-
         return sqsMessages.size();
     }
 
@@ -200,7 +198,6 @@ public class SqsWorker implements Runnable {
         final Map<ParsedMessage, AcknowledgementSet> messageAcknowledgementSetMap = new HashMap<>();
         final Map<ParsedMessage, List<DeleteMessageBatchRequestEntry>> messageWaitingForAcknowledgementsMap = new HashMap<>();
         final Map<ParsedMessage, List<S3ObjectReference>> messagesWaitingForS3ObjectDeletion = new HashMap<>();
-
         for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
             if (parsedMessage.isFailedParsing()) {
                 sqsMessagesFailedCounter.increment();
@@ -234,6 +231,7 @@ public class SqsWorker implements Runnable {
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
         
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+
             final int approximateReceiveCount = getApproximateReceiveCount(parsedMessage.getMessage());
             if (s3SourceConfig.getSqsOptions().getMaxReceiveAttempts() != null &&
                     approximateReceiveCount > s3SourceConfig.getSqsOptions().getMaxReceiveAttempts()) {
@@ -241,7 +239,6 @@ public class SqsWorker implements Runnable {
                 parsedMessage.setShouldSkipProcessing(true);
                 continue;
             }
-
             if (approximateReceiveCount <= 1) {
                 sqsMessageDelayTimer.record(Duration.between(
                         Instant.ofEpochMilli(parsedMessage.getEventTime().toInstant().getMillis()),
@@ -297,7 +294,6 @@ public class SqsWorker implements Runnable {
         if (endToEndAcknowledgementsEnabled) {
             LOG.debug("Created acknowledgement sets for {} messages.", parsedMessagesToRead.size());
         }
-
         // Use a separate loop for processing the S3 objects
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             if (parsedMessage.isShouldSkipProcessing()) {
