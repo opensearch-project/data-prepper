@@ -89,4 +89,5 @@ public class S3ScanScanOptions {
     public FolderPartitioningOptions getPartitioningOptions() { return folderPartitioningOptions; }
 
     public Duration getAcknowledgmentTimeout() { return acknowledgmentTimeout; }
+
 }

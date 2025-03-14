@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.s3;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 
 import java.io.IOException;
 
@@ -16,7 +17,7 @@ public class S3Service {
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference, AcknowledgementSet acknowledgementSet) throws IOException {
-        s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        s3ObjectHandler.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
     }
 
     void deleteS3Object(final S3ObjectReference s3ObjectReference) throws IOException {

@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
@@ -193,7 +194,7 @@ class S3SelectObjectWorkerIT {
 
     private void parseObject(final String key, final S3SelectObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference,null, null, null);
+        objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, null, null, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {
