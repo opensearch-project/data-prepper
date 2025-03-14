@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -147,7 +148,7 @@ class S3ObjectWorkerIT {
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference, null, null, null);
+        objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, null, null, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {
