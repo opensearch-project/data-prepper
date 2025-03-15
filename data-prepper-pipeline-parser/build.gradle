@@ -13,7 +13,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:rds-source')
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.apache.commons:commons-collections4:4.4'
     implementation 'org.apache.commons:commons-text:1.13.0'
@@ -29,9 +29,6 @@ dependencies {
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
     implementation 'software.amazon.awssdk:arns'
-    testImplementation testLibs.bundles.junit
-    testImplementation testLibs.bundles.mockito
-    testImplementation testLibs.hamcrest
     testImplementation 'org.assertj:assertj-core:3.20.2'
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
