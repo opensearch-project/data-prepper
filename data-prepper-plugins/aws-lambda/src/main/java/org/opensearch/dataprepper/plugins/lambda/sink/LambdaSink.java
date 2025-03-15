@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
@@ -175,7 +176,7 @@ public class LambdaSink extends AbstractSink<Record<Event>> {
     }
 
     @Override
-    public void doOutput(final Collection<Record<Event>> records) {
+    public void doOutput(final Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         if (!sinkInitialized) {
             LOG.warn("LambdaSink doOutput called before initialization");
             return;

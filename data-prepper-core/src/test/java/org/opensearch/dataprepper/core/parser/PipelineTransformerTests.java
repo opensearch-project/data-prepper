@@ -167,6 +167,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -178,6 +179,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
 
         assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
@@ -203,6 +205,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
 
         assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
@@ -226,6 +229,7 @@ class PipelineTransformerTests {
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);
         final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
         final PluginError sourcePluginError = pluginErrorCollector.getPluginErrors().get(0);
@@ -241,6 +245,7 @@ class PipelineTransformerTests {
         final PipelineTransformer pipelineTransformer = createObjectUnderTest(pipelineResourcePath);
         final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(1));
         final PluginError pluginError = pluginErrorCollector.getPluginErrors().get(0);
@@ -267,6 +272,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
         verifyDataPrepperConfigurationAccesses();
+        verify(dataPrepperConfiguration, times(2)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
         assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
         final PluginError pluginError = pluginErrorCollector.getPluginErrors().get(1);
@@ -289,6 +295,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet().size(), equalTo(1));
         verifyDataPrepperConfigurationAccesses();
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -323,6 +330,7 @@ class PipelineTransformerTests {
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -355,6 +363,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -366,6 +375,7 @@ class PipelineTransformerTests {
         final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -383,6 +393,7 @@ class PipelineTransformerTests {
         assertThat(entryPipeline, notNullValue());
         assertThat(entryPipeline.getSinks(), notNullValue());
         assertThat(entryPipeline.getSinks().size(), equalTo(2));
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -412,6 +423,7 @@ class PipelineTransformerTests {
         assertThat(pluginError.getException() instanceof InvalidPluginConfigurationException, equalTo(true));
         assertThat(pluginError.getException().getMessage(), equalTo(expectedErrorMessage));
 
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -461,6 +473,7 @@ class PipelineTransformerTests {
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -482,6 +495,7 @@ class PipelineTransformerTests {
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 
@@ -501,6 +515,7 @@ class PipelineTransformerTests {
         assertThat(pipeline.getBuffer(), notNullValue());
         assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
 
+        verify(dataPrepperConfiguration).getFailurePipelineName();
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
@@ -531,6 +546,7 @@ class PipelineTransformerTests {
         verify(dataPrepperConfiguration, times(3)).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration, times(3)).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration, times(3)).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration, times(3)).getFailurePipelineName();
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
 

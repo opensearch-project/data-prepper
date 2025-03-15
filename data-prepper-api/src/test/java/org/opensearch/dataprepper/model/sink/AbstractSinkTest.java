@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -149,7 +150,7 @@ class AbstractSinkTest {
         }
 
         @Override
-        public void doOutput(Collection<Record<Event>> records) {
+        public void doOutput(Collection<Record<Event>> records, PipelineIf failurePipeline) {
             for (final Record<Event> record: records) {
                 Event event = record.getData();
                 event.getEventHandle().release(true);
@@ -179,7 +180,7 @@ class AbstractSinkTest {
         }
 
         @Override
-        public void doOutput(Collection<Record<String>> records) {
+        public void doOutput(Collection<Record<String>> records, PipelineIf failurePipeline) {
             try {
                 Thread.sleep(150);
             } catch (InterruptedException e) {
@@ -213,7 +214,7 @@ class AbstractSinkTest {
         }
 
         @Override
-        public void doOutput(Collection<Record<String>> records) {
+        public void doOutput(Collection<Record<String>> records, PipelineIf failurePipeline) {
         }
 
         @Override

@@ -218,7 +218,7 @@ public class S3SinkIT {
                     .collect(Collectors.toList());
 
             LOG.debug("Writing batch {} with size {}.", currentBatchNumber, events.size());
-            objectUnderTest.doOutput(events);
+            objectUnderTest.doOutput(events, null);
         }
 
         LOG.info("Listing S3 path prefix: {}", pathPrefix);
@@ -298,7 +298,7 @@ public class S3SinkIT {
                     .collect(Collectors.toList());
 
             LOG.debug("Writing dynamic batch {} with size {}.", currentBatchNumber, events.size());
-            objectUnderTest.doOutput(events);
+            objectUnderTest.doOutput(events, null);
         }
 
         for (int folderNumber = 0; folderNumber < 100; folderNumber++) {
@@ -386,7 +386,7 @@ public class S3SinkIT {
                     .collect(Collectors.toList());
 
             LOG.debug("Writing dynamic batch {} with size {}.", currentBatchNumber, events.size());
-            objectUnderTest.doOutput(events);
+            objectUnderTest.doOutput(events, null);
         }
 
         for (int folderNumber = 0; folderNumber < 100; folderNumber++) {
