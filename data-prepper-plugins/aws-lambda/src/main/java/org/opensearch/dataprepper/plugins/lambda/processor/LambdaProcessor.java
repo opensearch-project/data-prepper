@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.model.LambdaException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -201,7 +202,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             } catch (Exception e) {
                 LOG.error(NOISY, e.getMessage(), e);
-                if(e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)){
+                if (e instanceof LambdaException &&
+                        e.getMessage() != null &&
+                        e.getMessage().contains(EXCEEDING_PAYLOAD_LIMIT_EXCEPTION)) {
                     batchExceedingThresholdCounter.increment();
                 }
                 /* fall through */
