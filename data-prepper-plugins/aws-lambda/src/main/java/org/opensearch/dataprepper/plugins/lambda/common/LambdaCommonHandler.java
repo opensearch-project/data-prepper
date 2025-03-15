@@ -63,8 +63,9 @@ public class LambdaCommonHandler {
 
         LOG.debug("Batch size received to lambda processor: {}", records.size());
         for (Record<Event> record : records) {
-            //check size or time has exceeded threshold
-            if (ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
+            //check size has exceeded threshold
+            if (currentBufferPerBatch.getEventCount() > 0 &&
+                    ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
                 batchedBuffers.add(currentBufferPerBatch);
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
@@ -72,7 +73,8 @@ public class LambdaCommonHandler {
             currentBufferPerBatch.addRecord(record);
 
             // After adding, check if the event count threshold is reached.
-            if (ThresholdCheck.checkEventCountThresholdExceeded(currentBufferPerBatch, maxEvents)) {
+            if (currentBufferPerBatch.getEventCount() > 0 &&
+                    ThresholdCheck.checkEventCountThresholdExceeded(currentBufferPerBatch, maxEvents)) {
                 batchedBuffers.add(currentBufferPerBatch);
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
@@ -102,8 +104,12 @@ public class LambdaCommonHandler {
         for (Buffer buffer : batchedBuffers) {
             InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
                     config.getInvocationType().getAwsLambdaValue());
-            CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
-            bufferToFutureMap.put(buffer, future);
+            if(requestPayload!=null) {
+                CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
+                bufferToFutureMap.put(buffer, future);
+            }else{
+                LOG.warn("Request Payload is null, skipping lambda invocation");
+            }
         }
         return bufferToFutureMap;
     }
