@@ -25,7 +25,7 @@ import java.util.Map;
 public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     protected static final String NAME_KEY = "name";
-    protected static final String SCOPE_KEY = "scope";
+    protected static final String SCOPE_KEY = "instrumentationScope";
     protected static final String RESOURCE_KEY = "resource";
     protected static final String DESCRIPTION_KEY = "description";
     protected static final String START_TIME_KEY = "startTime";
@@ -184,10 +184,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             return getThis();
         }
 
-	public T withEventHandle(final EventHandle eventHandle) {
-            this.eventHandle = eventHandle;
-            return getThis();
-	}
+        public T withEventHandle(final EventHandle eventHandle) {
+                this.eventHandle = eventHandle;
+                return getThis();
+        }
 
         /**
          * Optional - sets the attributes for this event. Default is an empty map.

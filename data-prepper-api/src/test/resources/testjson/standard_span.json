@@ -15,7 +15,7 @@
   "parentSpanId": "testParentSpanId",
   "spanId": "testSpanId",
   "traceState": "testTraceState",
-  "scope": {
+  "instrumentationScope": {
     "name": "testScope",
     "version": "testVersion",
     "attributes": [

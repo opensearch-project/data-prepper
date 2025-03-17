@@ -35,8 +35,8 @@ import java.util.Objects;
 public class OTelMetricsDecoderTest {
     private static final String TEST_REQUEST_METRICS_FILE = "test-request-multiple-metrics.json";
     
-    public OTelMetricDecoder createObjectUnderTest() {
-        return new OTelMetricDecoder();
+    public OTelMetricDecoder createObjectUnderTest(OTelOutputFormat outputFormat) {
+        return new OTelMetricDecoder(outputFormat);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {
@@ -88,7 +88,7 @@ public class OTelMetricsDecoderTest {
     public void testParse() throws Exception {
         final ExportMetricsServiceRequest request = buildExportMetricsServiceRequestFromJsonFile(TEST_REQUEST_METRICS_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH).parse(inputStream, Instant.now(), (record) -> {
             validateMetric((Event)record.getData());
         });
         

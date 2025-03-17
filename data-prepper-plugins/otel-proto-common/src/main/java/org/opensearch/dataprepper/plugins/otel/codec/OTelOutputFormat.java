@@ -13,12 +13,11 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public enum OTelLogsFormatOption {
-    JSON("json"),
-    STANDARD_JSON("standard_json"),
-    PROTOBUF("protobuf");
+public enum OTelOutputFormat {
+    OTEL("otel"),
+    OPENSEARCH("opensearch");
  
-    private static final Map<String, OTelLogsFormatOption> NAMES_MAP = Arrays.stream(OTelLogsFormatOption.values())
+    private static final Map<String, OTelOutputFormat> NAMES_MAP = Arrays.stream(OTelOutputFormat.values())
             .collect(Collectors.toMap(
                     value -> value.optionName,
                     value -> value
@@ -26,7 +25,7 @@ public enum OTelLogsFormatOption {
  
     private final String optionName;
  
-    OTelLogsFormatOption(final String optionName) {
+    OTelOutputFormat(final String optionName) {
         this.optionName = optionName;
     }
  
@@ -36,7 +35,8 @@ public enum OTelLogsFormatOption {
     }
  
     @JsonCreator
-    public static OTelLogsFormatOption fromFormatName(final String optionName) {
+    public static OTelOutputFormat fromFormatName(final String optionName) {
         return NAMES_MAP.get(optionName);
     }
 }
+

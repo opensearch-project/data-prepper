@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 
@@ -72,6 +73,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty(ACM_CERT_ISSUE_TIME_OUT_MILLIS)
     private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
+
+    @JsonProperty("output_format")
+    private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
 
     @JsonProperty(SSL_KEY_CERT_FILE)
     private String sslKeyCertChainFile;
@@ -177,6 +181,10 @@ public class OTelTraceSourceConfig {
 
     public boolean isSsl() {
         return ssl;
+    }
+
+    public OTelOutputFormat getOutputFormat() {
+        return outputFormat;
     }
 
     public boolean useAcmCertForSSL() {
