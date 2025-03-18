@@ -230,7 +230,6 @@ public class OTelProtoStandardCodec {
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans, final Instant timeReceived) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
-            System.out.println("___RES ATTR____"+resourceAttributes);
             if (!resourceSpans.getScopeSpansList().isEmpty()) {
                 return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes, timeReceived);
             }
