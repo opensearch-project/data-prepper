@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 
