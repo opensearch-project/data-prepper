@@ -55,6 +55,8 @@ public class S3DlqWriter implements DlqWriter {
     private final S3Client s3Client;
     private final String bucket;
     private final String keyPathPrefix;
+
+    private final String bucketOwner;
     private final ObjectMapper objectMapper;
 
     private final Counter dlqS3RecordsSuccessCounter;
@@ -80,6 +82,7 @@ public class S3DlqWriter implements DlqWriter {
             enforceDefaultDelimiterOnKeyPathPrefix(s3DlqWriterConfig.getKeyPathPrefix());
         this.objectMapper = objectMapper;
         this.keyPathGenerator = new KeyPathGenerator(keyPathPrefix);
+        this.bucketOwner = s3DlqWriterConfig.getBucketOwner();
     }
 
     @Override
@@ -102,6 +105,7 @@ public class S3DlqWriter implements DlqWriter {
     private void doWrite(final List<DlqObject> dlqObjects, final String pipelineName, final String pluginId) throws IOException {
         final PutObjectRequest putObjectRequest = PutObjectRequest.builder()
             .bucket(bucket)
+            .expectedBucketOwner(bucketOwner)
             .key(buildKey(pipelineName, pluginId))
             .build();
 
