@@ -12,7 +12,6 @@ import lombok.Getter;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 
 public class ActionConfiguration {
-    @Size(min = 1, message = "type cannot be empty")
     @JsonProperty("type")
     private OpenSearchBulkActions type;
 
