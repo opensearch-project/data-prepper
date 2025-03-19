@@ -99,7 +99,7 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, Set<DeleteObjectRequest>> objectsToDeleteForAcknowledgmentSets;
 
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
-    private final Map<String, S3DataSelection> bucketDataSelectionMap;
+    private final Map<String, Map<String, S3DataSelection>> bucketDataSelectionMap;
 
     private final Duration acknowledgmentSetTimeout;
 
@@ -116,16 +116,23 @@ public class ScanObjectWorker implements Runnable {
         this.s3Client = s3Client;
         this.backOffMs = backOffMs;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
-        for (ScanOptions scanOptions : scanOptionsBuilderList) {
-        }
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.bucketDataSelectionMap = new HashMap<>();
         for (S3ScanBucketOptions bucketOption: s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
+
             if (bucketOption.getS3ScanBucketOption() != null) {
-                bucketDataSelectionMap.put(bucketOption.getS3ScanBucketOption().getName(), bucketOption.getS3ScanBucketOption().getDataSelection());
+                final String bucketName = bucketOption.getS3ScanBucketOption().getName();
+                Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.containsKey(bucketName) ?
+                                                 bucketDataSelectionMap.get(bucketName) :
+                                                 new HashMap<>();
+
+                for (final String prefix : bucketOption.getS3ScanBucketOption().getS3ScanFilter().getS3scanIncludePrefixOptions()) {
+                    prefixMap.put(prefix, bucketOption.getS3ScanBucketOption().getDataSelection());
+                }
+                bucketDataSelectionMap.put(bucketName, prefixMap);
             }
         }
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
@@ -264,9 +271,16 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            S3DataSelection dataSelection = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
-            if (dataSelection == null) {
-                dataSelection = S3DataSelection.DATA_AND_METADATA;
+            Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
+            S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
+            final String objectKey = s3ObjectReference.getKey();
+            if (prefixMap != null) {
+                for (Map.Entry<String, S3DataSelection> entry : prefixMap.entrySet()) {
+                    if (objectKey.startsWith(entry.getKey())) {
+                        dataSelection = entry.getValue();
+                        break;
+                    }
+                }
             }
             s3ObjectHandler.processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
             if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled && s3ObjectDeleteWorker != null) {
