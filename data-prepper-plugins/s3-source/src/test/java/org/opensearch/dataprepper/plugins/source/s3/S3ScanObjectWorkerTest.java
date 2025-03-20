@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOp
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -144,7 +145,6 @@ class S3ScanObjectWorkerTest {
         s3ScanBucketOptions = mock(S3ScanBucketOptions.class);
         bucket = UUID.randomUUID().toString();
         when(s3ScanBucketOption.getName()).thenReturn(bucket);
-        when(s3ScanBucketOption.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(s3ScanBucketOptions.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(s3ScanBucketOptions));
     }
@@ -159,6 +159,103 @@ class S3ScanObjectWorkerTest {
                 sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, 30000, pluginMetrics);
         verify(sourceCoordinator).initialize();
         return objectUnderTest;
+    }
+
+    @Test
+    void test_bucketOptions_with_different_data_selections() throws Exception {
+        String bucket2 = UUID.randomUUID().toString();
+        S3ScanKeyPathOption scanFilter2 = mock(S3ScanKeyPathOption.class);
+        when(scanFilter2.getS3scanIncludePrefixOptions()).thenReturn(List.of("prefix2", "prefix22"));
+        S3ScanBucketOption s3ScanBucketOption2 = mock(S3ScanBucketOption.class);
+        S3ScanBucketOptions s3ScanBucketOptions2 = mock(S3ScanBucketOptions.class);
+        when(s3ScanBucketOption2.getName()).thenReturn(bucket2);
+        when(s3ScanBucketOption2.getDataSelection()).thenReturn(S3DataSelection.METADATA_ONLY);
+        when(s3ScanBucketOption2.getS3ScanFilter()).thenReturn(scanFilter2);
+        when(s3ScanBucketOptions2.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption2);
+
+        S3ScanKeyPathOption scanFilter3 = mock(S3ScanKeyPathOption.class);
+        when(scanFilter3.getS3scanIncludePrefixOptions()).thenReturn(List.of("prefix3", "prefix33"));
+        S3ScanBucketOption s3ScanBucketOption3 = mock(S3ScanBucketOption.class);
+        S3ScanBucketOptions s3ScanBucketOptions3 = mock(S3ScanBucketOptions.class);
+        when(s3ScanBucketOption3.getName()).thenReturn(bucket);
+        when(s3ScanBucketOption3.getDataSelection()).thenReturn(S3DataSelection.DATA_ONLY);
+        when(s3ScanBucketOption3.getS3ScanFilter()).thenReturn(scanFilter3);
+        when(s3ScanBucketOptions3.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption3);
+
+        S3ScanKeyPathOption scanFilter = mock(S3ScanKeyPathOption.class);
+        when(scanFilter.getS3scanIncludePrefixOptions()).thenReturn(List.of("prefix1", "prefix11"));
+        when(s3ScanBucketOption.getS3ScanFilter()).thenReturn(scanFilter);
+        when(s3ScanBucketOption.getName()).thenReturn(bucket);
+        // This should default to S3BucketSelection.DATA_AND_METADATA
+        when(s3ScanBucketOption.getDataSelection()).thenReturn(null);
+        when(s3ScanBucketOptions.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(s3ScanBucketOptions, s3ScanBucketOptions2, s3ScanBucketOptions3));
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
+        when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(false);
+
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey1 = bucket + "|" + "prefix1/"+objectKey;
+        final String objectKey2 = UUID.randomUUID().toString();
+        final String partitionKey2 = bucket2 + "|" + "prefix22/"+objectKey2;
+        final String objectKey3 = UUID.randomUUID().toString();
+        final String partitionKey3 = bucket + "|" + "prefix33/"+objectKey3;
+
+        final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
+        final ArgumentCaptor<S3DataSelection> dataSelectionArgumentCaptor = ArgumentCaptor.forClass(S3DataSelection.class);
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), dataSelectionArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey1));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), dataSelectionArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey2));
+        doNothing().when(s3ObjectHandler).processS3Object(objectReferenceArgumentCaptor.capture(), dataSelectionArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey3));
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey1)
+                .withPartitionClosedCount(0L)
+                .build();
+        final SourcePartition<S3SourceProgressState> partitionToProcess2 = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey2)
+                .withPartitionClosedCount(0L)
+                .build();
+        final SourcePartition<S3SourceProgressState> partitionToProcess3 = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey3)
+                .withPartitionClosedCount(0L)
+                .build();
+        when(sourceCoordinator.getNextPartition(any(Function.class), eq(false))).thenReturn(Optional.of(partitionToProcess), Optional.of(partitionToProcess2), Optional.of(partitionToProcess3));
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verifyNoInteractions(acknowledgementSetManager);
+        verify(sourceCoordinator).completePartition(partitionKey1, false);
+        verifyNoInteractions(s3ObjectDeleteWorker);
+
+        S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
+        assertThat(processedObject.getBucketName(), equalTo(bucket));
+        assertThat(processedObject.getKey(), equalTo("prefix1/"+objectKey));
+        S3DataSelection dataSelection = dataSelectionArgumentCaptor.getValue();
+        assertThat(dataSelection, equalTo(S3DataSelection.DATA_AND_METADATA));
+
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verifyNoInteractions(acknowledgementSetManager);
+        verify(sourceCoordinator).completePartition(partitionKey2, false);
+        verifyNoInteractions(s3ObjectDeleteWorker);
+
+        processedObject = objectReferenceArgumentCaptor.getValue();
+        assertThat(processedObject.getBucketName(), equalTo(bucket2));
+        assertThat(processedObject.getKey(), equalTo("prefix22/"+objectKey2));
+        dataSelection = dataSelectionArgumentCaptor.getValue();
+        assertThat(dataSelection, equalTo(S3DataSelection.METADATA_ONLY));
+
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verifyNoInteractions(acknowledgementSetManager);
+        verify(sourceCoordinator).completePartition(partitionKey3, false);
+        verifyNoInteractions(s3ObjectDeleteWorker);
+
+        processedObject = objectReferenceArgumentCaptor.getValue();
+        assertThat(processedObject.getBucketName(), equalTo(bucket));
+        assertThat(processedObject.getKey(), equalTo("prefix33/"+objectKey3));
+        dataSelection = dataSelectionArgumentCaptor.getValue();
+        assertThat(dataSelection, equalTo(S3DataSelection.DATA_ONLY));
     }
 
     @ParameterizedTest
