@@ -1,0 +1,19 @@
+{
+  "traceId": "7465737454726163654964",
+  "spanId": "746573745370616e4964",
+  "severityText": "Test severity text",
+  "flags": 0,
+  "time": "%s",
+  "severityNumber": 2,
+  "droppedAttributesCount": 10,
+  "serviceName": "testServiceName",
+  "body": "Test body",
+  "observedTimestamp": "%s",
+  "schemaUrl": "testSchemaUrl",
+  "instrumentationScope.name": "testScopeName",
+  "log.attributes.data": "{\"nameSpace\":\"testNameSpace\"}",
+  "log.attributes.region": "testRegion",
+  "instrumentationScope.attributes.scope@attr": "testScopeAttr",
+  "resource.attributes.service@name": "testServiceName",
+  "instrumentationScope.version": "testScopeVersion"
+}
