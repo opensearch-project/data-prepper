@@ -1,0 +1,195 @@
+{
+  "GAUGE" : {
+    "unit": "1",
+    "exemplars": [],
+    "kind": "GAUGE",
+    "name": "testGaugeMetricName",
+    "flags": 0,
+    "description": "testGaugeDescription",
+    "startTime": "%s",
+    "time": "%s",
+    "serviceName": null,
+    "value": 10,
+    "schemaUrl": "",
+    "instrumentationScope.name": "testISScopeName",
+    "metric.attributes.testGaugeAttrKey": "testGaugeAttrValue",
+    "resource.attributes.testResourceAttrKey": "testResourceAttrValue",
+    "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+    "instrumentationScope.version": "testISScopeVersion"
+  },
+  "SUM" : {
+    "kind": "SUM",
+    "flags": 0,
+    "description": "testSumDescription",
+    "serviceName": null,
+    "schemaUrl": "",
+    "isMonotonic": false,
+    "unit": "1",
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
+    "exemplars": [],
+    "name": "testSumMetricName",
+    "startTime": "%s",
+    "time": "%s",
+    "value": 100,
+    "instrumentationScope.name": "testISScopeName",
+    "resource.attributes.testResourceAttrKey": "testResourceAttrValue",
+    "metric.attributes.testSumAttrKey": "testSumAttrValue",
+    "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+    "instrumentationScope.version": "testISScopeVersion"
+  },
+  "EXPONENTIAL_HISTOGRAM" : {
+    "kind": "EXPONENTIAL_HISTOGRAM",
+    "count": 10,
+    "flags": 1,
+    "description": "testExponentialHistogramDescription",
+    "scale": 3,
+    "sum": 100,
+    "positive": [
+      2,
+      4,
+      6
+    ],
+    "positiveOffset": 2,
+    "serviceName": null,
+    "negativeBuckets": [
+      {
+        "min": 0.9170040432046712,
+        "max": 0.8408964152537145,
+        "count": 1
+      },
+      {
+        "min": 0.8408964152537145,
+        "max": 0.7711054127039704,
+        "count": 3
+      },
+      {
+        "min": 0.7711054127039704,
+        "max": 0.7071067811865475,
+        "count": 5
+      }
+    ],
+    "zeroCount": 0,
+    "schemaUrl": "",
+    "unit": "1",
+    "negative": [
+      1,
+      3,
+      5
+    ],
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_UNSPECIFIED",
+    "exemplars": [],
+    "name": "testExponentialHistogramMetricName",
+    "startTime": "%s",
+    "time": "%s",
+    "positiveBuckets": [
+      {
+        "min": 1.189207115002721,
+        "max": 1.2968395546510099,
+        "count": 2
+      },
+      {
+        "min": 1.2968395546510099,
+        "max": 1.4142135623730951,
+        "count": 4
+      },
+      {
+        "min": 1.4142135623730951,
+        "max": 1.542210825407941,
+        "count": 6
+      }
+    ],
+    "negativeOffset": -1,
+    "metric.attributes.testExponentialHistogramAttrKey": "testExponentialHistogramAttrValue",
+    "instrumentationScope.name": "testISScopeName",
+    "resource.attributes.testResourceAttrKey": "testResourceAttrValue",
+    "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+    "instrumentationScope.version": "testISScopeVersion"
+  },
+  "HISTOGRAM" : {
+    "kind": "HISTOGRAM",
+    "buckets": [
+      {
+        "min": -3.4028234663852886e+38,
+        "max": 10,
+        "count": 5
+      },
+      {
+        "min": 10,
+        "max": 20,
+        "count": 10
+      },
+      {
+        "min": 20,
+        "max": 30,
+        "count": 15
+      },
+      {
+        "min": 30,
+        "max": 40,
+        "count": 20
+      },
+      {
+        "min": 40,
+        "max": 3.4028234663852886e+38,
+        "count": 25
+      }
+    ],
+    "count": 10,
+    "bucketCountsList": [
+      5,
+      10,
+      15,
+      20,
+      25
+    ],
+    "flags": 1,
+    "description": "testHistogramDescription",
+    "sum": 100,
+    "serviceName": null,
+    "schemaUrl": "",
+    "unit": "1",
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
+    "exemplars": [],
+    "bucketCounts": 5,
+    "name": "testHistogramMetricName",
+    "startTime": "%s",
+    "explicitBoundsCount": 4,
+    "time": "%s",
+    "explicitBounds": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+    ],
+    "instrumentationScope.name": "testISScopeName",
+    "metric.attributes.testHistogramAttrKey": "testHistogramAttrValue",
+    "resource.attributes.testResourceAttrKey": "testResourceAttrValue",
+    "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+    "instrumentationScope.version": "testISScopeVersion"
+  },
+  "SUMMARY" : {
+    "kind": "SUMMARY",
+    "count": 10,
+    "flags": 1,
+    "description": "testSummaryDescription",
+    "sum": 100,
+    "serviceName": null,
+    "schemaUrl": "",
+    "quantiles": [
+      {
+        "quantile": 0.5,
+        "value": 100
+      }
+    ],
+    "unit": "1",
+    "name": "testSummaryMetricName",
+    "startTime": "%s",
+    "quantileValuesCount": 1,
+    "time": "%s",
+    "instrumentationScope.name": "testISScopeName",
+    "metric.attributes.testSumamryAttrKey": "testSumamryAttrValue",
+    "resource.attributes.testResourceAttrKey": "testResourceAttrValue",
+    "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+    "instrumentationScope.version": "testISScopeVersion"
+  }
+}

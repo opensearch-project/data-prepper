@@ -19,18 +19,28 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
         "It creates a Data Prepper log event for each log record along with the resource attributes in the file.")
 public class OTelLogsInputCodecConfig {
     static final OTelLogsFormatOption DEFAULT_FORMAT = OTelLogsFormatOption.JSON;
+    static final OTelOutputFormat DEFAULT_OTEL_FORMAT = OTelOutputFormat.OPENSEARCH;
     
     @JsonProperty(value = "format", defaultValue = "json")
     @JsonPropertyDescription("Specifies the format of the OTel logs.")
     @NotNull
     private OTelLogsFormatOption format = DEFAULT_FORMAT;
  
+    @JsonProperty(value = "otel_format", defaultValue = "opensearch")
+    @JsonPropertyDescription("Specifies the format of the OTel Output.")
+    @NotNull
+    private OTelOutputFormat otelFormat = OTelOutputFormat.OPENSEARCH;
+
     @JsonProperty(value = "length_prefixed_encoding", defaultValue = "false")
     @JsonPropertyDescription("Specifies if the length precedes the data in otlp_proto format")
     private boolean lengthPrefixedEncoding;
 
     public OTelLogsFormatOption getFormat() {
          return format;
+    }
+
+    public OTelOutputFormat getOTelOutputFormat() {
+         return otelFormat;
     }
 
     @AssertTrue(message = "Not a valid format.")
