@@ -34,7 +34,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonSpan extends JacksonEvent implements Span {
 
     private static final String STATUS_KEY = "status";
-    private static final String SCOPE_KEY = "scope";
+    private static final String SCOPE_KEY = "instrumentationScope";
     private static final String RESOURCE_KEY = "resource";
     private static final String TRACE_ID_KEY = "traceId";
     private static final String SPAN_ID_KEY = "spanId";

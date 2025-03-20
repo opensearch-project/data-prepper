@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
@@ -24,6 +23,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor.getTimeNanos;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 import static org.opensearch.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelper.createBuckets;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -123,7 +123,7 @@ public class HistogramAggregateAction implements AggregateAction {
             spanId = span.getSpanId();
             traceId = span.getTraceId();
         }
-        return new DefaultExemplar(OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
+        return new DefaultExemplar(convertUnixNanosToISO8601(curTimeNanos),
                     value,
                     spanId,
                     traceId,
@@ -248,8 +248,8 @@ public class HistogramAggregateAction implements AggregateAction {
             JacksonHistogram histogram = JacksonHistogram.builder()
                 .withName(this.metricName)
                 .withDescription(description)
-                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
-                .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
+                .withTime(convertUnixNanosToISO8601(endTimeNanos))
+                .withStartTime(convertUnixNanosToISO8601(startTimeNanos))
                 .withUnit(this.units)
                 .withSum(sum)
                 .withMin(min)
