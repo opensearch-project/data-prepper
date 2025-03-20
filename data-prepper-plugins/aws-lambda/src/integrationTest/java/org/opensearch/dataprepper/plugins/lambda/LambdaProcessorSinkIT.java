@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -63,6 +64,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -106,6 +108,8 @@ public class LambdaProcessorSinkIT {
     private DistributionSummary responsePayloadMetric;
     @Mock
     InvocationType invocationType;
+    @Mock
+    CircuitBreaker circuitBreaker;
 
     private AtomicLong successCount;
     private AtomicLong numEventHandlesReleased;
@@ -114,7 +118,9 @@ public class LambdaProcessorSinkIT {
     private AcknowledgementSet acknowledgementSet;
 
     private LambdaProcessor createLambdaProcessor(LambdaProcessorConfig processorConfig) {
-        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig,
+                awsCredentialsSupplier, expressionEvaluator,
+                Optional.of(circuitBreaker));
     }
 
     private LambdaSink createLambdaSink(LambdaSinkConfig lambdaSinkConfig) {

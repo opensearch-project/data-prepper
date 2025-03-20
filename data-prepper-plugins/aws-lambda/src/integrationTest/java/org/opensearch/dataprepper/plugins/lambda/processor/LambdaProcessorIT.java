@@ -40,6 +40,7 @@ import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
@@ -78,6 +79,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -120,9 +122,13 @@ public class LambdaProcessorIT {
     private Counter batchExceedingThresholdCounter;
     @Mock
     private Timer testTimer;
+    @Mock
+    CircuitBreaker circuitBreaker;
 
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
-        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginSetting,
+                processorConfig, awsCredentialsSupplier, expressionEvaluator,
+                Optional.of(circuitBreaker));
     }
 
     @BeforeEach
@@ -508,7 +514,8 @@ public class LambdaProcessorIT {
                     pluginSetting,
                     lambdaProcessorConfig,
                     awsCredentialsSupplier,
-                    expressionEvaluator
+                    expressionEvaluator,
+                    Optional.of(circuitBreaker)
             );
 
             // Create multiple parallel tasks to call doExecute(...)

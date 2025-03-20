@@ -14,6 +14,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -48,6 +49,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -63,6 +65,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
     public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
     public static final String RECORDS_EXCEEDING_THRESHOLD = "recordsExceedingThreshold";
+    public static final String CIRCUIT_BREAKER_TRIPS = "circuitBreakerTrips";
     private static final String NO_RETURN_RESPONSE = "null";
     private static final String EXCEEDING_PAYLOAD_LIMIT_EXCEPTION = "Status Code: 413";
 
@@ -78,6 +81,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRequestsFailedCounter;
     private final Counter lambdaResponseRecordsCounter;
     private final Counter batchExceedingThresholdCounter;
+    private final Counter circuitBreakerTripsCounter;
     private final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
@@ -85,18 +89,21 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
+    private final Optional<CircuitBreaker> circuitBreaker;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                            final LambdaProcessorConfig lambdaProcessorConfig,
                            final AwsCredentialsSupplier awsCredentialsSupplier,
-                           final ExpressionEvaluator expressionEvaluator) {
+                           final ExpressionEvaluator expressionEvaluator,
+                           final Optional<CircuitBreaker> circuitBreaker) {
         super(
                 PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName() + "_processor"));
 
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
+        this.circuitBreaker = circuitBreaker;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
                 NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(
@@ -110,6 +117,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
         this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
         this.batchExceedingThresholdCounter = pluginMetrics.counter(RECORDS_EXCEEDING_THRESHOLD);
+        this.circuitBreakerTripsCounter = pluginMetrics.counter(CIRCUIT_BREAKER_TRIPS);
 
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
@@ -152,6 +160,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return records;
         }
 
+        // Check if circuit breaker is open - if so, wait until it closes
+        if (circuitBreaker.isPresent()) {
+            waitForCircuitBreakerToClosed();
+        }
+
         List<Record<Event>> resultRecords = new ArrayList<>();
         List<Record<Event>> recordsToLambda = new ArrayList<>();
         for (Record<Event> record : records) {
@@ -183,6 +196,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             CompletableFuture<InvokeResponse> future = entry.getValue();
             Buffer inputBuffer = entry.getKey();
             try {
+                // Check circuit breaker before processing each buffer's response
+                if (circuitBreaker.isPresent()) {
+                    waitForCircuitBreakerToClosed();
+                }
+
                 InvokeResponse response = future.join();
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
@@ -214,6 +232,40 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             }
         }
         return resultRecords;
+    }
+    
+    /**
+     * Waits for the circuit breaker to close before proceeding.
+     * This method will block execution until the circuit breaker is closed.
+     */
+    private void waitForCircuitBreakerToClosed() {
+        if (!circuitBreaker.isPresent()) {
+            return;
+        }
+        
+        CircuitBreaker breaker = circuitBreaker.get();
+        if (breaker.isOpen()) {
+            LOG.warn("Circuit breaker is open. Pausing Lambda invocation to prevent OOM.");
+            circuitBreakerTripsCounter.increment();
+            
+            // Wait until the circuit breaker is closed
+            boolean isFirstIteration = true;
+            while (breaker.isOpen()) {
+                try {
+                    if (isFirstIteration) {
+                        LOG.info("Waiting for circuit breaker to close before proceeding with Lambda invocation");
+                        isFirstIteration = false;
+                    }
+                    // Sleep for a short time before checking again
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.warn("Interrupted while waiting for circuit breaker to close", e);
+                    break;
+                }
+            }
+            LOG.info("Circuit breaker closed. Resuming Lambda invocation.");
+        }
     }
 
     /*
