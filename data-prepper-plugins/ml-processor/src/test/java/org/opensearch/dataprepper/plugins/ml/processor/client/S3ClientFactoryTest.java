@@ -41,8 +41,6 @@ public class S3ClientFactoryTest {
     @Mock
     private AwsCredentialsProvider awsCredentialsProvider;
 
-    @InjectMocks
-    private S3ClientFactory s3ClientFactory;
 
     @BeforeEach
     void setUp() {

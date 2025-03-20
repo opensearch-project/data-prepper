@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.ml.processor.util;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.ml.processor.MLProcessor;
@@ -14,18 +15,15 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.*;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
-import software.amazon.awssdk.core.internal.http.loader.DefaultSdkHttpClientBuilder;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.*;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.utils.AttributeMap;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFactory.convertToCredentialsOptions;
@@ -33,8 +31,15 @@ import static org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFac
 public class MlCommonRequester {
     private static final Aws4Signer signer;
     private static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);
+    private static HttpClientExecutor httpClientExecutor = new SdkHttpClientExecutor();
+
     static {
         signer = Aws4Signer.create();
+    }
+
+    @VisibleForTesting
+    static void setHttpClientExecutor(HttpClientExecutor executor) {
+        httpClientExecutor = executor;
     }
 
     public static void sendRequestToMLCommons(String payload, MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
@@ -65,20 +70,12 @@ public class MlCommonRequester {
     }
 
     private static void executeHttpRequest(HttpExecuteRequest executeRequest) {
-        AttributeMap attributeMap = AttributeMap.builder()
-                .put(SdkHttpConfigurationOption.CONNECTION_TIMEOUT, Duration.ofMillis(30000))
-                .put(SdkHttpConfigurationOption.READ_TIMEOUT, Duration.ofMillis(3000))
-                .put(SdkHttpConfigurationOption.MAX_CONNECTIONS, 10)
-                .build();
-        SdkHttpClient httpClient = new DefaultSdkHttpClientBuilder().buildWithDefaults(attributeMap);
-
         try {
-            HttpExecuteResponse response = httpClient.prepareRequest(executeRequest).call();
-            System.out.println("Making HTTP call to ML Commons...");
+            HttpExecuteResponse response = httpClientExecutor.execute(executeRequest);
 
             handleHttpResponse(response);
         } catch (Exception e) {  // TODO: catch different exceptions and retry
-            throw new RuntimeException("Failed to execute request in AWS connector", e);
+            throw new RuntimeException("Failed to execute HTTP request using the ML Commons model", e);
         }
     }
 
