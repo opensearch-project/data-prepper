@@ -31,8 +31,10 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
                                    final PluginMetrics pluginMetrics) {
         this.mlProcessorConfig = mlProcessorConfig;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        System.out.println("AbstractBatchJobCreator constructor called");
         this.numberOfBatchJobsSuccessCounter = pluginMetrics.counter(NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION);
         this.numberOfBatchJobsFailedCounter = pluginMetrics.counter(NUMBER_OF_FAILED_BATCH_JOBS_CREATION);
+        System.out.println("numberOfBatchJobsSuccessCounter is " + numberOfBatchJobsSuccessCounter.count());
     }
 
     // Add common logic here that both subclasses can share

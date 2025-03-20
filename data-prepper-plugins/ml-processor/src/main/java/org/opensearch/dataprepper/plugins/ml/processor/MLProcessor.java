@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
-@Experimental
 @DataPrepperPlugin(name = "ml", pluginType = Processor.class, pluginConfigurationType = MLProcessorConfig.class)
 public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);

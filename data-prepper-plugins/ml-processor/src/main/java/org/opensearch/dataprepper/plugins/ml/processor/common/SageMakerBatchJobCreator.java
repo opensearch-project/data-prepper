@@ -60,7 +60,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
                 })
                 .orElse(null);   // Use null if no record is found
         String commonPrefix = findCommonPrefix(records);
-        String manifestUrl = generateManifest(records, customerBucket, commonPrefix, mlProcessorConfig);
+        String manifestUrl = generateManifest(records, customerBucket, commonPrefix);
         String payload = createPayloadSageMaker(manifestUrl, mlProcessorConfig);
 
         boolean success = retryWithBackoff(() -> sendRequestToMLCommons(payload, mlProcessorConfig, awsCredentialsSupplier));
@@ -103,7 +103,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     }
 
 
-    private String generateManifest(Collection<Record<Event>> records, String customerBucket, String prefix, MLProcessorConfig mlProcessorConfig) {
+    private String generateManifest(Collection<Record<Event>> records, String customerBucket, String prefix) {
         try {
             // Generate timestamp
             String timestamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
