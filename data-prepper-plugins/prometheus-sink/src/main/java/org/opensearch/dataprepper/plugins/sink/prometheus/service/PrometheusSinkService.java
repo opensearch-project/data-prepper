@@ -20,6 +20,7 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.util.Timeout;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
@@ -149,7 +150,7 @@ public class PrometheusSinkService {
      * This method process buffer records and send to Http End points based on configured codec
      * @param records Collection of Event
      */
-    public void output(final Collection<Record<Event>> records) {
+    public void output(final Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         reentrantLock.lock();
         try {
             records.forEach(record -> {

@@ -165,10 +165,10 @@ public class CouldWatchLogsIT {
         
         sink = createObjectUnderTest();
         Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
-        sink.doOutput(records);
+        sink.doOutput(records, null);
         await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> {
-                    sink.doOutput(Collections.emptyList());
+                    sink.doOutput(Collections.emptyList(), null);
                     long endTime = Instant.now().toEpochMilli();
                     GetLogEventsRequest getRequest = GetLogEventsRequest
                                        .builder()
@@ -202,7 +202,7 @@ public class CouldWatchLogsIT {
         
         sink = createObjectUnderTest();
         Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
-        sink.doOutput(records);
+        sink.doOutput(records, null);
         await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> {
                     long endTime = Instant.now().toEpochMilli();
@@ -237,7 +237,7 @@ public class CouldWatchLogsIT {
         
         sink = createObjectUnderTest();
         Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
-        sink.doOutput(records);
+        sink.doOutput(records, null);
         await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> {
                     long endTime = Instant.now().toEpochMilli();

@@ -200,7 +200,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(generateRandomStringEventRecord());
+            s3SinkService.output(generateRandomStringEventRecord(), null);
         }
 
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptorForCompletion = ArgumentCaptor.forClass(Consumer.class);
@@ -249,7 +249,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(generateRandomStringEventRecord());
+            s3SinkService.output(generateRandomStringEventRecord(), null);
         }
     }
 
@@ -279,7 +279,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(generateRandomStringEventRecord());
+            s3SinkService.output(generateRandomStringEventRecord(), null);
         }
     }
 
@@ -310,7 +310,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(generateRandomStringEventRecord());
+            s3SinkService.output(generateRandomStringEventRecord(), null);
         }
     }
 
@@ -346,7 +346,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(generateEventRecords(2));
+            s3SinkService.output(generateEventRecords(2), null);
         }
         verify(codec).writeEvent(any(), eq(outputStream1));
         verify(codec).writeEvent(any(), eq(outputStream2));
@@ -371,7 +371,7 @@ class S3SinkServiceTest {
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
-        s3SinkService.output(generateLessRandomStringEventRecord());
+        s3SinkService.output(generateLessRandomStringEventRecord(), null);
         verify(snapshotSuccessCounter, times(0)).increment();
     }
 
@@ -404,7 +404,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(Collections.singletonList(new Record<>(event)));
+            s3SinkService.output(Collections.singletonList(new Record<>(event)), null);
         }
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptorForCompletion = ArgumentCaptor.forClass(Consumer.class);
         verify(buffer, times(1)).flushToS3(argumentCaptorForCompletion.capture(), any(Consumer.class));
@@ -440,7 +440,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(Collections.emptyList());
+            s3SinkService.output(Collections.emptyList(), null);
         }
         verify(buffer, times(1)).flushToS3(any(Consumer.class), any(Consumer.class));
     }
@@ -449,7 +449,7 @@ class S3SinkServiceTest {
     void test_output_with_no_incoming_records_or_buffered_records_short_circuits() throws IOException {
         when(s3GroupManager.hasNoGroups()).thenReturn(true);
         final S3SinkService s3SinkService = createObjectUnderTest();
-        s3SinkService.output(Collections.emptyList());
+        s3SinkService.output(Collections.emptyList(), null);
 
         verify(snapshotSuccessCounter, times(0)).increment();
     }
@@ -480,7 +480,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(records);
+            s3SinkService.output(records, null);
         }
 
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptorForCompletion = ArgumentCaptor.forClass(Consumer.class);
@@ -524,8 +524,8 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(records);
-            s3SinkService.output(records2);
+            s3SinkService.output(records, null);
+            s3SinkService.output(records2, null);
         }
 
         final ArgumentCaptor<Consumer<Boolean>> argumentCaptorForCompletion = ArgumentCaptor.forClass(Consumer.class);
@@ -576,7 +576,7 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            createObjectUnderTest().output(records);
+            createObjectUnderTest().output(records, null);
         }
 
         InOrder inOrder = inOrder(codec, s3Group);
@@ -648,7 +648,8 @@ class S3SinkServiceTest {
             when(mockCompletableFuture.thenRun(any(Runnable.class))).thenReturn(mockCompletableFuture);
             when(mockCompletableFuture.join()).thenReturn(null);
             completableFutureMockedStatic.when(() -> CompletableFuture.allOf(any())).thenReturn(mockCompletableFuture);
-            s3SinkService.output(List.of(new Record<>(firstGroupEvent), new Record<>(secondGroupEvent), new Record<>(thirdGroupEvent)));
+            s3SinkService.output(
+                    List.of(new Record<>(firstGroupEvent), new Record<>(secondGroupEvent), new Record<>(thirdGroupEvent)), null);
         }
 
         verify(thirdGroupBuffer).flushToS3(any(Consumer.class), any(Consumer.class));

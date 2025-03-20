@@ -161,7 +161,7 @@ public class KafkaSinkJsonTypeIT {
         }
 
         kafkaSink.doInitialize();
-        kafkaSink.doOutput(records);
+        kafkaSink.doOutput(records, null);
 
         Thread.sleep(4000);
 

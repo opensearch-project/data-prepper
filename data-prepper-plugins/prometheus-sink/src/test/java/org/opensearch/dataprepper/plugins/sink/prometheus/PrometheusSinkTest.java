@@ -97,6 +97,6 @@ public class PrometheusSinkTest {
         Assertions.assertNotNull(prometheusSink);
         prometheusSink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
-        prometheusSink.doOutput(records);
+        prometheusSink.doOutput(records, null);
     }
 }

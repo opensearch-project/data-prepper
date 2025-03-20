@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
@@ -34,7 +35,7 @@ public class InMemorySink implements Sink<Record<Event>> {
     }
 
     @Override
-    public void output(final Collection<Record<Event>> records) {
+    public void output(final Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         inMemorySinkAccessor.addEvents(testingKey, records);
         boolean result = inMemorySinkAccessor.getResult();
         records.stream().forEach((record) -> {

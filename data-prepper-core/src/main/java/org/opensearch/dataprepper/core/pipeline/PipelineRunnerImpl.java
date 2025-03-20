@@ -108,6 +108,9 @@ public class PipelineRunnerImpl implements PipelineRunner {
                 if (inputEvents != null) {
                     processAcknowledgements(inputEvents, Collections.emptyList());
                 }
+                if (pipeline.getFailurePipeline() != null) {
+                    ((FailurePipelineSource)(pipeline.getFailurePipeline().getSource())).sendFailedEvents(records);
+                }
 
                 records = Collections.emptyList();
                 break;
