@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import io.micrometer.core.instrument.Counter;
 
 import org.slf4j.Logger;
@@ -74,7 +75,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<?>, Record
     @Override
     public Collection<Record<? extends Metric>> doExecute(Collection<Record<?>> records) {
         Collection<Record<? extends Metric>> recordsOut = new ArrayList<>();
-        OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+        OTelProtoCodec.OTelProtoDecoder otelProtoDecoder = new OTelProtoOpensearchCodec.OTelProtoDecoder();
         AtomicInteger droppedCounter = new AtomicInteger(0);
 
         for (Record<?> rec : records) {

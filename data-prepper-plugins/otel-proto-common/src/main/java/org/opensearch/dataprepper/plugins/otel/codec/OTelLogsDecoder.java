@@ -21,8 +21,8 @@ import java.time.Instant;
 
 public class OTelLogsDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTelLogsDecoder() {
-        otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+    public OTelLogsDecoder(OTelOutputFormat otelOutputFormat) {
+        otelProtoDecoder = otelOutputFormat == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
     }
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportLogsServiceRequest request = ExportLogsServiceRequest.parseFrom(inputStream);
