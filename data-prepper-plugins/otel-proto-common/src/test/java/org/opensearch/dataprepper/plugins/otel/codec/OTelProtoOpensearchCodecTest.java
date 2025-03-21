@@ -48,6 +48,7 @@ import org.opensearch.dataprepper.model.trace.Link;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.trace.SpanEvent;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -406,11 +407,11 @@ public class OTelProtoOpensearchCodecTest {
                     .setEndTimeUnixNano(1598013600000000321L).build();
             final io.opentelemetry.proto.trace.v1.Span emptyTimeSpan = io.opentelemetry.proto.trace.v1.Span.newBuilder().build();
 
-            final String startTime = decoderUnderTest.getStartTimeISO8601(startTimeUnixNano);
+            final String startTime = convertUnixNanosToISO8601(startTimeUnixNano.getStartTimeUnixNano());
             assertThat(Instant.parse(startTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(startTime).getNano(), equalTo(startTimeUnixNano.getStartTimeUnixNano()));
-            final String endTime = decoderUnderTest.getEndTimeISO8601(endTimeUnixNano);
+            final String endTime = convertUnixNanosToISO8601(endTimeUnixNano.getEndTimeUnixNano());
             assertThat(Instant.parse(endTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(endTime).getNano(), equalTo(endTimeUnixNano.getEndTimeUnixNano()));
-            final String emptyTime = decoderUnderTest.getStartTimeISO8601(endTimeUnixNano);
+            final String emptyTime = convertUnixNanosToISO8601(endTimeUnixNano.getStartTimeUnixNano());
             assertThat(Instant.parse(emptyTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(emptyTime).getNano(), equalTo(emptyTimeSpan.getStartTimeUnixNano()));
 
         }
@@ -444,7 +445,7 @@ public class OTelProtoOpensearchCodecTest {
                     .build();
             final TraceGroupFields expectedTraceGroupFields = DefaultTraceGroupFields.builder()
                     .withStatusCode(testStatusCode)
-                    .withEndTime(decoderUnderTest.getEndTimeISO8601(span2))
+                    .withEndTime(convertUnixNanosToISO8601(span2.getStartTimeUnixNano()))
                     .withDurationInNanos(testEndTimeUnixNano - testStartTimeUnixNano)
                     .build();
             assertThat(decoderUnderTest.getTraceGroupFields(span2), equalTo(expectedTraceGroupFields));
@@ -899,9 +900,9 @@ public class OTelProtoOpensearchCodecTest {
     public void testTimeCodec() {
         final long testNanos = System.nanoTime();
         final String timeISO8601 = OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos);
-        final long nanoCodecResult = OTelProtoCommonUtils.timeISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
+        final long nanoCodecResult = OTelProtoCommonUtils.convertISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
         assertThat(nanoCodecResult, equalTo(testNanos));
-        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.timeISO8601ToNanos(timeISO8601));
+        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.convertISO8601ToNanos(timeISO8601));
         assertThat(stringCodecResult, equalTo(timeISO8601));
     }
 
