@@ -124,6 +124,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);

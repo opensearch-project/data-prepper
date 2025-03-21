@@ -171,6 +171,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(schemaConfig.getType()).thenReturn(SchemaRegistryType.CONFLUENT);

@@ -107,6 +107,7 @@ public class ConfluentKafkaProducerConsumerIT {
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);

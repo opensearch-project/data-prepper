@@ -143,6 +143,7 @@ public class KafkaSourceSaslScramIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);

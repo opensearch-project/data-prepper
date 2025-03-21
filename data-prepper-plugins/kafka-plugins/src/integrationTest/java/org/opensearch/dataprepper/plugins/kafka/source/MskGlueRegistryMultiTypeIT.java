@@ -159,6 +159,8 @@ public class MskGlueRegistryMultiTypeIT {
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsOptions = mock(AwsCredentialsOptions.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
         when(schemaConfig.getType()).thenReturn(SchemaRegistryType.AWS_GLUE);
@@ -412,6 +414,7 @@ public class MskGlueRegistryMultiTypeIT {
         properties.put(AWSSchemaRegistryConstants.AWS_REGION, awsConfig.getRegion());
         properties.put(AWSSchemaRegistryConstants.REGISTRY_NAME, testRegistryName);
         properties.put(AWSSchemaRegistryConstants.SCHEMA_NAME, testAvroSchemaName);
+        properties.put(AWSSchemaRegistryConstants.SCHEMA_AUTO_REGISTRATION_SETTING, true);
 
         Schema testSchema = null;
         Schema.Parser parser = new Schema.Parser();
