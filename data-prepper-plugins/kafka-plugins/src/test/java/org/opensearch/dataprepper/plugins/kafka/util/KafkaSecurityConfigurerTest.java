@@ -15,7 +15,9 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObserver;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsCredentialsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConnectionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceConfig;
@@ -24,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.KafkaClientBuilder;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
@@ -70,6 +71,10 @@ public class KafkaSecurityConfigurerTest {
     private AuthConfig.SaslAuthConfig saslAuthConfig;
     @Mock
     private PlainTextAuthConfig plainTextAuthConfig;
+    @Mock
+    private AwsContext awsContext;
+    @Mock
+    private StsAssumeRoleCredentialsProvider stsAssumeRoleCredentialsProvider;
     @Captor
     private ArgumentCaptor<PluginConfigObserver> pluginConfigObserverArgumentCaptor;
 
@@ -244,9 +249,11 @@ public class KafkaSecurityConfigurerTest {
             "kafka-pipeline-msk-default-glue-sts-assume-role.yaml"
     })
     void testGetGlueSerializerWithStsAssumeRoleCredentialsProvider(final String filename) throws IOException {
+        when(awsContext.getOrDefault(any(AwsCredentialsConfig.class))).thenReturn(stsAssumeRoleCredentialsProvider);
+        when(awsContext.getRegionOrDefault(any(AwsCredentialsConfig.class))).thenReturn(Region.US_EAST_1);
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(filename);
         final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
-                .getGlueSerializer(kafkaSourceConfig);
+                .getGlueSerializer(kafkaSourceConfig, awsContext);
         assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
         assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
                 instanceOf(StsAssumeRoleCredentialsProvider.class));
@@ -256,50 +263,36 @@ public class KafkaSecurityConfigurerTest {
     void testGetGlueSerializerWithDefaultCredentialsProvider() throws IOException {
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(
                 "kafka-pipeline-bootstrap-servers-glue-default.yaml");
-        final DefaultAwsRegionProviderChain.Builder defaultAwsRegionProviderChainBuilder = mock(
-                DefaultAwsRegionProviderChain.Builder.class);
-        final DefaultAwsRegionProviderChain defaultAwsRegionProviderChain = mock(DefaultAwsRegionProviderChain.class);
-        when(defaultAwsRegionProviderChainBuilder.build()).thenReturn(defaultAwsRegionProviderChain);
-        when(defaultAwsRegionProviderChain.getRegion()).thenReturn(Region.US_EAST_1);
-        try (MockedStatic<DefaultAwsRegionProviderChain> defaultAwsRegionProviderChainMockedStatic =
-                     mockStatic(DefaultAwsRegionProviderChain.class)) {
-            defaultAwsRegionProviderChainMockedStatic.when(DefaultAwsRegionProviderChain::builder)
-                    .thenReturn(defaultAwsRegionProviderChainBuilder);
-            final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
-                    .getGlueSerializer(kafkaSourceConfig);
-            assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-            assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
-                    instanceOf(DefaultCredentialsProvider.class));
-            assertThat(glueSchemaRegistryKafkaDeserializer
-                    .getGlueSchemaRegistryDeserializationFacade()
-                    .getGlueSchemaRegistryConfiguration()
-                    .getEndPoint(), is(nullValue()));
-        }
+        final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
+        when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
+        when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
+        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                .getGlueSerializer(kafkaSourceConfig, awsContext);
+        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                instanceOf(DefaultCredentialsProvider.class));
+        assertThat(glueSchemaRegistryKafkaDeserializer
+                .getGlueSchemaRegistryDeserializationFacade()
+                .getGlueSchemaRegistryConfiguration()
+                .getEndPoint(), is(nullValue()));
     }
 
     @Test
     void testGetGlueSerializerWithDefaultCredentialsProviderAndOverrridenRegistryEndpoint() throws IOException {
         final KafkaSourceConfig kafkaSourceConfig = createKafkaSinkConfig(
                 "kafka-pipeline-bootstrap-servers-glue-override-endpoint.yaml");
-        final DefaultAwsRegionProviderChain.Builder defaultAwsRegionProviderChainBuilder = mock(
-                DefaultAwsRegionProviderChain.Builder.class);
-        final DefaultAwsRegionProviderChain defaultAwsRegionProviderChain = mock(DefaultAwsRegionProviderChain.class);
-        when(defaultAwsRegionProviderChainBuilder.build()).thenReturn(defaultAwsRegionProviderChain);
-        when(defaultAwsRegionProviderChain.getRegion()).thenReturn(Region.US_EAST_1);
-        try (MockedStatic<DefaultAwsRegionProviderChain> defaultAwsRegionProviderChainMockedStatic =
-                     mockStatic(DefaultAwsRegionProviderChain.class)) {
-            defaultAwsRegionProviderChainMockedStatic.when(DefaultAwsRegionProviderChain::builder)
-                    .thenReturn(defaultAwsRegionProviderChainBuilder);
-            final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
-                    .getGlueSerializer(kafkaSourceConfig);
-            assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
-            assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
-                    instanceOf(DefaultCredentialsProvider.class));
-            assertThat(glueSchemaRegistryKafkaDeserializer
-                    .getGlueSchemaRegistryDeserializationFacade()
-                    .getGlueSchemaRegistryConfiguration()
-                    .getEndPoint(), is("http://fake-glue-registry"));
-        }
+        final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
+        when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
+        when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
+        final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
+                .getGlueSerializer(kafkaSourceConfig, awsContext);
+        assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
+        assertThat(glueSchemaRegistryKafkaDeserializer.getCredentialProvider(),
+                instanceOf(DefaultCredentialsProvider.class));
+        assertThat(glueSchemaRegistryKafkaDeserializer
+                .getGlueSchemaRegistryDeserializationFacade()
+                .getGlueSchemaRegistryConfiguration()
+                .getEndPoint(), is("http://fake-glue-registry"));
     }
 
     @Test

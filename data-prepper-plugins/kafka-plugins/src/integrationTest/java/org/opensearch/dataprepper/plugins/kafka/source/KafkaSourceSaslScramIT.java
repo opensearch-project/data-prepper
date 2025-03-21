@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -103,6 +104,9 @@ public class KafkaSourceSaslScramIT {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private KafkaSource kafkaSource;
 
     private Counter counter;
@@ -115,7 +119,8 @@ public class KafkaSourceSaslScramIT {
     private String testGroup;
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier, pluginConfigObservable);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
+                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier);
     }
 
     @BeforeEach
@@ -138,6 +143,7 @@ public class KafkaSourceSaslScramIT {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicSaslClientCallbackHandler;
 import org.opensearch.dataprepper.plugins.kafka.authenticator.DynamicBasicCredentialsProvider;
+import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
@@ -384,16 +385,18 @@ public class KafkaSecurityConfigurer {
         return Objects.nonNull(encryptionConfig) && encryptionConfig.getType() == encryptionType;
     }
 
-    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaConsumerConfig kafkaConsumerConfig) {
-        configureAwsGlueCredentialsProvider(kafkaConsumerConfig.getAwsConfig());
+    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(
+            final KafkaConsumerConfig kafkaConsumerConfig, final AwsContext awsContext) {
+        final AwsConfig awsConfig = kafkaConsumerConfig.getAwsConfig();
+        awsGlueCredentialsProvider = awsContext.getOrDefault(awsConfig);
         SchemaConfig schemaConfig = kafkaConsumerConfig.getSchemaConfig();
         if (Objects.isNull(schemaConfig) || schemaConfig.getType() != SchemaRegistryType.AWS_GLUE) {
             return null;
         }
         Map<String, Object> configs = new HashMap<>();
-        final AwsConfig awsConfig = kafkaConsumerConfig.getAwsConfig();
-        if (Objects.nonNull(awsConfig) && Objects.nonNull(awsConfig.getRegion())) {
-            configs.put(AWSSchemaRegistryConstants.AWS_REGION, kafkaConsumerConfig.getAwsConfig().getRegion());
+        final Region region = awsContext.getRegionOrDefault(awsConfig);
+        if (Objects.nonNull(region)) {
+            configs.put(AWSSchemaRegistryConstants.AWS_REGION, region.id());
         }
         configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
@@ -406,28 +409,5 @@ public class KafkaSecurityConfigurer {
         glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(awsGlueCredentialsProvider, configs);
         return glueDeserializer;
     }
-
-    private static void configureAwsGlueCredentialsProvider(final AwsConfig awsConfig) {
-        awsGlueCredentialsProvider = DefaultCredentialsProvider.create();
-        if (Objects.nonNull(awsConfig) &&
-                Objects.nonNull(awsConfig.getRegion()) && Objects.nonNull(awsConfig.getStsRoleArn())) {
-            String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
-            StsClient stsClient = StsClient.builder()
-                    .region(Region.of(awsConfig.getRegion()))
-                    .credentialsProvider(awsGlueCredentialsProvider)
-                    .build();
-            awsGlueCredentialsProvider = StsAssumeRoleCredentialsProvider
-                    .builder()
-                    .stsClient(stsClient)
-                    .refreshRequest(
-                            AssumeRoleRequest
-                                    .builder()
-                                    .roleArn(awsConfig.getStsRoleArn())
-                                    .roleSessionName(sessionName)
-                                    .build()
-                    ).build();
-        }
-    }
-
 }
 
