@@ -265,7 +265,7 @@ public class KafkaSecurityConfigurerTest {
                 "kafka-pipeline-bootstrap-servers-glue-default.yaml");
         final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
         when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
-        when(awsContext.getRegionOrDefault(any())).thenReturn(null);
+        when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
         final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
                 .getGlueSerializer(kafkaSourceConfig, awsContext);
         assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
@@ -283,7 +283,7 @@ public class KafkaSecurityConfigurerTest {
                 "kafka-pipeline-bootstrap-servers-glue-override-endpoint.yaml");
         final DefaultCredentialsProvider defaultCredentialsProvider = mock(DefaultCredentialsProvider.class);
         when(awsContext.getOrDefault(any())).thenReturn(defaultCredentialsProvider);
-        when(awsContext.getRegionOrDefault(any())).thenReturn(null);
+        when(awsContext.getRegionOrDefault(any())).thenReturn(Region.US_EAST_1);
         final GlueSchemaRegistryKafkaDeserializer glueSchemaRegistryKafkaDeserializer = KafkaSecurityConfigurer
                 .getGlueSerializer(kafkaSourceConfig, awsContext);
         assertThat(glueSchemaRegistryKafkaDeserializer, notNullValue());
