@@ -13,6 +13,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -75,6 +76,9 @@ public class ConfluentKafkaProducerConsumerIT {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
 
     private KafkaSource kafkaSource;
     private TopicConsumerConfig topicConfig;
@@ -164,7 +168,8 @@ public class ConfluentKafkaProducerConsumerIT {
     }
 
     public void consumeRecords(String servers) {
-        kafkaSource = new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, null, pluginConfigObservable);
+        kafkaSource = new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
+                null, pluginConfigObservable, awsCredentialsSupplier);
         kafkaSource.start(buffer);
     }
 

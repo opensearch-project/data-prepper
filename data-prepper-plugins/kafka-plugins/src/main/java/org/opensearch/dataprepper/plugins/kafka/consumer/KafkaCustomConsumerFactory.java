@@ -98,7 +98,7 @@ public class KafkaCustomConsumerFactory {
                 Deserializer<Object> keyDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(PlaintextKafkaDataConfig.plaintextDataConfig(dataConfig));
                 Deserializer<Object> valueDeserializer = null;
                 if(schema == MessageFormat.PLAINTEXT) {
-                    valueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(kafkaConsumerConfig);
+                    valueDeserializer = KafkaSecurityConfigurer.getGlueSerializer(kafkaConsumerConfig, awsContext);
                 }
                 if(valueDeserializer == null) {
                     valueDeserializer = (Deserializer<Object>) serializationFactory.getDeserializer(dataConfig);
