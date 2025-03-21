@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.trace;
 
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.micrometer.core.instrument.util.IOUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -19,6 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.List;
@@ -84,6 +86,33 @@ public class JacksonStandardSpanTest extends JacksonSpanTest {
                 .withDurationInNanos(123456L)
                 .withTraceGroupFields(defaultTraceGroupFields)
                 .build();
+    }
+
+    @Test
+    @Override
+    public void testGetTraceGroup() {
+        jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
+        EventMetadata metadata = jacksonSpan.getMetadata();
+        String testTraceGroup = UUID.randomUUID().toString();
+        metadata.setAttribute(JacksonSpan.TRACE_GROUP_KEY, testTraceGroup);
+        final String traceGroup = jacksonSpan.getTraceGroup();
+        assertThat(traceGroup, is(equalTo(testTraceGroup)));
+    }
+
+    @Test
+    @Override
+    public void testGetTraceGroupFields() {
+        jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
+        DefaultTraceGroupFields testTraceGroupFields =
+                DefaultTraceGroupFields.builder()
+                .withDurationInNanos(10000L)
+                .withEndTime(Instant.now().toString())
+                .withStatusCode(10)
+                .build();
+        EventMetadata metadata = jacksonSpan.getMetadata();
+        metadata.setAttribute(JacksonSpan.TRACE_GROUP_FIELDS_KEY, testTraceGroupFields);
+        final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
+        assertThat(traceGroupFields, is(equalTo(testTraceGroupFields)));
     }
 
     @Test
