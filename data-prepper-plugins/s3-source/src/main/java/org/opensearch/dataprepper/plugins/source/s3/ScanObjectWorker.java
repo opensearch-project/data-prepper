@@ -18,6 +18,8 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitio
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +101,7 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, Set<DeleteObjectRequest>> objectsToDeleteForAcknowledgmentSets;
 
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
-    private final Map<String, S3DataSelection> bucketDataSelectionMap;
+    private final Map<String, Map<String, S3DataSelection>> bucketDataSelectionMap;
 
     private final Duration acknowledgmentSetTimeout;
 
@@ -116,16 +118,29 @@ public class ScanObjectWorker implements Runnable {
         this.s3Client = s3Client;
         this.backOffMs = backOffMs;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
-        for (ScanOptions scanOptions : scanOptionsBuilderList) {
-        }
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.bucketDataSelectionMap = new HashMap<>();
-        for (S3ScanBucketOptions bucketOption: s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
-            if (bucketOption.getS3ScanBucketOption() != null) {
-                bucketDataSelectionMap.put(bucketOption.getS3ScanBucketOption().getName(), bucketOption.getS3ScanBucketOption().getDataSelection());
+        if (s3SourceConfig.getS3ScanScanOptions().getBuckets() != null) {
+            for (S3ScanBucketOptions bucketOption: s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
+                S3ScanBucketOption s3ScanBucketOption = bucketOption.getS3ScanBucketOption();
+                if (s3ScanBucketOption != null) {
+                    final String bucketName = s3ScanBucketOption.getName();
+                    Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.containsKey(bucketName) ?
+                                                     bucketDataSelectionMap.get(bucketName) :
+                                                     new HashMap<>();
+
+                    S3ScanKeyPathOption scanFilter = s3ScanBucketOption.getS3ScanFilter();
+                    S3DataSelection dataSelection = s3ScanBucketOption.getDataSelection();
+                    if (scanFilter != null && scanFilter.getS3scanIncludePrefixOptions() != null) {
+                        for (final String prefix : scanFilter.getS3scanIncludePrefixOptions()) {
+                            prefixMap.put(prefix, dataSelection == null ? S3DataSelection.DATA_AND_METADATA : dataSelection);
+                        }
+                        bucketDataSelectionMap.put(bucketName, prefixMap);
+                    }
+                }
             }
         }
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
@@ -264,9 +279,16 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            S3DataSelection dataSelection = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
-            if (dataSelection == null) {
-                dataSelection = S3DataSelection.DATA_AND_METADATA;
+            Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
+            S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
+            final String objectKey = s3ObjectReference.getKey();
+            if (prefixMap != null) {
+                for (Map.Entry<String, S3DataSelection> entry : prefixMap.entrySet()) {
+                    if (objectKey.startsWith(entry.getKey())) {
+                        dataSelection = entry.getValue();
+                        break;
+                    }
+                }
             }
             s3ObjectHandler.processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
             if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled && s3ObjectDeleteWorker != null) {
