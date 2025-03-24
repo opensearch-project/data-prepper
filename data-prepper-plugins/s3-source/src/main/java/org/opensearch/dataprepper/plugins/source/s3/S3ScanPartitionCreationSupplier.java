@@ -95,6 +95,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
             final Instant updatedScanTime = Instant.now();
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions()))
                 excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions());
+
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludePrefixOptions()))
                 s3ScanKeyPathOption.getS3scanIncludePrefixOptions().forEach(includePath -> {
                     listObjectsV2Request.prefix(includePath);
