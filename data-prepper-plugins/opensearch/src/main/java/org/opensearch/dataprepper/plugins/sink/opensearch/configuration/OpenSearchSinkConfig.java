@@ -177,7 +177,7 @@ public class OpenSearchSinkConfig {
     private DlqConfiguration dlq;
 
     @Getter
-    @JsonProperty("query_for_existing_document")
+    @JsonProperty("query_lookup")
     private QueryForExistingDocumentConfiguration queryExistingConfiguration;
 
     @AssertTrue(message = "dlq_file option cannot be used along with dlq option")

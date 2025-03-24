@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.DOCUMENTS_CURRENTLY_BEING_QUERIED;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_ADDED_FOR_QUERYING;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_DROPPED_AND_RELEASED;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_RETURNED_FOR_INDEXING;
@@ -59,6 +61,9 @@ public class ExistingDocumentQueryManagerTest {
     @Mock
     private Counter eventsReturnedForIndexing;
 
+    @Mock
+    private AtomicInteger documentsCurrentlyQueried;
+
     private String queryTerm;
 
     @BeforeEach
@@ -66,6 +71,7 @@ public class ExistingDocumentQueryManagerTest {
         when(pluginMetrics.counter(EVENTS_ADDED_FOR_QUERYING)).thenReturn(eventsAddedForQuerying);
         when(pluginMetrics.counter(EVENTS_DROPPED_AND_RELEASED)).thenReturn(eventsDroppedAndReleased);
         when(pluginMetrics.counter(EVENTS_RETURNED_FOR_INDEXING)).thenReturn(eventsReturnedForIndexing);
+        when(pluginMetrics.gauge(eq(DOCUMENTS_CURRENTLY_BEING_QUERIED), any(AtomicInteger.class), any())).thenReturn(documentsCurrentlyQueried);
         queryTerm = UUID.randomUUID().toString();
         when(indexConfiguration.getQueryTerm()).thenReturn(queryTerm);
     }
@@ -115,6 +121,7 @@ public class ExistingDocumentQueryManagerTest {
 
         verify(eventsDroppedAndReleased).increment();
         verify(eventsAddedForQuerying).increment();
+        verify(documentsCurrentlyQueried).incrementAndGet();
         verify(bulkOperationWrapper).releaseEventHandle(true);
 
         verifyNoMoreInteractions(indexConfiguration);
@@ -170,7 +177,9 @@ public class ExistingDocumentQueryManagerTest {
 
         verifyNoMoreInteractions(eventsDroppedAndReleased);
         verify(eventsAddedForQuerying).increment();
+        verify(documentsCurrentlyQueried).incrementAndGet();
         verify(eventsReturnedForIndexing).increment(1);
+        verify(documentsCurrentlyQueried).decrementAndGet();
 
         final Set<BulkOperationWrapper> nothingReadyForIndexing = objectUnderTest.getAndClearBulkOperationsReadyToIndex();
         assertThat(nothingReadyForIndexing.isEmpty(), equalTo(true));

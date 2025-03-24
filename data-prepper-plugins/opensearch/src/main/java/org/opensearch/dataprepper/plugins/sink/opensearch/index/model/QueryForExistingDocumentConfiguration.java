@@ -25,4 +25,8 @@ public class QueryForExistingDocumentConfiguration {
     @Getter
     @JsonProperty("query_on_bulk_errors")
     private boolean queryOnBulkErrors;
+
+    @Getter
+    @JsonProperty("async_limit")
+    private Integer asyncDocumentLimit = 5000;
 }

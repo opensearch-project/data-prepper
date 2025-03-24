@@ -77,18 +77,6 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
     public static final String DOCUMENT_VERSION_EXPRESSION = "document_version";
 
-    public static final String QUERY_FOR_EXISTING_DOCUMENTS = "query_for_existing_document";
-
-    public static final String QUERY_WHEN = "query_when";
-
-    public static final String QUERY_TERM = "query_term";
-
-    public static final String QUERY_DURATION = "query_duration";
-
-    public static final String QUERY_ACTION_ON_FOUND = "action_on_found";
-
-    public static final String QUERY_ON_BULK_FAILURES = "query_on_bulk_failures";
-
     private IndexType indexType;
     private TemplateType templateType;
     private final String indexAlias;
@@ -124,6 +112,8 @@ public class IndexConfiguration {
     private final String queryActionOnFound;
 
     private final boolean queryOnBulkFailures;
+
+    private final Integer queryAsyncDocumentLimit;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -189,6 +179,7 @@ public class IndexConfiguration {
         this.queryTerm = builder.queryTerm;
         this.queryActionOnFound = builder.actionOnFound;
         this.queryDuration = builder.queryDuration;
+        this.queryAsyncDocumentLimit = builder.queryAsyncLimit;
     }
 
     private void determineIndexType(Builder builder) {
@@ -271,6 +262,7 @@ public class IndexConfiguration {
             builder.withQueryTerm(queryExistingConfiguration.getQueryTerm());
             builder.withQueryDuration(queryExistingConfiguration.getQueryDuration());
             builder.withQueryOnIndexingFailure(queryExistingConfiguration.isQueryOnBulkErrors());
+            builder.withQueryAsyncLimit(queryExistingConfiguration.getAsyncDocumentLimit());
             builder.withActionOnFound(ACTION_ON_FOUND_DROP);
         }
 
@@ -412,8 +404,6 @@ public class IndexConfiguration {
 
     public String getQueryWhen() { return queryWhen; }
 
-    public String getQueryActionOnFound() { return queryActionOnFound; }
-
     public Duration getQueryDuration() { return queryDuration; }
 
     public String getQueryTerm() { return queryTerm; }
@@ -421,6 +411,8 @@ public class IndexConfiguration {
     public boolean getQueryOnBulkFailures() {
         return queryOnBulkFailures;
     }
+
+    public Integer getQueryAsyncDocumentLimit() {return queryAsyncDocumentLimit; }
 
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
@@ -517,6 +509,8 @@ public class IndexConfiguration {
         private String actionOnFound;
         private Duration queryDuration;
         private boolean queryOnIndexingFailure;
+
+        private Integer queryAsyncLimit;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -744,6 +738,11 @@ public class IndexConfiguration {
 
         public Builder withQueryOnIndexingFailure(final boolean queryOnIndexingFailure) {
             this.queryOnIndexingFailure = queryOnIndexingFailure;
+            return this;
+        }
+
+        public Builder withQueryAsyncLimit(final Integer queryAsyncLimit) {
+            this.queryAsyncLimit = queryAsyncLimit;
             return this;
         }
 

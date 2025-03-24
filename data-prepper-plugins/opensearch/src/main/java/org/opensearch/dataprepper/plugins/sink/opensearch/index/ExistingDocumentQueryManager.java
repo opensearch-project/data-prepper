@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -40,11 +41,19 @@ public class ExistingDocumentQueryManager implements Runnable {
 
     static final String EVENTS_RETURNED_FOR_INDEXING = "eventsReturnedForIndexingAfterQuery";
 
+    static final String DOCUMENTS_CURRENTLY_BEING_QUERIED = "documentsBeingQueried";
+
+
+
     private final Counter eventsDroppedAndReleasedCounter;
 
     private final Counter eventsAddedForQuerying;
 
     private final Counter eventsReturnedForIndexing;
+
+    private final AtomicInteger documentsCurrentlyBeingQueried = new AtomicInteger(0);
+
+    private final AtomicInteger documentsCurrentlyBeingQueriedGauge;
 
     private final IndexConfiguration indexConfiguration;
 
@@ -78,6 +87,7 @@ public class ExistingDocumentQueryManager implements Runnable {
         this.eventsAddedForQuerying = pluginMetrics.counter(EVENTS_ADDED_FOR_QUERYING);
         this.eventsDroppedAndReleasedCounter = pluginMetrics.counter(EVENTS_DROPPED_AND_RELEASED);
         this.eventsReturnedForIndexing = pluginMetrics.counter(EVENTS_RETURNED_FOR_INDEXING);
+        this.documentsCurrentlyBeingQueriedGauge = pluginMetrics.gauge(DOCUMENTS_CURRENTLY_BEING_QUERIED, documentsCurrentlyBeingQueried, AtomicInteger::get);
         this.lockReadyToIngest = new ReentrantLock();
         this.lockWaitingForQuery = new ReentrantLock();
     }
@@ -129,10 +139,19 @@ public class ExistingDocumentQueryManager implements Runnable {
         } finally {
             lockWaitingForQuery.unlock();
         }
+        documentsCurrentlyBeingQueriedGauge.incrementAndGet();
         eventsAddedForQuerying.increment();
     }
 
     public Set<BulkOperationWrapper> getAndClearBulkOperationsReadyToIndex() {
+        while (documentsCurrentlyBeingQueried.get() > indexConfiguration.getQueryAsyncDocumentLimit()) {
+            try {
+                Thread.sleep(QUERY_INTERVAL.toMillis());
+            } catch (final InterruptedException e) {
+                LOG.warn("Interrupted while waiting for documents currently being queried to be under limit {}", indexConfiguration.getQueryAsyncDocumentLimit());
+            }
+        }
+
         lockReadyToIngest.lock();
         try {
             final Set<BulkOperationWrapper> copyOfBulkOperations = bulkOperationsReadyToIngest;
@@ -202,6 +221,7 @@ public class ExistingDocumentQueryManager implements Runnable {
                                 bulkOperation.getTermValue());
                         bulkOperationsReadyToIngest.add(bulkOperation.getBulkOperationWrapper());
                         bulkOperationIterator.remove();
+                        documentsCurrentlyBeingQueriedGauge.decrementAndGet();
                     } finally {
                         lockReadyToIngest.unlock();
                     }
