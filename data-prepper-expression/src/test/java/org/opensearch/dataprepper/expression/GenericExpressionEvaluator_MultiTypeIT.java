@@ -134,6 +134,22 @@ class GenericExpressionEvaluator_MultiTypeIT {
         assertThat(result, not(instanceOf(expectedClass)));
     }
 
+    @ParameterizedTest
+    @MethodSource("invalidSyntaxExpressions")
+    void testInvalidSyntaxExpression(String expression, Event event) {
+        GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThrows(IllegalArgumentException.class, () -> evaluator.evaluate(expression, event));
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("validListExpressionArguments")
+    void testSubListExpressionEvaluator(final String expression, final Event event, final List<?> expected) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        final Object result = evaluator.evaluate(expression, event);
+        assertThat(result, equalTo(expected));
+    }
+
     private static Stream<Arguments> validStringExpressionArguments() {
         Random random = new Random();
         int testStringLength = random.nextInt(30);
@@ -175,10 +191,7 @@ class GenericExpressionEvaluator_MultiTypeIT {
 
     private static Stream<Arguments> exceptionExpressionArguments() {
         return Stream.of(
-                // Can't mix Numbers and Strings when using operators
-                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}")),
-                // Wrong number of arguments
-                Arguments.of("join(/list, \" \", \"third_arg\")", event("{\"list\":[\"string\", 1, true]}"))
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"))
         );
     }
 
@@ -192,6 +205,28 @@ class GenericExpressionEvaluator_MultiTypeIT {
                 Arguments.of("/value", event("{\"value\": "+randomInt+"}"), String.class),
                 Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class),
                 Arguments.of("join(/list)", event("{\"list\":{\"key\": [\"string\", 1, true]}}"), String.class)
+        );
+    }
+
+    private static Stream<Arguments> invalidSyntaxExpressions() {
+        return Stream.of(
+            Arguments.of("join(/list, \" \", \"third_arg\")", event("{\"list\":[\"string\", 1, true]}"))
+        );
+    }
+
+    private static Stream<Arguments> validListExpressionArguments() {
+        List<String> list = List.of("first", "second", "third", "fourth", "fifth");
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Map.of("listField", list))
+                .build();
+
+        return Stream.of(
+                Arguments.of("subList(/listField, 1, 3)", event, list.subList(1, 3)),
+                Arguments.of("subList(/listField, 0, 5)", event, list),
+                Arguments.of("subList(/missingList, 0, 1)", event("{\"not_list\":\"dummy\"}"), null),
+                Arguments.of("subList(/listField, 5, 5)", event, list.subList(5, 5)),
+                Arguments.of("subList(/listField, 2, -1)", event, list.subList(2, list.size()))
         );
     }
 

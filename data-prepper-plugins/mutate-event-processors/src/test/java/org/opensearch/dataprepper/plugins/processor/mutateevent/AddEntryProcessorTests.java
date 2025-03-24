@@ -726,6 +726,29 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().toMap().size(), is(1));
     }
 
+
+    @Test
+    public void testValueExpressionWithSubListFunction() {
+        String valueExpression = "subList(/list-field, 1, 3)";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("sublist-result", null, null, null, valueExpression, false, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("list-field", Arrays.asList("item0", "item1", "item2", "item3", "item4"));
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        List<String> expectedSublist = Arrays.asList("item1", "item2");
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(expectedSublist);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("sublist-result"), is(true));
+        assertThat(event.get("sublist-result", Object.class), equalTo(expectedSublist));
+    }
+
     private AddEntryProcessor createObjectUnderTest() {
         return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }

@@ -272,13 +272,10 @@ class GenericExpressionEvaluator_ConditionalIT {
         return Stream.of(
                 arguments("not 5", event("{}")),
                 arguments("not null", event("{}")),
-                arguments("contains(\""+testTag2+"\")", tagEvent),
-                arguments("contains(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/status_code >= 300", event("{\"status_code_not_present\": 200}")),
                 arguments("/status_code != null and /status_code >= 300", event("{\"status_code_not_present\": 200}")),
                 arguments("(/status_code >= 300) and (/value == 15)", event("{\"status_code2\": 200, \"value\" : 10}")),
                 arguments("/color in {\"blue\", 222.0, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
-                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/status_code > 3", event("{\"success\": true, \"status_code_not_present\": 200}")),
                 arguments("/success <= /status_code", event("{\"success\": true, \"status_code\": 200}")),
@@ -289,7 +286,6 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/status_code < null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("/status_code <= null", event("{\"success\": true, \"status_code\": 200}")),
                 arguments("not /status_code", event("{\"status_code\": 200}")),
-                arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("/status_code >= 200 and 3", event("{\"status_code\": 200}"))
         );
     }
@@ -319,6 +315,7 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("not/status_code", event("{\"status_code\": 200}")),
                 arguments("trueand/status_code", event("{\"status_code\": 200}")),
                 arguments("trueor/status_code", event("{\"status_code\": 200}")),
+                arguments("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
                 arguments("hasTags(10)", tagEvent),
                 arguments("hasTags("+ testTag1+")", tagEvent),
@@ -326,10 +323,12 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 arguments("hasTags(,\""+testTag2+"\")", tagEvent),
                 arguments("hasTags(\""+testTag2+"\",)", tagEvent),
+                arguments("contains(\""+testTag2+"\")", tagEvent),
                 arguments("contains(\""+testTag2+"\",)", tagEvent),
                 arguments("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                arguments("contains(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 arguments("/color in {\"blue, \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\"blue\", yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
                 arguments("/color in {\", \"yellow\", \"green\"}", event("{\"color\": \"yellow\"}")),
@@ -344,6 +343,7 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
+                arguments("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
                 arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );
     }

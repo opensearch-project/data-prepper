@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceTest {
@@ -293,7 +294,7 @@ class ParseTreeCoercionServiceTest {
         final String value = RandomStringUtils.randomAlphabetic(10);
         final Event testEvent = createTestEvent(Map.of(key, value));
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn("length(10)");
+        when(terminalNode.getText()).thenReturn("length(false)");
         when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(value.length());
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
@@ -342,6 +343,72 @@ class ParseTreeCoercionServiceTest {
         when(expressionFunctionProvider.provideFunction(eq("join"), any(List.class), any(Event.class), any(Function.class))).thenReturn(output);
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(output));
+    }
+
+    @Test
+    void testCoerceTerminalNodeFunctionWithLargeIntegerValue() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        final String functionName = "someFunction";
+        final Long testLong = Long.valueOf(Integer.MAX_VALUE) + 1L;
+        final String functionText = String.format("%s(%d)", functionName, testLong);
+
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(functionText);
+        when(expressionFunctionProvider.provideFunction(
+                eq(functionName),
+                argThat(argList -> argList.size() == 1 && argList.get(0) instanceof Long),
+                any(Event.class),
+                any(Function.class))).thenReturn(testLong);
+
+        final Event testEvent = createTestEvent(new HashMap<>());
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+
+        assertThat(result, instanceOf(Long.class));
+        assertThat(result, equalTo(testLong));
+    }
+
+    @Test
+    void testCoerceTerminalNodeFunctionWithNegativeLargeIntegerValue() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        final String functionName = "someFunction";
+        final Long testLong = Long.valueOf(Integer.MIN_VALUE) - 1L;
+        final String functionText = String.format("%s(%d)", functionName, testLong);
+
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(functionText);
+        when(expressionFunctionProvider.provideFunction(
+                eq(functionName),
+                argThat(argList -> argList.size() == 1 && argList.get(0) instanceof Long),
+                any(Event.class),
+                any(Function.class))).thenReturn(testLong);
+
+        final Event testEvent = createTestEvent(new HashMap<>());
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+
+        assertThat(result, instanceOf(Long.class));
+        assertThat(result, equalTo(testLong));
+    }
+
+    @Test
+    void testCoerceTerminalNodeFunctionWithRegularIntegerValue() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        final String functionName = "someFunction";
+        final Integer testInteger = 42;
+        final String functionText = String.format("%s(%d)", functionName, testInteger);
+
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(functionText);
+        when(expressionFunctionProvider.provideFunction(
+                eq(functionName),
+                argThat(argList -> argList.size() == 1 && argList.get(0) instanceof Integer),
+                any(Event.class),
+                any(Function.class))).thenReturn(testInteger);
+
+        final Event testEvent = createTestEvent(new HashMap<>());
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+
+        assertThat(result, instanceOf(Integer.class));
+        assertThat(result, equalTo(testInteger));
     }
 
     private Event createTestEvent(final Object data) {

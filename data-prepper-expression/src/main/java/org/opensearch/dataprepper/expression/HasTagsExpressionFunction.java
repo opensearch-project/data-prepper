@@ -19,10 +19,10 @@ public class HasTagsExpressionFunction implements ExpressionFunction {
 
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() == 0) {
-            throw new RuntimeException("hasTags() takes at least one argument");
+            throw new IllegalArgumentException("hasTags() takes at least one argument");
         }
         if(!args.stream().allMatch(a -> ((a instanceof String) && (((String)a).length() > 0) && (((String)a).charAt(0) == '"')))) {
-            throw new RuntimeException("hasTags() takes only non-empty string literal type arguments");
+            throw new IllegalArgumentException("hasTags() takes only non-empty string literal type arguments");
         }
         final List<String> tags = args.stream()
                                     .map(a -> {

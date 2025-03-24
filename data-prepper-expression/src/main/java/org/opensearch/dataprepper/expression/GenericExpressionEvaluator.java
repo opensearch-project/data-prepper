@@ -44,7 +44,11 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
         }
         try {
             return evaluator.evaluate(parseTree, context);
-        } catch (final Exception exception) {
+        }
+        catch (IllegalArgumentException iae) {
+            throw iae;
+        }
+        catch (final Exception exception) {
             throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
         }
     }

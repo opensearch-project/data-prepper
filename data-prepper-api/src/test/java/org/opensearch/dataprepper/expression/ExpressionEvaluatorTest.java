@@ -102,6 +102,19 @@ public class ExpressionEvaluatorTest {
         assertThrows(ClassCastException.class, () -> expressionEvaluator.evaluateConditional("/status", event("{\"status\":200}")));
     }
 
+    @Test
+    public void testThrowIllegalArgumentException(){
+        expressionEvaluator = new TestExpressionEvaluator(){
+            @Override
+            public Object evaluate(final String statement, final Event event){
+                throw new IllegalArgumentException("Illegal Argument encountered");
+            }
+        };
+        assertThrows(IllegalArgumentException.class, () ->
+            expressionEvaluator.evaluateConditional("/status", event("{\"status\":200}"))
+        );
+    }
+
     private static Event event(final String data) {
         return JacksonEvent.builder().withEventType("event").withData(data).build();
     }
