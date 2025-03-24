@@ -19,6 +19,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -130,6 +131,9 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private KafkaSource kafkaSource;
     private TopicConsumerConfig jsonTopicConfig;
     private TopicConsumerConfig avroTopicConfig;
@@ -167,6 +171,7 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(schemaConfig.getType()).thenReturn(SchemaRegistryType.CONFLUENT);
@@ -271,7 +276,8 @@ public class ConfluentKafkaProducerConsumerWithSchemaRegistryIT {
 
     public void consumeRecords(String servers, KafkaSourceConfig sourceConfig) {
         kafkaSource = new KafkaSource(
-                sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, null, pluginConfigObservable);
+                sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
+                null, pluginConfigObservable, awsCredentialsSupplier);
         kafkaSource.start(buffer);
     }
 
