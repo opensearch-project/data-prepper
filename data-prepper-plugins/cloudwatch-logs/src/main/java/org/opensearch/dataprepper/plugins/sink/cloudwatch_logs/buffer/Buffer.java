@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import java.util.List;
 
 /**
@@ -34,7 +35,9 @@ public interface Buffer {
      */
     int getBufferSize();
 
-    void writeEvent(byte[] event);
+    void writeEvent(EventHandle eventHandle, byte[] event);
+
+    List<EventHandle> getEventHandles();
 
     byte[] popEvent();
 
