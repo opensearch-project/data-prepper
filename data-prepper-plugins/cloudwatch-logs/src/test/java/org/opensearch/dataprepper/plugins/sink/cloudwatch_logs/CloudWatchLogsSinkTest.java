@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.when;
 class CloudWatchLogsSinkTest {
     private PluginSetting mockPluginSetting;
     private PluginMetrics mockPluginMetrics;
+    private PluginFactory mockPluginFactory;
     private CloudWatchLogsSinkConfig mockCloudWatchLogsSinkConfig;
     private AwsCredentialsSupplier mockCredentialSupplier;
     private AwsConfig mockAwsConfig;
@@ -52,6 +54,7 @@ class CloudWatchLogsSinkTest {
     void setUp() {
         mockPluginSetting = mock(PluginSetting.class);
         mockPluginMetrics = mock(PluginMetrics.class);
+        mockPluginFactory = mock(PluginFactory.class);
         mockCloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         mockCredentialSupplier = mock(AwsCredentialsSupplier.class);
         mockAwsConfig = mock(AwsConfig.class);
@@ -70,7 +73,7 @@ class CloudWatchLogsSinkTest {
     }
 
     CloudWatchLogsSink getTestCloudWatchSink() {
-        return new CloudWatchLogsSink(mockPluginSetting, mockPluginMetrics, mockCloudWatchLogsSinkConfig,
+        return new CloudWatchLogsSink(mockPluginSetting, mockPluginMetrics, mockPluginFactory, mockCloudWatchLogsSinkConfig,
                 mockCredentialSupplier);
     }
 
