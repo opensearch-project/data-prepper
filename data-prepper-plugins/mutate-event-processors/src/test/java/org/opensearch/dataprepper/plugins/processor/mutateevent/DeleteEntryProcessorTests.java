@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -132,6 +133,81 @@ public class DeleteEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().containsKey("nested/foo"), is(false));
         assertThat(editedRecords.get(0).getData().containsKey("nested/fizz"), is(true));
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+    }
+
+    @Test
+    public void test_multiple_entries_with_different_delete_when_conditions() {
+        final DeleteEntryProcessorConfig.Entry entry1 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
+                , EventKeyFactory.EventAction.DELETE)), "condition1");
+        final DeleteEntryProcessorConfig.Entry entry2 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key2"
+                , EventKeyFactory.EventAction.DELETE)), "condition2");
+
+        when(mockConfig.getEntries()).thenReturn(List.of(entry1, entry2));
+        when(expressionEvaluator.isValidExpressionStatement("condition1")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("condition2")).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        record.getData().put("key1", "value1");
+        record.getData().put("key2", "value2");
+
+        when(expressionEvaluator.evaluateConditional("condition1", record.getData())).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional("condition2", record.getData())).thenReturn(false);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("key1"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("key2"), is(true));
+    }
+
+    @Test
+    public void test_legacy_format_conversion_to_entries_format() {
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getDeleteWhen()).thenReturn("condition");
+        when(expressionEvaluator.isValidExpressionStatement("condition")).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+
+        when(expressionEvaluator.evaluateConditional("condition", record.getData())).thenReturn(true);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
+    }
+
+    @Test
+    public void invalid_delete_when_with_entries_format_throws_InvalidPluginConfigurationException() {
+        DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1",
+                EventKeyFactory.EventAction.DELETE)), "invalid_condition");
+
+        when(mockConfig.getEntries()).thenReturn(List.of(entry));
+        when(expressionEvaluator.isValidExpressionStatement("invalid_condition")).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    public void test_both_configurations_used_together() {
+        final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
+        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
+                , EventKeyFactory.EventAction.DELETE)), "condition");
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("message",
+                EventKeyFactory.EventAction.DELETE)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
+
+        assertThat(configObjectUnderTest.hasBothConfigurations(), is(true));
+    }
+
+    @Test
+    public void test_no_configuration_used() {
+        final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", null);
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", null);
+
+        assertThat(configObjectUnderTest.isConfigurationPresent(), is(false));
     }
 
     private DeleteEntryProcessor createObjectUnderTest() {
