@@ -16,6 +16,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
@@ -162,7 +163,7 @@ public class HttpSinkService {
      * This method process buffer records and send to Http End points based on configured codec
      * @param records Collection of Event
      */
-    public void output(Collection<Record<Event>> records) {
+    public void output(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         reentrantLock.lock();
         if (currentBuffer == null) {
             this.currentBuffer = bufferFactory.getBuffer();

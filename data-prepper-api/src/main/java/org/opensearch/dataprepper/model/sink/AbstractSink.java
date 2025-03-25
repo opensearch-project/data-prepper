@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
@@ -64,16 +65,16 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
      * @param records the records to write to the sink.
      */
     @Override
-    public void output(Collection<T> records) {
+    public void output(Collection<T> records, final PipelineIf failurePipeline) {
         recordsInCounter.increment(records.size()*1.0);
-        timeElapsedTimer.record(() -> doOutput(records));
+        timeElapsedTimer.record(() -> doOutput(records, failurePipeline));
     }
 
     /**
      * This method should implement the output logic
      * @param records Records to be output
      */
-    public abstract void doOutput(Collection<T> records);
+    public abstract void doOutput(Collection<T> records, final PipelineIf failurePipeline);
 
     @Override
     public void shutdown() {

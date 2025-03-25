@@ -221,14 +221,14 @@ public class LambdaSinkIT {
         // threshold=5
         // doOutput(3) => partial => no success
         List<Record<Event>> part1 = createEvents(3, "Batch1");
-        lambdaSink.doOutput(part1);
+        lambdaSink.doOutput(part1, null);
 
         verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
         verify(numberOfRequestsSuccessCounter, never()).increment();
 
         // doOutput(3) => total=6 => flush=5 => leftover=1 => success=5
         List<Record<Event>> part2 = createEvents(3, "Batch2");
-        lambdaSink.doOutput(part2);
+        lambdaSink.doOutput(part2, null);
 
         verify(numberOfRecordsSuccessCounter).increment(5.0);
         verify(numberOfRequestsSuccessCounter).increment();
@@ -237,7 +237,7 @@ public class LambdaSinkIT {
 
         // doOutput(4) => leftover(1)+4=5 => flush => success=5 => total=10
         List<Record<Event>> part3 = createEvents(4, "Batch3");
-        lambdaSink.doOutput(part3);
+        lambdaSink.doOutput(part3, null);
 
         verify(numberOfRecordsSuccessCounter, times(2)).increment(5.0);
         verify(numberOfRequestsSuccessCounter, times(2)).increment();
@@ -248,7 +248,7 @@ public class LambdaSinkIT {
 
         // doOutput(3) => partial => success=0
         List<Record<Event>> smallList = createEvents(3, "PartialShutdown");
-        lambdaSink.doOutput(smallList);
+        lambdaSink.doOutput(smallList, null);
 
         verify(numberOfRecordsSuccessCounter, never()).increment(anyDouble());
 
@@ -262,7 +262,7 @@ public class LambdaSinkIT {
     void testSingleBatchFlushExceedThreshold() {
         // pass 6 => threshold=5 => flush=5 => leftover=1 => success=5
         List<Record<Event>> events = createEvents(6, "SingleBatch");
-        lambdaSink.doOutput(events);
+        lambdaSink.doOutput(events, null);
 
         verify(numberOfRecordsSuccessCounter).increment(5.0);
         verify(numberOfRequestsSuccessCounter).increment();
@@ -277,20 +277,20 @@ public class LambdaSinkIT {
     void testTimeBasedThresholdFlush() throws InterruptedException {
         // Send 3 events (below the event count threshold)
         List<Record<Event>> events = createEvents(3, "TimeBatch1");
-        lambdaSink.doOutput(events);
+        lambdaSink.doOutput(events, null);
 
         // Wait for slightly less than the timeout
         Thread.sleep(400);
 
         // Send 2 more events
         events = createEvents(2, "TimeBatch2");
-        lambdaSink.doOutput(events);
+        lambdaSink.doOutput(events, null);
 
         // Wait for the timeout to be exceeded
         Thread.sleep(200);
 
         // Send an empty batch to trigger the time-based flush
-        lambdaSink.doOutput(Collections.emptyList());
+        lambdaSink.doOutput(Collections.emptyList(), null);
 
         // Verify that 5 events were flushed due to time-based threshold
         verify(numberOfRecordsSuccessCounter).increment(5.0);
@@ -298,7 +298,7 @@ public class LambdaSinkIT {
 
         // Send 1 more event
         events = createEvents(1, "TimeBatch3");
-        lambdaSink.doOutput(events);
+        lambdaSink.doOutput(events, null);
 
         // Shutdown to flush any remaining events
         lambdaSink.shutdown();

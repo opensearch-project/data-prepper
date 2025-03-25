@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
+import org.opensearch.dataprepper.core.pipeline.FailurePipelineSource;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
@@ -59,6 +60,7 @@ public class PipelineTransformer {
             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.";
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
+    //private static final String FAILURE_PIPELINE_NAME = "dlq";
     private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
@@ -128,24 +130,30 @@ public class PipelineTransformer {
             final Map<String, Pipeline> pipelineMap) {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
+        final String failurePipelineName = dataPrepperConfiguration.getFailurePipelineName();
         try {
+            Source source;
             final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-            final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
-                    pipelineMap, pipelineConfigurationMap);
-            final Source source = pipelineSource.orElseGet(() -> {
-                try {
-                    return pluginFactory.loadPlugin(Source.class, sourceSetting);
-                } catch (Exception e) {
-                    final PluginError pluginError = PluginError.builder()
-                            .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
-                            .pipelineName(pipelineName)
-                            .pluginName(sourceSetting.getName())
-                            .exception(e)
-                            .build();
-                    pluginErrorCollector.collectPluginError(pluginError);
-                    return null;
-                }
-            });
+            if (!pipelineName.equals(failurePipelineName)) {
+                final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
+                        pipelineMap, pipelineConfigurationMap);
+                source = pipelineSource.orElseGet(() -> {
+                    try {
+                        return pluginFactory.loadPlugin(Source.class, sourceSetting);
+                    } catch (Exception e) {
+                        final PluginError pluginError = PluginError.builder()
+                                .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
+                                .pipelineName(pipelineName)
+                                .pluginName(sourceSetting.getName())
+                                .exception(e)
+                                .build();
+                        pluginErrorCollector.collectPluginError(pluginError);
+                        return null;
+                    }
+                });
+            } else {
+                source = new FailurePipelineSource();
+            }
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             Buffer pipelineDefinedBuffer = null;
@@ -240,7 +248,14 @@ public class PipelineTransformer {
                     "pipelines", pipelineName, ex);
             processRemoveIfRequired(pipelineName, pipelineConfigurationMap, pipelineMap);
         }
-
+        final Pipeline failurePipeline = pipelineMap.get(failurePipelineName);
+        if (failurePipeline != null) {
+            for (Map.Entry<String, Pipeline> pipelineEntry : pipelineMap.entrySet()) {
+                if (!(pipelineEntry.getKey().equals(failurePipelineName))) {
+                    pipelineEntry.getValue().setFailurePipeline(failurePipeline);
+                }
+            }
+        }
     }
 
     private List<IdentifiedComponent<Processor>> newProcessor(final PluginSetting pluginSetting) {

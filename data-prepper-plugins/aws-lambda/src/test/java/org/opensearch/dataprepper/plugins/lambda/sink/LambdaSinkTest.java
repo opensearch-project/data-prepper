@@ -185,7 +185,7 @@ class LambdaSinkTest {
         // We expect no call to invokeLambdaAndGetFutureMap(...) since threshold not hit
         try (MockedStatic<LambdaCommonHandler> mockedHandler = mockStatic(LambdaCommonHandler.class)) {
 
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             // Because threshold=2 and we only provided 1 event, no flush => 0 calls
             mockedHandler.verify(
@@ -235,7 +235,7 @@ class LambdaSinkTest {
             ).thenReturn(resultMap);
 
             // ACT
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             // Since threshold=2 => flush => exactly 1 call to invokeLambdaAndGetFutureMap
             mockedHandler.verify(() ->
@@ -275,7 +275,7 @@ class LambdaSinkTest {
             mockedHandler.when(() -> LambdaCommonHandler.isSuccess(any()))
                     .thenCallRealMethod();
             // partial => no flush
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             mockedHandler.verify(() ->
                             LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList()),
@@ -324,7 +324,7 @@ class LambdaSinkTest {
                     LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenThrow(new RuntimeException("Test flush error"));
 
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             // We expect fail counters
             verify(numberOfRecordsFailedCounter).increment(2.0);
@@ -353,7 +353,7 @@ class LambdaSinkTest {
                     LambdaCommonHandler.invokeLambdaAndGetFutureMap(any(), any(), anyList())
             ).thenReturn(mapResult);
 
-            lambdaSink.doOutput(records);
+            lambdaSink.doOutput(records, null);
 
             // Because future threw an error, we expect failure counters
             verify(numberOfRecordsFailedCounter).increment(2.0);
@@ -403,13 +403,13 @@ class LambdaSinkTest {
 
         // First call: add one record so that the buffer is non-empty.
         List<Record<Event>> records = getRecords(1);
-        spySink.doOutput(records);
+        spySink.doOutput(records, null);
 
         // Wait briefly to allow the buffer's duration to exceed maxCollectTime.
         Thread.sleep(10);
 
         // Second call: pass an empty collection; this should trigger the timeout flush.
-        spySink.doOutput(Collections.emptyList());
+        spySink.doOutput(Collections.emptyList(), null);
 
         // Verify that flushBuffers() was called due to the timeout.
         assertTrue(flushCalled.get(), "Expected flushBuffers() to be called on the second call due to timeout.");
@@ -441,7 +441,7 @@ class LambdaSinkTest {
         // Each task calls doOutput() with one record.
         for (int i = 0; i < iterations; i++) {
             futures.add(executor.submit(() -> {
-                spySink.doOutput(records);
+                spySink.doOutput(records, null);
             }));
         }
 
@@ -451,7 +451,7 @@ class LambdaSinkTest {
         }
 
         // Additionally, call doOutput() with an empty collection to trigger any pending timeout flush.
-        spySink.doOutput(Collections.emptyList());
+        spySink.doOutput(Collections.emptyList(), null);
 
         executor.shutdown();
 

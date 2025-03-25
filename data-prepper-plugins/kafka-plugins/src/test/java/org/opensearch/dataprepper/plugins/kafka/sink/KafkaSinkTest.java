@@ -150,9 +150,9 @@ public class KafkaSinkTest {
         final Collection records = Arrays.asList(new Record(event));
         final KafkaSink objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.doOutput(records);
+        objectUnderTest.doOutput(records, null);
 
-        verify(objectUnderTest).doOutput(records);
+        verify(objectUnderTest).doOutput(records, null);
     }
 
 
@@ -161,15 +161,15 @@ public class KafkaSinkTest {
         final Collection records = Arrays.asList(new Record(event));
         when(executorService.submit(any(ProducerWorker.class))).thenThrow(new RuntimeException());
         final KafkaSink objectUnderTest = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records, null));
     }
 
     @Test
     public void doOutputEmptyRecordsTest() {
         final Collection records = Arrays.asList();
         final KafkaSink objectUnderTest = createObjectUnderTest();
-        objectUnderTest.doOutput(records);
-        verify(objectUnderTest).doOutput(records);
+        objectUnderTest.doOutput(records, null);
+        verify(objectUnderTest).doOutput(records, null);
 
     }
 
@@ -232,6 +232,6 @@ public class KafkaSinkTest {
         final Collection records = Arrays.asList(new Record(event));
         final KafkaSink objectUnderTest = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.doOutput(records, null));
     }
 }

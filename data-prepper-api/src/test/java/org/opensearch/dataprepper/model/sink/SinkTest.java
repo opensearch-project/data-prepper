@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
@@ -28,7 +29,7 @@ public class SinkTest {
         }
 
         @Override
-        public void output(Collection<Record<?>> records) {
+        public void output(Collection<Record<?>> records, PipelineIf failurePipeline) {
         }
     
     };

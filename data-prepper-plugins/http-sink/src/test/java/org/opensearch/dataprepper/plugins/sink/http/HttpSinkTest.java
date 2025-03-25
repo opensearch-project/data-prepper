@@ -117,6 +117,6 @@ public class HttpSinkTest {
         Assertions.assertNotNull(httpSink);
         httpSink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
-        httpSink.doOutput(records);
+        httpSink.doOutput(records, null);
     }
 }

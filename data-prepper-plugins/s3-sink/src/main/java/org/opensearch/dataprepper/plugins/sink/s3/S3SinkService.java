@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
@@ -103,7 +104,7 @@ public class S3SinkService {
     /**
      * @param records received records and add into buffer.
      */
-    void output(Collection<Record<Event>> records) {
+    void output(Collection<Record<Event>> records, final PipelineIf failurePipeline) {
         // Don't acquire the lock if there's no work to be done
         if (records.isEmpty() && s3GroupManager.hasNoGroups()) {
             return;

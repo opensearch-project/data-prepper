@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.PipelineIf;
 
 import java.util.Collection;
 
@@ -20,7 +21,11 @@ public interface Sink<T extends Record<?>> {
      *
      * @param records the records to write to the sink.
      */
-    void output(Collection<T> records);
+    default void output(Collection<T> records) {
+        output(records, null);
+    }
+
+    void output(Collection<T> records, PipelineIf failurePipeline);
 
     /**
      * Prepare sink for shutdown, by cleaning up resources and threads.

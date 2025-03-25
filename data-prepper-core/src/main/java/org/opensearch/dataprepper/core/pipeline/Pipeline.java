@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.core.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.core.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.PipelineIf;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -53,7 +54,7 @@ import static java.lang.String.format;
  * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class Pipeline {
+public class Pipeline implements PipelineIf {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
     private final PipelineShutdown pipelineShutdown;
@@ -74,6 +75,7 @@ public class Pipeline {
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
     private final EventFactory eventFactory;
+    private Pipeline failurePipeline;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final List<PipelineObserver> observers = Collections.synchronizedList(new LinkedList<>());
 
@@ -120,6 +122,7 @@ public class Pipeline {
         this.name = name;
         this.source = source;
         this.buffer = buffer;
+        this.failurePipeline = null;
         this.processorSets = processorSets;
         this.sinks = sinks;
         this.router = router;
@@ -164,6 +167,14 @@ public class Pipeline {
      */
     public Buffer getBuffer() {
         return this.buffer;
+    }
+
+    public void setFailurePipeline(Pipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public Pipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     /**
@@ -369,7 +380,7 @@ public class Pipeline {
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> {
                     sink.updateLatencyMetrics(events);
-                    sink.output(events);
+                    sink.output(events, failurePipeline);
                 }, null))
             );
         return sinkFutures;
