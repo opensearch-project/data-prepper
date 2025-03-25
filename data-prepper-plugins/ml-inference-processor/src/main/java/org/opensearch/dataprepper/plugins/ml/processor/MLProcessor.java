@@ -63,8 +63,15 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
             return records;
 
         List<Record<Event>> recordsToMlCommons = records.stream()
-                .filter(record -> whenCondition == null || expressionEvaluator.evaluateConditional(whenCondition, record.getData()))
-                .collect(Collectors.toList());
+            .filter(record -> {
+                try {
+                    return whenCondition == null || expressionEvaluator.evaluateConditional(whenCondition, record.getData());
+                } catch (Exception e) {
+                    LOG.error("Failed to evaluate conditional expression for record: {}", record, e);
+                    return false; // Skip the record if evaluation fails
+                }
+            })
+            .collect(Collectors.toList());
 
         if (recordsToMlCommons.isEmpty()) {
             return records;

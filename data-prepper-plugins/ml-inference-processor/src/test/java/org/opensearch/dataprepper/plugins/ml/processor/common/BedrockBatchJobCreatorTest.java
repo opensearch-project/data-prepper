@@ -12,11 +12,11 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
-import org.opensearch.dataprepper.plugins.ml.processor.util.RetryUtil;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

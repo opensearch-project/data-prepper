@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor.util;
+package org.opensearch.dataprepper.common.utils;
 
 public class RetryUtil {
     private static final int MAX_RETRIES = 3;
