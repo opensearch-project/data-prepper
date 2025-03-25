@@ -80,7 +80,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final Counter numberOfRequestsFailedCounter;
     private final Counter lambdaResponseRecordsCounter;
     private final Counter batchExceedingThresholdCounter;
-    private final Counter circuitBreakerTripsCounter;
     private final Timer lambdaLatencyMetric;
     private final List<String> tagsOnFailure;
     private final LambdaAsyncClient lambdaAsyncClient;
@@ -117,7 +116,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
         this.lambdaResponseRecordsCounter = pluginMetrics.counter(LAMBDA_RESPONSE_RECORDS_COUNTER);
         this.batchExceedingThresholdCounter = pluginMetrics.counter(RECORDS_EXCEEDING_THRESHOLD);
-        this.circuitBreakerTripsCounter = pluginMetrics.counter(CIRCUIT_BREAKER_TRIPS);
 
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
@@ -231,8 +229,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             LOG.warn("Circuit breaker is open. Will wait up to {} retries with {}ms interval before proceeding.",
                     lambdaProcessorConfig.getCircuitBreakerRetries(),
                     lambdaProcessorConfig.getCircuitBreakerWaitInterval());
-            circuitBreakerTripsCounter.increment();
-            
+
             // Wait until the circuit breaker is closed
             int retries = 0;
             while (circuitBreaker.isOpen() && retries < lambdaProcessorConfig.getCircuitBreakerRetries()) {

@@ -934,7 +934,6 @@ public class LambdaProcessorTest {
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
     }
 
-
     @ParameterizedTest
     @ValueSource(strings = {"lambda-processor-circuit-breaker-config.yaml"})
     void testWaitForCircuitBreakerClosesBeforeMaxRetries(String configFileName) throws Exception {
@@ -949,8 +948,6 @@ public class LambdaProcessorTest {
             return retryCount.incrementAndGet() <= closeAfterRetries;
         });
 
-        Counter mockCounter = mock(Counter.class);
-
         LambdaProcessor processor = new LambdaProcessor(
                 pluginFactory,
                 pluginSetting,
@@ -959,7 +956,6 @@ public class LambdaProcessorTest {
                 expressionEvaluator,
                 mockBreaker
         );
-        setField(processor, "circuitBreakerTripsCounter", mockCounter);
 
         // Create and process some records
         List<Record<Event>> records = getSampleEventRecords(1);
@@ -967,7 +963,6 @@ public class LambdaProcessorTest {
 
         // Verify
         verify(mockBreaker, atLeast(closeAfterRetries + 1)).isOpen(); // At least the number of retries plus initial check
-        verify(mockCounter).increment();
         assertThat(results, hasSize(records.size()));
         verify(mockBreaker, atMost(6)).isOpen();
     }
