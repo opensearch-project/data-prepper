@@ -234,18 +234,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             circuitBreakerTripsCounter.increment();
             
             // Wait until the circuit breaker is closed
-            boolean isFirstIteration = true;
             int retries = 0;
             while (circuitBreaker.isOpen() && retries < lambdaProcessorConfig.getCircuitBreakerRetries()) {
                 try {
-                    if (isFirstIteration) {
-                        LOG.info("Waiting for circuit breaker to close before proceeding with Lambda invocation. " +
-                                "Retry {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
-                        isFirstIteration = false;
-                    } else {
-                        LOG.info(NOISY,"Still waiting for circuit breaker to close. Retry {}/{}.",
-                                retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
-                    }
+                    LOG.warn(NOISY, "Circuit breaker is open," +
+                                "Retry count: {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
                     // Sleep for a short time before checking again
                     Thread.sleep(lambdaProcessorConfig.getCircuitBreakerWaitInterval());
                     retries++;
