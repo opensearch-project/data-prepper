@@ -227,7 +227,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     }
 
     private void checkCircuitBreaker() {
-        if (circuitBreaker.isOpen()) {
+        if (circuitBreaker!=null && circuitBreaker.isOpen()) {
             LOG.warn("Circuit breaker is open. Will wait up to {} retries with {}ms interval before proceeding.",
                     lambdaProcessorConfig.getCircuitBreakerRetries(),
                     lambdaProcessorConfig.getCircuitBreakerWaitInterval());
