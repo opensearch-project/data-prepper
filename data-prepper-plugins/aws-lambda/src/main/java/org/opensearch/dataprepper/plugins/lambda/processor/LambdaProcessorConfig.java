@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class LambdaProcessorConfig extends LambdaCommonConfig {
   static final String DEFAULT_INVOCATION_TYPE = "request-response";
-  protected static final int DEFAULT_CIRCUIT_BREAKER_RETRIES = 15; // 15 seconds with 1000ms sleep
+  protected static final int DEFAULT_CIRCUIT_BREAKER_RETRIES = 0;
   protected static final long DEFAULT_CIRCUIT_BREAKER_WAIT_INTERVAL_MS = 1000;
 
   @JsonProperty("circuit_breaker_retries")
