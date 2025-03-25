@@ -64,7 +64,6 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -120,7 +119,7 @@ public class LambdaProcessorSinkIT {
     private LambdaProcessor createLambdaProcessor(LambdaProcessorConfig processorConfig) {
         return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig,
                 awsCredentialsSupplier, expressionEvaluator,
-                Optional.of(circuitBreaker));
+                circuitBreaker);
     }
 
     private LambdaSink createLambdaSink(LambdaSinkConfig lambdaSinkConfig) {

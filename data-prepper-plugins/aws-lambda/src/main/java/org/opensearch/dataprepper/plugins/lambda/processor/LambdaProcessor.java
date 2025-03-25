@@ -49,7 +49,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -89,20 +88,21 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
-    private final Optional<CircuitBreaker> circuitBreaker;
+    private final CircuitBreaker circuitBreaker;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                            final LambdaProcessorConfig lambdaProcessorConfig,
                            final AwsCredentialsSupplier awsCredentialsSupplier,
                            final ExpressionEvaluator expressionEvaluator,
-                           final Optional<CircuitBreaker> circuitBreaker) {
+                           final CircuitBreaker circuitBreaker) {
         super(
                 PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName() + "_processor"));
 
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
+        //Mostly used with HeapCircuitBreaker
         this.circuitBreaker = circuitBreaker;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
                 NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
@@ -160,11 +160,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return records;
         }
 
-        // Check if circuit breaker is open - if so, wait until it closes
-        if (circuitBreaker.isPresent()) {
-            waitForCircuitBreakerToClosed();
-        }
-
         List<Record<Event>> resultRecords = new ArrayList<>();
         List<Record<Event>> recordsToLambda = new ArrayList<>();
         for (Record<Event> record : records) {
@@ -180,6 +175,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         try {
+            // Check if circuit breaker is open - if so, wait until it closes
+            checkCircuitBreaker();
             bufferToFutureMap = LambdaCommonHandler.sendRecords(
                     recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
                     new OutputCodecContext());
@@ -196,11 +193,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             CompletableFuture<InvokeResponse> future = entry.getValue();
             Buffer inputBuffer = entry.getKey();
             try {
-                // Check circuit breaker before processing each buffer's response
-                if (circuitBreaker.isPresent()) {
-                    waitForCircuitBreakerToClosed();
-                }
-
                 InvokeResponse response = future.join();
                 Duration latency = inputBuffer.stopLatencyWatch();
                 lambdaLatencyMetric.record(latency.toMillis(), TimeUnit.MILLISECONDS);
@@ -233,38 +225,42 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         }
         return resultRecords;
     }
-    
-    /**
-     * Waits for the circuit breaker to close before proceeding.
-     * This method will block execution until the circuit breaker is closed.
-     */
-    private void waitForCircuitBreakerToClosed() {
-        if (!circuitBreaker.isPresent()) {
-            return;
-        }
-        
-        CircuitBreaker breaker = circuitBreaker.get();
-        if (breaker.isOpen()) {
-            LOG.warn("Circuit breaker is open. Pausing Lambda invocation to prevent OOM.");
+
+    private void checkCircuitBreaker() {
+        if (circuitBreaker.isOpen()) {
+            LOG.warn("Circuit breaker is open. Will wait up to {} retries with {}ms interval before proceeding.",
+                    lambdaProcessorConfig.getCircuitBreakerRetries(),
+                    lambdaProcessorConfig.getCircuitBreakerWaitInterval());
             circuitBreakerTripsCounter.increment();
             
             // Wait until the circuit breaker is closed
             boolean isFirstIteration = true;
-            while (breaker.isOpen()) {
+            int retries = 0;
+            while (circuitBreaker.isOpen() && retries < lambdaProcessorConfig.getCircuitBreakerRetries()) {
                 try {
                     if (isFirstIteration) {
-                        LOG.info("Waiting for circuit breaker to close before proceeding with Lambda invocation");
+                        LOG.info("Waiting for circuit breaker to close before proceeding with Lambda invocation. " +
+                                "Retry {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
                         isFirstIteration = false;
+                    } else {
+                        LOG.info(NOISY,"Still waiting for circuit breaker to close. Retry {}/{}.",
+                                retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
                     }
                     // Sleep for a short time before checking again
-                    Thread.sleep(100);
+                    Thread.sleep(lambdaProcessorConfig.getCircuitBreakerWaitInterval());
+                    retries++;
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     LOG.warn("Interrupted while waiting for circuit breaker to close", e);
                     break;
                 }
             }
-            LOG.info("Circuit breaker closed. Resuming Lambda invocation.");
+            if (circuitBreaker.isOpen()) {
+                LOG.warn("Proceeding with Lambda invocation after {} retries, even though circuit breaker is still open. " +
+                        "This may lead to increased memory pressure.", retries);
+            } else {
+                LOG.info("Circuit breaker closed after {} retries. Resuming Lambda invocation.", retries);
+            }
         }
     }
 

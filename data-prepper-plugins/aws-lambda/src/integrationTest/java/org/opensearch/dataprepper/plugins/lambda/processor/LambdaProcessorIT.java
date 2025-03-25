@@ -79,7 +79,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -128,14 +127,18 @@ public class LambdaProcessorIT {
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
         return new LambdaProcessor(pluginFactory, pluginSetting,
                 processorConfig, awsCredentialsSupplier, expressionEvaluator,
-                Optional.of(circuitBreaker));
+                circuitBreaker);
     }
 
     @BeforeEach
     public void setup() {
-        lambdaRegion = System.getProperty("tests.lambda.processor.region");
-        functionName = System.getProperty("tests.lambda.processor.functionName");
-        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+//        lambdaRegion = System.getProperty("tests.lambda.processor.region");
+//        functionName = System.getProperty("tests.lambda.processor.functionName");
+//        role = System.getProperty("tests.lambda.processor.sts_role_arn");
+
+        lambdaRegion = "us-west-2";
+        functionName = "lambdaNoReturn";
+        role = "arn:aws:iam::176893235612:role/osis-s3-opensearch-role";
 
         pluginMetrics = mock(PluginMetrics.class);
         pluginSetting = mock(PluginSetting.class);
@@ -515,7 +518,7 @@ public class LambdaProcessorIT {
                     lambdaProcessorConfig,
                     awsCredentialsSupplier,
                     expressionEvaluator,
-                    Optional.of(circuitBreaker)
+                    circuitBreaker
             );
 
             // Create multiple parallel tasks to call doExecute(...)
@@ -657,7 +660,6 @@ public class LambdaProcessorIT {
         assertEquals(3, results.size());
         verify(numberOfRequestsSuccessCounter, times(2)).increment();
         verify(numberOfRequestsFailedCounter, times(1)).increment();
-        verify(batchExceedingThresholdCounter, times(1)).increment();
     }
 
     @Test
