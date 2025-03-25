@@ -1,11 +1,11 @@
 
-# ml Processor
+# ML Inference Processor
 
 This plugin enables you to send data from your Data Prepper pipeline directly to ml-commons for machine learning related activities.
 
 ## Usage
 ```aidl
-lambda-pipeline:
+ml-inference-pipeline:
 ...
   processor:
     - ml_inference:
@@ -36,4 +36,3 @@ lambda-pipeline:
 ## Developer Guide
 
 The integration tests for this plugin do not run as part of the Data Prepper build.
-The following command runs the integration tests:
