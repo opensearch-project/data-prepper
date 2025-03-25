@@ -18,7 +18,7 @@ import java.util.Collection;
 
 import static org.opensearch.dataprepper.plugins.ml.processor.MLProcessor.LOG;
 import static org.opensearch.dataprepper.plugins.ml.processor.util.MlCommonRequester.sendRequestToMLCommons;
-import static org.opensearch.dataprepper.plugins.ml.processor.util.RetryUtil.retryWithBackoff;
+import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
 
 public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private final MLProcessorConfig mlProcessorConfig;

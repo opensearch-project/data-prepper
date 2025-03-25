@@ -22,7 +22,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFactory;
 import org.opensearch.dataprepper.plugins.ml.processor.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.ml.processor.util.RetryUtil;
+import org.opensearch.dataprepper.common.utils.RetryUtil;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;

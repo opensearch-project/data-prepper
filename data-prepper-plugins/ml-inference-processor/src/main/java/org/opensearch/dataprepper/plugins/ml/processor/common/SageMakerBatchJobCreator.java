@@ -28,10 +28,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
 import static org.opensearch.dataprepper.plugins.ml.processor.MLProcessor.LOG;
 import static org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFactory.createS3Client;
 import static org.opensearch.dataprepper.plugins.ml.processor.util.MlCommonRequester.sendRequestToMLCommons;
-import static org.opensearch.dataprepper.plugins.ml.processor.util.RetryUtil.retryWithBackoff;
 
 public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
