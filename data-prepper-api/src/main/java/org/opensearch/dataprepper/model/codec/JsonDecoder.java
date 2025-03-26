@@ -31,13 +31,15 @@ public class JsonDecoder implements ByteDecoder {
     private Collection<String> includeKeys;
     private Collection<String> includeKeysMetadata;
 
-    public JsonDecoder(String keyName, Collection<String> includeKeys, Collection<String> includeKeysMetadata, int maxEventLength) {
+    public JsonDecoder(String keyName, Collection<String> includeKeys, Collection<String> includeKeysMetadata, Integer maxEventLength) {
         this.keyName = keyName;
         this.includeKeys = includeKeys;
         this.includeKeysMetadata = includeKeysMetadata;
+        if (maxEventLength != null) {
         jsonFactory.setStreamReadConstraints(StreamReadConstraints.builder()
                 .maxStringLength(maxEventLength)
                 .build());
+        }
     }
 
     public JsonDecoder() {

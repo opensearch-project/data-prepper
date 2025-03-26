@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig.DEFAULT_MAX_EVENT_LENGTH;
 
 public class JsonInputCodecConfigTest {
 
@@ -24,6 +23,6 @@ public class JsonInputCodecConfigTest {
         assertNull(jsonInputCodecConfig.getKeyName());
         assertNull(jsonInputCodecConfig.getIncludeKeys());
         assertNull(jsonInputCodecConfig.getIncludeKeysMetadata());
-        assertThat(jsonInputCodecConfig.getMaxEventLength(), equalTo(DEFAULT_MAX_EVENT_LENGTH));
+        assertThat(jsonInputCodecConfig.getMaxEventLength(), equalTo(null));
     }
 }

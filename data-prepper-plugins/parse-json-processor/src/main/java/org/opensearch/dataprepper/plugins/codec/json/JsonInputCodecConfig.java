@@ -17,7 +17,6 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public class JsonInputCodecConfig {
-    static final Integer DEFAULT_MAX_EVENT_LENGTH = 20000000;
 
     @JsonProperty("key_name")
     @Size(min = 1, max = 2048)
@@ -43,7 +42,7 @@ public class JsonInputCodecConfig {
 
     @JsonProperty("max_event_length")
     @Min(1)
-    private Integer maxEventLength = DEFAULT_MAX_EVENT_LENGTH;
+    private Integer maxEventLength;
 
     public Integer getMaxEventLength(){
         return maxEventLength;
