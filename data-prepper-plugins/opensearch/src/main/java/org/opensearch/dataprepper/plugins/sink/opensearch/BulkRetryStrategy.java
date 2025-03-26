@@ -102,17 +102,13 @@ public final class BulkRetryStrategy {
                     RestStatus.REQUEST_TIMEOUT.getStatus()
             ));
 
-    private static final Set<Integer> POTENTIAL_DUPLICATES_ERRORS = new HashSet<>(
-            Arrays.asList(
-                    RestStatus.INTERNAL_SERVER_ERROR.getStatus(),
-                    RestStatus.GATEWAY_TIMEOUT.getStatus()
-            ));
+    private static final Set<Integer> POTENTIAL_DUPLICATES_ERRORS = Set.of(
+            RestStatus.INTERNAL_SERVER_ERROR.getStatus(),
+            RestStatus.GATEWAY_TIMEOUT.getStatus());
 
-    private static final Set<Class<? extends Exception>> SOCKET_TIMEOUT_EXCEPTIONS = new HashSet<>(
-            Arrays.asList(
-                    SocketTimeoutException.class,
-                    JsonParsingException.class
-            ));
+    private static final Set<Class<? extends Exception>> SOCKET_TIMEOUT_EXCEPTIONS = Set.of(
+            SocketTimeoutException.class,
+            JsonParsingException.class);
 
     private final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction;
     private final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure;

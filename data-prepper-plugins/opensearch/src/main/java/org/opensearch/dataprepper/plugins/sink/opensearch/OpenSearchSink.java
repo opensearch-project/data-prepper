@@ -503,8 +503,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         continue;
       }
 
-      final String termValue = openSearchSinkConfig.getIndexConfiguration().getQueryTerm() != null ?
-              event.get(openSearchSinkConfig.getIndexConfiguration().getQueryTerm(), String.class) : null;
+      final String queryTermKey = openSearchSinkConfig.getIndexConfiguration().getQueryTerm();
+      final String termValue = queryTermKey != null ?
+              event.get(queryTermKey, String.class) : null;
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle(), serializedJsonNode, termValue);
 
       if (openSearchSinkConfig.getIndexConfiguration().getQueryWhen() != null &&
