@@ -39,11 +39,12 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,7 +66,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
     public static final String RECORDS_EXCEEDING_THRESHOLD = "recordsExceedingThreshold";
     public static final String CIRCUIT_BREAKER_TRIPS = "circuitBreakerTrips";
-    private static final String NO_RETURN_RESPONSE = "null";
+    private static final byte[] NO_RETURN_RESPONSE = "null".getBytes(StandardCharsets.UTF_8);
     private static final String EXCEEDING_PAYLOAD_LIMIT_EXCEPTION = "Status Code: 413";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
@@ -268,9 +269,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         SdkBytes payload = lambdaResponse.payload();
         // Considering "null" payload as empty response from lambda and not parsing it.
-        if (!(NO_RETURN_RESPONSE.equals(payload.asUtf8String()))) {
+        if (!(Arrays.equals(NO_RETURN_RESPONSE, payload.asByteArrayUnsafe()))) {
             //Convert using response codec
-            InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
+            InputStream inputStream = payload.asInputStream();
             responseCodec.parse(inputStream, record -> {
                 Event event = record.getData();
                 parsedEvents.add(event);
