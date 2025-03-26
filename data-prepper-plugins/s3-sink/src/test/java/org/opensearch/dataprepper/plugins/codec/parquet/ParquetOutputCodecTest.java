@@ -244,6 +244,18 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
+    void exception_in_start_should_not_cause_null_pointer_exception_when_complete() throws IOException {
+        final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        assertThrows(RuntimeException.class, () -> objectUnderTest.start(null, createEventRecord(generateRecords(1).get(0)), codecContext));
+
+        // Calling complete now should not throw
+        objectUnderTest.complete(outputStream);
+    }
+
+    @Test
     void getSize_returns_0_after_construction() {
         config.setSchema(createStandardSchema().toString());
 
