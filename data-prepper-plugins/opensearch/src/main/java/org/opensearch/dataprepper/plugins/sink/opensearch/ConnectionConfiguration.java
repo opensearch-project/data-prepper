@@ -84,6 +84,7 @@ public class ConnectionConfiguration {
   private final List<String> hosts;
   private final String username;
   private final String password;
+  private final String apitoken;
   private final Path certPath;
   private final Integer socketTimeout;
   private final Integer connectTimeout;
@@ -107,6 +108,10 @@ public class ConnectionConfiguration {
 
   String getUsername() {
     return username;
+  }
+
+  String getApitoken() {
+    return apitoken;
   }
 
   String getPassword() {
@@ -169,6 +174,7 @@ public class ConnectionConfiguration {
     this.hosts = builder.hosts;
     this.username = builder.username;
     this.password = builder.password;
+    this.apitoken = builder.apitoken;
     this.socketTimeout = builder.socketTimeout;
     this.connectTimeout = builder.connectTimeout;
     this.certPath = builder.certPath;
@@ -192,6 +198,7 @@ public class ConnectionConfiguration {
     ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
     final String username = openSearchSinkConfig.getUsername();
     final String password = openSearchSinkConfig.getPassword();
+    final String apitoken = openSearchSinkConfig.getApitoken();
     final AuthConfig authConfig = openSearchSinkConfig.getAuthConfig();
     if (authConfig != null) {
       builder = builder.withAuthConfig(authConfig);
@@ -201,6 +208,9 @@ public class ConnectionConfiguration {
       }
       if (password != null) {
         builder = builder.withPassword(password);
+      }
+      if (apitoken != null) {
+        builder = builder.withApitoken(apitoken);
       }
     }
     final Integer socketTimeout = openSearchSinkConfig.getSocketTimeout();
@@ -342,6 +352,14 @@ public class ConnectionConfiguration {
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              // Add authorization header if configured
+              if (apitoken != null) {
+                LOG.info("Adding authorization header from auth config.");
+                httpClientBuilder.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
+                  request.addHeader("Authorization", "bearer " + apitoken);
+                });
+              }
+
               attachSSLContext(httpClientBuilder);
               setHttpProxyIfApplicable(httpClientBuilder);
               return httpClientBuilder;
@@ -485,6 +503,7 @@ public class ConnectionConfiguration {
     private final List<String> hosts;
     private String username;
     private String password;
+    private String apitoken;
     private Integer socketTimeout;
     private Integer connectTimeout;
     private Path certPath;
@@ -537,6 +556,12 @@ public class ConnectionConfiguration {
     public Builder withPassword(final String password) {
       checkArgument(password != null, "password cannot be null");
       this.password = password;
+      return this;
+    }
+
+    public Builder withApitoken(final String apitoken) {
+      checkArgument(apitoken != null, "apitoken cannot be null");
+      this.apitoken = apitoken;
       return this;
     }
 
