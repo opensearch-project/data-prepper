@@ -9,7 +9,7 @@ public class AuthConfig {
     @JsonProperty("password")
     private String password;
 
-    @JsonProperty("apitoken")
+    @JsonProperty("api_token")
     private String apitoken;
 
     public String getUsername() {
