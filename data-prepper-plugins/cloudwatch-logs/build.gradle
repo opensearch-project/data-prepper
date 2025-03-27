@@ -26,12 +26,14 @@ configurations {
 dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:common')
+    implementation project(path: ':data-prepper-plugins:failures-common')
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'software.amazon.awssdk:cloudwatchlogs'
+    implementation 'software.amazon.awssdk:s3'
     implementation libs.commons.lang3
     implementation 'org.projectlombok:lombok:1.18.26'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
@@ -66,6 +68,7 @@ task integrationTest(type: Test) {
     systemProperty 'tests.cloudwatch.log_stream', System.getProperty('tests.cloudwatch.log_stream')
     systemProperty 'tests.aws.region', System.getProperty('tests.aws.region')
     systemProperty 'tests.aws.role', System.getProperty('tests.aws.role')
+    systemProperty 'tests.s3.bucket', System.getProperty('tests.s3.bucket')
     filter {
         includeTestsMatching '*IT'
     }

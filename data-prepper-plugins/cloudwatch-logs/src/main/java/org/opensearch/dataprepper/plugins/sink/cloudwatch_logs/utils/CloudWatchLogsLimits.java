@@ -24,6 +24,10 @@ public class CloudWatchLogsLimits {
         this.logSendInterval = logSendInterval;
     }
 
+    public boolean isTimeLimitReached(long elapsedTime) {
+        return isGreaterEqualToLogSendInterval(elapsedTime);
+    }
+
     /**
      * Checks to see if we exceed any of the threshold conditions.
      * @param currentTime (long) denoting the time in seconds.
@@ -35,6 +39,26 @@ public class CloudWatchLogsLimits {
         long bufferSizeWithOverhead = (currentRequestSize + ((long) (batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
         return (isGreaterThanBatchSize(batchSize) || isGreaterEqualToLogSendInterval(currentTime)
                 || isGreaterThanMaxRequestSize(bufferSizeWithOverhead));
+    }
+
+    /**
+     * Checks to see if we exceed max request size
+     * @param currentRequestSize size of request in bytes.
+     * @param batchSize size of batch in events.
+     * @return boolean true if we exceed the max request size
+     */
+    public boolean maxRequestSizeLimitExceeds(final long currentRequestSize, final int batchSize) {
+        long bufferSizeWithOverhead = (currentRequestSize + ((long) (batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
+        return bufferSizeWithOverhead > maxRequestSizeBytes;
+    }
+
+    /**
+     * Checks to see if we have reached max event count
+     * @param batchSize size of batch in events.
+     * @return boolean true if we exceed the max request size
+     */
+    public boolean isMaxEventCountLimitReached(final int batchSize) {
+        return batchSize >= this.maxBatchSize;
     }
 
     /**
