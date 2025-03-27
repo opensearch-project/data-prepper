@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -37,5 +38,13 @@ public class JsonInputCodecConfig {
 
     public List<String> getIncludeKeysMetadata() {
         return includeKeysMetadata;
+    }
+
+    @JsonProperty("max_event_length")
+    @Min(1)
+    private Integer maxEventLength;
+
+    public Integer getMaxEventLength(){
+        return maxEventLength;
     }
 }
