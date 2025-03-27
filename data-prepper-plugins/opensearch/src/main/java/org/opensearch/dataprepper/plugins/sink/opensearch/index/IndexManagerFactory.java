@@ -51,6 +51,7 @@ public class IndexManagerFactory {
         IndexManager indexManager;
         switch (indexType) {
             case TRACE_ANALYTICS_RAW:
+            case TRACE_ANALYTICS_RAW_STANDARD:
                 indexManager = new TraceAnalyticsRawIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
@@ -59,10 +60,12 @@ public class IndexManagerFactory {
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
             case LOG_ANALYTICS:
+            case LOG_ANALYTICS_STANDARD:
                 indexManager = new LogAnalyticsIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;
             case METRIC_ANALYTICS:
+            case METRIC_ANALYTICS_STANDARD:
                 indexManager = new MetricAnalyticsIndexManager(
                         restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, indexAlias);
                 break;

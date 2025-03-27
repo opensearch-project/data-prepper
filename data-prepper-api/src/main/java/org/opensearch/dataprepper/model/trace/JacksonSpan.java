@@ -51,9 +51,9 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
     private static final String SERVICE_NAME_KEY = "serviceName";
-    private static final String TRACE_GROUP_KEY = "traceGroup";
+    public static final String TRACE_GROUP_KEY = "traceGroup";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
-    private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
+    public static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     protected static final List<String>
@@ -177,6 +177,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String getTraceGroup() {
+        EventMetadata metadata = getMetadata();
+        Object traceGroup = metadata.getAttribute(TRACE_GROUP_KEY);
+        if (traceGroup != null)
+            return (String)traceGroup;
         return this.get(TRACE_GROUP_KEY, String.class);
     }
 
@@ -187,6 +191,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public TraceGroupFields getTraceGroupFields() {
+        EventMetadata metadata = getMetadata();
+        Object traceGroupFields = metadata.getAttribute(TRACE_GROUP_FIELDS_KEY);
+        if (traceGroupFields != null)
+            return (TraceGroupFields)traceGroupFields;
         return this.get(TRACE_GROUP_FIELDS_KEY, DefaultTraceGroupFields.class);
     }
 

@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "template": {
+    "mappings": {
+      "date_detection": false,
+      "_source": {
+        "enabled": true
+      },
+      "properties": {
+        "droppedEventsCount": {
+          "type": "integer"
+        },
+        "attributes": {
+          "type": "object"
+        },
+        "instrumentationScope": {
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 128
+                }
+              }
+            },
+            "version": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+             "attributes": {
+               "type": "object"
+             },
+             "droppedEventsCount": {
+               "type": "integer"
+             }
+          }
+        },
+        "resource": {
+          "properties": {
+             "attributes": {
+               "type": "object"
+             },
+             "droppedEventsCount": {
+               "type": "integer"
+             }
+          }
+        },
+        "severity": {
+          "properties": {
+            "number": {
+              "type": "long"
+            },
+            "text": {
+              "type": "keyword"
+            }
+          }
+        },
+        "body": {
+          "type": "text"
+        },
+        "@timestamp": {
+          "type": "date_nanos"
+        },
+        "time": {
+          "type": "date_nanos"
+        },
+        "observedTimestamp": {
+          "type": "date_nanos"
+        },
+        "observedTime": {
+          "type": "alias",
+          "path": "observedTimestamp"
+        },
+        "traceId": {
+          "ignore_above": 256,
+          "type": "keyword"
+        },
+        "spanId": {
+          "ignore_above": 256,
+          "type": "keyword"
+        },
+        "flags": {
+          "type": "integer"
+        },
+        "schemaUrl": {
+          "type": "keyword"
+        },
+        "instrumentationScope": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "kind": {
+              "type": "keyword"
+            },
+            "domain": {
+              "type": "keyword"
+            },
+            "category": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            },
+            "result": {
+              "type": "keyword"
+            },
+           "exception": {
+              "properties": {
+                "message": {
+                  "type": "text"
+                },
+                "stacktrace": {
+                  "type": "text"
+                },
+                "type": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
