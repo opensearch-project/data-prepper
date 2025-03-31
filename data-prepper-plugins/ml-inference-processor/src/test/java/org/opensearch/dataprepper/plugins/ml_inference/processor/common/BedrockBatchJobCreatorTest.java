@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor.common;
+package org.opensearch.dataprepper.plugins.ml_inference.processor.common;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +16,13 @@ import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -27,9 +31,9 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.ml.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
-import static org.opensearch.dataprepper.plugins.ml.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
-import static org.opensearch.dataprepper.plugins.ml.processor.common.AbstractBatchJobCreator.OBJECT_MAPPER;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.OBJECT_MAPPER;
 
 
 public class BedrockBatchJobCreatorTest {
@@ -80,7 +84,7 @@ public class BedrockBatchJobCreatorTest {
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
             mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(true);
 
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record));
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
             verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
         }
     }
@@ -97,8 +101,12 @@ public class BedrockBatchJobCreatorTest {
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
             mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
 
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record));
+            MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
+                bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
+            });
+
             verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
+            assertTrue(exception.getMessage().contains("Failed to process the following records"));
         }
     }
 
@@ -115,9 +123,12 @@ public class BedrockBatchJobCreatorTest {
             mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
 
             Thread.currentThread().interrupt();
-            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record));
+            MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
+                bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
+            });
 
             assertTrue(Thread.interrupted()); // Ensure interrupted flag is reset
+            assertTrue(exception.getMessage().contains("Failed to process the following records"));
         }
     }
 }

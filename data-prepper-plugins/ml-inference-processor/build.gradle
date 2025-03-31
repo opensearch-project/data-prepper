@@ -12,14 +12,10 @@ dependencies {
     implementation 'org.json:json'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.projectlombok:lombok:1.18.22'
-    implementation 'software.amazon.awssdk:s3'
-    compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
-    testCompileOnly 'org.projectlombok:lombok:1.18.20'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    implementation 'software.amazon.awssdk:s3'
     testImplementation project(':data-prepper-test-event')
+    testImplementation testLibs.slf4j.simple
 }
 
 test {

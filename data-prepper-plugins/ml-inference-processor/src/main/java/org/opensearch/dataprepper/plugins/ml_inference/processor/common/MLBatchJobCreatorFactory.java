@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor.common;
+package org.opensearch.dataprepper.plugins.ml_inference.processor.common;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessor;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
-import org.opensearch.dataprepper.plugins.ml.processor.configuration.ServiceName;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

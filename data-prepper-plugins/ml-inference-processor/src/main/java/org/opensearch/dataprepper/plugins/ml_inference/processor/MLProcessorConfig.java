@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor;
+package org.opensearch.dataprepper.plugins.ml_inference.processor;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -16,9 +16,12 @@ import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
-import org.opensearch.dataprepper.plugins.ml.processor.configuration.ActionType;
-import org.opensearch.dataprepper.plugins.ml.processor.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.ml.processor.configuration.ServiceName;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ActionType;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
+
+import java.util.Collections;
+import java.util.List;
 
 @Getter
 @JsonPropertyOrder
@@ -65,6 +68,14 @@ public class MLProcessorConfig {
     @JsonProperty("ml_when")
     private String whenCondition;
 
+    @JsonProperty("tags_on_failure")
+    @JsonPropertyDescription(
+            "A <code>List</code> of <code>String</code>s that specifies the tags to be set in the event when ml_inference processor fails to create jobs "
+                    +
+                    "or exception occurs. This tag may be used in conditional expressions in " +
+                    "other parts of the configuration.")
+    private List<String> tagsOnFailure = Collections.emptyList();
+
     public ActionType getActionType() {
         return actionType;
     }
@@ -78,4 +89,6 @@ public class MLProcessorConfig {
     public String getWhenCondition() {
         return whenCondition;
     }
+
+    public List<String> getTagsOnFailure() { return tagsOnFailure; }
 }

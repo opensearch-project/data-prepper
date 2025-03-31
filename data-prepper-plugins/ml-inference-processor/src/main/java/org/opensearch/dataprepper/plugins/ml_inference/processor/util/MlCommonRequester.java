@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor.util;
+package org.opensearch.dataprepper.plugins.ml_inference.processor.util;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessor;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -30,7 +30,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFactory.convertToCredentialsOptions;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory.convertToCredentialsOptions;
 
 public class MlCommonRequester {
     private static final Aws4Signer signer;
@@ -78,6 +78,10 @@ public class MlCommonRequester {
             HttpExecuteResponse response = httpClientExecutor.execute(executeRequest);
 
             handleHttpResponse(response);
+        } catch (IOException e) {
+            // Catch IOExceptions (e.g., network issues, unable to read response)
+            LOG.error("IOException occurred while executing HTTP request to ML Commons due to {}", e.getMessage());
+            throw new RuntimeException("Failed to execute HTTP request due to IO issue", e);
         } catch (Exception e) {
             LOG.error("Error occurred while executing HTTP request to ML Commons. Request details: {}", executeRequest, e);
             throw new RuntimeException("Failed to execute HTTP request using the ML Commons model", e);
@@ -88,8 +92,19 @@ public class MlCommonRequester {
         int statusCode = response.httpResponse().statusCode();
         String modelResponse = response.responseBody().map(MlCommonRequester::readStream).orElse("No response");
 
-        if (statusCode != 200) {
-            LOG.error("ML Commons request failed with status code: {}. Response: {}", statusCode, modelResponse);
+        if (statusCode == 429) {
+            LOG.warn("Request was throttled with status code 429: {}", modelResponse);
+            throw new RuntimeException("Request was throttled with status code 429: " + modelResponse);
+        } else if (statusCode >= 400 && statusCode < 500) {
+            // client errors (e.g., 400 Bad Request, 404 Not Found)
+            LOG.error("Client error occurred with status code {}: {}", statusCode, modelResponse);
+            throw new RuntimeException("Client error occurred with status code " + statusCode + ": " + modelResponse);
+        } else if (statusCode >= 500 && statusCode < 600) {
+            // server errors (e.g., 500 Internal Server Error)
+            LOG.error("Server error occurred with status code {}: {}", statusCode, modelResponse);
+            throw new RuntimeException("Server error occurred with status code " + statusCode + ": " + modelResponse);
+        } else if (statusCode != 200) {
+            LOG.error("Unexpected status code {}: {}", statusCode, modelResponse);
             throw new RuntimeException("Request failed with status code: " + statusCode);
         }
     }

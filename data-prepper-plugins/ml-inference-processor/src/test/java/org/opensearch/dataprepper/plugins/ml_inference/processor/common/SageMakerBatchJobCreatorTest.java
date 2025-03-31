@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.ml.processor.common;
+package org.opensearch.dataprepper.plugins.ml_inference.processor.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -19,15 +19,22 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.ml.processor.MLProcessorConfig;
-import org.opensearch.dataprepper.plugins.ml.processor.client.S3ClientFactory;
-import org.opensearch.dataprepper.plugins.ml.processor.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.common.utils.RetryUtil;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -35,8 +42,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.ml.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
-import static org.opensearch.dataprepper.plugins.ml.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
 
 public class SageMakerBatchJobCreatorTest {
     @Mock
@@ -103,12 +110,13 @@ public class SageMakerBatchJobCreatorTest {
 
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class);
              MockedStatic<S3ClientFactory> mockedS3ClientFactory = mockStatic(S3ClientFactory.class)) {
-            sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
-
             mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(true);
             mockedS3ClientFactory.when(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier)).thenReturn(s3Client);
 
-            sageMakerBatchJobCreator.createMLBatchJob(Arrays.asList(record));
+            sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
+            when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
+
+            sageMakerBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
 
             verify(sageMakerBatchJobCreator, times(1)).incrementSuccessCounter();
             mockedS3ClientFactory.verify(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier), times(1));
@@ -129,10 +137,13 @@ public class SageMakerBatchJobCreatorTest {
             sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
             mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
 
-            sageMakerBatchJobCreator.createMLBatchJob(Arrays.asList(record));
+            MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
+                sageMakerBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
+            });
 
             verify(sageMakerBatchJobCreator, times(1)).incrementFailureCounter();
             mockedS3ClientFactory.verify(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier), times(1));
+            assertTrue(exception.getMessage().contains("Failed to create SageMaker batch job"));
         }
     }
 
