@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
@@ -97,6 +98,19 @@ class CloudWatchLogsSinkTest {
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
             assertTrue(testCloudWatchSink.isReady());
+        }
+    }
+
+    @Test
+    void WHEN_awsConfig_and_awsCredentialsSupplier_null_THEN_should_throw() {
+        mockCredentialSupplier = null;
+        when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(null);
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class)))
+                    .thenReturn(mockClient);
+
+            assertThrows(RuntimeException.class, ()-> getTestCloudWatchSink());
         }
     }
 

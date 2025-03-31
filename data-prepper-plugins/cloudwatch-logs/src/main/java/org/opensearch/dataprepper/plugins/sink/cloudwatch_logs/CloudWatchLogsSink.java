@@ -55,7 +55,13 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 thresholdConfig.getMaxEventSizeBytes(),
                 thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getLogSendInterval());
 
+        if (awsConfig == null && awsCredentialsSupplier == null) {
+            throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
+        }
         CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        if (cloudWatchLogsClient == null) {
+            throw new RuntimeException("cloudWatchLogsClient is null");
+        }
 
         BufferFactory bufferFactory = null;
         if (cloudWatchLogsSinkConfig.getBufferType().equals("in_memory")) {

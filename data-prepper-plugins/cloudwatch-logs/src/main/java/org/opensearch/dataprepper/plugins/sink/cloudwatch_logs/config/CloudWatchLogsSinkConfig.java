@@ -17,7 +17,6 @@ public class CloudWatchLogsSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
     @JsonProperty("aws")
-    @NotNull
     @Valid
     private AwsConfig awsConfig;
 

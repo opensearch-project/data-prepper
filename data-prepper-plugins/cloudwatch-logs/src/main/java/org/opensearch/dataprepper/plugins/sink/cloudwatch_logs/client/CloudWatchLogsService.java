@@ -36,7 +36,6 @@ public class CloudWatchLogsService {
     private final CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
     private final Buffer buffer;
     private final CloudWatchLogsLimits cloudWatchLogsLimits;
-    //private List<EventHandle> bufferedEventHandles;
     private final SinkStopWatch sinkStopWatch;
     private final ReentrantLock processLock;
     private final DlqPushHandler dlqPushHandler;
@@ -47,8 +46,6 @@ public class CloudWatchLogsService {
 
         this.buffer = buffer;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
-
-        //bufferedEventHandles = new ArrayList<>();
 
         processLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();
