@@ -9,6 +9,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
+import org.opensearch.dataprepper.pipeline.parser.InvalidPipelineConfigurationException;
 import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,12 +195,15 @@ public class PipelineConfigurationValidator {
             final List<SinkContextPluginSetting> sinkSettings = pipelineConfiguration.getSinkPluginSettings();
             for (SinkContextPluginSetting sinkPlugin : sinkSettings) {
                 Collection<String> sinkRoutes = sinkPlugin.getSinkContext().getRoutes();
+                if (sinkRoutes == null) {
+                    sinkRoutes = Collections.emptyList();
+                }
                 List<String> invalidRoutes = sinkRoutes.stream()
                         .filter(route -> !validRoutes.contains(route))
                         .collect(Collectors.toList());
 
                 if (!invalidRoutes.isEmpty()) {
-                    throw new RuntimeException(String.format(
+                    throw new InvalidPipelineConfigurationException(String.format(
                             "The following routes do not exist in pipeline \"%s\": %s. Configured routes include %s",
                             pipelineName, invalidRoutes, validRoutes));
                 }
