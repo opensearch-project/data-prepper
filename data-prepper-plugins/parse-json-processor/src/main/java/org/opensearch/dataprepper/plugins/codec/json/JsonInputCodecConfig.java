@@ -11,6 +11,7 @@
 package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
@@ -41,7 +42,7 @@ public class JsonInputCodecConfig {
     }
 
     @JsonProperty("max_event_length")
-    @Min(1)
+    @Min(StreamReadConstraints.DEFAULT_MAX_STRING_LEN)
     private Integer maxEventLength;
 
     public Integer getMaxEventLength(){
