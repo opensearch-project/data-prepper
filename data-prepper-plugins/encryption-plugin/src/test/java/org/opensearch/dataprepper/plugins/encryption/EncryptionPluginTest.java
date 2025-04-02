@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,7 @@ class EncryptionPluginTest {
                 eq(TEST_ENCRYPTION_ID), any(EncryptionEngineConfiguration.class)))
                 .thenReturn(encryptionRotationHandler);
         when(encryptionEngineConfiguration.rotationEnabled()).thenReturn(true);
+        when(encryptionEngineConfiguration.getRotationInterval()).thenReturn(Duration.ofMillis(1000));
         try (final MockedStatic<EncryptedDataKeySupplierFactory> encryptedDataKeySupplierFactoryMockedStatic =
                      mockStatic(EncryptedDataKeySupplierFactory.class);
              final MockedStatic<EncryptionEngineFactory> encryptionEngineFactoryMockedStatic =
