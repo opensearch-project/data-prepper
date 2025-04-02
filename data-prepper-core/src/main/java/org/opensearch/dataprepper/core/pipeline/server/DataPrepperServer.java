@@ -45,8 +45,8 @@ public class DataPrepperServer {
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
-            final EncryptionHttpHandler encryptionHttpHandler,
-            @Autowired(required = false)@Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
+            @Autowired(required = false) @Nullable final EncryptionHttpHandler encryptionHttpHandler,
+            @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
     ) {
         this.serverProvider = serverProvider;
@@ -75,7 +75,10 @@ public class DataPrepperServer {
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
-        createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
+
+        if (encryptionHttpHandler != null) {
+            createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
+        }
 
         if (prometheusMeterRegistry != null) {
             final PrometheusMetricsHandler prometheusMetricsHandler = new PrometheusMetricsHandler(prometheusMeterRegistry);
