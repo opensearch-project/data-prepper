@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsExcept
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -29,7 +29,7 @@ class UploaderTest {
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
     }
 
-    Collection<EventHandle> getTestEventHandles() {
+    List<EventHandle> getTestEventHandles() {
         final ArrayList<EventHandle> eventHandles = new ArrayList<>();
         for (int i = 0; i < ThresholdConfig.DEFAULT_BATCH_SIZE; i++) {
             final EventHandle mockEventHandle = mock(EventHandle.class);

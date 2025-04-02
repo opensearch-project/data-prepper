@@ -7,9 +7,9 @@ package org.opensearch.dataprepper.model.failures;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -120,6 +120,16 @@ public class DlqObject {
             ", timestamp='" + timestamp + '\'' +
             ", failedData=" + failedData +
             '}';
+    }
+
+    public static DlqObject createDlqObject(PluginSetting pluginSetting, EventHandle eventHandle, Object failedData) {
+        return DlqObject.builder()
+                .withEventHandle(eventHandle)
+                .withFailedData(failedData)
+                .withPluginName(pluginSetting.getName())
+                .withPipelineName(pluginSetting.getPipelineName())
+                .withPluginId(pluginSetting.getName())
+                .build();
     }
 
     public static Builder builder() {

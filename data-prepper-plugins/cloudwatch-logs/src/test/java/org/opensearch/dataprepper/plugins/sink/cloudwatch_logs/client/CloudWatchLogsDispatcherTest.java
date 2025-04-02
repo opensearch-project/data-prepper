@@ -48,7 +48,7 @@ class CloudWatchLogsDispatcherTest {
         return returnCollection;
     }
 
-    Collection<EventHandle> getSampleEventHandles() {
+    List<EventHandle> getSampleEventHandles() {
         final ArrayList<EventHandle> eventHandles = new ArrayList<>();
 
         for (int i = 0; i < ThresholdConfig.DEFAULT_BATCH_SIZE; i++) {

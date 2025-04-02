@@ -10,13 +10,18 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+
+
 public class CloudWatchLogsSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
     @JsonProperty("aws")
-    @NotNull
     @Valid
     private AwsConfig awsConfig;
+
+    @JsonProperty("dlq")
+    private PluginModel dlq;
 
     @JsonProperty("threshold")
     private ThresholdConfig thresholdConfig = new ThresholdConfig();
@@ -40,6 +45,10 @@ public class CloudWatchLogsSinkConfig {
 
     public ThresholdConfig getThresholdConfig() {
         return thresholdConfig;
+    }
+
+    public PluginModel getDlq() {
+        return dlq;
     }
 
     public String getBufferType() {
