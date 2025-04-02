@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -163,6 +165,10 @@ public class IndexConfigurationTests {
         assertEquals(10, indexConfiguration.getBulkSize());
         assertEquals(50, indexConfiguration.getFlushTimeout());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
+        assertNull(indexConfiguration.getQueryTerm());
+        assertNull(indexConfiguration.getQueryWhen());
+        assertNull(indexConfiguration.getQueryDuration());
+        assertFalse(indexConfiguration.getQueryOnBulkFailures());
 
         indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
@@ -391,8 +397,46 @@ public class IndexConfigurationTests {
     }
 
     @Test
-    public void testReadIndexConfig_ExplicitCustomIndexType() throws JsonProcessingException {
+    public void testValidCustomWithQueryManager() {
         final String defaultTemplateFilePath = Objects.requireNonNull(
+                getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+
+        final Duration queryDuration = Duration.ofMinutes(3);
+        final String queryTerm = UUID.randomUUID().toString();
+        final String testIndexAlias = "foo";
+        final String queryWhen = UUID.randomUUID().toString();
+        IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias(testIndexAlias)
+                .withTemplateFile(defaultTemplateFilePath)
+                .withIsmPolicyFile(TEST_CUSTOM_INDEX_POLICY_FILE)
+                .withBulkSize(10)
+                .withFlushTimeout(50)
+                .withQueryOnIndexingFailure(true)
+                .withQueryDuration(queryDuration)
+                .withQueryTerm(queryTerm)
+                .withQueryWhen(queryWhen)
+                .build();
+
+        assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(10, indexConfiguration.getBulkSize());
+        assertEquals(50, indexConfiguration.getFlushTimeout());
+        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
+        assertEquals(queryTerm, indexConfiguration.getQueryTerm());
+        assertEquals(queryWhen, indexConfiguration.getQueryWhen());
+        assertEquals(queryDuration, indexConfiguration.getQueryDuration());
+        assertTrue(indexConfiguration.getQueryOnBulkFailures());
+
+        indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias(testIndexAlias)
+                .withBulkSize(-1)
+                .build();
+        assertEquals(-1, indexConfiguration.getBulkSize());
+    }
+
+    @Test
+    public void testReadIndexConfig_ExplicitCustomIndexType() throws JsonProcessingException {
+         final String defaultTemplateFilePath = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
         final String testIndexType = IndexType.CUSTOM.getValue();
         final String testIndexAlias = "foo";

@@ -10,6 +10,7 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'

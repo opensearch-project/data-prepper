@@ -29,8 +29,8 @@ public class OTelLogsProtoBufDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
     private final boolean lengthPrefixedEncoding;
     
-    public OTelLogsProtoBufDecoder(boolean lengthPrefixedEncoding) {
-        otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+    public OTelLogsProtoBufDecoder(OTelOutputFormat otelOutputFormat, boolean lengthPrefixedEncoding) {
+        otelProtoDecoder = otelOutputFormat == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
         this.lengthPrefixedEncoding = lengthPrefixedEncoding;
     }
 

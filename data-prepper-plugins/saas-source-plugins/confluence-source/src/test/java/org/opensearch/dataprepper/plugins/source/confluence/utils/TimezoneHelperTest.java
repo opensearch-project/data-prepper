@@ -24,10 +24,10 @@ public class TimezoneHelperTest {
                 // Format: sourceZone, targetZone, expectedDuration
 
                 // Same timezone (should return zero)
-                arguments(ZoneId.of("Europe/Paris"), ZoneId.of("Europe/Paris"), Duration.ofHours(0), Duration.ofHours(0)),
+                arguments(ZoneId.of("Europe/Paris"), ZoneId.of("Europe/Paris"), Duration.ofHours(0), Duration.ofHours(-1)),
 
                 // Sydney to London (Sydney is ahead, so positive offset)
-                arguments(ZoneId.of("Australia/Sydney"), ZoneId.of("Europe/London"), Duration.ofHours(11), Duration.ofHours(11)),
+                arguments(ZoneId.of("Australia/Sydney"), ZoneId.of("Europe/London"), Duration.ofHours(11), Duration.ofHours(10)),
 
                 // New York to Tokyo (New York is behind, so negative offset)
                 arguments(ZoneId.of("America/New_York"), ZoneId.of("Asia/Tokyo"), Duration.ofHours(-13), Duration.ofHours(-14)),
@@ -36,7 +36,7 @@ public class TimezoneHelperTest {
                 arguments(ZoneId.of("America/Los_Angeles"), ZoneId.of("Europe/Berlin"), Duration.ofHours(-8), Duration.ofHours(-9)),
 
                 // Auckland to Hawaii (crossing international date line)
-                arguments(ZoneId.of("Pacific/Auckland"), ZoneId.of("Pacific/Honolulu"), Duration.ofHours(23), Duration.ofHours(23))
+                arguments(ZoneId.of("Pacific/Auckland"), ZoneId.of("Pacific/Honolulu"), Duration.ofHours(23), Duration.ofHours(22))
         );
     }
 
@@ -46,8 +46,8 @@ public class TimezoneHelperTest {
         Duration reverseOffset = TimezoneHelper.getTimezoneOffset(sourceZone, targetZone);
         // The Range check is because of the Day light saving time changes. Otherwise, this would have been equals check
         assertAll(
-                () -> assertTrue(reverseOffset.compareTo(maxDuration) >= 0, "Timezone Offset should be at least " + minDuration),
-                () -> assertTrue(reverseOffset.compareTo(maxDuration) <= 0, "Timezone Offset should be at most " + maxDuration)
+                () -> assertTrue(reverseOffset.compareTo(maxDuration) >= 0, "Timezone Offset should be at least " + maxDuration),
+                () -> assertTrue(reverseOffset.compareTo(minDuration) <= 0, "Timezone Offset should be at most " + minDuration)
         );
     }
 

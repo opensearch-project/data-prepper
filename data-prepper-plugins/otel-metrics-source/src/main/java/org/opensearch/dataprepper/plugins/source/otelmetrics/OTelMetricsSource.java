@@ -36,7 +36,9 @@ import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
@@ -88,7 +90,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelMetricDecoder();
+        this.byteDecoder = new OTelMetricDecoder(oTelMetricsSourceConfig.getOutputFormat());
     }
 
     @Override
@@ -105,7 +107,7 @@ public class OTelMetricsSource implements Source<Record<? extends Metric>> {
         if (server == null) {
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
                     (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    new OTelProtoCodec.OTelProtoDecoder(),
+                    oTelMetricsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );

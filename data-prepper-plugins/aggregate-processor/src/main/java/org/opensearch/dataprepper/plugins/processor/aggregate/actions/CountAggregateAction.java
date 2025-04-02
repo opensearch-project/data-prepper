@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -81,7 +81,7 @@ public class CountAggregateAction implements AggregateAction {
             traceId = span.getTraceId();
         }
         return new DefaultExemplar(
-                    OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
+                    convertUnixNanosToISO8601(curTimeNanos),
                     1.0,
                     spanId,
                     traceId,
@@ -161,8 +161,8 @@ public class CountAggregateAction implements AggregateAction {
             JacksonSum sum = JacksonSum.builder()
                 .withName(this.metricName)
                 .withDescription(SUM_METRIC_DESCRIPTION)
-                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
-                .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
+                .withTime(convertUnixNanosToISO8601(endTimeNanos))
+                .withStartTime(convertUnixNanosToISO8601(startTimeNanos))
                 .withIsMonotonic(SUM_METRIC_IS_MONOTONIC)
                 .withUnit(SUM_METRIC_UNIT)
                 .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_DELTA.name())

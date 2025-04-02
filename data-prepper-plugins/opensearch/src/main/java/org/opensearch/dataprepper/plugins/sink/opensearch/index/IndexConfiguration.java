@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.OpenSearchSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.ActionConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.configuration.AwsAuthenticationConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryForExistingDocumentConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
@@ -28,10 +29,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,8 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.configuration.O
 
 public class IndexConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(IndexConfiguration.class);
+
+    private static final String ACTION_ON_FOUND_DROP = "drop";
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static final String SETTINGS = "settings";
@@ -98,6 +103,18 @@ public class IndexConfiguration {
     private final VersionType versionType;
     private final boolean normalizeIndex;
 
+    private final String queryWhen;
+
+    private final Duration queryDuration;
+
+    private final String queryTerm;
+
+    private final String queryActionOnFound;
+
+    private final boolean queryOnBulkFailures;
+
+    private final Integer queryAsyncDocumentLimit;
+
     private static final String S3_PREFIX = "s3://";
 
     @SuppressWarnings("unchecked")
@@ -113,6 +130,7 @@ public class IndexConfiguration {
         this.versionExpression = builder.versionExpression;
         this.versionType = builder.versionType;
         this.normalizeIndex = builder.normalizeIndex;
+        this.queryOnBulkFailures = builder.queryOnIndexingFailure;
 
         determineTemplateType(builder);
 
@@ -157,6 +175,11 @@ public class IndexConfiguration {
         this.action = builder.action;
         this.actions = builder.actions;
         this.documentRootKey = builder.documentRootKey;
+        this.queryWhen = builder.queryWhen;
+        this.queryTerm = builder.queryTerm;
+        this.queryActionOnFound = builder.actionOnFound;
+        this.queryDuration = builder.queryDuration;
+        this.queryAsyncDocumentLimit = builder.queryAsyncLimit;
     }
 
     private void determineIndexType(Builder builder) {
@@ -228,6 +251,21 @@ public class IndexConfiguration {
             builder = builder.withRouting(routing);
         }
 
+        final QueryForExistingDocumentConfiguration queryExistingConfiguration = openSearchSinkConfig.getQueryExistingConfiguration();
+        if (queryExistingConfiguration != null) {
+            if (!expressionEvaluator.isValidExpressionStatement(queryExistingConfiguration.getQueryWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("query_when %s is not a valid conditional expression statement", openSearchSinkConfig.getQueryExistingConfiguration()));
+            }
+
+            builder.withQueryWhen(queryExistingConfiguration.getQueryWhen());
+            builder.withQueryTerm(queryExistingConfiguration.getQueryTerm());
+            builder.withQueryDuration(queryExistingConfiguration.getQueryDuration());
+            builder.withQueryOnIndexingFailure(queryExistingConfiguration.isQueryOnBulkErrors());
+            builder.withQueryAsyncLimit(queryExistingConfiguration.getAsyncDocumentLimit());
+            builder.withActionOnFound(ACTION_ON_FOUND_DROP);
+        }
+
         builder = builder.withNumShards(openSearchSinkConfig.getNumShards())
                 .withNumReplicas(openSearchSinkConfig.getNumReplicas())
                 .withBulkSize(openSearchSinkConfig.getBulkSize())
@@ -272,7 +310,6 @@ public class IndexConfiguration {
                     builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
             builder.withS3Client(clientProvider.buildS3Client());
         }
-
         return builder.build();
     }
 
@@ -365,6 +402,18 @@ public class IndexConfiguration {
 
     public boolean isNormalizeIndex() { return normalizeIndex; }
 
+    public String getQueryWhen() { return queryWhen; }
+
+    public Duration getQueryDuration() { return queryDuration; }
+
+    public String getQueryTerm() { return queryTerm; }
+
+    public boolean getQueryOnBulkFailures() {
+        return queryOnBulkFailures;
+    }
+
+    public Integer getQueryAsyncDocumentLimit() {return queryAsyncDocumentLimit; }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an
@@ -454,6 +503,14 @@ public class IndexConfiguration {
         private VersionType versionType;
         private String versionExpression;
         private boolean normalizeIndex;
+
+        private String queryTerm;
+        private String queryWhen;
+        private String actionOnFound;
+        private Duration queryDuration;
+        private boolean queryOnIndexingFailure;
+
+        private Integer queryAsyncLimit;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -653,6 +710,39 @@ public class IndexConfiguration {
 
             this.versionExpression = versionExpression;
 
+            return this;
+        }
+
+        public Builder withQueryTerm(final String queryTerm) {
+            this.queryTerm = queryTerm;
+            return this;
+        }
+
+        public Builder withQueryWhen(final String queryWhen) {
+            this.queryWhen = queryWhen;
+            return this;
+        }
+
+        public Builder withQueryDuration(final Duration queryDuration) {
+            this.queryDuration = queryDuration;
+            return this;
+        }
+
+        public Builder withActionOnFound(final String actionOnFound) {
+            if (!Objects.equals(actionOnFound, ACTION_ON_FOUND_DROP)) {
+                throw new InvalidPluginConfigurationException("Only \"drop\" is supported for query_for_existing_document.action_on_found");
+            }
+            this.actionOnFound = actionOnFound;
+            return this;
+        }
+
+        public Builder withQueryOnIndexingFailure(final boolean queryOnIndexingFailure) {
+            this.queryOnIndexingFailure = queryOnIndexingFailure;
+            return this;
+        }
+
+        public Builder withQueryAsyncLimit(final Integer queryAsyncLimit) {
+            this.queryAsyncLimit = queryAsyncLimit;
             return this;
         }
 

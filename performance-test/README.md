@@ -59,6 +59,23 @@ Setup your AWS credentials to meet your needs. Then run a command similar to the
 ./gradlew :performance-test:compileGatlingJava
 ```
 
+### Deploying
+
+You can also create an uber-jar that has everything needed to run the Gatling performance tests so that you can
+deploy them easily.
+
+```shell
+./gradlew :performance-test:assemble
+```
+
+This will create an uber jar in `performance-test/build/libs` with the name `opensearch-data-prepper-performance-test-${VERSION}.jar`
+
+You can run this using a command similar to the following.
+
+```shell
+java -jar performance-test/build/libs/opensearch-data-prepper-performance-test-2.11.0-SNAPSHOT.jar -s org.opensearch.dataprepper.test.performance.StaticRequestSimulation
+```
+
 # Gatling Documentation
 [Gatling Quickstart](https://gatling.io/docs/gatling/tutorials/quickstart/)
 [Gatling Advanced Simulations](https://gatling.io/docs/gatling/tutorials/advanced/)
