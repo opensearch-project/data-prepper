@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 /**
@@ -27,11 +28,14 @@ public final class CloudWatchLogsClientFactory {
      * @return CloudWatchLogsClient used to interact with CloudWatch Logs services.
      */
     public static CloudWatchLogsClient createCwlClient(final AwsConfig awsConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
-        final AwsCredentialsOptions awsCredentialsOptions = convertToCredentialOptions(awsConfig);
-        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
+        final AwsCredentialsProvider awsCredentialsProvider = awsConfig != null ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
+        Region region = awsConfig != null ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
 
+        if (awsCredentialsProvider == null || region == null) {
+            return null;
+        }
         return CloudWatchLogsClient.builder()
-                .region(awsConfig.getAwsRegion())
+                .region(region)
                 .credentialsProvider(awsCredentialsProvider)
                 .overrideConfiguration(createOverrideConfiguration()).build();
     }

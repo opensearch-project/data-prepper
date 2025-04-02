@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,9 +14,11 @@ import java.util.List;
 public class InMemoryBuffer implements Buffer {
     private List<byte[]> eventsBuffered;
     private int bufferSize = 0;
+    private List<EventHandle> eventHandles;
 
     InMemoryBuffer() {
         eventsBuffered = new ArrayList<>();
+        eventHandles = new ArrayList<>();
     }
 
     @Override
@@ -28,7 +32,13 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public void writeEvent(final byte[] event) {
+    public List<EventHandle> getEventHandles() {
+        return Collections.unmodifiableList(eventHandles);
+    }
+
+    @Override
+    public void writeEvent(final EventHandle eventHandle, final byte[] event) {
+        eventHandles.add(eventHandle);
         eventsBuffered.add(event);
         bufferSize += event.length;
     }
@@ -57,5 +67,6 @@ public class InMemoryBuffer implements Buffer {
     public void resetBuffer() {
         bufferSize = 0;
         eventsBuffered = new ArrayList<>();
+        eventHandles = new ArrayList<>();
     }
 }
