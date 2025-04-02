@@ -7,6 +7,9 @@ package org.opensearch.dataprepper.plugins.sink.xrayotlp;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
@@ -14,10 +17,12 @@ import java.util.Collection;
  * A Data Prepper Sink plugin that forwards traces to AWS X-Ray's OTLP endpoint.
  */
 @DataPrepperPlugin(
-        name = "otlp_xray_sink",
+        name = "xray_otlp_sink",
         pluginType = Sink.class
 )
-public class XRayOTLPSink implements Sink<Record<String>> {
+public class XRayOTLPSink implements Sink<Record<Span>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(XRayOTLPSink.class);
 
     /**
      * Constructs the OTLP X-Ray Sink.
@@ -43,8 +48,18 @@ public class XRayOTLPSink implements Sink<Record<String>> {
      * @param records Collection of OTLP log records to process.
      */
     @Override
-    public void output(final Collection<Record<String>> records) {
-        // TODO: Process records
+    public void output(final Collection<Record<Span>> records) {
+        for (Record<Span> record : records) {
+            final Span span = record.getData();
+
+            LOG.info("===> Span name: {}", span.getName());
+            LOG.info("===> Trace ID: {}", span.getTraceId());
+            LOG.info("===> Span ID: {}", span.getSpanId());
+            LOG.info("===> Parent ID: {}", span.getParentSpanId());
+            LOG.info("===> Start time (epoch nanos): {}", span.getStartTime());
+            LOG.info("===> End time (epoch nanos): {}", span.getEndTime());
+            LOG.info("===> Attributes: {}", span.getAttributes());
+        }
     }
 
     /**
@@ -72,7 +87,7 @@ public class XRayOTLPSink implements Sink<Record<String>> {
      * @param events Collection of records used for latency tracking.
      */
     @Override
-    public void updateLatencyMetrics(final Collection<Record<String>> events) {
+    public void updateLatencyMetrics(final Collection<Record<Span>> events) {
         // TODO: Implement latency tracking with PluginMetrics
     }
 }

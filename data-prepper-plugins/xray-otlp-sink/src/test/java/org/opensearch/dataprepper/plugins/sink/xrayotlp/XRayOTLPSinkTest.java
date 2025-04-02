@@ -5,14 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.sink.xrayotlp;
 
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
 
 import java.util.Collections;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class XRayOTLPSinkTest {
     private XRayOTLPSink sink;
@@ -29,7 +31,8 @@ class XRayOTLPSinkTest {
 
     @Test
     void testOutput_printsRecordData() {
-        Record<String> record = new Record<>("mock-otlp-span");
+        final Span mockSpan = mock(Span.class);
+        final Record<Span> record = new Record<>(mockSpan);
         assertDoesNotThrow(() -> sink.output(Collections.singletonList(record)));
     }
 

@@ -14,7 +14,41 @@ See the [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/m
 
 The integration tests for this plugin do not run as part of the main Data Prepper build.
 
-To run unit tests for this plugin locally:
+#### Run unit tests locally
 
 ```bash
 ./gradlew :data-prepper-plugins:xray-otlp-sink:test
+```
+
+#### Run a local pipeline that uses this sink
+
+1. Install `grpcurl` – Used to send OTLP span data to the running pipeline.
+2. Build the plugin and Data Prepper: 
+```
+./gradlew build`
+```
+3. Start the pipeline:
+```
+cd release/archives/linux/build/install/opensearch-data-prepper-2.11.0-SNAPSHOT-linux-x64
+
+bin/data-prepper \
+      /path/to/data-prepper-plugins/xray-otlp-sink/src/test/resources/pipelines.yaml \
+      /path/to/data-prepper-plugins/xray-otlp-sink/src/test/resources/data-prepper-config.yaml
+```
+4. Send test spans to the local pipeline:
+```
+cd /path/to/opentelemetry-proto
+
+grpcurl -plaintext \
+  -import-path . \
+  -proto opentelemetry/proto/collector/trace/v1/trace_service.proto \
+  -proto opentelemetry/proto/common/v1/common.proto \
+  -proto opentelemetry/proto/resource/v1/resource.proto \
+  -proto opentelemetry/proto/trace/v1/trace.proto \
+  -d @ \
+  localhost:21890 \
+  opentelemetry.proto.collector.trace.v1.TraceService/Export \
+  < /path/to/data-prepper-plugins/xray-otlp-sink/src/test/resources/sample-trace.json
+```
+
+You should see log output from XRayOTLPSink that confirms the span data was received and parsed correctly.
