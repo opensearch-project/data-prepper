@@ -18,6 +18,7 @@ ml-inference-pipeline:
         input_key: key
         aws:
           region: "us-east-1"
+          sts_role_arn: "<arn>"
         ml_when: /bucket == "offlinebatch"
 
 ```
@@ -28,10 +29,10 @@ ml-inference-pipeline:
 # Metrics
 
 ### Counter
-- `mlProcessorSuccessRequests`: measures total number of requests received and processed successfully by ml-processor.
-- `mlProcessorFailedRequests`: measures total number of requests failed by ml-processor.
-- `numberOfBatchJobsCreationSucceeded`: measures total number of batch jobs successfully created (200 response status code) by OpenSearch ml-commons API.
-- `numberOfBatchJobsCreationFailed`: measures total number of batch jobs failed in creation by OpenSearch ml-commons API.
+- `BatchJobRequestsSucceeded`: measures total number of requests received and processed successfully by ml-inference-processor.
+- `BatchJobRequestsFailed`: measures total number of requests failed by ml-inference-processor.
+- `batchJobsCreationSucceeded`: measures total number of batch jobs successfully created (200 response status code) by OpenSearch ml-commons API.
+- `batchJobsCreationFailed`: measures total number of batch jobs creation failed by OpenSearch ml-commons API.
 
 ## Developer Guide
 
