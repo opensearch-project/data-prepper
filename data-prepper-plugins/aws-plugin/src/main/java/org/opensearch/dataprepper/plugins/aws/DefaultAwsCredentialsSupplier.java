@@ -16,7 +16,8 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     private final CredentialsProviderFactory credentialsProviderFactory;
     private final CredentialsCache credentialsCache;
 
-    DefaultAwsCredentialsSupplier(final CredentialsProviderFactory credentialsProviderFactory, final CredentialsCache credentialsCache) {
+    DefaultAwsCredentialsSupplier(final CredentialsProviderFactory credentialsProviderFactory,
+                                  final CredentialsCache credentialsCache) {
         this.credentialsProviderFactory = credentialsProviderFactory;
         this.credentialsCache = credentialsCache;
     }
@@ -29,5 +30,10 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     @Override
     public Optional<Region> getDefaultRegion() {
         return Optional.ofNullable(credentialsProviderFactory.getDefaultRegion());
+    }
+
+    @Override
+    public Optional<String> getDefaultStsRoleArn() {
+        return Optional.ofNullable(credentialsProviderFactory.getDefaultStsRoleArn());
     }
 }
