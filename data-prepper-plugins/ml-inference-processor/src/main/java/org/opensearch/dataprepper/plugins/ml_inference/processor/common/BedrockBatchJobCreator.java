@@ -22,14 +22,13 @@ import java.util.Optional;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor.LOG;
-import static org.opensearch.dataprepper.plugins.ml_inference.processor.util.MlCommonRequester.sendRequestToMLCommons;
 import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
 
 public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
-    private static final String bedrockPayload = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://offlinebatch/my_batch2.jsonl\"}}," +
-            "\"jobName\": \"batch-inference-from-connector\", \"outputDataConfig\": {\"s3OutputDataConfig\": {\"s3Uri\": \"s3://offlinebatch/bedrock-multisource/output-multisource/\"}}}}";
+    private static final String BEDROCK_PAYLOAD_TEMPLATE = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://\"}}," +
+            "\"jobName\": \"\", \"outputDataConfig\": {\"s3OutputDataConfig\": {\"s3Uri\": \"s3://\"}}}}";
 
     public BedrockBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
         super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
@@ -44,7 +43,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                 String s3Uri = generateS3Uri(record);
                 String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
 
-                boolean success = retryWithBackoff(() -> sendRequestToMLCommons(payload, mlProcessorConfig, awsCredentialsSupplier));
+                boolean success = retryWithBackoff(() -> mlCommonRequester.sendRequestToMLCommons(payload), LOG);
                 if (success) {
                     LOG.info("Successfully created Bedrock batch job for the S3Uri: {}", s3Uri);
                     resultRecords.add(record);
@@ -103,7 +102,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         String jobName = generateJobName();
 
         try {
-            JsonNode rootNode = OBJECT_MAPPER.readTree(bedrockPayload);
+            JsonNode rootNode = OBJECT_MAPPER.readTree(BEDROCK_PAYLOAD_TEMPLATE);
             ((ObjectNode) rootNode.at("/parameters/inputDataConfig/s3InputDataConfig")).put("s3Uri", S3Uri);
             ((ObjectNode) rootNode.at("/parameters")).put("jobName", jobName);
             ((ObjectNode) rootNode.at("/parameters/outputDataConfig/s3OutputDataConfig")).put("s3Uri", mlProcessorConfig.getOutputPath());

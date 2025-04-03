@@ -22,7 +22,7 @@ public class MLBatchJobCreatorFactory {
     // A thread-safe map to store singleton instances of each service
     private static final Map<ServiceName, MLBatchJobCreator> jobCreators = new ConcurrentHashMap<>();
 
-    public static MLBatchJobCreator getJobCreator(ServiceName serviceName, final MLProcessorConfig mlProcessorConfig,
+    public static MLBatchJobCreator getJobCreator(final ServiceName serviceName, final MLProcessorConfig mlProcessorConfig,
                                                   final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
         // If the instance for the given service name is already created, return it
         if (serviceName == null) {
@@ -31,7 +31,7 @@ public class MLBatchJobCreatorFactory {
         return jobCreators.computeIfAbsent(serviceName, key -> createJobCreator(key, mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
     }
 
-    private static MLBatchJobCreator createJobCreator(ServiceName serviceName, final MLProcessorConfig mlProcessorConfig,
+    private static MLBatchJobCreator createJobCreator(final ServiceName serviceName, final MLProcessorConfig mlProcessorConfig,
                                                       final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
         switch (serviceName) {
             case SAGEMAKER:
@@ -39,8 +39,11 @@ public class MLBatchJobCreatorFactory {
             case BEDROCK:
                 return new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
             default:
-                LOG.warn("Unknown service name: {}, defaulting to SageMaker", serviceName);
-                return new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
+                LOG.warn("Unsupported service name provided: {}", serviceName);
+                throw new IllegalArgumentException(
+                        "Unsupported ServiceName: " + serviceName +
+                                ". Expected values: SAGEMAKER, BEDROCK."
+                );
         }
     }
 }

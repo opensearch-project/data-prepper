@@ -82,7 +82,7 @@ public class BedrockBatchJobCreatorTest {
                 .put("key", "input.jsonl"));
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(true);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
 
             bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
             verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
@@ -99,7 +99,7 @@ public class BedrockBatchJobCreatorTest {
                 .put("key", "input.jsonl"));
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
 
             MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
                 bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
@@ -120,7 +120,7 @@ public class BedrockBatchJobCreatorTest {
                 .put("key", "input.jsonl"));
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
 
             Thread.currentThread().interrupt();
             MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {

@@ -32,7 +32,6 @@ import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor.LOG;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory.createS3Client;
-import static org.opensearch.dataprepper.plugins.ml_inference.processor.util.MlCommonRequester.sendRequestToMLCommons;
 
 public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -40,11 +39,11 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private final S3Client s3Client;
     private final DateTimeFormatter dateTimeFormatter;
 
-    private static final String sagemakerPayload = "{\"parameters\":{\"TransformInput\":{\"ContentType\":\"application/json\","
+    private static final String SAGEMAKER_PAYLOAD_TEMPLATE = "{\"parameters\":{\"TransformInput\":{\"ContentType\":\"application/json\","
             + "\"DataSource\":{\"S3DataSource\":{\"S3DataType\":\"ManifestFile\",\"S3Uri\":\"\"}},"
             + "\"SplitType\":\"Line\"},\"TransformJobName\":\"\","
             + "\"TransformOutput\":{\"AssembleWith\":\"Line\",\"Accept\":\"application/json\","
-            + "\"S3OutputPath\":\"s3://offlinebatch/sagemaker/output\"}}}";
+            + "\"S3OutputPath\":\"s3://\"}}}";
 
     public SageMakerBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
         super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
@@ -67,7 +66,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             String manifestUrl = generateManifest(inputRecords, customerBucket, commonPrefix);
             String payload = createPayloadSageMaker(manifestUrl, mlProcessorConfig);
 
-            boolean success = retryWithBackoff(() -> sendRequestToMLCommons(payload, mlProcessorConfig, awsCredentialsSupplier));
+            boolean success = retryWithBackoff(() -> mlCommonRequester.sendRequestToMLCommons(payload), LOG);
             if (success) {
                 LOG.info("Successfully created SageMaker batch job for manifest URL: {}", manifestUrl);
                 resultRecords.addAll(inputRecords);
@@ -179,7 +178,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
                 outputPath = outputPath.concat(outputPath.endsWith("/") ? "" : "/").concat(jobName);
             }
 
-            JsonNode rootNode = OBJECT_MAPPER.readTree(sagemakerPayload);
+            JsonNode rootNode = OBJECT_MAPPER.readTree(SAGEMAKER_PAYLOAD_TEMPLATE);
             ((ObjectNode) rootNode.at("/parameters/TransformInput/DataSource/S3DataSource")).put("S3Uri", manifestUri);
             ((ObjectNode) rootNode.at("/parameters")).put("TransformJobName", jobName);
 

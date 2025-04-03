@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.A
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.http.HttpExecuteRequest;
 import software.amazon.awssdk.http.HttpExecuteResponse;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,10 +59,11 @@ public class MlCommonRequesterTest {
     @Mock
     private AwsCredentials mockAwsCredentials;
 
+    private MlCommonRequester mlCommonRequester;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        MlCommonRequester.setHttpClientExecutor(mockHttpClientExecutor);
         when(mockMLProcessorConfig.getHostUrl()).thenReturn("http://localhost:9200");
         when(mockMLProcessorConfig.getModelId()).thenReturn("test-model");
         when(mockMLProcessorConfig.getActionType()).thenReturn(ActionType.BATCH_PREDICT);
@@ -68,6 +71,8 @@ public class MlCommonRequesterTest {
         when(mockAwsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_WEST_2);
         when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
         when(mockAwsCredentialsProvider.resolveCredentials()).thenReturn(mockAwsCredentials);
+
+        mlCommonRequester = new MlCommonRequester(Aws4Signer.create(), mockMLProcessorConfig, mockAwsCredentialsSupplier, mockHttpClientExecutor);
     }
 
     @Test
@@ -78,7 +83,7 @@ public class MlCommonRequesterTest {
         when(mockHttpClientExecutor.execute(any(HttpExecuteRequest.class))).thenReturn(mockResponse);
 
         // Act
-        MlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}", mockMLProcessorConfig, mockAwsCredentialsSupplier);
+        mlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}");
 
         // Assert
         ArgumentCaptor<HttpExecuteRequest> captor = ArgumentCaptor.forClass(HttpExecuteRequest.class);
@@ -88,6 +93,8 @@ public class MlCommonRequesterTest {
 
         assertEquals(SdkHttpMethod.POST, capturedRequest.httpRequest().method());
         assertEquals(URI.create("http://localhost:9200/_plugins/_ml/models/test-model/_batch_predict"), capturedRequest.httpRequest().getUri());
+
+        verify(mockResponse, times(2)).httpResponse();
     }
 
     @Test
@@ -99,7 +106,7 @@ public class MlCommonRequesterTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(
-            RuntimeException.class, () -> MlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}", mockMLProcessorConfig, mockAwsCredentialsSupplier)
+            RuntimeException.class, () -> mlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}")
         );
 
         assertTrue(exception.getMessage().contains("Failed to execute HTTP request using the ML Commons model"));
@@ -129,7 +136,7 @@ public class MlCommonRequesterTest {
         when(mockHttpClientExecutor.execute(any(HttpExecuteRequest.class))).thenReturn(httpExecuteResponse);
 
         // Call handleHttpResponse to indirectly test readStream
-        MlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}", mockMLProcessorConfig, mockAwsCredentialsSupplier);
+        mlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}");
 
         // Assert
         ArgumentCaptor<HttpExecuteRequest> captor = ArgumentCaptor.forClass(HttpExecuteRequest.class);

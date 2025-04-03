@@ -110,7 +110,7 @@ public class SageMakerBatchJobCreatorTest {
 
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class);
              MockedStatic<S3ClientFactory> mockedS3ClientFactory = mockStatic(S3ClientFactory.class)) {
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(true);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
             mockedS3ClientFactory.when(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier)).thenReturn(s3Client);
 
             sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
@@ -135,7 +135,7 @@ public class SageMakerBatchJobCreatorTest {
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class);
              MockedStatic<S3ClientFactory> mockedS3ClientFactory = mockStatic(S3ClientFactory.class)) {
             sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any())).thenReturn(false);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
 
             MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
                 sageMakerBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());

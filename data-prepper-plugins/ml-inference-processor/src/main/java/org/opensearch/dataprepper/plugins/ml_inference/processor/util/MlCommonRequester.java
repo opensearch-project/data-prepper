@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.ml_inference.processor.util;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor;
@@ -33,20 +32,26 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory.convertToCredentialsOptions;
 
 public class MlCommonRequester {
-    private static final Aws4Signer signer;
     private static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);
-    private static HttpClientExecutor httpClientExecutor = new SdkHttpClientExecutor();
+    private final Aws4Signer signer;
+    private final MLProcessorConfig mlProcessorConfig;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
+    private final HttpClientExecutor httpClientExecutor;
 
-    static {
-        signer = Aws4Signer.create();
+    public MlCommonRequester(Aws4Signer signer, MLProcessorConfig mlProcessorConfig,
+                             AwsCredentialsSupplier awsCredentialsSupplier) {
+        this(signer, mlProcessorConfig, awsCredentialsSupplier, new SdkHttpClientExecutor());
     }
 
-    @VisibleForTesting
-    static void setHttpClientExecutor(HttpClientExecutor executor) {
-        httpClientExecutor = executor;
+    public MlCommonRequester(Aws4Signer signer, MLProcessorConfig mlProcessorConfig,
+                             AwsCredentialsSupplier awsCredentialsSupplier, HttpClientExecutor httpClientExecutor) {
+        this.signer = signer;
+        this.mlProcessorConfig = mlProcessorConfig;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.httpClientExecutor = httpClientExecutor;
     }
 
-    public static void sendRequestToMLCommons(String payload, MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
+    public void sendRequestToMLCommons(String payload) {
         String host = mlProcessorConfig.getHostUrl();
         String modelId = mlProcessorConfig.getModelId();
         String path = "/_plugins/_ml/models/" + modelId + "/" + mlProcessorConfig.getActionType().getMlCommonsActionValue();
@@ -73,7 +78,7 @@ public class MlCommonRequester {
         executeHttpRequest(executeRequest);
     }
 
-    private static void executeHttpRequest(HttpExecuteRequest executeRequest) {
+    private void executeHttpRequest(HttpExecuteRequest executeRequest) {
         try {
             HttpExecuteResponse response = httpClientExecutor.execute(executeRequest);
 
@@ -88,9 +93,9 @@ public class MlCommonRequester {
         }
     }
 
-    private static void handleHttpResponse(HttpExecuteResponse response) throws IOException {
+    private void handleHttpResponse(HttpExecuteResponse response) throws IOException {
         int statusCode = response.httpResponse().statusCode();
-        String modelResponse = response.responseBody().map(MlCommonRequester::readStream).orElse("No response");
+        String modelResponse = response.responseBody().map(this::readStream).orElse("No response");
 
         if (statusCode == 429) {
             LOG.warn("Request was throttled with status code 429: {}", modelResponse);
@@ -109,7 +114,7 @@ public class MlCommonRequester {
         }
     }
 
-    private static String readStream(AbortableInputStream stream) {
+    private String readStream(AbortableInputStream stream) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             return reader.lines().collect(Collectors.joining());
         } catch (IOException e) {
@@ -118,7 +123,7 @@ public class MlCommonRequester {
         }
     }
 
-    private static SdkHttpFullRequest signRequest(SdkHttpFullRequest request, Region region, AwsCredentialsProvider awsCredentialsProvider) {
+    private SdkHttpFullRequest signRequest(SdkHttpFullRequest request, Region region, AwsCredentialsProvider awsCredentialsProvider) {
         try {
             AwsCredentials credentials = awsCredentialsProvider.resolveCredentials();
 

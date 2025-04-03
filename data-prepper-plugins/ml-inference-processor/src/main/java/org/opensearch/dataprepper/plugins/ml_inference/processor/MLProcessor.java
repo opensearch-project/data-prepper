@@ -35,11 +35,11 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 @DataPrepperPlugin(name = "ml_inference", pluginType = Processor.class, pluginConfigurationType = MLProcessorConfig.class)
 public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);
-    public static final String NUMBER_OF_ML_PROCESSOR_SUCCESS = "mlProcessorSuccessfullyCreated";
-    public static final String NUMBER_OF_ML_PROCESSOR_FAILED = "mlProcessorFailedToCreated";
+    public static final String NUMBER_OF_ML_PROCESSOR_SUCCESS = "BatchJobRequestsSucceeded";
+    public static final String NUMBER_OF_ML_PROCESSOR_FAILED = "BatchJobRequestsFailed";
 
     private final String whenCondition;
-    private MLBatchJobCreator mlBatchJobCreator;
+    private final MLBatchJobCreator mlBatchJobCreator;
     private final Counter numberOfMLProcessorSuccessCounter;
     private final Counter numberOfMLProcessorFailedCounter;
     private final ExpressionEvaluator expressionEvaluator;
