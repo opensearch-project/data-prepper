@@ -13,6 +13,7 @@ routing-pipeline:
     - alpha: '/value == "a"'
     - beta: '/value == "b"'
     - gamma: '/value == "g"'
+    - _default: '/_default == "z"'
   sink:
     - in_memory:
         testing_key: ConditionalRoutingIT_alpha
