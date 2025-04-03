@@ -8,6 +8,42 @@ For information on usage, see the forthcoming documentation in the [Data Prepper
 
 A sample pipeline configuration will be added once the plugin is ready for testing.
 
+### Configuration Options
+
+#### aws (Required)
+Configuration options for AWS authentication and region settings.
+
+* `region` (Required): The AWS region where X-Ray service is located
+    * Must be a valid AWS region identifier (e.g., us-east-1, us-west-2)
+    * Cannot be empty
+
+* `sts_role_arn` (Required): AWS STS Role ARN for assuming role-based access
+    * Format: arn:aws:iam::{account}:role/{role-name}
+    * Length must be between 20 and 2048 characters
+
+* `sts_external_id` (Optional): External ID for additional security when assuming an IAM role
+    * Required only if the trust policy requires an external ID
+    * Length must be between 2 and 1224 characters
+
+### Sample Pipeline Configuration
+
+```yaml
+pipeline:
+  source:
+    otel_trace_source:
+      ssl: true
+      
+  buffer:
+    bounded_blocking:
+      buffer_size: 10
+      batch_size: 5
+      
+  sink:
+    - xray-otlp-sink:
+        aws:
+          region: us-west-2
+          sts_role_arn: arn:aws:iam::123456789012:role/XrayRole
+        
 ## Developer Guide
 
 See the [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) guide for general information on contributions.
