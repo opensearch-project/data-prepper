@@ -18,3 +18,34 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+sourceSets {
+    integrationTest {
+        java.srcDir file('src/integrationTest/java')
+        resources.srcDir file('src/integrationTest/resources')
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+dependencies {
+    integrationTestImplementation project(':data-prepper-test-common')
+    integrationTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    integrationTestRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+    useJUnitPlatform()
+}
+
+check.dependsOn integrationTest

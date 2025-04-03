@@ -20,6 +20,12 @@ The integration tests for this plugin do not run as part of the main Data Preppe
 ./gradlew :data-prepper-plugins:xray-otlp-sink:test
 ```
 
+#### Run integration tests locally
+
+```
+./gradlew :data-prepper-plugins:xray-otlp-sink:integrationTest
+```
+
 #### Run a local pipeline that uses this sink
 
 1. Install `grpcurl` – Used to send OTLP span data to the running pipeline.
