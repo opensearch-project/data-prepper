@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -404,6 +405,115 @@ class MapToListProcessorTest {
         ));
         assertSourceMapUnchangedWithNullValues(resultEvent);
     }
+    @Test
+    void invalid_map_to_list_when_with_entries_format_throws_InvalidPluginConfigurationException() {
+        when(mockConfig.getSource()).thenReturn(null);
+
+        final List<MapToListProcessorConfig.Entry> entries = List.of(
+                new MapToListProcessorConfig.Entry(
+                        "my-map",
+                        "my-list",
+                        "key",
+                        "value",
+                        false,
+                        false,
+                        new ArrayList<>(),
+                        null,
+                        "invalid_condition"
+                )
+        );
+
+        when(mockConfig.getEntries()).thenReturn(entries);
+        when(expressionEvaluator.isValidExpressionStatement("invalid_condition")).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void testMultipleEntriesFormatWithDifferentConditions() {
+        when(mockConfig.getSource()).thenReturn(null);
+
+        final List<MapToListProcessorConfig.Entry> entries = Arrays.asList(
+                new MapToListProcessorConfig.Entry(
+                        "my-map",
+                        "target1",
+                        "key",
+                        "value",
+                        false,
+                        false,
+                        new ArrayList<>(),
+                        null,
+                        "condition1"
+                ),
+                new MapToListProcessorConfig.Entry(
+                        "my-map2",
+                        "target2",
+                        "key2",
+                        "value2",
+                        false,
+                        false,
+                        new ArrayList<>(),
+                        null,
+                        "condition2"
+                )
+        );
+
+        when(mockConfig.getEntries()).thenReturn(entries);
+        when(expressionEvaluator.isValidExpressionStatement("condition1")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("condition2")).thenReturn(true);
+
+        final Record<Event> testRecord = createTestRecordWithMultipleMaps();
+        when(expressionEvaluator.evaluateConditional("condition1", testRecord.getData())).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional("condition2", testRecord.getData())).thenReturn(false);
+
+        final MapToListProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        List<List<Object>> resultList = resultEvent.get("target1", List.class);
+
+        assertThat(resultList.size(), is(3));
+        assertThat(resultList, containsInAnyOrder(
+                Map.of("key", "key1", "value", "value1"),
+                Map.of("key", "key2", "value", "value2"),
+                Map.of("key", "key3", "value", "value3")
+        ));
+        assertSourceMapUnchanged(resultEvent);
+    }
+
+    @Test
+    public void test_both_configurations_used_together() {
+        final MapToListProcessorConfig configObjectUnderTest = new MapToListProcessorConfig();
+        ReflectionTestUtils.setField(configObjectUnderTest, "source", "my-map");
+
+        final MapToListProcessorConfig.Entry entry = new MapToListProcessorConfig.Entry(
+                "my-map2",
+                "target2",
+                "key",
+                "value",
+                false,
+                false,
+                new ArrayList<>(),
+                null,
+                "condition"
+        );
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
+
+        assertThat(configObjectUnderTest.isNotUsingBothConfigurations(), is(false));
+    }
+
+    @Test
+    public void test_no_configuration_used() {
+        final MapToListProcessorConfig configObjectUnderTest = new MapToListProcessorConfig();
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "source", null);
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", null);
+
+        assertThat(configObjectUnderTest.isUsingAtLeastOneConfiguration(), is(false));
+    }
 
     private MapToListProcessor createObjectUnderTest() {
         return new MapToListProcessor(pluginMetrics, mockConfig, expressionEvaluator);
@@ -449,6 +559,23 @@ class MapToListProcessorTest {
         mapData.put("key1", "value1");
         mapData.put("key2", null);
         final Map<String, Map<String, Object>> data = Map.of("my-map", mapData);
+        final Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build();
+        return new Record<>(event);
+    }
+
+    private Record<Event> createTestRecordWithMultipleMaps() {
+        final Map<String, Map<String, Object>> data = Map.of(
+                "my-map", Map.of(
+                        "key1", "value1",
+                        "key2", "value2",
+                        "key3", "value3"),
+                "my-map2", Map.of(
+                        "key4", "value4",
+                        "key5", "value5",
+                        "key6", "value6"));
         final Event event = JacksonEvent.builder()
                 .withData(data)
                 .withEventType("event")
