@@ -27,6 +27,8 @@ import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,25 +47,61 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
-    private static final String TEST_INDEX_NAME = "test-grok-index";
 
     private final ApacheLogFaker apacheLogFaker = new ApacheLogFaker();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     public void testPipelineEndToEnd() throws JsonProcessingException {
+        final String testIndexName = "test-grok-index";
         // Send data to http source
         sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(2));
         sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(3));
-
-        // Verify data in OpenSearch backend
         final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
         final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
+
         // Wait for data to flow through pipeline and be indexed by ES
+        makeRequestAndWaitForResponse(restHighLevelClient, testIndexName, retrievedDocs);
+
+        // Verify original and grokked keys from retrieved docs
+        final List<String> expectedDocKeys = createListOfExpectedDocumentKeys();
+        assertThatGrokkedKeysOccurInRetreivedDocuments(expectedDocKeys, retrievedDocs);
+    }
+
+    @Test
+    public void testPipelineWithDatePatternedIndexEndToEnd() throws JsonProcessingException {
+        final String testIndexName = "test-grok-index-%s";
+        // Send data to http source
+        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(2));
+        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(3));
+        final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
+        final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
+
+        // Wait for data to flow through pipeline and be indexed by ES
+        makeRequestAndWaitForResponse(restHighLevelClient, String.format(testIndexName, DateTimeFormatter.ofPattern("yyyy.MM.dd").format(LocalDateTime.now())), retrievedDocs);
+
+        // Verify original and grokked keys from retrieved docs
+        final List<String> expectedDocKeys = createListOfExpectedDocumentKeys();
+        assertThatGrokkedKeysOccurInRetreivedDocuments(expectedDocKeys, retrievedDocs);
+    }
+
+    private void assertThatGrokkedKeysOccurInRetreivedDocuments(List<String> expectedDocKeys, List<Map<String, Object>> retrievedDocuments) {
+        retrievedDocuments.forEach(expectedDoc -> {
+            for (String key: expectedDocKeys) {
+                assertThat(expectedDoc, hasKey(key));
+            }
+        });
+    }
+
+    private List<String> createListOfExpectedDocumentKeys() {
+        return Arrays.asList("date", "log", "clientip", "ident", "auth", "timestamp", "verb", "request", "httpversion", "response", "bytes");
+    }
+
+    private void makeRequestAndWaitForResponse(RestHighLevelClient restHighLevelClient, String testIndexName, List<Map<String, Object>> retrievedDocs) {
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     refreshIndices(restHighLevelClient);
-                    final SearchRequest searchRequest = new SearchRequest(TEST_INDEX_NAME);
+                    final SearchRequest searchRequest = new SearchRequest(testIndexName);
                     searchRequest.source(
                             SearchSourceBuilder.searchSource().size(100)
                     );
@@ -73,14 +111,6 @@ public class EndToEndBasicLogTest {
                     retrievedDocs.addAll(foundSources);
                 }
         );
-        // Verify original and grokked keys from retrieved docs
-        final List<String> expectedDocKeys = Arrays.asList(
-                "date", "log", "clientip", "ident", "auth", "timestamp", "verb", "request", "httpversion", "response", "bytes");
-        retrievedDocs.forEach(expectedDoc -> {
-            for (String key: expectedDocKeys) {
-                assertThat(expectedDoc, hasKey(key));
-            }
-        });
     }
 
     private RestHighLevelClient prepareOpenSearchRestHighLevelClient() {
