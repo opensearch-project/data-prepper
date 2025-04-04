@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
+import java.util.Map;
 import java.util.Optional;
 
 class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
@@ -29,5 +30,10 @@ class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {
     @Override
     public Optional<Region> getDefaultRegion() {
         return Optional.ofNullable(credentialsProviderFactory.getDefaultRegion());
+    }
+
+    @Override
+    public Optional<Map<String, String>> getDefaultStsHeaderOverrides() {
+        return Optional.ofNullable(credentialsProviderFactory.getDefaultStsHeaderOverrides());
     }
 }

@@ -9,6 +9,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Optional;
+import java.util.Map;
 
 /**
  * An interface available to plugins via the AWS Plugin Extension which supplies
@@ -28,4 +29,10 @@ public interface AwsCredentialsSupplier {
      * @return Default {@link Region}
      */
     Optional<Region> getDefaultRegion();
+
+    /**
+     * Gets the default       if configured. Otherwise returns empty Optional
+     * @return Optional containing Map of STS header overrides
+     */
+    Optional<Map<String, String>> getDefaultStsHeaderOverrides();
 }

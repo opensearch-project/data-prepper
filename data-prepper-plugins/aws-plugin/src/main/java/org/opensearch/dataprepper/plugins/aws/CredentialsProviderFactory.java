@@ -47,6 +47,10 @@ class CredentialsProviderFactory {
         return defaultStsConfiguration.getAwsRegion();
     }
 
+    Map<String, String> getDefaultStsHeaderOverrides() {
+        return defaultStsConfiguration.getStsHeaderOverrides();
+    }
+
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 

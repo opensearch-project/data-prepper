@@ -18,6 +18,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -85,7 +86,21 @@ class DefaultAwsCredentialsSupplierTest {
 
         final AwsCredentialsSupplier objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.getDefaultRegion(), equalTo(Optional.empty()));
+    }
 
+    @Test
+    void getDefaultStsHeaderOverrides_returns_default_sts_header_overrides() {
+        final Map<String, String> headerOverrides = Map.of("header1", "value1", "header2", "value2");
+        when(credentialsProviderFactory.getDefaultStsHeaderOverrides()).thenReturn(headerOverrides);
+
+        assertThat(createObjectUnderTest().getDefaultStsHeaderOverrides(), equalTo(Optional.of(headerOverrides)));
+    }
+
+    @Test
+    void no_default_sts_header_overrides_returns_empty_optional() {
+        when(credentialsProviderFactory.getDefaultStsHeaderOverrides()).thenReturn(null);
+
+        assertThat(createObjectUnderTest().getDefaultStsHeaderOverrides(), equalTo(Optional.empty()));
     }
 
     private static List<Region> getRegions() {

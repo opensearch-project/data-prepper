@@ -116,6 +116,33 @@ class CredentialsProviderFactoryTest {
         assertThat(actualRegion, equalTo(region));
     }
 
+    @Test
+    void getDefaultStsHeaderOverrides_returns_expected_headers() {
+        final Map<String, String> headerOverrides = Map.of(
+                "header1", "value1",
+                "header2", "value2",
+                "custom-header", "custom-value"
+        );
+        when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(headerOverrides);
+
+        final CredentialsProviderFactory credentialsProviderFactory = createObjectUnderTest();
+
+        final Map<String, String> actualHeaderOverrides = credentialsProviderFactory.getDefaultStsHeaderOverrides();
+
+        assertThat(actualHeaderOverrides, equalTo(headerOverrides));
+    }
+
+    @Test
+    void getDefaultStsHeaderOverrides_returns_null_when_not_configured() {
+        when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(null);
+
+        final CredentialsProviderFactory credentialsProviderFactory = createObjectUnderTest();
+
+        final Map<String, String> actualHeaderOverrides = credentialsProviderFactory.getDefaultStsHeaderOverrides();
+
+        assertThat(actualHeaderOverrides, nullValue());
+    }
+
     private static List<Region> getRegions() {
         return Region.regions();
     }
