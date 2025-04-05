@@ -116,6 +116,8 @@ public interface EnhancedSourceCoordinator {
      */
     Optional<EnhancedSourcePartition> getPartition(final String partitionKey);
 
+    Optional<EnhancedSourcePartition> getPartition(final String partitionKey, final String partitionType);
+
     /**
      * This method is to perform initialization for the coordinator
      */

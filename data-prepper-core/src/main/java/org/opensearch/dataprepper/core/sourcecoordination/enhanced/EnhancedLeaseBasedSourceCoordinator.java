@@ -100,11 +100,13 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
     @Override
     public <T> boolean createPartition(EnhancedSourcePartition<T> partition) {
         String partitionType = partition.getPartitionType() == null ? DEFAULT_GLOBAL_STATE_PARTITION_TYPE : partition.getPartitionType();
+
+        final String fullSourceIdentifier = this.sourceIdentifier + "|" + partitionType;
         // Don't need the status for Global state which is not for lease.
         SourcePartitionStatus status = partition.getPartitionType() == null ? null : SourcePartitionStatus.UNASSIGNED;
 
-        return coordinationStore.tryCreatePartitionItem(
-                this.sourceIdentifier + "|" + partitionType,
+        final boolean created = coordinationStore.tryCreatePartitionItem(
+                fullSourceIdentifier,
                 partition.getPartitionKey(),
                 status,
                 0L,
@@ -112,6 +114,12 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
                 // For now, global items with no partitionType will be considered ReadOnly, but this should be directly in EnhancedSourcePartition in the future
                 partition.getPartitionType() == null);
 
+        if (created) {
+            LOG.info("Created partition item with source identifier {} and partition key {}",
+                    fullSourceIdentifier, partition.getPartitionKey());
+        }
+
+        return created;
     }
 
 
@@ -262,14 +270,16 @@ public class EnhancedLeaseBasedSourceCoordinator implements EnhancedSourceCoordi
         // Throws UpdateException if update failed.
         coordinationStore.tryUpdateSourcePartitionItem(updateItem);
     }
-
-
     @Override
     public Optional<EnhancedSourcePartition> getPartition(final String partitionKey) {
-        // Default to Global State only.
-        final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + DEFAULT_GLOBAL_STATE_PARTITION_TYPE, partitionKey);
+        return getPartition(partitionKey, DEFAULT_GLOBAL_STATE_PARTITION_TYPE);
+    }
+
+    @Override
+    public Optional<EnhancedSourcePartition> getPartition(final String partitionKey, final String partitionType) {
+        final Optional<SourcePartitionStoreItem> sourceItem = coordinationStore.getSourcePartitionItem(this.sourceIdentifier + "|" + partitionType, partitionKey);
         if (!sourceItem.isPresent()) {
-            LOG.warn("Global partition item with sourcePartitionKey '{}' could not be found.", partitionKey);
+            LOG.warn("Partition item of type {} with sourcePartitionKey '{}' could not be found.", partitionType, partitionKey);
             return Optional.empty();
         }
         return Optional.of(partitionFactory.apply(sourceItem.get()));
