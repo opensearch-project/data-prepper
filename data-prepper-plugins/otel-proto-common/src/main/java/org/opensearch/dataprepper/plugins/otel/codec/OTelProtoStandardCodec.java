@@ -334,6 +334,7 @@ public class OTelProtoStandardCodec {
                     .withStartTime(convertUnixNanosToISO8601(sp.getStartTimeUnixNano()))
                     .withEndTime(convertUnixNanosToISO8601(sp.getEndTimeUnixNano()))
                     .withStatus(getStatus(sp.getStatus()))
+                    .withFlags(sp.getFlags())
                     .withScope(instrumentationScopeAttributes)
                     .withResource(resourceAttributes)
                     .withAttributes(convertKeyValueToAttributes(sp.getAttributesList()))
@@ -346,6 +347,7 @@ public class OTelProtoStandardCodec {
                     .withTimeReceived(timeReceived)
                     .build();
             EventMetadata eventMetadata = span.getMetadata();
+            eventMetadata.setAttribute(JacksonSpan.SERVICE_NAME_KEY, serviceName);
             eventMetadata.setAttribute(JacksonSpan.TRACE_GROUP_KEY, getTraceGroup(sp));
             eventMetadata.setAttribute(JacksonSpan.TRACE_GROUP_FIELDS_KEY, getTraceGroupFields(sp));
             return span;

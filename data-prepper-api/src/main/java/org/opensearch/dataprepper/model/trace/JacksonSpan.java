@@ -41,6 +41,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String TRACE_STATE_KEY = "traceState";
     private static final String PARENT_SPAN_ID_KEY = "parentSpanId";
     private static final String NAME_KEY = "name";
+    private static final String FLAGS_KEY = "flags";
     private static final String KIND_KEY = "kind";
     private static final String START_TIME_KEY = "startTime";
     private static final String END_TIME_KEY = "endTime";
@@ -50,7 +51,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
-    private static final String SERVICE_NAME_KEY = "serviceName";
+    public static final String SERVICE_NAME_KEY = "serviceName";
     public static final String TRACE_GROUP_KEY = "traceGroup";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     public static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
@@ -121,6 +122,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
     }
 
     @Override
+    public Integer getFlags() {
+        return this.get(FLAGS_KEY, Integer.class);
+    }
+
+    @Override
     public Map<String, Object> getScope() {
         return this.get(SCOPE_KEY, Map.class);
     }
@@ -184,6 +190,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         return this.get(TRACE_GROUP_KEY, String.class);
     }
 
+
     @Override
     public Long getDurationInNanos() {
         return this.get(DURATION_IN_NANOS_KEY, Long.class);
@@ -200,7 +207,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String getServiceName() {
+        EventMetadata metadata = getMetadata();
+        Object serviceName = metadata.getAttribute(SERVICE_NAME_KEY);
+        if (serviceName != null)
+            return (String)serviceName;
         return this.get(SERVICE_NAME_KEY, String.class);
+    }
+
+    @Override
+    public void setServiceName(final String serviceName) {
+        this.put(SERVICE_NAME_KEY, serviceName);
     }
 
     @Override
@@ -374,6 +390,18 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         public Builder withKind(final String kind) {
             data.put(KIND_KEY, kind);
+            return this;
+        }
+
+        /**
+         * Sets the flags of span
+         *
+         * @param flags flags
+         * @return returns the builder
+         * @since 2.11
+         */
+        public Builder withFlags(final Integer flags) {
+            data.put(FLAGS_KEY, flags);
             return this;
         }
 

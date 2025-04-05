@@ -6,58 +6,104 @@
       "_source": {
         "enabled": true
       },
-      "properties": {
-        "droppedEventsCount": {
-          "type": "integer"
+      "dynamic_templates": [
+        {
+          "long_resource_attributes": {
+            "mapping": {
+              "type": "long"
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "long"
+          }
         },
-        "attributes": {
-          "type": "object"
+        {
+          "double_resource_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "double"
+          }
         },
-        "instrumentationScope": {
+        {
+          "long_scope_attributes": {
+            "mapping": {
+              "type": "long"
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "long"
+          }
+        },
+        {
+          "double_scope_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "double"
+          }
+        },
+        {
+          "long_attributes": {
+            "mapping": {
+              "type": "long"
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "long"
+          }
+        },
+        {
+          "double_attributes": {
+            "mapping": {
+              "type": "double"
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "double"
+          }
+        }
+    ],
+    "properties": {
+      "droppedAttributesCount": {
+        "type": "integer"
+      },
+      "instrumentationScope": {
           "properties": {
+            "droppedAttributesCount": {
+              "type": "integer"
+            },
+            "schemaUrl": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
             "name": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 128
-                }
-              }
+              "type": "keyword",
+              "ignore_above": 128
             },
             "version": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            },
-             "attributes": {
-               "type": "object"
-             },
-             "droppedEventsCount": {
-               "type": "integer"
-             }
+              "type": "keyword",
+              "ignore_above": 64
+            }
           }
         },
         "resource": {
           "properties": {
-             "attributes": {
-               "type": "object"
-             },
-             "droppedEventsCount": {
-               "type": "integer"
-             }
+            "droppedAttributesCount": {
+              "type": "integer"
+            },
+            "schemaUrl": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
           }
         },
         "severity": {
           "properties": {
             "number": {
-              "type": "long"
+              "type": "integer"
             },
             "text": {
-              "type": "keyword"
+              "type": "keyword",
+              "ignore_above": "32"
             }
           }
         },
@@ -70,68 +116,19 @@
         "time": {
           "type": "date_nanos"
         },
-        "observedTimestamp": {
-          "type": "date_nanos"
-        },
         "observedTime": {
-          "type": "alias",
-          "path": "observedTimestamp"
+          "path": "date_nanos"
         },
         "traceId": {
-          "ignore_above": 256,
-          "type": "keyword"
+          "type": "keyword",
+          "ignore_above": 32
         },
         "spanId": {
-          "ignore_above": 256,
-          "type": "keyword"
+          "type": "keyword",
+          "ignore_above": 16
         },
         "flags": {
-          "type": "integer"
-        },
-        "schemaUrl": {
-          "type": "keyword"
-        },
-        "instrumentationScope": {
-          "properties": {
-            "name": {
-              "type": "keyword"
-            },
-            "version": {
-              "type": "keyword"
-            }
-          }
-        },
-        "event": {
-          "properties": {
-            "kind": {
-              "type": "keyword"
-            },
-            "domain": {
-              "type": "keyword"
-            },
-            "category": {
-              "type": "keyword"
-            },
-            "type": {
-              "type": "keyword"
-            },
-            "result": {
-              "type": "keyword"
-            },
-           "exception": {
-              "properties": {
-                "message": {
-                  "type": "text"
-                },
-                "stacktrace": {
-                  "type": "text"
-                },
-                "type": {
-                  "type": "keyword"
-                }
-              }
-            }
-          }
+          "type": "long"
         }
       }
     }

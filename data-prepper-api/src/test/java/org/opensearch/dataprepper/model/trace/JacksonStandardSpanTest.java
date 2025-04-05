@@ -101,6 +101,33 @@ public class JacksonStandardSpanTest extends JacksonSpanTest {
 
     @Test
     @Override
+    public void testGetServiceName() {
+        jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
+        EventMetadata metadata = jacksonSpan.getMetadata();
+        String testServiceName = UUID.randomUUID().toString();
+        metadata.setAttribute(JacksonSpan.SERVICE_NAME_KEY, testServiceName);
+        final String serviceName = jacksonSpan.getServiceName();
+        assertThat(serviceName, is(equalTo(testServiceName)));
+    }
+
+    @Test
+    @Override
+    public void testSetAndGetServiceName() {
+        jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
+        String serviceName = jacksonSpan.getServiceName();
+        assertThat(serviceName, is(equalTo("testService")));
+
+        EventMetadata metadata = jacksonSpan.getMetadata();
+        String testServiceName = UUID.randomUUID().toString();
+        metadata.setAttribute(JacksonSpan.SERVICE_NAME_KEY, testServiceName);
+        jacksonSpan.setServiceName(jacksonSpan.getServiceName());
+        serviceName = jacksonSpan.getServiceName();
+        assertThat(serviceName, is(equalTo(testServiceName)));
+    }
+
+
+    @Test
+    @Override
     public void testGetTraceGroupFields() {
         jacksonSpan = createObjectUnderTest(TEST_ATTRIBUTES);
         DefaultTraceGroupFields testTraceGroupFields =
