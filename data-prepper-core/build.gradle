@@ -62,6 +62,7 @@ dependencies {
     testImplementation libs.commons.lang3
     testImplementation project(':data-prepper-test-event')
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test-framework')
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 
