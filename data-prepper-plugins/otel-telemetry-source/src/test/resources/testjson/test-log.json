@@ -1,0 +1,56 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "example-service"
+            }
+          },
+          {
+            "key": "host.name",
+            "value": {
+              "stringValue": "example-host"
+            }
+          }
+        ]
+      },
+      "scopeLogs": [
+        {
+          "scope": {
+            "name": "example-logger",
+            "version": "1.0.0"
+          },
+          "logRecords": [
+            {
+              "timeUnixNano": "1680000000000000000",
+              "severityNumber": 9,
+              "severityText": "ERROR",
+              "body": {
+                "stringValue": "An error occurred in the application."
+              },
+              "attributes": [
+                {
+                  "key": "thread.name",
+                  "value": {
+                    "stringValue": "main-thread"
+                  }
+                },
+                {
+                  "key": "error.code",
+                  "value": {
+                    "intValue": 500
+                  }
+                }
+              ],
+              "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "spanId": "00f067aa0ba902b7"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
