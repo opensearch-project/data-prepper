@@ -17,7 +17,6 @@
     "kind": "GAUGE",
     "flags": 0,
     "description": "testGaugeDescription",
-    "serviceName": null,
     "schemaUrl": "testSchemaUrl",
     "unit": "1",
     "exemplars": [],
@@ -47,7 +46,6 @@
     "kind": "SUM",
     "flags": 0,
     "description": "testSumDescription",
-    "serviceName": null,
     "schemaUrl": "testSchemaUrl",
     "isMonotonic": false,
     "unit": "1",
@@ -88,7 +86,6 @@
       6
     ],
     "positiveOffset": 2,
-    "serviceName": null,
     "negativeBuckets": [
       {
         "min": 0.9170040432046712,
@@ -195,7 +192,6 @@
     "flags": 1,
     "description": "testHistogramDescription",
     "sum": 100,
-    "serviceName": null,
     "schemaUrl": "testSchemaUrl",
     "unit": "1",
     "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
@@ -235,7 +231,6 @@
     "flags": 1,
     "description": "testSummaryDescription",
     "sum": 100,
-    "serviceName": null,
     "schemaUrl": "testSchemaUrl",
     "quantiles": [
       {

@@ -61,6 +61,8 @@ public class TraceAnalyticsRawIndexManagerTests {
 
     private AbstractIndexManager traceAnalyticsRawIndexManager;
 
+    private AbstractIndexManager traceAnalyticsRawStandardIndexManager;
+
     @Mock
     private OpenSearchClient openSearchClient;
 
@@ -124,7 +126,6 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.TRACE_ANALYTICS_RAW, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
-
         when(openSearchClient.cluster()).thenReturn(openSearchClusterClient);
         when(openSearchClusterClient.getSettings(any(GetClusterSettingsRequest.class)))
                 .thenReturn(getClusterSettingsResponse);
@@ -271,6 +272,22 @@ public class TraceAnalyticsRawIndexManagerTests {
         verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
+    }
+
+    @Test
+    void checkAndCreateIndex_NeedToCreateNewIndex_withStandardIndexManager() throws IOException {
+        traceAnalyticsRawStandardIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW_STANDARD, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
+                .thenReturn(null);
+        traceAnalyticsRawStandardIndexManager.checkAndCreateIndex();
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIndexAlias();
     }
 
     @Test
