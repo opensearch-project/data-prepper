@@ -54,7 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertUnixNanosToISO8601;
-import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.timeISO8601ToNanos;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertISO8601ToNanos;
 import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCommonUtils.convertByteStringToString;
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
@@ -181,10 +181,10 @@ public class OTelProtoOpensearchCodec {
 
         public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest, final Instant timeReceived) {
             return exportLogsServiceRequest.getResourceLogsList().stream()
-                    .flatMap(rs -> parseResourceLogs(rs, timeReceived).stream()).collect(Collectors.toList());
+                    .flatMap(rs -> parseResourceLogs(rs, timeReceived)).collect(Collectors.toList());
         }
 
-        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
+        protected Stream<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs, final Instant timeReceived) {
             final String serviceName = OTelProtoOpensearchCodec.getServiceName(rs.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = OTelProtoOpensearchCodec.getResourceAttributes(rs.getResource());
             final String schemaUrl = rs.getSchemaUrl();
@@ -200,7 +200,7 @@ public class OTelProtoOpensearchCodec {
                                     timeReceived))
                     .flatMap(Collection::stream);
 
-            return mappedScopeListLogs.collect(Collectors.toList());
+            return mappedScopeListLogs;
         }
 
         protected Map<String, ResourceSpans> splitResourceSpansByTraceId(final ResourceSpans resourceSpans) {
@@ -306,9 +306,9 @@ public class OTelProtoOpensearchCodec {
                             .withTime(convertUnixNanosToISO8601(log.getTimeUnixNano()))
                             .withObservedTime(convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
                             .withServiceName(serviceName)
-                            .withAttributes(OTelProtoOpensearchCodec.mergeAllAttributes(
+                            .withAttributes(mergeAllAttributes(
                                     Arrays.asList(
-                                            OTelProtoOpensearchCodec.unpackKeyValueListLog(log.getAttributesList()),
+                                            unpackKeyValueListLog(log.getAttributesList()),
                                             resourceAttributes,
                                             ils
                                     )
@@ -320,7 +320,7 @@ public class OTelProtoOpensearchCodec {
                             .withSeverityNumber(log.getSeverityNumberValue())
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
-                            .withBody(OTelProtoOpensearchCodec.convertAnyValue(log.getBody()))
+                            .withBody(convertAnyValue(log.getBody()))
                             .withTimeReceived(timeReceived)
                             .build())
                     .collect(Collectors.toList());
@@ -336,8 +336,8 @@ public class OTelProtoOpensearchCodec {
                     .withName(sp.getName())
                     .withServiceName(serviceName)
                     .withKind(sp.getKind().name())
-                    .withStartTime(getStartTimeISO8601(sp))
-                    .withEndTime(getEndTimeISO8601(sp))
+                    .withStartTime(convertUnixNanosToISO8601(sp.getStartTimeUnixNano()))
+                    .withEndTime(convertUnixNanosToISO8601(sp.getEndTimeUnixNano()))
                     .withAttributes(mergeAllAttributes(
                             Arrays.asList(
                                     getSpanAttributes(sp),
@@ -402,7 +402,7 @@ public class OTelProtoOpensearchCodec {
 
         protected SpanEvent getSpanEvent(final io.opentelemetry.proto.trace.v1.Span.Event event) {
             return DefaultSpanEvent.builder()
-                    .withTime(getTimeISO8601(event))
+                    .withTime(convertUnixNanosToISO8601(event.getTimeUnixNano()))
                     .withName(event.getName())
                     .withAttributes(getEventAttributes(event))
                     .withDroppedAttributesCount(event.getDroppedAttributesCount())
@@ -456,7 +456,7 @@ public class OTelProtoOpensearchCodec {
          * if (span.getParentSpanId().isEmpty()) {
          *     traceGroupFieldsBuilder
          *             .withDurationInNanos(span.getEndTimeUnixNano() - span.getStartTimeUnixNano())
-         *             .withEndTime(getEndTimeISO8601(span))
+                        .withEndTime(convertUnixNanosToISO8601(span.getEndTimeUnixNano()))
          *             .withStatusCode(span.getStatus().getCodeValue());
          * }
          * <p>
@@ -469,7 +469,7 @@ public class OTelProtoOpensearchCodec {
             if (span.getParentSpanId().isEmpty()) {
                 traceGroupFieldsBuilder = traceGroupFieldsBuilder
                         .withDurationInNanos(span.getEndTimeUnixNano() - span.getStartTimeUnixNano())
-                        .withEndTime(getEndTimeISO8601(span))
+                        .withEndTime(convertUnixNanosToISO8601(span.getEndTimeUnixNano()))
                         .withStatusCode(span.getStatus().getCodeValue());
             }
             return traceGroupFieldsBuilder.build();
@@ -482,18 +482,6 @@ public class OTelProtoOpensearchCodec {
                 statusAttr.put(STATUS_MESSAGE, status.getMessage());
             }
             return statusAttr;
-        }
-
-        protected String getStartTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
-            return convertUnixNanosToISO8601(span.getStartTimeUnixNano());
-        }
-
-        protected String getEndTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
-            return convertUnixNanosToISO8601(span.getEndTimeUnixNano());
-        }
-
-        protected String getTimeISO8601(final io.opentelemetry.proto.trace.v1.Span.Event event) {
-            return convertUnixNanosToISO8601(event.getTimeUnixNano());
         }
 
         protected Optional<String> getServiceName(final Resource resource) {
@@ -572,8 +560,8 @@ public class OTelProtoOpensearchCodec {
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoOpensearchCodec.getStartTimeISO8601(dp))
-                        .withTime(OTelProtoOpensearchCodec.getTimeISO8601(dp))
+                        .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withServiceName(serviceName)
                         .withValue(OTelProtoOpensearchCodec.getValueAsDouble(dp))
                         .withAttributes(OTelProtoOpensearchCodec.mergeAllAttributes(
@@ -605,8 +593,8 @@ public class OTelProtoOpensearchCodec {
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelProtoOpensearchCodec.getStartTimeISO8601(dp))
-                        .withTime(OTelProtoOpensearchCodec.getTimeISO8601(dp))
+                        .withStartTime(convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withServiceName(serviceName)
                         .withIsMonotonic(metric.getSum().getIsMonotonic())
                         .withValue(OTelProtoOpensearchCodec.getValueAsDouble(dp))
@@ -876,7 +864,7 @@ public class OTelProtoOpensearchCodec {
         protected io.opentelemetry.proto.trace.v1.Span.Event convertSpanEvent(final SpanEvent spanEvent) throws UnsupportedEncodingException {
             final io.opentelemetry.proto.trace.v1.Span.Event.Builder builder = io.opentelemetry.proto.trace.v1.Span.Event.newBuilder();
             builder.setName(spanEvent.getName());
-            builder.setTimeUnixNano(timeISO8601ToNanos(spanEvent.getTime()));
+            builder.setTimeUnixNano(convertISO8601ToNanos(spanEvent.getTime()));
             builder.setDroppedAttributesCount(spanEvent.getDroppedAttributesCount());
             final List<KeyValue> attributeKeyValueList = new ArrayList<>();
             for (Map.Entry<String, Object> entry : spanEvent.getAttributes().entrySet()) {
@@ -919,8 +907,8 @@ public class OTelProtoOpensearchCodec {
                     .setTraceState(span.getTraceState())
                     .setName(span.getName())
                     .setKind(io.opentelemetry.proto.trace.v1.Span.SpanKind.valueOf(span.getKind()))
-                    .setStartTimeUnixNano(timeISO8601ToNanos(span.getStartTime()))
-                    .setEndTimeUnixNano(timeISO8601ToNanos(span.getEndTime()))
+                    .setStartTimeUnixNano(convertISO8601ToNanos(span.getStartTime()))
+                    .setEndTimeUnixNano(convertISO8601ToNanos(span.getEndTime()))
                     .setDroppedAttributesCount(span.getDroppedAttributesCount())
                     .setDroppedEventsCount(span.getDroppedEventsCount())
                     .setDroppedLinksCount(span.getDroppedLinksCount());
@@ -1118,14 +1106,6 @@ public class OTelProtoOpensearchCodec {
         return instrumentationScopeAttr;
     }
 
-
-    public static String getStartTimeISO8601(final NumberDataPoint numberDataPoint) {
-        return convertUnixNanosToISO8601(numberDataPoint.getStartTimeUnixNano());
-    }
-
-    public static String getTimeISO8601(final NumberDataPoint ndp) {
-        return convertUnixNanosToISO8601(ndp.getTimeUnixNano());
-    }
 
     public static Optional<String> getServiceName(final Resource resource) {
         return resource.getAttributesList().stream()

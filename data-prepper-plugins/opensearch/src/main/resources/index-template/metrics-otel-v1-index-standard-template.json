@@ -26,6 +26,16 @@
           }
         },
         {
+          "string_resource_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
           "long_scope_attributes": {
             "mapping": {
               "type": "long"
@@ -44,6 +54,16 @@
           }
         },
         {
+          "string_scope_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
           "long_attributes": {
             "mapping": {
               "type": "long"
@@ -59,6 +79,16 @@
             },
             "path_match": "attributes.*",
             "match_mapping_type": "double"
+          }
+        },
+        {
+          "string_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "string"
           }
         }
       ],
@@ -267,4 +297,3 @@
     }
   }
 }
-
