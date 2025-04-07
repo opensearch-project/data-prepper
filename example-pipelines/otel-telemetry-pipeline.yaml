@@ -1,0 +1,20 @@
+# otel-telemetry-pipeline:
+#   source:
+#     otel_telemetry_source:
+#   sink:
+#     - opensearch:
+#         hosts: ["https://localhost:9200"]
+#         username: "admin"
+#         password: "Welcomeuser@123"
+#         insecure: true
+#         index_type: custom
+#         index: otel_telemetry_source-%{yyyy.MM.dd}
+#         bulk_size: 4
+
+
+otel-telemetry-pipeline:
+  source:
+    otel_telemetry_source:
+  sink:
+    - stdout:
+        pretty: true
