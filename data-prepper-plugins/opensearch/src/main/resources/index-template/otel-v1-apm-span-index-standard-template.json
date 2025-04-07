@@ -60,6 +60,16 @@
             "path_match": "attributes.*",
             "match_mapping_type": "double"
           }
+        },
+        {
+          "string_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "string"
+          }
         }
       ],
       "properties": {
