@@ -17,7 +17,7 @@ source:
 * port(Optional) => An `int` represents the port OTel logs source is running on. Default is ```21892```.
 * path(Optional) => A `String` which represents the path for sending unframed HTTP requests. This can be used for supporting unframed gRPC with HTTP idiomatic path to a configurable path. It should start with `/` and length should be at least 1. `/opentelemetry.proto.collector.logs.v1.LogsService/Export` endpoint will be disabled for both gRPC and HTTP requests if path is configured. Path can contain `${pipelineName}` placeholder which will be replaced with pipeline name.
 * request_timeout(Optional) => An `int` represents request timeout in millis. Default is ```10_000```.
-* health_check_service(Optional) => A boolean enables a gRPC health check service under ```grpc.health.v1 / Health / Check```. Default is ```false```.
+* health_check_service(Optional) => Default is ```false```. A boolean enables health check service. When ```true``` enables a gRPC health check service under ```grpc.health.v1.Health/Check```. In order to use the health check service, you must also enable ```proto_reflection_service```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
 * unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
