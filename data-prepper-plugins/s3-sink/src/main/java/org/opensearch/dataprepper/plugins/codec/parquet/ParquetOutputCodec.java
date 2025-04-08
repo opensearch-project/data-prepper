@@ -116,7 +116,9 @@ public class ParquetOutputCodec implements OutputCodec, BufferedCodec {
     @Override
     public synchronized void complete(final OutputStream outputStream) throws IOException {
         isClosed = true;
-        writer.close();
+        if (writer != null) {
+            writer.close();
+        }
     }
 
     @Override

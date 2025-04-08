@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -43,12 +44,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -74,7 +77,7 @@ class S3ObjectWorkerTest {
 
     @Mock
     private S3Client s3Client;
-    
+
     @Mock
     private Buffer<Record<Event>> buffer;
 
@@ -122,12 +125,17 @@ class S3ObjectWorkerTest {
     @Mock
     private GetObjectResponse getObjectResponse;
 
+    private AtomicInteger recordsWritten;
+
+    private Record<Event> receivedRecord;
+
     @Mock
     private HeadObjectResponse headObjectResponse;
 
     private Exception exceptionThrownByCallable;
     private Random random;
     private long objectSize;
+    private Instant testTime;
     @Mock
     private S3ObjectPluginMetrics s3ObjectPluginMetrics;
     @Mock
@@ -168,6 +176,8 @@ class S3ObjectWorkerTest {
                 });
         lenient().when(getObjectResponse.contentLength()).thenReturn(objectSize);
         lenient().when(headObjectResponse.contentLength()).thenReturn(objectSize);
+        testTime = Instant.now();
+        lenient().when(headObjectResponse.lastModified()).thenReturn(testTime);
     }
 
     private S3ObjectWorker createObjectUnderTest(final S3ObjectPluginMetrics s3ObjectPluginMetrics) {
@@ -181,18 +191,18 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_getObject_with_correct_GetObjectRequest() throws IOException {
+    void processS3Object_calls_getObject_with_correct_GetObjectRequest() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
     }
 
     @Test
-    void parseS3Object_calls_getObject_with_correct_GetObjectRequest_with_AcknowledgementSet() throws IOException {
+    void processS3Object_calls_getObject_with_correct_GetObjectRequest_with_AcknowledgementSet() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -211,13 +221,13 @@ class S3ObjectWorkerTest {
             c.accept(record);
             return null;
         }).when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
         assertThat(numEventsAdded, equalTo(1));
         verifyNoInteractions(s3ObjectNoRecordsFound);
     }
 
     @Test
-    void parseS3Object_calls_getObject_with_correct_GetObjectRequest_when_bucketOwner_is_present() throws IOException {
+    void processS3Object_calls_getObject_with_correct_GetObjectRequest_when_bucketOwner_is_present() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         final String bucketOwner = UUID.randomUUID().toString();
         lenient().when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(bucketOwner));
@@ -225,18 +235,18 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
     }
 
     @Test
-    void parseS3Object_calls_Codec_parse_on_S3InputStream() throws Exception {
+    void processS3Object_calls_Codec_parse_on_S3InputStream() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         final ArgumentCaptor<InputFile> inputFileArgumentCaptor = ArgumentCaptor.forClass(InputFile.class);
         verify(codec).parse(inputFileArgumentCaptor.capture(), any(DecompressionEngine.class), any(Consumer.class));
@@ -245,7 +255,38 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_codec_parse_exception() throws Exception {
+    void S3ObjectWorker_with_MetadataOnly_Test() throws Exception {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
+        recordsWritten = new AtomicInteger(0);
+        when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
+        when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        doAnswer(a -> {
+            receivedRecord = a.getArgument(0);
+            recordsWritten.incrementAndGet();
+            return null;
+        }).when(bufferAccumulator).add(any(Record.class));
+
+        doAnswer(a -> {
+            return recordsWritten.get();
+        }).when(bufferAccumulator).getTotalWritten();
+
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.METADATA_ONLY, acknowledgementSet, null, null);
+            assertThat(recordsWritten.get(), equalTo(1));
+            Event event = receivedRecord.getData();
+            assertThat(event.get("bucket", String.class), equalTo(bucketName));
+            assertThat(event.get("key", String.class), equalTo(key));
+            assertThat(event.get("length", Long.class), equalTo(objectSize));
+            assertThat(event.get("time", Instant.class), equalTo(testTime));
+        }
+    }
+
+    @Test
+    void processS3Object_codec_parse_exception() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
 
@@ -253,7 +294,7 @@ class S3ObjectWorkerTest {
 
         assertThrows(
             IOException.class,
-            () -> createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null));
+            () -> createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
 
         final ArgumentCaptor<InputFile> inputFileArgumentCaptor = ArgumentCaptor.forClass(InputFile.class);
         verify(codec).parse(inputFileArgumentCaptor.capture(), any(DecompressionEngine.class), any(Consumer.class));
@@ -262,7 +303,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator() throws Exception {
+    void processS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -273,7 +314,7 @@ class S3ObjectWorkerTest {
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
         }
 
         final ArgumentCaptor<Consumer<Record<Event>>> eventConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -297,7 +338,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator_and_saves_state() throws Exception {
+    void processS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator_and_saves_state() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -310,7 +351,7 @@ class S3ObjectWorkerTest {
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, testPartitionKey);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, sourceCoordinator, testPartitionKey);
         }
 
         final ArgumentCaptor<Consumer<Record<Event>>> eventConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -334,7 +375,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_BufferAccumulator_flush_after_Codec_parse() throws Exception {
+    void processS3Object_calls_BufferAccumulator_flush_after_Codec_parse() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -345,7 +386,7 @@ class S3ObjectWorkerTest {
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
         }
 
         final InOrder inOrder = inOrder(codec, bufferAccumulator);
@@ -355,7 +396,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_increments_success_counter_after_parsing_S3_object() throws IOException {
+    void processS3Object_increments_success_counter_after_parsing_S3_object() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(s3ObjectReadTimer);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
@@ -364,7 +405,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
-        objectUnderTest.parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         verify(s3ObjectsSucceededCounter).increment();
         verifyNoInteractions(s3ObjectsFailedCounter);
@@ -372,7 +413,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
+    void processS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
 
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
@@ -382,7 +423,7 @@ class S3ObjectWorkerTest {
                 .when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
-        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference, acknowledgementSet, null, null));
+        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
 
         assertThat(actualException, sameInstance(expectedException));
 
@@ -392,14 +433,14 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_GetObject_from_S3() {
+    void processS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_GetObject_from_S3() {
         final RuntimeException expectedException = mock(S3Exception.class);
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenThrow(expectedException);
 
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
-        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference, acknowledgementSet, null, null));
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null));
 
         assertThat(actualException, sameInstance(expectedException));
 
@@ -409,7 +450,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_HeadObject_after_Callable() throws Exception {
+    void processS3Object_calls_HeadObject_after_Callable() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -417,7 +458,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
-        objectUnderTest.parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        objectUnderTest.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         final InOrder inOrder = inOrder(s3ObjectReadTimer, s3Client);
 
@@ -426,7 +467,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_records_BufferAccumulator_getTotalWritten() throws IOException {
+    void processS3Object_records_BufferAccumulator_getTotalWritten() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
 
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
@@ -439,40 +480,40 @@ class S3ObjectWorkerTest {
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+            createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
         }
 
         verify(s3ObjectEventsSummary).record(totalWritten);
     }
 
     @Test
-    void parseS3Object_records_S3_ObjectSize() throws IOException {
+    void processS3Object_records_S3_ObjectSize() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         verify(s3ObjectSizeSummary).record(objectSize);
     }
 
     @Test
-    void parseS3Object_records_S3_Object_No_Records_Found() throws IOException {
+    void processS3Object_records_S3_Object_No_Records_Found() throws IOException {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         verify(s3ObjectNoRecordsFound).increment();
     }
 
     @Test
-    void parseS3Object_records_input_file_bytes_read() throws IOException {
+    void processS3Object_records_input_file_bytes_read() throws IOException {
         final int inputStringLength = random.nextInt(1000) + 10;
         final byte[] inputStreamBytes = new byte[inputStringLength];
         random.nextBytes(inputStreamBytes);
@@ -492,7 +533,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
 
-        createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
+        createObjectUnderTest(s3ObjectPluginMetrics).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
 
         verify(s3ObjectSizeProcessedSummary).record(inputStringLength);
     }

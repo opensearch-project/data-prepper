@@ -9,7 +9,7 @@
   "body": {
     "log": "message"
   },
-  "observedTime": "2022-01-01T00:00:00Z",
+  "observedTimestamp": "2022-01-01T00:00:00Z",
   "schemaUrl": "schema",
   "key1": %s,
   "key2": "%s"

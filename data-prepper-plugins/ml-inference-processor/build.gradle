@@ -1,0 +1,54 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dependencies {
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'software.amazon.awssdk:sdk-core'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'org.json:json'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    implementation 'software.amazon.awssdk:s3'
+    testImplementation project(':data-prepper-test-event')
+    testImplementation testLibs.slf4j.simple
+}
+
+test {
+    useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}

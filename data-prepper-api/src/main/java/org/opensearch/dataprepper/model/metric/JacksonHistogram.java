@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,9 +42,11 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
 
     protected JacksonHistogram(JacksonHistogram.Builder builder, boolean flattenAttributes) {
         super(builder, flattenAttributes);
-
+        checkAndSetDefaultValues();
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
+
     public static JacksonHistogram.Builder builder() {
         return new JacksonHistogram.Builder();
     }
@@ -252,18 +255,11 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 2.1
          */
         public JacksonHistogram build(boolean flattenAttributes) {
-            this.withData(data);
-            this.withEventKind(KIND.HISTOGRAM.toString());
-            this.withEventType(EventType.METRIC.toString());
-            checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
+            populateEvent(KIND.HISTOGRAM.toString());
 
             return new JacksonHistogram(this, flattenAttributes);
         }
 
-        private void checkAndSetDefaultValues() {
-            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-        }
 
     }
 }

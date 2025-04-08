@@ -1,0 +1,29 @@
+{
+  "traceId": "7465737454726163654944",
+  "droppedLinksCount": 0,
+  "kind": "SPAN_KIND_INTERNAL",
+  "droppedEventsCount": 0,
+  "traceGroupFields": {
+    "endTime": "%s",
+    "durationInNanos": 1234000000000,
+    "statusCode": 0
+  },
+  "traceGroup": "testScopeSpanName",
+  "serviceName": "TestTraceServiceName",
+  "parentSpanId": "",
+  "spanId": "746573745370616e4944",
+  "traceState": "",
+  "name": "testScopeSpanName",
+  "startTime": "%s",
+  "links": [],
+  "endTime": "%s",
+  "droppedAttributesCount": 10,
+  "durationInNanos": 1234000000000,
+  "events": [],
+  "instrumentationScope.name": "testISScopeName",
+  "instrumentationScope.attributes.scope@attr": "testISScopeAttrValue",
+  "resource.attributes.service@name": "TestTraceServiceName",
+  "status.code": 0,
+  "instrumentationScope.version": "testISScopeVersion"
+}
+

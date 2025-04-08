@@ -1,0 +1,33 @@
+{
+  "traceId": "7465737454726163654964",
+  "instrumentationScope": {
+    "name": "testScopeName",
+    "droppedAttributesCount": 22,
+    "attributes": {
+      "scope.attr": "testScopeAttr"
+    },
+    "version": "testScopeVersion"
+  },
+  "resource": {
+    "attributes" : {
+        "service.name": "testServiceName"
+    },
+    "droppedAttributesCount": 11
+  },
+  "flags": 0,
+  "severityNumber": 2,
+  "serviceName": "testServiceName",
+  "body": "Test body",
+  "schemaUrl": "testSchemaUrl",
+  "spanId": "746573745370616e4964",
+  "severityText": "Test severity text",
+  "attributes": {
+    "data": {
+      "nameSpace": "testNameSpace"
+    },
+    "region": "testRegion"
+  },
+  "time": "%s",
+  "droppedAttributesCount": 10,
+  "observedTimestamp": "%s"
+}

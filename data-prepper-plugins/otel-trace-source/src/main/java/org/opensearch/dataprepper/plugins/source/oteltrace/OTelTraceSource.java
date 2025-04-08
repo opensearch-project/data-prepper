@@ -66,7 +66,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.pluginFactory = pluginFactory;
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
-        this.byteDecoder = new OTelTraceDecoder();
+        this.byteDecoder = new OTelTraceDecoder(oTelTraceSourceConfig.getOutputFormat());
     }
 
     @Override

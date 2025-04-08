@@ -69,6 +69,7 @@ import java.util.UUID;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelMetricDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -293,7 +294,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_metrics_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelMetricDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelMetricDecoder(OTelOutputFormat.OPENSEARCH), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportMetricsServiceRequest request = createExportMetricsServiceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -365,7 +366,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_logs_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelLogsDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelLogsDecoder(OTelOutputFormat.OPENSEARCH), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportLogsServiceRequest request = createExportLogsRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);
@@ -436,7 +437,7 @@ public class KafkaBufferOTelIT {
 
     @Test
     void test_otel_traces_with_kafka_buffer() throws Exception {
-        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelTraceDecoder(), null, null);
+        KafkaBuffer kafkaBuffer = new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new OTelTraceDecoder(OTelOutputFormat.OPENSEARCH), null, null);
         buffer = new KafkaDelegatingBuffer(kafkaBuffer);
         final ExportTraceServiceRequest request = createExportTraceRequest();
         buffer.writeBytes(request.toByteArray(), null, 10_000);

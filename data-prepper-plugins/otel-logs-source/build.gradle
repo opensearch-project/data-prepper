@@ -32,6 +32,7 @@ dependencies {
     implementation libs.bouncycastle.bcpkix
     testImplementation 'org.assertj:assertj-core:3.27.0'
     testImplementation libs.commons.io
+    testImplementation 'org.skyscreamer:jsonassert:1.5.3'
 }
 
 jacocoTestCoverageVerification {

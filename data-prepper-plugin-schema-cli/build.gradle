@@ -13,7 +13,7 @@ dependencies {
     implementation project(':data-prepper-plugin-schema')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation 'org.reflections:reflections:0.10.2'
+    implementation libs.reflections.core
     implementation 'com.github.victools:jsonschema-maven-plugin:4.35.0'
     implementation 'com.github.victools:jsonschema-generator:4.35.0'
     implementation 'com.github.victools:jsonschema-module-jackson:4.35.0'
@@ -26,8 +26,6 @@ dependencies {
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
 jacocoTestCoverageVerification {

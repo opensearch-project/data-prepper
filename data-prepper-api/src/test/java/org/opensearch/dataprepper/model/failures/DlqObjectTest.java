@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,8 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import java.util.HashMap;
+import java.util.Map;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -31,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
 public class DlqObjectTest {
@@ -118,6 +122,24 @@ public class DlqObjectTest {
         public void test_invalid_failedData() {
             failedData = null;
             assertThrows(NullPointerException.class, this::createTestObject);
+        }
+
+        @Test
+        public void test_createDlqObject() {
+            final String testName = randomUUID().toString();
+            final String testPipelineName = randomUUID().toString();
+            PluginSetting pluginSetting = mock(PluginSetting.class);
+            when(pluginSetting.getName()).thenReturn(testName);
+            when(pluginSetting.getPipelineName()).thenReturn(testPipelineName);
+            eventHandle = mock(EventHandle.class);
+            Map<String, Object> data = new HashMap<>();
+            DlqObject dlqObject = DlqObject.createDlqObject(pluginSetting, eventHandle, data);
+            assertThat(dlqObject, is(notNullValue()));
+            assertThat(dlqObject.getEventHandle(), is(eventHandle));
+            assertThat(dlqObject.getFailedData(), is(data));
+            assertThat(dlqObject.getPluginName(), is(testName));
+            assertThat(dlqObject.getPipelineName(), is(testPipelineName));
+            
         }
     }
 

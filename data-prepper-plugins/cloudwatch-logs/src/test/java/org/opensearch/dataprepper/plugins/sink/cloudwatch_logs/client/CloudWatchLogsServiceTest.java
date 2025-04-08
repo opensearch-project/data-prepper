@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
@@ -17,10 +20,13 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
@@ -28,6 +34,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 
 class CloudWatchLogsServiceTest {
     private static final int LARGE_THREAD_COUNT = 1000;
@@ -40,6 +48,7 @@ class CloudWatchLogsServiceTest {
     private InMemoryBufferFactory inMemoryBufferFactory;
     private Buffer buffer;
     private CloudWatchLogsDispatcher mockDispatcher;
+    private DlqPushHandler dlqPushHandler;
 
     @BeforeEach
     void setUp() {
@@ -53,8 +62,9 @@ class CloudWatchLogsServiceTest {
         mockMetrics = mock(CloudWatchLogsMetrics.class);
         inMemoryBufferFactory = new InMemoryBufferFactory();
         mockDispatcher = mock(CloudWatchLogsDispatcher.class);
+        dlqPushHandler = mock(DlqPushHandler.class);
         cloudWatchLogsService = new CloudWatchLogsService(buffer,
-                cloudWatchLogsLimits, mockDispatcher);
+                cloudWatchLogsLimits, mockDispatcher, null);
     }
 
     Collection<Record<Event>> getSampleRecordsCollectionSmall() {
@@ -105,8 +115,12 @@ class CloudWatchLogsServiceTest {
         buffer = inMemoryBufferFactory.getBuffer();
     }
 
+    CloudWatchLogsService getSampleService(DlqPushHandler dlqPushHandler) {
+        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher, dlqPushHandler);
+    }
+
     CloudWatchLogsService getSampleService() {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher);
+        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher, null);
     }
 
     @Test
@@ -114,7 +128,7 @@ class CloudWatchLogsServiceTest {
         setUpRealBuffer();
         cloudWatchLogsService = getSampleService();
         cloudWatchLogsService.processLogEvents(getSampleRecordsCollectionSmall());
-        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(Collection.class));
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
     }
 
     @Test
@@ -122,7 +136,45 @@ class CloudWatchLogsServiceTest {
         setUpRealBuffer();
         cloudWatchLogsService = getSampleService();
         cloudWatchLogsService.processLogEvents(getSampleRecordsCollection());
-        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(Collection.class));
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class));
+    }
+
+    @Test
+    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_dlq() throws Exception {
+        setUpRealBuffer();
+        cloudWatchLogsService = getSampleService(dlqPushHandler);
+        cloudWatchLogsService.processLogEvents(getSampleRecordsCollection());
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(List.class));
+        verify(dlqPushHandler, never()).perform(any(List.class));
+    }
+
+    @Test
+    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection_with_large_record_dlq() throws Exception {
+        PluginSetting pluginSetting = mock(PluginSetting.class);
+        when(pluginSetting.getName()).thenReturn("test");
+        when(pluginSetting.getPipelineName()).thenReturn("test");
+        when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
+        setUpRealBuffer();
+        cloudWatchLogsService = getSampleService(dlqPushHandler);
+        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
+        verify(dlqPushHandler, atLeast(1)).perform(any(List.class));
+    }
+
+    @Test
+    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_dispatcher_throws_sending_events_to_dlq() throws Exception {
+        PluginSetting pluginSetting = mock(PluginSetting.class);
+        doAnswer(a -> {
+            throw new RuntimeException("failed to dispatch");
+        }).when(mockDispatcher).dispatchLogs(any(List.class), any(List.class));
+        when(pluginSetting.getName()).thenReturn("test");
+        when(pluginSetting.getPipelineName()).thenReturn("test");
+        when(dlqPushHandler.getPluginSetting()).thenReturn(pluginSetting);
+        setUpRealBuffer();
+        cloudWatchLogsService = getSampleService(dlqPushHandler);
+        cloudWatchLogsService.processLogEvents(List.of(getLargeRecord(2*thresholdConfig.getMaxEventSizeBytes())));
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(List.class));
+        verify(dlqPushHandler, atLeast(1)).perform(any(List.class));
     }
 
     @Test
@@ -130,7 +182,7 @@ class CloudWatchLogsServiceTest {
         setUpSpyBuffer();
         cloudWatchLogsService = getSampleService();
         cloudWatchLogsService.processLogEvents(getSampleRecordsOfLimitSize());
-        verify(buffer, never()).writeEvent(any(byte[].class));
+        verify(buffer, never()).writeEvent(any(EventHandle.class), any(byte[].class));
     }
     
     @Test
@@ -138,7 +190,7 @@ class CloudWatchLogsServiceTest {
         setUpSpyBuffer();
         cloudWatchLogsService = getSampleService();
         cloudWatchLogsService.processLogEvents(getSampleRecordsOfLargerSize());
-        verify(buffer, atLeast(1)).writeEvent(any(byte[].class));
+        verify(buffer, atLeast(1)).writeEvent(any(EventHandle.class), any(byte[].class));
     }
 
     //Multithreaded tests:
@@ -173,6 +225,11 @@ class CloudWatchLogsServiceTest {
         cloudWatchLogsService = getSampleService();
         setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
 
-        verify(mockDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+        verify(mockDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(List.class));
     }
+
+     private Record<Event> getLargeRecord(long size) {
+        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.randomAlphabetic((int)size))).build();
+        return new Record<>(event);
+    }   
 }

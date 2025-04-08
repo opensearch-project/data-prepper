@@ -23,9 +23,7 @@ import java.util.stream.IntStream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
 
 public class Connected_SingleExtraSinkIT {
     private static final String IN_MEMORY_IDENTIFIER = "Connected_SingleExtraSinkIT";
@@ -65,8 +63,8 @@ public class Connected_SingleExtraSinkIT {
 
         await().atMost(800, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK), not(empty()));
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK), not(empty()));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreate));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK).size(), equalTo(recordsToCreate));
                 });
 
         assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreate));
@@ -86,8 +84,8 @@ public class Connected_SingleExtraSinkIT {
 
         await().atMost(800, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK), not(empty()));
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK), not(empty()));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreateBatch1));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK).size(), equalTo(recordsToCreateBatch1));
                 });
 
         assertThat(inMemorySinkAccessor.getAndClear(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreateBatch1));
@@ -104,8 +102,8 @@ public class Connected_SingleExtraSinkIT {
 
         await().atMost(400, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK), not(empty()));
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK), not(empty()));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreateBatch2));
+                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_EXIT_SINK).size(), equalTo(recordsToCreateBatch2));
                 });
 
         assertThat(inMemorySinkAccessor.getAndClear(IN_MEMORY_IDENTIFIER_ENTRY_SINK).size(), equalTo(recordsToCreateBatch2));

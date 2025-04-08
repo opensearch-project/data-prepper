@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -28,49 +29,50 @@ public class TemporalTypeHandler implements PostgresDataTypeHandler {
     private static final String POSTGRES_TIMESTAMPTZ_MIN_INFINITY = "1970-01-01 00:00:00+00";
     private static final String POSTGRES_TIMESTAMPTZ_MAX_INFINITY = "9999-12-31 23:59:59+00";
 
+    private static final String NEGATIVE_INFINITY = "-infinity";
+    private static final String INFINITY = "infinity";
 
     @Override
     public Object handle(PostgresDataType columnType, String columnName, Object value) {
         if (!columnType.isTemporal()) {
             throw new IllegalArgumentException("ColumnType is not Temporal: " + columnType);
         }
-        final String stringVal = value.toString();
-        final String val = (stringVal.equals("-infinity") || stringVal.equals("infinity"))
+        if(columnType.isSubCategoryArray())
+            return PgArrayParser.parseTypedArray(value.toString(), PostgresDataType.getScalarType(columnType),
+                    this::parseTemporalValue);
+        return parseTemporalValue(columnType, value.toString());
+    }
+
+    private Object parseTemporalValue(PostgresDataType columnType, String stringVal) {
+        final String val = (stringVal.equals(NEGATIVE_INFINITY) || stringVal.equals(INFINITY))
                 ? parseInfinity(stringVal, columnType)
                 : stringVal;
-
-        try {
-            switch (columnType) {
-                case DATE:
-                    return handleDate(val);
-                case TIME:
-                    return handleTime(val);
-                case TIMETZ:
-                    return handleTimeWithTimeZone(val);
-                case TIMESTAMP:
-                    return handleTimeStamp(val);
-                case TIMESTAMPTZ:
-                    return handleTimeStampWithTimeZone(val);
-                case INTERVAL:
-                    return handleInterval(val);
-                default:
-                    throw new IllegalArgumentException("Unsupported Temporal data type: " + columnType);
-            }
-        }catch (Exception e) {
-            throw new IllegalArgumentException(
-                    String.format("Failed to parse %s value: %s", columnType, val), e);
+        switch (columnType) {
+            case DATE:
+                return handleDate(val);
+            case TIME:
+                return handleTime(val);
+            case TIMETZ:
+                return handleTimeWithTimeZone(val);
+            case TIMESTAMP:
+                return handleTimeStamp(val);
+            case TIMESTAMPTZ:
+                return handleTimeStampWithTimeZone(val);
+            case INTERVAL:
+                return handleInterval(val);
+            default:
+                return val;
         }
-
     }
 
     private String parseInfinity(String val, PostgresDataType columnType) {
         switch (columnType) {
             case DATE:
-                return val.equals("-infinity") ? POSTGRES_DATE_MIN_INFINITY : POSTGRES_DATE_MAX_INFINITY;
+                return val.equals(NEGATIVE_INFINITY) ? POSTGRES_DATE_MIN_INFINITY : POSTGRES_DATE_MAX_INFINITY;
             case TIMESTAMP:
-                return val.equals("-infinity") ? POSTGRES_TIMESTAMP_MIN_INFINITY : POSTGRES_TIMESTAMP_MAX_INFINITY;
+                return val.equals(NEGATIVE_INFINITY) ? POSTGRES_TIMESTAMP_MIN_INFINITY : POSTGRES_TIMESTAMP_MAX_INFINITY;
             case TIMESTAMPTZ:
-                return val.equals("-infinity") ? POSTGRES_TIMESTAMPTZ_MIN_INFINITY : POSTGRES_TIMESTAMPTZ_MAX_INFINITY;
+                return val.equals(NEGATIVE_INFINITY) ? POSTGRES_TIMESTAMPTZ_MIN_INFINITY : POSTGRES_TIMESTAMPTZ_MAX_INFINITY;
             default:
                 return val; // For other types, return the original value
         }

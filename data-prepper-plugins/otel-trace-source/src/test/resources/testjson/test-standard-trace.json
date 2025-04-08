@@ -1,0 +1,40 @@
+{
+  "traceId": "7465737454726163654944",
+  "droppedLinksCount": 0,
+  "instrumentationScope": {
+    "name": "testISScopeName",
+    "droppedAttributesCount": 22,
+    "attributes": {
+      "scope.attr": "testISScopeAttrValue"
+    },
+    "version": "testISScopeVersion"
+  },
+  "resource": {
+    "droppedAttributesCount": 11,
+    "attributes": {
+        "service.name": "TestTraceServiceName"
+    }
+  },
+  "kind": "SPAN_KIND_INTERNAL",
+  "serviceName": "TestTraceServiceName",
+  "parentSpanId": "",
+  "spanId": "746573745370616e4944",
+  "traceState": "",
+  "name": "testScopeSpanName",
+  "startTime": "%s",
+  "attributes": {
+    "data": {
+      "nameSpace": "testNameSpace"
+    },
+    "region": "testRegion"
+  },
+  "links": [],
+  "endTime": "%s",
+  "droppedAttributesCount": 10,
+  "durationInNanos": 1234000000000,
+  "events": [],
+  "status": {
+    "code": 0,
+    "message": ""
+  }
+}

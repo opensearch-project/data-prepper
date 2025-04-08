@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BinaryTypeHandlerTest {
     private BinaryTypeHandler handler;
@@ -43,4 +45,29 @@ public class BinaryTypeHandlerTest {
         assertThat(result, is(instanceOf(String.class)));
         assertThat(result, is(expected));
     }
+
+    @Test
+    void test_handle_bytea_array() {
+        String columnName = "testColumn";
+        PostgresDataType columnType = PostgresDataType.BYTEAARRAY;
+        String value = "{\\xDEADBEEF,\\xCAFEBABE}";
+        Object result = handler.process(columnType, columnName, value);
+        assertThat(result, is(instanceOf(List.class)));
+        List<String> byteaList = (List<String>) result;
+        assertEquals(2, byteaList.size());
+        assertEquals("\\xDEADBEEF", byteaList.get(0));
+        assertEquals("\\xCAFEBABE", byteaList.get(1));
+    }
+
+    @Test
+    void test_handle_empty_bytea_array() {
+        String columnName = "testColumn";
+        PostgresDataType columnType = PostgresDataType.BYTEAARRAY;
+        String value = "{}";
+        Object result = handler.process(columnType, columnName, value);
+        assertThat(result, is(instanceOf(List.class)));
+        List<String> byteaList = (List<String>) result;
+        assertEquals(0, byteaList.size());
+    }
+
 }

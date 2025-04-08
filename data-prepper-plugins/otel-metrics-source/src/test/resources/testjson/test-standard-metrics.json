@@ -1,0 +1,255 @@
+{
+  "GAUGE": {
+    "instrumentationScope": {
+      "name": "testISScopeName",
+      "attributes": {
+        "scope.attr": "testISScopeAttrValue"
+      },
+      "droppedAttributesCount": 22,
+      "version": "testISScopeVersion"
+    },
+    "resource": {
+      "attributes": {
+        "testResourceAttrKey": "testResourceAttrValue"
+      },
+      "droppedAttributesCount": 11
+    },
+    "kind": "GAUGE",
+    "flags": 0,
+    "description": "testGaugeDescription",
+    "serviceName": null,
+    "schemaUrl": "testSchemaUrl",
+    "unit": "1",
+    "exemplars": [],
+    "name": "testGaugeMetricName",
+    "startTime": "%s",
+    "attributes": {
+      "testGaugeAttrKey": "testGaugeAttrValue"
+    },
+    "time": "%s",
+    "value": 10
+  },
+  "SUM": {
+    "instrumentationScope": {
+      "name": "testISScopeName",
+      "attributes": {
+        "scope.attr": "testISScopeAttrValue"
+      },
+      "droppedAttributesCount": 22,
+      "version": "testISScopeVersion"
+    },
+    "resource": {
+      "attributes": {
+        "testResourceAttrKey": "testResourceAttrValue"
+      },
+      "droppedAttributesCount": 11
+    },
+    "kind": "SUM",
+    "flags": 0,
+    "description": "testSumDescription",
+    "serviceName": null,
+    "schemaUrl": "testSchemaUrl",
+    "isMonotonic": false,
+    "unit": "1",
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
+    "exemplars": [],
+    "name": "testSumMetricName",
+    "startTime": "%s",
+    "attributes": {
+      "testSumAttrKey": "testSumAttrValue"
+    },
+    "time": "%s",
+    "value": 100
+  },
+  "EXPONENTIAL_HISTOGRAM": {
+    "instrumentationScope": {
+      "name": "testISScopeName",
+      "attributes": {
+        "scope.attr": "testISScopeAttrValue"
+      },
+      "droppedAttributesCount": 22,
+      "version": "testISScopeVersion"
+    },
+    "resource": {
+      "attributes": {
+        "testResourceAttrKey": "testResourceAttrValue"
+      },
+      "droppedAttributesCount": 11
+    },
+    "kind": "EXPONENTIAL_HISTOGRAM",
+    "count": 10,
+    "flags": 1,
+    "description": "testExponentialHistogramDescription",
+    "scale": 3,
+    "sum": 100,
+    "positive": [
+      2,
+      4,
+      6
+    ],
+    "positiveOffset": 2,
+    "serviceName": null,
+    "negativeBuckets": [
+      {
+        "min": 0.9170040432046712,
+        "max": 0.8408964152537145,
+        "count": 1
+      },
+      {
+        "min": 0.8408964152537145,
+        "max": 0.7711054127039704,
+        "count": 3
+      },
+      {
+        "min": 0.7711054127039704,
+        "max": 0.7071067811865475,
+        "count": 5
+      }
+    ],
+    "zeroCount": 0,
+    "schemaUrl": "testSchemaUrl",
+    "unit": "1",
+    "negative": [
+      1,
+      3,
+      5
+    ],
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_UNSPECIFIED",
+    "exemplars": [],
+    "name": "testExponentialHistogramMetricName",
+    "startTime": "%s",
+    "attributes": {
+      "testExponentialHistogramAttrKey": "testExponentialHistogramAttrValue"
+    },
+    "time": "%s",
+    "positiveBuckets": [
+      {
+        "min": 1.189207115002721,
+        "max": 1.2968395546510099,
+        "count": 2
+      },
+      {
+        "min": 1.2968395546510099,
+        "max": 1.4142135623730951,
+        "count": 4
+      },
+      {
+        "min": 1.4142135623730951,
+        "max": 1.542210825407941,
+        "count": 6
+      }
+    ],
+    "negativeOffset": -1
+  },
+  "HISTOGRAM": {
+    "instrumentationScope": {
+      "name": "testISScopeName",
+      "attributes": {
+        "scope.attr": "testISScopeAttrValue"
+      },
+      "droppedAttributesCount": 22,
+      "version": "testISScopeVersion"
+    },
+    "resource": {
+      "attributes": {
+        "testResourceAttrKey": "testResourceAttrValue"
+      },
+      "droppedAttributesCount": 11
+    },
+    "kind": "HISTOGRAM",
+    "buckets": [
+      {
+        "min": -3.4028234663852886e+38,
+        "max": 10,
+        "count": 5
+      },
+      {
+        "min": 10,
+        "max": 20,
+        "count": 10
+      },
+      {
+        "min": 20,
+        "max": 30,
+        "count": 15
+      },
+      {
+        "min": 30,
+        "max": 40,
+        "count": 20
+      },
+      {
+        "min": 40,
+        "max": 3.4028234663852886e+38,
+        "count": 25
+      }
+    ],
+    "count": 10,
+    "bucketCountsList": [
+      5,
+      10,
+      15,
+      20,
+      25
+    ],
+    "flags": 1,
+    "description": "testHistogramDescription",
+    "sum": 100,
+    "serviceName": null,
+    "schemaUrl": "testSchemaUrl",
+    "unit": "1",
+    "aggregationTemporality": "AGGREGATION_TEMPORALITY_CUMULATIVE",
+    "exemplars": [],
+    "bucketCounts": 5,
+    "name": "testHistogramMetricName",
+    "startTime": "%s",
+    "explicitBoundsCount": 4,
+    "attributes": {
+      "testHistogramAttrKey": "testHistogramAttrValue"
+    },
+    "time": "%s",
+    "explicitBounds": [
+      10.0,
+      20.0,
+      30.0,
+      40.0
+    ]
+  },
+  "SUMMARY": {
+    "instrumentationScope": {
+      "name": "testISScopeName",
+      "attributes": {
+        "scope.attr": "testISScopeAttrValue"
+      },
+      "droppedAttributesCount": 22,
+      "version": "testISScopeVersion"
+    },
+    "resource": {
+      "attributes": {
+        "testResourceAttrKey": "testResourceAttrValue"
+      },
+      "droppedAttributesCount": 11
+    },
+    "kind": "SUMMARY",
+    "count": 10,
+    "flags": 1,
+    "description": "testSummaryDescription",
+    "sum": 100,
+    "serviceName": null,
+    "schemaUrl": "testSchemaUrl",
+    "quantiles": [
+      {
+        "quantile": 0.5,
+        "value": 100
+      }
+    ],
+    "unit": "1",
+    "name": "testSummaryMetricName",
+    "startTime": "%s",
+    "quantileValuesCount": 1,
+    "attributes": {
+      "testSumamryAttrKey": "testSumamryAttrValue"
+    },
+    "time": "%s"
+  }
+}

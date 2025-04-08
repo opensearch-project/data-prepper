@@ -22,8 +22,8 @@ import java.util.function.Consumer;
 
 public class OTelMetricDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTelMetricDecoder() {
-        otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+    public OTelMetricDecoder(OTelOutputFormat otelOutputFormat) {
+        otelProtoDecoder = otelOutputFormat == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
     }
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportMetricsServiceRequest request = ExportMetricsServiceRequest.parseFrom(inputStream);

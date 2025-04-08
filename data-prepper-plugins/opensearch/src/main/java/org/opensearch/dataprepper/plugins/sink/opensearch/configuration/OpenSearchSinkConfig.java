@@ -13,6 +13,7 @@ import lombok.Getter;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryForExistingDocumentConfiguration;
 
 import java.util.List;
 import java.util.Map;
@@ -174,6 +175,10 @@ public class OpenSearchSinkConfig {
     @Getter
     @JsonProperty("dlq")
     private DlqConfiguration dlq;
+
+    @Getter
+    @JsonProperty("query_lookup")
+    private QueryForExistingDocumentConfiguration queryExistingConfiguration;
 
     @AssertTrue(message = "dlq_file option cannot be used along with dlq option")
     public boolean isDlqValid() {

@@ -6,6 +6,7 @@
 plugins {
     id 'java'
     id 'io.gatling.gradle' version '3.10.4'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 configurations.all {
@@ -45,6 +46,28 @@ dependencies {
             because 'CVE-2023-50572'
         }
     }
+}
+
+jar {
+    from(sourceSets.gatling.output)
+}
+
+tasks.shadowJar {
+    archiveBaseName = "${project.rootProject.name}-${project.name}"
+    archiveClassifier = ''
+    archiveVersion = "${project.rootProject.version}"
+    configurations = [project.configurations.gatlingRuntimeClasspath]
+    manifest {
+        attributes 'Main-Class': 'io.gatling.app.Gatling'
+    }
+}
+
+tasks.named('shadowJar').configure {
+    dependsOn 'jar'
+}
+
+tasks.named('assemble').configure {
+    dependsOn('shadowJar')
 }
 
 test {

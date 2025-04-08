@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.validation.ParameterValidator;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -32,6 +33,8 @@ public class JacksonSum extends JacksonMetric implements Sum {
 
     protected JacksonSum(JacksonSum.Builder builder, boolean flattenAttributes) {
         super(builder, flattenAttributes);
+        checkAndSetDefaultValues();
+        new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)toMap());
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
@@ -130,18 +133,11 @@ public class JacksonSum extends JacksonMetric implements Sum {
          * @since 2.1
          */
         public JacksonSum build(boolean flattenAttributes) {
-            this.withData(data);
-            this.withEventType(EventType.METRIC.toString());
-            this.withEventKind(Metric.KIND.SUM.toString());
+            populateEvent(KIND.SUM.toString());
 
-            checkAndSetDefaultValues();
-            new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, (HashMap<String, Object>)data);
             return new JacksonSum(this, flattenAttributes);
         }
 
-        private void checkAndSetDefaultValues() {
-            computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
-        }
 
     }
 }

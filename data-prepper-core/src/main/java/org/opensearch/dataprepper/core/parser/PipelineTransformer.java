@@ -227,6 +227,12 @@ public class PipelineTransformer {
                     eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
+
+            // TODO: Re-enable zero-buffer
+            //if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+            //    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline, processors));
+            //}
+
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

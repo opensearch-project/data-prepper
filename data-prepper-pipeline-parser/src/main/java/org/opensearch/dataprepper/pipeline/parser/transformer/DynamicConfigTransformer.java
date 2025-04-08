@@ -458,7 +458,14 @@ public class DynamicConfigTransformer implements PipelineConfigurationTransforme
     }
 
     public String getAccountIdFromRole(final String roleArn) {
-        return Arn.fromString(roleArn).accountId().orElse(null);
+        if (roleArn == null)
+            return null;
+        try {
+            return Arn.fromString(roleArn).accountId().orElse(null);
+        } catch (Exception e) {
+            LOG.warn("Malformatted role ARN for dynamic transformation: {}", roleArn);
+            return null;
+        }
     }
 
     /**

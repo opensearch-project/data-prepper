@@ -21,6 +21,17 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class LambdaProcessorConfig extends LambdaCommonConfig {
   static final String DEFAULT_INVOCATION_TYPE = "request-response";
+  protected static final int DEFAULT_CIRCUIT_BREAKER_RETRIES = 0;
+  protected static final long DEFAULT_CIRCUIT_BREAKER_WAIT_INTERVAL_MS = 1000;
+
+  @JsonProperty("circuit_breaker_retries")
+  @JsonPropertyDescription("Maximum number of times to check if circuit breaker is closed before proceeding. " +
+          "With default wait interval of 100ms, 150 retries equals 15 seconds of waiting.")
+  private int circuitBreakerRetries = DEFAULT_CIRCUIT_BREAKER_RETRIES;
+
+  @JsonProperty("circuit_breaker_wait_interval")
+  @JsonPropertyDescription("Time in milliseconds to wait between circuit breaker checks. Defaults to 1000ms.")
+  private long circuitBreakerWaitInterval = DEFAULT_CIRCUIT_BREAKER_WAIT_INTERVAL_MS;
 
   @JsonPropertyDescription("Specifies the invocation type, either <code>request-response</code> or <code>event</code>. Default is <code>request-response</code>.")
   @JsonProperty(value = "invocation_type", defaultValue = DEFAULT_INVOCATION_TYPE)
@@ -55,6 +66,14 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
 
   public Boolean getResponseEventsMatch() {
     return responseEventsMatch;
+  }
+
+  public int getCircuitBreakerRetries() {
+    return circuitBreakerRetries;
+  }
+
+  public long getCircuitBreakerWaitInterval() {
+    return circuitBreakerWaitInterval;
   }
 
   @Override

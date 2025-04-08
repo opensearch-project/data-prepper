@@ -25,8 +25,8 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 public class OTelTraceDecoderTest {
     private static final String TEST_REQUEST_TRACES_FILE = "test-request-multiple-traces.json";
     
-    public OTelTraceDecoder createObjectUnderTest() {
-        return new OTelTraceDecoder();
+    public OTelTraceDecoder createObjectUnderTest(OTelOutputFormat outputFormat) {
+        return new OTelTraceDecoder(outputFormat);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {
@@ -67,7 +67,7 @@ public class OTelTraceDecoderTest {
     public void testParse() throws Exception {
         final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACES_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH).parse(inputStream, Instant.now(), (record) -> {
             validateSpan((Span)record.getData());
         });
         

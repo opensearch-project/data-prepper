@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -80,31 +81,39 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
         final List<PartitionIdentifier> objectsToProcess = new ArrayList<>();
 
+        Map<String, String> bucketScanTime = new HashMap<>();
+
         for (final ScanOptions scanOptions : scanOptionsList) {
+            final String bucketName = scanOptions.getBucketOption().getName();
             final List<String> excludeItems = new ArrayList<>();
             final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getBucketOption().getS3ScanFilter();
             final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
-                    .bucket(scanOptions.getBucketOption().getName());
-            bucketOwnerProvider.getBucketOwner(scanOptions.getBucketOption().getName())
+                    .bucket(bucketName);
+            bucketOwnerProvider.getBucketOwner(bucketName)
                     .ifPresent(listObjectsV2Request::expectedBucketOwner);
 
+            final Instant updatedScanTime = Instant.now();
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions()))
                 excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions());
 
-            final Instant updatedScanTime = Instant.now();
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludePrefixOptions()))
                 s3ScanKeyPathOption.getS3scanIncludePrefixOptions().forEach(includePath -> {
                     listObjectsV2Request.prefix(includePath);
                     objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
-                            scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
+                            bucketName, scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
                 });
             else
                 objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
-                        scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
-
-            globalStateMap.put(scanOptions.getBucketOption().getName(), updatedScanTime.toString());
+                        bucketName, scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime(), globalStateMap));
+            if (!bucketScanTime.containsKey(bucketName)) {
+                bucketScanTime.put(bucketName, updatedScanTime.toString());
+            }
         }
 
+        // Update last scan time for all buckets outside the loop, so that if the same bucket is
+        // used multiple times in the bucket options with different data selection or include prefixes
+        // or exclude prefixes, they are still processed.
+        globalStateMap.putAll(bucketScanTime);
         globalStateMap.put(SCAN_COUNT, (Integer) globalStateMap.get(SCAN_COUNT) + 1);
         globalStateMap.put(LAST_SCAN_TIME, Instant.now().toEpochMilli());
 

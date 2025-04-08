@@ -45,6 +45,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class LogicalReplicationEventProcessor {
 
     enum TupleDataType {
@@ -242,7 +244,9 @@ public class LogicalReplicationEventProcessor {
                 final Set<String> enumColumns = getEnumColumns(databaseName, schemaName, tableName);
                 if (enumColumns != null && enumColumns.contains(columnName)) {
                     columnType = ColumnType.getByTypeId(ColumnType.ENUM_TYPE_ID);
-                } else throw e;
+                } else {
+                    columnType = ColumnType.UNKNOWN;
+                }
             }
             String columnTypeName = columnType.getTypeName();
             columnTypes.add(columnTypeName);
@@ -491,7 +495,7 @@ public class LogicalReplicationEventProcessor {
                 eventProcessingTimer.record(() -> function.accept(message));
                 return;
             } catch (Exception e) {
-                LOG.warn("Error when processing change event of type {}, will retry", messageType, e);
+                LOG.warn(NOISY, "Error when processing change event of type {}, will retry", messageType, e);
                 applyBackoff();
             }
             retry++;
