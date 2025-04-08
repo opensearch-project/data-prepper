@@ -53,20 +53,20 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
         final ServerBuilder serverBuilder = Server.builder()
                 .http(config.getPort())
                 .requestTimeoutMillis(config.getRequestTimeout())
-                .service("/v1/logs", GrpcService.builder()
-                        .addService(ProtoReflectionService.newInstance())
+                .service(GrpcService.builder()
                         .addService(new OTelLogsGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
                         buffer, pluginMetrics))
                         .build())
-                .service("/v1/metrics", GrpcService.builder()
-                        .addService(ProtoReflectionService.newInstance())
+                .service(GrpcService.builder()
                         .addService(new OTelMetricsGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
                         metricBuffer  , pluginMetrics))  
                         .build())
-                .service("/v1/traces", GrpcService.builder()
-                        .addService(ProtoReflectionService.newInstance())
+                .service(GrpcService.builder()
                         .addService(new OTelTraceGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
                         buffer, pluginMetrics))
+                        .build())
+                .service(GrpcService.builder()
+                        .addService(ProtoReflectionService.newInstance())
                         .build());
 
         if (config.isSslEnabled()) {
