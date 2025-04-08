@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.testcustomauth;
 
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
@@ -14,7 +14,6 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-import org.opensearch.dataprepper.armeria.authentication.CustomAuthenticationConfig;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -23,18 +22,18 @@ import java.util.Optional;
 import java.util.function.Function;
 
 @DataPrepperPlugin(
-        name = "custom_auth",
+        name = "test_custom_auth",
         pluginType = GrpcAuthenticationProvider.class,
-        pluginConfigurationType = CustomAuthenticationConfig.class
+        pluginConfigurationType = TestCustomAuthenticationConfig.class
 )
-public class CustomGrpcAuthenticationProvider implements GrpcAuthenticationProvider {
+public class TestCustomGrpcAuthenticationProvider implements GrpcAuthenticationProvider {
     private final String token;
-    private static final String AUTH_HEADER = "authentication";
-
+    private final String header;
 
     @DataPrepperPluginConstructor
-    public CustomGrpcAuthenticationProvider(final CustomAuthenticationConfig config) {
+    public TestCustomGrpcAuthenticationProvider(final TestCustomAuthenticationConfig config) {
         this.token = config.customToken();
+        this.header = config.header();
     }
 
     @Override
@@ -46,9 +45,9 @@ public class CustomGrpcAuthenticationProvider implements GrpcAuthenticationProvi
                     Metadata headers,
                     ServerCallHandler<ReqT, RespT> next) {
 
-                String auth = headers.get(Metadata.Key.of("authentication", Metadata.ASCII_STRING_MARSHALLER));
+                String auth = headers.get(Metadata.Key.of(header, Metadata.ASCII_STRING_MARSHALLER));
 
-                if (auth == null || !auth.equals(token)) {
+                if (!isValid(auth)) {
                     call.close(Status.UNAUTHENTICATED.withDescription("Invalid token"), new Metadata());
                     return new ServerCall.Listener<>() {};
                 }
@@ -61,8 +60,8 @@ public class CustomGrpcAuthenticationProvider implements GrpcAuthenticationProvi
     @Override
     public Optional<Function<? super HttpService, ? extends HttpService>> getHttpAuthenticationService() {
         return Optional.of(delegate -> (ctx, req) -> {
-            final String auth = req.headers().get(AUTH_HEADER);
-            if (auth == null || !auth.equals(token)) {
+            final String auth = req.headers().get(header);
+            if (!isValid(auth)) {
                 return HttpResponse.of(
                         HttpStatus.UNAUTHORIZED,
                         MediaType.PLAIN_TEXT_UTF_8,
@@ -71,6 +70,16 @@ public class CustomGrpcAuthenticationProvider implements GrpcAuthenticationProvi
             }
             return delegate.serve(ctx, req);
         });
+    }
+
+    /**
+     * Checks if the provided authentication token is valid.
+     *
+     * @param authHeader the value of the authentication header
+     * @return true if valid, false otherwise
+     */
+    private boolean isValid(final String authHeader) {
+        return authHeader != null && authHeader.equals(token);
     }
 }
 

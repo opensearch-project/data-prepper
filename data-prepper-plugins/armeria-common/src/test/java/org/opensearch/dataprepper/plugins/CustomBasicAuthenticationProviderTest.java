@@ -21,8 +21,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.opensearch.dataprepper.armeria.authentication.CustomAuthenticationConfig;
+import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomAuthenticationConfig;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomGrpcAuthenticationProvider;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -36,16 +37,18 @@ import static org.mockito.Mockito.when;
 
 public class CustomBasicAuthenticationProviderTest {
     private static final String TOKEN = UUID.randomUUID().toString();
+    private static final String HEADER_NAME = "x-" + UUID.randomUUID();
     private static GrpcAuthenticationProvider grpcAuthenticationProvider;
 
     @RegisterExtension
     static ServerExtension server = new ServerExtension() {
         @Override
         protected void configure(ServerBuilder sb) {
-            CustomAuthenticationConfig config = mock(CustomAuthenticationConfig.class);
+            TestCustomAuthenticationConfig config = mock(TestCustomAuthenticationConfig.class);
             when(config.customToken()).thenReturn(TOKEN);
+            when(config.header()).thenReturn(HEADER_NAME);
 
-            grpcAuthenticationProvider = new CustomGrpcAuthenticationProvider(config);
+            grpcAuthenticationProvider = new TestCustomGrpcAuthenticationProvider(config);
 
             GrpcServiceBuilder grpcServiceBuilder = GrpcService.builder()
                     .enableUnframedRequests(true)
@@ -68,16 +71,16 @@ public class CustomBasicAuthenticationProviderTest {
 
     @Nested
     class ConstructorTests {
-        CustomAuthenticationConfig config;
+        TestCustomAuthenticationConfig config;
 
         @BeforeEach
         void setUp() {
-            config = mock(CustomAuthenticationConfig.class);
+            config = mock(TestCustomAuthenticationConfig.class);
         }
 
         @Test
         void constructor_with_null_config_throws() {
-            assertThrows(NullPointerException.class, () -> new CustomGrpcAuthenticationProvider(null));
+            assertThrows(NullPointerException.class, () -> new TestCustomGrpcAuthenticationProvider(null));
         }
     }
 
@@ -100,7 +103,7 @@ public class CustomBasicAuthenticationProviderTest {
         @Test
         void request_with_invalid_token_responds_Unauthorized() {
             WebClient client = WebClient.builder(server.httpUri())
-                    .addHeader("authentication", "invalid-token")
+                    .addHeader(HEADER_NAME, "invalid-token")
                     .build();
 
             HttpRequest request = HttpRequest.of(RequestHeaders.builder()
@@ -117,7 +120,7 @@ public class CustomBasicAuthenticationProviderTest {
         @Test
         void request_with_valid_token_responds_OK() {
             WebClient client = WebClient.builder(server.httpUri())
-                    .addHeader("authentication", TOKEN)
+                    .addHeader(HEADER_NAME, TOKEN)
                     .build();
 
             HttpRequest request = HttpRequest.of(RequestHeaders.builder()
