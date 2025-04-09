@@ -70,7 +70,7 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
         log.info("Starting Confluence Source Plugin... ");
         ConfluenceConfigHelper.validateConfig(confluenceSourceConfig);
         jiraOauthConfig.initCredentials();
-        super.setServerMetadata(service.getConfluenceServerMetadata());
+        service.initializeConfluenceServerMetadata();
         super.start(buffer);
     }
 

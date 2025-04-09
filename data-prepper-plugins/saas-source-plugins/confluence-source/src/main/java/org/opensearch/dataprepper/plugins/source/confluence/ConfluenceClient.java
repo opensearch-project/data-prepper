@@ -53,7 +53,6 @@ public class ConfluenceClient implements CrawlerClient {
 
     private static final Logger log = LoggerFactory.getLogger(ConfluenceClient.class);
     private ObjectMapper objectMapper = new ObjectMapper();
-    private Instant lastPollTime;
     private final ConfluenceService service;
     private final ConfluenceIterator confluenceIterator;
     private final ExecutorService executorService;
@@ -71,15 +70,9 @@ public class ConfluenceClient implements CrawlerClient {
     }
 
     @Override
-    public Iterator<ItemInfo> listItems() {
+    public Iterator<ItemInfo> listItems(Instant lastPollTime) {
         confluenceIterator.initialize(lastPollTime);
         return confluenceIterator;
-    }
-
-    @Override
-    public void setLastPollTime(Instant lastPollTime) {
-        log.trace("Setting the lastPollTime: {}", lastPollTime);
-        this.lastPollTime = lastPollTime;
     }
 
     @VisibleForTesting

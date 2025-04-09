@@ -24,7 +24,6 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.AuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.configuration.BasicConfig;
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
-import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 
@@ -68,8 +67,6 @@ public class ConfluenceSourceTest {
     private ConfluenceService service;
     @Mock
     private ExecutorService executorService;
-    @Mock
-    private ConfluenceServerMetadata serverMetadata;
 
     @Test
     void initialization() {
@@ -81,7 +78,6 @@ public class ConfluenceSourceTest {
     @Test
     void testStart() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        when(service.getConfluenceServerMetadata()).thenReturn(serverMetadata);
         ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
         when(confluenceSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);
@@ -98,7 +94,6 @@ public class ConfluenceSourceTest {
     @Test
     void testStop() {
         when(executorServiceProvider.get()).thenReturn(executorService);
-        when(service.getConfluenceServerMetadata()).thenReturn(serverMetadata);
         ConfluenceSource source = new ConfluenceSource(pluginMetrics, confluenceSourceConfig, jiraOauthConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider, service);
         when(confluenceSourceConfig.getAccountUrl()).thenReturn(ACCESSIBLE_RESOURCES);
         when(confluenceSourceConfig.getAuthType()).thenReturn(BASIC);

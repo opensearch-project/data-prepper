@@ -26,7 +26,6 @@ import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -61,7 +60,7 @@ public class ConfluenceService {
 
     public static final String CONTENT_TYPE = "ContentType";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
-
+    private ZoneId confluenceServerZoneId = ZoneId.of("UTC");
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final ConfluenceRestClient confluenceRestClient;
     private final Counter searchResultsFoundCounter;
@@ -91,8 +90,9 @@ public class ConfluenceService {
         return confluenceRestClient.getContent(contentId);
     }
 
-    public ConfluenceServerMetadata getConfluenceServerMetadata() {
-        return confluenceRestClient.getConfluenceServerMetadata();
+    public void initializeConfluenceServerMetadata() {
+        ConfluenceServerMetadata confluenceServerMetadata = confluenceRestClient.getConfluenceServerMetadata();
+        this.confluenceServerZoneId = confluenceServerMetadata.getDefaultTimeZone();
     }
 
     /**
@@ -151,8 +151,8 @@ public class ConfluenceService {
             validatePageTypeFilters(configuration);
         }
 
-        String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()
