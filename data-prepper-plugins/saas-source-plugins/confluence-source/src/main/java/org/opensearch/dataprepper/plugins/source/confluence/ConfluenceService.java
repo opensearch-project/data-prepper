@@ -60,7 +60,7 @@ public class ConfluenceService {
 
     public static final String CONTENT_TYPE = "ContentType";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
-    private ZoneId confluenceServerZoneId = ZoneId.of("UTC");
+    private ZoneId confluenceServerZoneId = null;
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final ConfluenceRestClient confluenceRestClient;
     private final Counter searchResultsFoundCounter;
@@ -91,7 +91,7 @@ public class ConfluenceService {
         return confluenceRestClient.getContent(contentId);
     }
 
-    public void initializeConfluenceServerMetadata() {
+    private void initializeConfluenceServerMetadata() {
         ConfluenceServerMetadata confluenceServerMetadata = confluenceRestClient.getConfluenceServerMetadata();
         this.confluenceServerZoneId = confluenceServerMetadata.getDefaultTimeZone();
     }
@@ -152,6 +152,10 @@ public class ConfluenceService {
             validatePageTypeFilters(configuration);
         }
 
+        if (this.confluenceServerZoneId == null) {
+            // initialize confluence server timezone
+            initializeConfluenceServerMetadata();
+        }
 
         String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");

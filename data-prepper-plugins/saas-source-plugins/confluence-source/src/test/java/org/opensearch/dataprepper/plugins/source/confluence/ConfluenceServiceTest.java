@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.atlassian.configuration.Oauth2C
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluencePaginationLinks;
 import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
+import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceServerMetadata;
 import org.opensearch.dataprepper.plugins.source.confluence.models.SpaceItem;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.MockPluginConfigVariableImpl;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +72,8 @@ public class ConfluenceServiceTest {
     private static final Logger log = LoggerFactory.getLogger(ConfluenceServiceTest.class);
     @Mock
     private ConfluenceRestClient confluenceRestClient;
+    @Mock
+    private ConfluenceServerMetadata confluenceServerMetadata;
     private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("confluenceService", "aws");
 
@@ -198,6 +202,8 @@ public class ConfluenceServiceTest {
         when(paginationLinks.getNext()).thenReturn(null);
 
         doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
+        doReturn(confluenceServerMetadata).when(confluenceRestClient).getConfluenceServerMetadata();
+        doReturn(ZoneId.of("UTC")).when(confluenceServerMetadata).getDefaultTimeZone();
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
@@ -223,6 +229,8 @@ public class ConfluenceServiceTest {
         when(mockConfluenceSearchResults.getResults()).thenReturn(mockIssues);
 
         doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
+        doReturn(confluenceServerMetadata).when(confluenceRestClient).getConfluenceServerMetadata();
+        doReturn(ZoneId.of("UTC")).when(confluenceServerMetadata).getDefaultTimeZone();
 
         Instant timestamp = Instant.ofEpochSecond(0);
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
