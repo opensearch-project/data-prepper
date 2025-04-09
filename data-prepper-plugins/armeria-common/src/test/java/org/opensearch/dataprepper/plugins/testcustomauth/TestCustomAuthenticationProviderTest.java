@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.testcustomauth;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomAuthenticationConfig;
-import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomGrpcAuthenticationProvider;
 
 import static org.mockito.Mockito.when;
 

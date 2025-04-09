@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.testcustomauth;
 
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerCall;

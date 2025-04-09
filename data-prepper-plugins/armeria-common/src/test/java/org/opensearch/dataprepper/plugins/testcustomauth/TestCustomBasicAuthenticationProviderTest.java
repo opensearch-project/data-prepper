@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.testcustomauth;
 
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -21,9 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomAuthenticationConfig;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import org.opensearch.dataprepper.plugins.testcustomauth.TestCustomGrpcAuthenticationProvider;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -35,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class CustomBasicAuthenticationProviderTest {
+public class TestCustomBasicAuthenticationProviderTest {
     private static final String TOKEN = UUID.randomUUID().toString();
     private static final String HEADER_NAME = "x-" + UUID.randomUUID();
     private static GrpcAuthenticationProvider grpcAuthenticationProvider;

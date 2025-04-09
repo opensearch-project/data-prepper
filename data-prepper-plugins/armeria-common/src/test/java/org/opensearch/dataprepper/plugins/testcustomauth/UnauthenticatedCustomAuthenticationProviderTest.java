@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.testcustomauth;
 
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -20,6 +20,7 @@ import io.grpc.stub.StreamObserver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.plugins.UnauthenticatedGrpcAuthenticationProvider;
 
 import java.nio.charset.Charset;
 import java.util.UUID;
