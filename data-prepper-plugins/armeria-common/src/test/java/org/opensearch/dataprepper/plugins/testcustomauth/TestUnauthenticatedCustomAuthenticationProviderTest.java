@@ -28,7 +28,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class UnauthenticatedCustomAuthenticationProviderTest {
+class TestUnauthenticatedCustomAuthenticationProviderTest {
     private static GrpcAuthenticationProvider grpcAuthenticationProvider;
 
     @RegisterExtension

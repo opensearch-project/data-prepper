@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
         name = GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME,
         pluginType = GrpcAuthenticationProvider.class
 )
-public class UnauthenticatedCustomGrpcAuthenticationProvider implements GrpcAuthenticationProvider {
+public class TestUnauthenticatedCustomGrpcAuthenticationProvider implements GrpcAuthenticationProvider {
 
     @Override
     public ServerInterceptor getAuthenticationInterceptor() {
