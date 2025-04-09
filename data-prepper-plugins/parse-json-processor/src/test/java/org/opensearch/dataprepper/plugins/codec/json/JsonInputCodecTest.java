@@ -68,6 +68,7 @@ class JsonInputCodecTest {
         when(jsonInputCodecConfig.getIncludeKeysMetadata()).thenReturn(null);
         when(jsonInputCodecConfig.getIncludeKeys()).thenReturn(null);
         when(jsonInputCodecConfig.getKeyName()).thenReturn(null);
+        when(jsonInputCodecConfig.getMaxEventLength()).thenReturn(null);
         eventConsumer = mock(Consumer.class);
     }
 
