@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.parcer.KafkaOtelJsonTraceParser;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -553,6 +554,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         Record<Event> record = new Record<>(event);
                         processRecord(acknowledgementSet, record);
                     }
+                } else if (schema == MessageFormat.JSON_OTEL_TRACE) {
+                    final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
+
+                    KafkaOtelJsonTraceParser kafkaOtelJsonTraceParser = new KafkaOtelJsonTraceParser();
+                    kafkaOtelJsonTraceParser.parse(consumerRecord.value().toString(), Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
+                        processRecord(acknowledgementSet, record);
+                    });
                 } else {
                     Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                     if (record != null) {
