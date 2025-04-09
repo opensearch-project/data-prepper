@@ -79,6 +79,7 @@ public class ConfluenceService {
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
+     * @param itemInfoQueue queue for storing item information.
      */
     public void getPages(ConfluenceSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
