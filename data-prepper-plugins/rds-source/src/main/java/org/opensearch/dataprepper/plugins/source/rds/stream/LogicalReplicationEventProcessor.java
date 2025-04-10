@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.ColumnTyp
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHelper;
 import org.opensearch.dataprepper.plugins.source.rds.model.MessageType;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
@@ -318,7 +319,7 @@ public class LogicalReplicationEventProcessor {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
 
-        doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
+        doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX, StreamEventType.INSERT);
         LOG.debug("Processed an INSERT message with table id: {}", tableId);
     }
 
@@ -333,7 +334,7 @@ public class LogicalReplicationEventProcessor {
 
         TupleDataType tupleDataType = TupleDataType.fromValue((char) msg.get());
         if (tupleDataType == TupleDataType.NEW) {
-            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
+            doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX, StreamEventType.UPDATE);
         } else if (tupleDataType == TupleDataType.OLD || tupleDataType == TupleDataType.KEY) {
             // Replica Identity is set to full, containing both old and new row data
             Map<String, Object> oldRowDataMap = getRowDataMap(msg, columnNames, columnTypes);
@@ -342,9 +343,9 @@ public class LogicalReplicationEventProcessor {
 
             if (isPrimaryKeyChanged(oldRowDataMap, newRowDataMap, primaryKeys)) {
                 LOG.debug("Primary keys were changed");
-                createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
+                createPipelineEvent(oldRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE, StreamEventType.UPDATE);
             }
-            createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX);
+            createPipelineEvent(newRowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.INDEX, StreamEventType.UPDATE);
         }
         LOG.debug("Processed an UPDATE message with table id: {}", tableId);
     }
@@ -367,7 +368,7 @@ public class LogicalReplicationEventProcessor {
         final List<String> primaryKeys = tableMetadata.getPrimaryKeys();
         final long eventTimestampMillis = currentEventTimestamp;
 
-        doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE);
+        doProcess(msg, columnNames, tableMetadata, primaryKeys, eventTimestampMillis, OpenSearchBulkActions.DELETE, StreamEventType.DELETE);
         LOG.debug("Processed a DELETE message with table id: {}", tableId);
     }
 
@@ -379,12 +380,12 @@ public class LogicalReplicationEventProcessor {
     }
 
     private void doProcess(ByteBuffer msg, List<String> columnNames, TableMetadata tableMetadata,
-                           List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
+                           List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction, StreamEventType streamEventType) {
         bytesReceived = msg.capacity();
         bytesReceivedSummary.record(bytesReceived);
         final List<String> columnTypes = tableMetadata.getColumnTypes();
         Map<String, Object> rowDataMap = getRowDataMap(msg, columnNames, columnTypes);
-        createPipelineEvent(rowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, bulkAction);
+        createPipelineEvent(rowDataMap, tableMetadata, primaryKeys, eventTimestampMillis, bulkAction, streamEventType);
     }
 
     private Map<String, Object> getRowDataMap(ByteBuffer msg, List<String> columnNames, List<String> columnTypes) {
@@ -411,7 +412,8 @@ public class LogicalReplicationEventProcessor {
         return rowDataMap;
     }
 
-    private void createPipelineEvent(Map<String, Object> rowDataMap, TableMetadata tableMetadata, List<String> primaryKeys, long eventTimestampMillis, OpenSearchBulkActions bulkAction) {
+    private void createPipelineEvent(Map<String, Object> rowDataMap, TableMetadata tableMetadata, List<String> primaryKeys,
+                                     long eventTimestampMillis, OpenSearchBulkActions bulkAction, StreamEventType streamEventType) {
         final Event dataPrepperEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(rowDataMap)
@@ -426,7 +428,7 @@ public class LogicalReplicationEventProcessor {
                 primaryKeys,
                 eventTimestampMillis,
                 eventTimestampMillis,
-                null);
+                streamEventType);
         pipelineEvents.add(pipelineEvent);
     }
 
@@ -446,7 +448,7 @@ public class LogicalReplicationEventProcessor {
         try {
             bufferAccumulator.add(record);
         } catch (Exception e) {
-            LOG.error("Failed to add event to buffer", e);
+            LOG.error(NOISY, "Failed to add event to buffer", e);
         }
     }
 
@@ -457,7 +459,7 @@ public class LogicalReplicationEventProcessor {
         } catch (Exception e) {
             // this will only happen if writing to buffer gets interrupted from shutdown,
             // otherwise bufferAccumulator will keep retrying with backoff
-            LOG.error("Failed to flush buffer", e);
+            LOG.error(NOISY, "Failed to flush buffer", e);
             changeEventErrorCounter.increment(eventCount);
         }
     }

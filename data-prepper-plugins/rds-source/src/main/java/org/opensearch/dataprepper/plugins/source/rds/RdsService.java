@@ -199,7 +199,7 @@ public class RdsService {
         if (sourceCoordinator.getPartitionPrefix() != null ) {
             // The prefix will be used in RDS export, which has a limit of 60 characters.
             final String uniqueIdentifier = IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
+            s3PathPrefix = s3UserPathPrefix.isEmpty() ? uniqueIdentifier : s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
             LOG.info("Unique identifier used in S3 path prefix is {}", uniqueIdentifier);
         } else {
             s3PathPrefix = s3UserPathPrefix;

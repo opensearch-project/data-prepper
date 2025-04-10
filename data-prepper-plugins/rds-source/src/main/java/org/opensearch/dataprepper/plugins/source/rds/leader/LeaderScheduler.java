@@ -172,7 +172,7 @@ public class LeaderScheduler implements Runnable {
     }
 
     private String getS3PrefixForExport(final String givenS3Prefix) {
-        return givenS3Prefix + S3_PATH_DELIMITER + S3_EXPORT_PREFIX;
+        return givenS3Prefix.isEmpty() ? S3_EXPORT_PREFIX : givenS3Prefix + S3_PATH_DELIMITER + S3_EXPORT_PREFIX;
     }
 
     private Map<String, List<String>> getPrimaryKeyMap() {
