@@ -59,6 +59,7 @@ public class ConfluenceService {
 
 
     public static final String CONTENT_TYPE = "ContentType";
+    public static final String CQL_LAST_MODIFIED_DATE_FORMAT = "yyyy-MM-dd HH:mm";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
     private ZoneId confluenceServerZoneId = null;
     private final ConfluenceSourceConfig confluenceSourceConfig;
@@ -136,12 +137,13 @@ public class ConfluenceService {
 
     /**
      * Method for creating Content Filter Criteria.
+     * Made this method package private to be able to test with UnitTests
      *
      * @param configuration Input Parameter
      * @param ts            Input Parameter
      * @return String Builder
      */
-    private StringBuilder createContentFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
+    StringBuilder createContentFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
 
         log.info("Creating content filter criteria");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration))) {
@@ -157,7 +159,7 @@ public class ConfluenceService {
             initializeConfluenceServerMetadata();
         }
 
-        String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()

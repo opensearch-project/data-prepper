@@ -16,6 +16,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -39,6 +41,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +54,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -59,6 +63,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianOauthConfig.ACCESSIBLE_RESOURCES;
+import static org.opensearch.dataprepper.plugins.source.confluence.ConfluenceService.CQL_LAST_MODIFIED_DATE_FORMAT;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.BASIC;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.OAUTH2;
 
@@ -269,6 +274,24 @@ public class ConfluenceServiceTest {
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
 
         assertThrows(RuntimeException.class, () -> confluenceService.getPages(confluenceSourceConfig, timestamp, itemInfoQueue));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"America/Los_Angeles", "America/New_York", "Asia/Kolkata"})
+    public void testCreateContentFilterCriteria(String confluenceServerTimezone) throws JsonProcessingException {
+        List<String> pageType = new ArrayList<>();
+        List<String> spaceKey = new ArrayList<>();
+        ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, spaceKey);
+        doReturn(confluenceServerMetadata).when(confluenceRestClient).getConfluenceServerMetadata();
+        ZoneId confluenceZoneId = ZoneId.of(confluenceServerTimezone);
+        doReturn(confluenceZoneId).when(confluenceServerMetadata).getDefaultTimeZone();
+        ConfluenceService confluenceService = new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics);
+        Instant pollingTime = Instant.now();
+        String formattedZonedPollingTime = pollingTime.atZone(confluenceZoneId)
+                .format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
+        StringBuilder contentFilterCriteria = confluenceService.createContentFilterCriteria(confluenceSourceConfig, pollingTime);
+        assertNotNull(contentFilterCriteria);
+        assertTrue(contentFilterCriteria.toString().contains(formattedZonedPollingTime));
     }
 
 
