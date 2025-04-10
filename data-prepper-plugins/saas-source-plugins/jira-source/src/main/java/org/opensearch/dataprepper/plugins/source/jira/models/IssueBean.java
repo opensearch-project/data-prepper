@@ -58,22 +58,27 @@ public class IssueBean {
     @Setter
     @JsonProperty("key")
     private String key = null;
+
     @Getter
     @Setter
     @JsonProperty("renderedFields")
     private Map<String, Object> renderedFields = null;
+
     @Getter
     @Setter
     @JsonProperty("properties")
     private Map<String, Object> properties = null;
+
     @Getter
     @Setter
     @JsonProperty("names")
     private Map<String, String> names = null;
+
     @Getter
     @Setter
     @JsonProperty("fields")
     private Map<String, Object> fields = null;
+    
     @JsonIgnore
     private final Pattern JiraDateTimePattern = Pattern.compile(
             "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[-+]\\d{4}$");
