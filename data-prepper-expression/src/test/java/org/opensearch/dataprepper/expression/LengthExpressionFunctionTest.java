@@ -47,26 +47,26 @@ class LengthExpressionFunctionTest {
     void testWithOneStringArgumentWithQuotes() {
         lengthExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("\"" + testString + "\""), testEvent, testFunction));
+        assertThrows(IllegalArgumentException.class, () -> lengthExpressionFunction.evaluate(List.of("\"" + testString + "\""), testEvent, testFunction));
     }
 
     @Test
     void testWithTwoArgs() {
         lengthExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
+        assertThrows(IllegalArgumentException.class, () -> lengthExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
     }
-    
+
     @Test
     void testWithNonStringArgument() {
         lengthExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
+        assertThrows(IllegalArgumentException.class, () -> lengthExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
     }
-    
+
     @Test
     void testWithInvalidArgument() {
         lengthExpressionFunction = createObjectUnderTest();
         testEvent = createTestEvent(Map.of("key", 10));
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction));
+        assertThrows(IllegalArgumentException.class, () -> lengthExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction));
     }
 
     @Test

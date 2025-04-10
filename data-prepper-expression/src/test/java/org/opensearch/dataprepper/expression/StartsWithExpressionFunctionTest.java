@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.expression;
 
 import org.junit.jupiter.api.Test;
@@ -76,18 +81,18 @@ public class StartsWithExpressionFunctionTest {
     }
 
     @Test
-    void startsWith_without_2_arguments_throws_RuntimeException() {
+    void startsWith_without_2_arguments_throws_IllegalArgumentException() {
         final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, mock(Function.class)));
+        assertThrows(IllegalArgumentException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, mock(Function.class)));
     }
 
     @ParameterizedTest
     @MethodSource("invalidStartsWithProvider")
-    void invalid_startsWith_arguments_throws_RuntimeException(final String firstArg, final Object secondArg, final Object value) {
+    void invalid_startsWith_arguments_throws_IllegalArgumentException(final String firstArg, final Object secondArg, final Object value) {
         final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
         final String testKey = "test_key";
 
-        assertThrows(RuntimeException.class, () -> startsWithExpressionFunction.evaluate(List.of(firstArg, secondArg), createTestEvent(Map.of(testKey, value)), mock(Function.class)));
+        assertThrows(IllegalArgumentException.class, () -> startsWithExpressionFunction.evaluate(List.of(firstArg, secondArg), createTestEvent(Map.of(testKey, value)), mock(Function.class)));
     }
 
     private static Stream<Arguments> validStartsWithProvider() {
