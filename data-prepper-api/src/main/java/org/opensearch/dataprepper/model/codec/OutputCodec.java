@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.sink.Sink;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
 public interface OutputCodec {
@@ -28,7 +29,7 @@ public interface OutputCodec {
      * @param outputStream  outputStream param for wrapping
      * @param event         Event to auto-generate schema
      * @param context       Extra Context used in Codec.
-     * @throws IOException throws IOException when invalid input is received or not able to create wrapping
+     * @throws IOException  throws IOException when invalid input is received or not able to create wrapping
      */
     void start(OutputStream outputStream, Event event, OutputCodecContext context) throws IOException;
 
@@ -55,10 +56,16 @@ public interface OutputCodec {
      * this method get called from {@link Sink} to estimate size of event in {@link OutputStream}
      *
      * @param event        event Record event
-     * @return int         size of the serialized event
+     * @return long        size of the serialized event
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
      */
-    int getEstimatedSize(Event event) throws IOException;
+    default long getEstimatedSize(Event event, OutputCodecContext codecContext) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        start(outputStream, event, codecContext);
+        writeEvent(event, outputStream);
+        complete(outputStream);
+        return outputStream.toByteArray().length;
+    }
 
     /**
      * used to get extension of file

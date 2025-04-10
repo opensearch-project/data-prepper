@@ -158,7 +158,7 @@ class JsonOutputCodecTest {
         final Event event = convertToEvent(expectedData.get(0));
         jsonOutputCodec.start(outputStream, null, codecContext);
         String expectedEventString = "{\"events\":[{\"name\":\"Person0\",\"age\":0}]";
-        assertThat(jsonOutputCodec.getEstimatedSize(event), greaterThanOrEqualTo(expectedEventString.length()));
+        assertThat(jsonOutputCodec.getEstimatedSize(event, codecContext), greaterThanOrEqualTo((long)(expectedEventString.length())));
     }
 
     @Test

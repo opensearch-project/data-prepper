@@ -20,7 +20,6 @@ import java.util.Objects;
 @Deprecated
 public class LambdaJsonCodec implements OutputCodec {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static int OVERHEAD_BYTES = 8;
     private static final String JSON = "json";
     private static final JsonFactory factory = new JsonFactory();
     private JsonGenerator generator;
@@ -63,20 +62,15 @@ public class LambdaJsonCodec implements OutputCodec {
     @Override
     public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
-        if (Objects.isNull(keyName)) {
+        if(Objects.isNull(keyName)) {
             Map<String, Object> eventMap = event.toMap();
             objectMapper.writeValue(outputStream, eventMap);
 
-        } else {
+        }else{
             Map<String, Object> dataMap = event.toMap(); //(event);
             objectMapper.writeValue(generator, dataMap);
         }
-        generator.flush();
-    }
-
-    @Override
-    public int getEstimatedSize(Event event) throws IOException {
-        return OVERHEAD_BYTES + keyName.length() + event.toJsonString().length();
+            generator.flush();
     }
 }
 

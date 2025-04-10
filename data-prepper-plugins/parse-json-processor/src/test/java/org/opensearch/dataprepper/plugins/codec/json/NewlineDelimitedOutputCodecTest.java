@@ -99,7 +99,7 @@ public class NewlineDelimitedOutputCodecTest {
         ndjsonOutputCodec.start(outputStream, null, codecContext);
 
         Record<Event> record = getRecord(0);
-        String expectedEventString = "{\"name\":\"Person0\",\"age\":0}";
-        assertThat(ndjsonOutputCodec.getEstimatedSize(record.getData()), equalTo(expectedEventString.length()));
+        String expectedEventString = "{\"name\":\"Person0\",\"age\":0}\n";
+        assertThat(ndjsonOutputCodec.getEstimatedSize(record.getData(), codecContext), equalTo((long)expectedEventString.length()));
     }
 }

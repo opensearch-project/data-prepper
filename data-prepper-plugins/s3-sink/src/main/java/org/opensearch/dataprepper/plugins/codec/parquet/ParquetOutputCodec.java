@@ -11,10 +11,6 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
-import org.apache.avro.io.BinaryEncoder;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
 import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
@@ -29,7 +25,6 @@ import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 
 import java.io.IOException;
-import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
@@ -106,34 +101,16 @@ public class ParquetOutputCodec implements OutputCodec, BufferedCodec {
         isClosed = false;
     }
 
-    private GenericRecord getParquetRecord(final Event event) throws IOException {
+    @Override
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         final Event modifiedEvent;
         if (codecContext.getTagsTargetKey() != null) {
             modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
         } else {
             modifiedEvent = event;
         }
-        return avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap(), codecContext);
-    }
-
-    @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
-        writer.write(getParquetRecord(event));
-    }
-
-    private int getSizeInBytes(GenericRecord record) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
-        DatumWriter<GenericRecord> writer = new GenericDatumWriter<>(record.getSchema());
-        writer.write(record, encoder);
-        encoder.flush();
-        outputStream.close();
-        return outputStream.toByteArray().length;
-    }
-
-    @Override
-    public int getEstimatedSize(Event event) throws IOException {
-        return getSizeInBytes(getParquetRecord(event));
+        GenericRecord parquetRecord = avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap(), codecContext);
+        writer.write(parquetRecord);
     }
 
     @Override
