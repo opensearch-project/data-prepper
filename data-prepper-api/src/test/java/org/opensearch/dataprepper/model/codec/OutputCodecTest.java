@@ -60,6 +60,11 @@ public class OutputCodecTest {
             }
 
             @Override
+            public int getEstimatedSize(Event event) throws IOException {
+                return 0;
+            }
+
+            @Override
             public String getExtension() {
                 return null;
             }
