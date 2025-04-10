@@ -9,6 +9,8 @@ import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.EncoderFactory;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
 import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
@@ -23,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
@@ -90,17 +93,35 @@ public class AvroOutputCodec implements OutputCodec {
         outputStream.close();
     }
 
-    @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
-        Objects.requireNonNull(event);
+    private GenericRecord getAvroRecord(final Event event) throws IOException {
         final Map<String, Object> data;
         if (codecContext.getTagsTargetKey() != null) {
             data = addTagsToEvent(event, codecContext.getTagsTargetKey()).toMap();
         } else {
             data = event.toMap();
         }
-        final GenericRecord avroRecord = avroEventConverter.convertEventDataToAvro(schema, data, codecContext);
-        dataFileWriter.append(avroRecord);
+        return avroEventConverter.convertEventDataToAvro(schema, data, codecContext);
+    }
+
+    @Override
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+        Objects.requireNonNull(event);
+        dataFileWriter.append(getAvroRecord(event));
+    }
+
+    private int getSizeInBytes(GenericRecord record) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
+        DatumWriter<GenericRecord> writer = new GenericDatumWriter<>(record.getSchema());
+        writer.write(record, encoder);
+        encoder.flush();
+        outputStream.close();
+        return outputStream.toByteArray().length;
+    }
+
+    @Override
+    public int getEstimatedSize(Event event) throws IOException {
+        return getSizeInBytes(getAvroRecord(event));
     }
 
     @Override

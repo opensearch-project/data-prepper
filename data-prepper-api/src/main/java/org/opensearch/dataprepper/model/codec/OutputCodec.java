@@ -52,6 +52,15 @@ public interface OutputCodec {
     void complete(OutputStream outputStream) throws IOException;
 
     /**
+     * this method get called from {@link Sink} to estimate size of event in {@link OutputStream}
+     *
+     * @param event        event Record event
+     * @return int         size of the serialized event
+     * @throws IOException throws IOException when invalid input is received or not able to create wrapping
+     */
+    int getEstimatedSize(Event event) throws IOException;
+
+    /**
      * used to get extension of file
      *
      * @return String

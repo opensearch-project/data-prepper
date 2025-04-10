@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @DataPrepperPlugin(name = "csv", pluginType = OutputCodec.class, pluginConfigurationType = CsvOutputCodecConfig.class)
 public class CsvOutputCodec implements OutputCodec {
     private final CsvOutputCodecConfig config;
+    private static int OVERHEAD_BYTES = 0;
     private static final Logger LOG = LoggerFactory.getLogger(CsvOutputCodec.class);
     private static final String CSV = "csv";
     private static final String DELIMITER = ",";
@@ -41,11 +42,7 @@ public class CsvOutputCodec implements OutputCodec {
         this.config = config;
     }
 
-    @Override
-    public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
-        Objects.requireNonNull(outputStream);
-        Objects.requireNonNull(codecContext);
-        this.codecContext = codecContext;
+    private byte[] getHeaderByteArray() throws IOException {
         if (config.getHeader() != null) {
             headerList = config.getHeader();
         } else if (config.getHeaderFileLocation() != null) {
@@ -63,8 +60,15 @@ public class CsvOutputCodec implements OutputCodec {
         }
 
         headerLength = headerList.size();
-        final byte[] byteArr = String.join(config.getDelimiter(), headerList).getBytes();
-        writeToOutputStream(outputStream, byteArr);
+        return String.join(config.getDelimiter(), headerList).getBytes();
+    }
+
+    @Override
+    public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
+        writeToOutputStream(outputStream, getHeaderByteArray());
     }
 
     @Override
@@ -72,8 +76,7 @@ public class CsvOutputCodec implements OutputCodec {
         outputStream.close();
     }
 
-    @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    private byte[] getEventSerializedBytes(final Event event) throws IOException, IllegalArgumentException {
         Objects.requireNonNull(event);
         final Map<String, Object> eventMap;
         if (codecContext.getTagsTargetKey() != null) {
@@ -96,11 +99,29 @@ public class CsvOutputCodec implements OutputCodec {
         final List<String> valueList = eventMap.entrySet().stream().map(map -> map.getValue().toString())
                 .collect(Collectors.toList());
         if (headerLength != valueList.size()) {
+            throw new IllegalArgumentException("CSV Row doesn't conform with header");
+        }
+        return valueList.stream().collect(Collectors.joining(DELIMITER)).getBytes();
+    }
+
+    @Override
+    public int getEstimatedSize(Event event) throws IOException {
+        try {
+            return getHeaderByteArray().length + getEventSerializedBytes(event).length;
+        } catch (IllegalArgumentException e) {
+            return 0;
+        }
+    }
+
+    @Override
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+        Objects.requireNonNull(event);
+        try {
+            writeToOutputStream(outputStream, getEventSerializedBytes(event));
+        } catch (IllegalArgumentException e) {
             LOG.error("CSV Row doesn't conform with the header.");
             return;
         }
-        final byte[] byteArr = valueList.stream().collect(Collectors.joining(DELIMITER)).getBytes();
-        writeToOutputStream(outputStream, byteArr);
     }
 
     private void writeToOutputStream(final OutputStream outputStream, final byte[] byteArr) throws IOException {

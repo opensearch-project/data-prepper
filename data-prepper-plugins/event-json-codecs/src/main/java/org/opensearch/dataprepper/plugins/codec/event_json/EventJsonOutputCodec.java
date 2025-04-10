@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,6 +28,7 @@ import java.util.Objects;
 public class EventJsonOutputCodec implements OutputCodec {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     static final String EVENT_JSON = "event_json";
+    private static int OVERHEAD_BYTES = 16;
     private static final JsonFactory factory = new JsonFactory();
     private final EventJsonOutputCodecConfig config;
     private JsonGenerator generator;
@@ -68,6 +71,18 @@ public class EventJsonOutputCodec implements OutputCodec {
         getDataMapToSerialize(event);
         generator.flush();
         generator.writeEndObject();
+    }
+
+    private int getSerializedSize(Map<String, Object> map) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.writeValueAsString(map).length();
+    }
+
+    @Override
+    public int getEstimatedSize(Event event) throws IOException {
+        Map<String, Object> metadataMap = objectMapper.convertValue(event.getMetadata(), Map.class);
+        return OVERHEAD_BYTES + EventJsonDefines.DATA.length() + EventJsonDefines.METADATA.length() +
+               getSerializedSize(event.toMap()) + getSerializedSize(metadataMap);
     }
 
     private Map<String, Object> getDataMapToSerialize(Event event) throws IOException {

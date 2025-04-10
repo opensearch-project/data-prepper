@@ -21,6 +21,7 @@ import java.util.Objects;
  */
 @DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NdjsonOutputConfig.class)
 public class NdjsonOutputCodec implements OutputCodec {
+    private static int OVERHEAD_BYTES = 0;
     private static final String NDJSON = "ndjson";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NdjsonOutputConfig config;
@@ -39,22 +40,30 @@ public class NdjsonOutputCodec implements OutputCodec {
         this.codecContext = codecContext;
     }
 
-    @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
-        Objects.requireNonNull(event);
-
-        String json = event.jsonBuilder()
+    private String getFullEventJson(final Event event) {
+        return event.jsonBuilder()
                 .includeKeys(codecContext.getIncludeKeys())
                 .excludeKeys(codecContext.getExcludeKeys())
                 .includeTags(codecContext.getTagsTargetKey())
                 .toJsonString();
-        outputStream.write(json.getBytes());
+    }
+
+    @Override
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+        Objects.requireNonNull(event);
+
+        outputStream.write(getFullEventJson(event).getBytes());
         outputStream.write(System.lineSeparator().getBytes());
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
         outputStream.close();
+    }
+
+    @Override
+    public int getEstimatedSize(Event event) throws IOException {
+        return OVERHEAD_BYTES + getFullEventJson(event).length();
     }
 
     @Override

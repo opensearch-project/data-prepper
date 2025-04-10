@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 @DataPrepperPlugin(name = "json", pluginType = OutputCodec.class, pluginConfigurationType = JsonOutputCodecConfig.class)
 public class JsonOutputCodec implements OutputCodec {
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static int OVERHEAD_BYTES = 8;
     private static final String JSON = "json";
     private static final JsonFactory factory = new JsonFactory();
     private final JsonOutputCodecConfig config;
@@ -72,6 +75,16 @@ public class JsonOutputCodec implements OutputCodec {
         Map<String, Object> dataMap = getDataMapToSerialize(event);
         objectMapper.writeValue(generator, dataMap);
         generator.flush();
+    }
+
+    private int getSerializedSize(Map<String, Object> map) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.writeValueAsString(map).length();
+    }
+
+    @Override
+    public int getEstimatedSize(Event event) throws IOException {
+        return OVERHEAD_BYTES + config.getKeyName().length() + getSerializedSize(getDataMapToSerialize(event));
     }
 
     private Map<String, Object> getDataMapToSerialize(Event event) throws JsonProcessingException {
