@@ -28,6 +28,7 @@ public class JiraConfigHelper {
     /**
      * Get Issue Status Filter from repository configuration.
      *
+     * @param repositoryConfiguration repo config
      * @return List Issue Status Filter.
      */
     public static List<String> getIssueStatusIncludeFilter(JiraSourceConfig repositoryConfiguration) {
@@ -90,6 +91,12 @@ public class JiraConfigHelper {
     }
 
 
+    /**
+     * Validate Jira Configuration
+     *
+     * @param config holding user pipeline yaml inputs
+     * @return boolean indicating pipeline yaml inputs are valid or not
+     */
     public static boolean validateConfig(JiraSourceConfig config) {
         if (config.getAccountUrl() == null) {
             throw new RuntimeException("Account URL is missing.");

@@ -63,14 +63,13 @@ public class ConfluenceClientTest {
     @Test
     void testConstructor() {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
-        confluenceClient.setLastPollTime(Instant.ofEpochSecond(1234L));
         assertNotNull(confluenceClient);
     }
 
     @Test
     void testListItems() {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
-        assertNotNull(confluenceClient.listItems());
+        assertNotNull(confluenceClient.listItems(Instant.ofEpochSecond(1234L)));
     }
 
 

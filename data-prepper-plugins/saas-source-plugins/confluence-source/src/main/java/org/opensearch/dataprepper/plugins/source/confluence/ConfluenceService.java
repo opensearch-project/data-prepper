@@ -26,7 +26,6 @@ import org.springframework.util.CollectionUtils;
 
 import javax.inject.Named;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -60,8 +59,9 @@ public class ConfluenceService {
 
 
     public static final String CONTENT_TYPE = "ContentType";
+    public static final String CQL_LAST_MODIFIED_DATE_FORMAT = "yyyy-MM-dd HH:mm";
     private static final String SEARCH_RESULTS_FOUND = "searchResultsFound";
-
+    private ZoneId confluenceServerZoneId = null;
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final ConfluenceRestClient confluenceRestClient;
     private final Counter searchResultsFoundCounter;
@@ -80,6 +80,7 @@ public class ConfluenceService {
      *
      * @param configuration the configuration.
      * @param timestamp     timestamp.
+     * @param itemInfoQueue queue for storing item information.
      */
     public void getPages(ConfluenceSourceConfig configuration, Instant timestamp, Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
@@ -91,8 +92,9 @@ public class ConfluenceService {
         return confluenceRestClient.getContent(contentId);
     }
 
-    public ConfluenceServerMetadata getConfluenceServerMetadata() {
-        return confluenceRestClient.getConfluenceServerMetadata();
+    private void initializeConfluenceServerMetadata() {
+        ConfluenceServerMetadata confluenceServerMetadata = confluenceRestClient.getConfluenceServerMetadata();
+        this.confluenceServerZoneId = confluenceServerMetadata.getDefaultTimeZone();
     }
 
     /**
@@ -135,12 +137,13 @@ public class ConfluenceService {
 
     /**
      * Method for creating Content Filter Criteria.
+     * Made this method package private to be able to test with UnitTests
      *
      * @param configuration Input Parameter
      * @param ts            Input Parameter
      * @return String Builder
      */
-    private StringBuilder createContentFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
+    StringBuilder createContentFilterCriteria(ConfluenceSourceConfig configuration, Instant ts) {
 
         log.info("Creating content filter criteria");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration))) {
@@ -151,8 +154,12 @@ public class ConfluenceService {
             validatePageTypeFilters(configuration);
         }
 
-        String formattedTimeStamp = LocalDateTime.ofInstant(ts, ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        if (this.confluenceServerZoneId == null) {
+            // initialize confluence server timezone
+            initializeConfluenceServerMetadata();
+        }
+
+        String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
         StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()

@@ -34,12 +34,11 @@ public class LeaderSchedulerTest {
     private EnhancedSourceCoordinator coordinator;
     @Mock
     private Crawler crawler;
-    private final Duration timezoneOffset = Duration.ofSeconds(0);
     private final int batchSize = 50;
 
     @Test
     void testUnableToAcquireLeaderPartition() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.empty());
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -52,7 +51,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -66,7 +65,7 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, times(1)).crawl(leaderPartition, coordinator, batchSize, timezoneOffset);
+        verify(crawler, times(1)).crawl(leaderPartition, coordinator, batchSize);
         verify(coordinator, times(1)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
 
     }
@@ -74,7 +73,7 @@ public class LeaderSchedulerTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testExceptionWhileAcquiringLeaderPartition(boolean initializationState) throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(initializationState);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
@@ -92,12 +91,12 @@ public class LeaderSchedulerTest {
 
     @Test
     void testWhileLoopRunnningAfterTheSleep() throws InterruptedException {
-        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
         leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
         LeaderPartition leaderPartition = new LeaderPartition();
         leaderPartition.getProgressState().get().setInitialized(false);
         leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
-        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt(), any())).thenReturn(Instant.ofEpochMilli(10));
+        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt())).thenReturn(Instant.ofEpochMilli(10));
         when(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(leaderPartition))
                 .thenThrow(RuntimeException.class);
@@ -110,6 +109,6 @@ public class LeaderSchedulerTest {
         executorService.shutdownNow();
 
         // Check if crawler was invoked and updated leader lease renewal time
-        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt(), any());
+        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class), anyInt());
     }
 }
