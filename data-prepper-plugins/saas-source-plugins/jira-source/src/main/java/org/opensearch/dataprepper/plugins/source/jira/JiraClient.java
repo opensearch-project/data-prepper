@@ -50,13 +50,12 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
 public class JiraClient implements CrawlerClient {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
+    private ObjectMapper objectMapper = new ObjectMapper();
     private final JiraService service;
     private final JiraIterator jiraIterator;
     private final ExecutorService executorService;
     private final CrawlerSourceConfig configuration;
     private final int bufferWriteTimeoutInSeconds = 10;
-    private ObjectMapper objectMapper = new ObjectMapper();
-    private Instant lastPollTime;
 
     public JiraClient(JiraService service,
                       JiraIterator jiraIterator,
@@ -69,15 +68,9 @@ public class JiraClient implements CrawlerClient {
     }
 
     @Override
-    public Iterator<ItemInfo> listItems() {
+    public Iterator<ItemInfo> listItems(Instant lastPollTime) {
         jiraIterator.initialize(lastPollTime);
         return jiraIterator;
-    }
-
-    @Override
-    public void setLastPollTime(Instant lastPollTime) {
-        log.trace("Setting the lastPollTime: {}", lastPollTime);
-        this.lastPollTime = lastPollTime;
     }
 
     @VisibleForTesting
@@ -127,7 +120,7 @@ public class JiraClient implements CrawlerClient {
                         .withEventType(eventType)
                         .withData(t)
                         .build())
-                .map(event -> new Record<>(event))
+                .map(Record::new)
                 .collect(Collectors.toList());
 
         try {

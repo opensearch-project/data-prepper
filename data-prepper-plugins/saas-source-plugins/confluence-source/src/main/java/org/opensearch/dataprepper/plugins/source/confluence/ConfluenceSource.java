@@ -47,7 +47,6 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
     private static final Logger log = LoggerFactory.getLogger(ConfluenceSource.class);
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final AtlassianAuthConfig jiraOauthConfig;
-    private final ConfluenceService service;
 
     @DataPrepperPluginConstructor
     public ConfluenceSource(final PluginMetrics pluginMetrics,
@@ -56,13 +55,11 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
                             final PluginFactory pluginFactory,
                             final AcknowledgementSetManager acknowledgementSetManager,
                             Crawler crawler,
-                            PluginExecutorServiceProvider executorServiceProvider,
-                            final ConfluenceService service) {
+                            PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, confluenceSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Confluence Source Plugin");
         this.confluenceSourceConfig = confluenceSourceConfig;
         this.jiraOauthConfig = jiraOauthConfig;
-        this.service = service;
     }
 
     @Override
@@ -70,7 +67,6 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
         log.info("Starting Confluence Source Plugin... ");
         ConfluenceConfigHelper.validateConfig(confluenceSourceConfig);
         jiraOauthConfig.initCredentials();
-        super.setServerMetadata(service.getConfluenceServerMetadata());
         super.start(buffer);
     }
 

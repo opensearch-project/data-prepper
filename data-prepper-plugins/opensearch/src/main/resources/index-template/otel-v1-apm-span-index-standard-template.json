@@ -26,6 +26,16 @@
           }
         },
         {
+          "string_resource_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "resource.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
           "long_scope_attributes": {
             "mapping": {
               "type": "long"
@@ -44,6 +54,16 @@
           }
         },
         {
+          "string_scope_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "instrumentationScope.attributes.*",
+            "match_mapping_type": "string"
+          }
+        },
+        {
           "long_attributes": {
             "mapping": {
               "type": "long"
@@ -59,6 +79,16 @@
             },
             "path_match": "attributes.*",
             "match_mapping_type": "double"
+          }
+        },
+        {
+          "string_attributes": {
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "path_match": "attributes.*",
+            "match_mapping_type": "string"
           }
         }
       ],
@@ -96,38 +126,55 @@
             }
           }
         },
-        "name": {
+        "traceId": {
           "type": "keyword",
-          "ignore_above": 256
+          "ignore_above": 32
         },
-        "description": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
+        "spanId": {
+          "type": "keyword",
+          "ignore_above": 16
+        },
+        "parentSpanId": {
+          "type": "keyword",
+          "ignore_above": 16
+        },
+        "name": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "traceState": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "traceGroup": {
+          "ignore_above": 1024,
+          "type": "keyword"
+        },
+        "traceGroupFields": {
+          "properties": {
+            "endTime": {
+              "type": "date_nanos"
+            },
+            "durationInNanos": {
+              "type": "long"
+            },
+            "statusCode": {
+              "type": "integer"
             }
           }
-        },
-        "flags": {
-          "type": "long"
-        },
-        "unit": {
-          "type": "keyword",
-          "ignore_above": 128
         },
         "kind": {
           "type": "keyword",
           "ignore_above": 32
         },
-        "aggregationTemporality": {
+        "serviceName": {
           "type": "keyword",
-          "ignore_above": 64
-        },
-        "monotonic": {
-          "type": "boolean"
+          "ignore_above": 256
         },
         "startTime": {
+          "type": "date_nanos"
+        },
+        "endTime": {
           "type": "date_nanos"
         },
         "@timestamp": {
@@ -136,132 +183,66 @@
         "time": {
           "type": "date_nanos"
         },
-        "value@int": {
-          "type": "long"
-        },
-        "value@double": {
-          "type": "double"
-        },
-        "value": {
-          "type": "double"
-        },
-        "buckets": {
-          "type" : "nested",
+        "status": {
           "properties": {
-            "count": {
-              "type": "long"
+            "code": {
+              "type": "integer"
             },
-            "sum": {
-              "type": "double"
-            },
-            "max": {
-              "type": "double"
-            },
-            "min": {
-              "type": "double"
+            "message": {
+              "type": "keyword",
+              "ignore_above": 2048
             }
           }
         },
-        "bucketCount": {
+        "durationInNanos": {
           "type": "long"
         },
-        "bucketCountsList": {
-          "type": "long"
-        },
-        "explicitBoundsList": {
-          "type": "double"
-        },
-        "explicitBoundsCount": {
-          "type": "double"
-        },
-        "quantiles": {
+        "events": {
+          "type": "nested",
           "properties": {
-            "quantile": {
-              "type": "double"
+            "name": {
+              "type": "keyword",
+              "ignore_above": 256
             },
-            "value": {
-              "type": "double"
-            }
-          }
-        },
-        "quantileValuesCount": {
-          "type": "long"
-        },
-        "positiveBuckets": {
-          "type" : "nested",
-          "properties": {
-            "count": {
-              "type": "long"
+            "attributes": {
+              "type": "object"
             },
-            "max": {
-              "type": "double"
+            "droppedAttributesCount": {
+              "type": "integer"
             },
-            "min": {
-              "type": "double"
-            }
-          }
-        },
-        "negativeBuckets": {
-          "type" : "nested",
-          "properties": {
-            "count": {
-              "type": "long"
-            },
-            "max": {
-              "type": "double"
-            },
-            "min": {
-              "type": "double"
-            }
-          }
-        },
-        "negativeOffset": {
-          "type": "integer"
-        },
-        "positiveOffset": {
-          "type": "integer"
-        },
-        "zeroCount": {
-          "type": "long"
-        },
-        "scale": {
-          "type": "long"
-        },
-        "max": {
-          "type": "double"
-        },
-        "min": {
-          "type": "double"
-        },
-        "sum": {
-          "type": "double"
-        },
-        "count": {
-          "type": "long"
-        },
-        "exemplar": {
-          "properties": {
             "time": {
               "type": "date_nanos"
-            },
-            "traceId": {
-              "ignore_above": 256,
-              "type": "keyword"
-            },
-            "spanId": {
-              "ignore_above": 256,
-              "type": "keyword"
-            },
-            "value@int": {
-              "type": "long"
-            },
-            "value@double": {
-              "type": "double"
-            },
-            "value": {
-              "type": "double"
             }
           }
+        },
+        "droppedEventsCount": {
+          "type": "integer"
+        },
+        "links": {
+          "type": "nested",
+          "properties": {
+            "traceId": {
+              "type": "keyword",
+              "ignore_above": 32
+            },
+            "spanId": {
+              "type": "keyword",
+              "ignore_above": 16
+            },
+            "traceState": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "attributes": {
+              "type": "object"
+            },
+            "droppedAttributesCount": {
+              "type": "integer"
+            }
+          }
+        },
+        "droppedLinksCount": {
+          "type": "integer"
         }
       }
     }

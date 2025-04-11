@@ -46,12 +46,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class JiraClientTest {
 
-    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
     @Mock
     private Buffer<Record<Event>> buffer;
     @Mock
     private SaasWorkerProgressState saasWorkerProgressState;
-
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock
@@ -60,18 +58,18 @@ public class JiraClientTest {
     private JiraService jiraService;
     @Mock
     private JiraIterator jiraIterator;
+    private final PluginExecutorServiceProvider executorServiceProvider = new PluginExecutorServiceProvider();
 
     @Test
     void testConstructor() {
         JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
-        jiraClient.setLastPollTime(Instant.ofEpochSecond(1234L));
         assertNotNull(jiraClient);
     }
 
     @Test
     void testListItems() {
         JiraClient jiraClient = new JiraClient(jiraService, jiraIterator, executorServiceProvider, jiraSourceConfig);
-        assertNotNull(jiraClient.listItems());
+        assertNotNull(jiraClient.listItems(Instant.ofEpochSecond(1234L)));
     }
 
 

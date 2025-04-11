@@ -16,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.confluence.models.ConfluenceSearchResults;
 import org.opensearch.dataprepper.plugins.source.confluence.rest.ConfluenceRestClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 
@@ -26,16 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 
 @ExtendWith(MockitoExtension.class)
 public class ConfluenceIteratorTest {
 
-    @Mock
-    private ConfluenceSearchResults mockConfluenceSearchResults;
     @Mock
     private ConfluenceRestClient confluenceRestClient;
     private ConfluenceService confluenceService;
@@ -59,7 +53,6 @@ public class ConfluenceIteratorTest {
         confluenceIterator = createObjectUnderTest();
         assertNotNull(confluenceIterator);
         confluenceIterator.initialize(Instant.ofEpochSecond(0));
-        doReturn(mockConfluenceSearchResults).when(confluenceRestClient).getAllContent(any(StringBuilder.class), anyInt(), any());
         assertFalse(confluenceIterator.hasNext());
     }
 

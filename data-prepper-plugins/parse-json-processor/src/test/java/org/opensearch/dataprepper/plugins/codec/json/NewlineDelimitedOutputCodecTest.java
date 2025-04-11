@@ -89,4 +89,17 @@ public class NewlineDelimitedOutputCodecTest {
 
         assertThat("ndjson", equalTo(ndjsonOutputCodec.getExtension()));
     }
+
+    @Test
+    void testGetEstimatedSize() throws Exception {
+        NewlineDelimitedOutputCodecTest.numberOfRecords = 1;
+        NdjsonOutputCodec ndjsonOutputCodec = createObjectUnderTest();
+        outputStream = new ByteArrayOutputStream();
+        OutputCodecContext codecContext = new OutputCodecContext();
+        ndjsonOutputCodec.start(outputStream, null, codecContext);
+
+        Record<Event> record = getRecord(0);
+        String expectedEventString = "{\"name\":\"Person0\",\"age\":0}\n";
+        assertThat(ndjsonOutputCodec.getEstimatedSize(record.getData(), codecContext), equalTo((long)expectedEventString.length()));
+    }
 }

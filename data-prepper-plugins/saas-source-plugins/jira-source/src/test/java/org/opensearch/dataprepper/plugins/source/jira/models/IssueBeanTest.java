@@ -78,8 +78,8 @@ public class IssueBeanTest {
         fieldsTestObject.put("created", "2024-07-06T21:12:23.437-0700");
         fieldsTestObject.put("updated", "2022-07-06T21:12:23.106-0700");
         issueBean.setFields(fieldsTestObject);
-        assertEquals(issueBean.getCreatedTimeMillis(), 1720325543000L);
-        assertEquals(issueBean.getUpdatedTimeMillis(), 1657167143000L);
+        assertEquals(1720325543437L, issueBean.getCreatedTimeMillis());
+        assertEquals(1657167143106L, issueBean.getUpdatedTimeMillis());
     }
 
     @Test

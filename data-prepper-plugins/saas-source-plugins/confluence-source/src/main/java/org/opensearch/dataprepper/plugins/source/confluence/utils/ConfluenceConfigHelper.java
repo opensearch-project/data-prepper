@@ -30,6 +30,7 @@ public class ConfluenceConfigHelper {
     /**
      * Get Content Types Filter from configuration.
      *
+     * @param repositoryConfiguration repo config
      * @return List Content Type Filter.
      */
     public static List<String> getContentTypeIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
@@ -49,6 +50,7 @@ public class ConfluenceConfigHelper {
     /**
      * Get Space Filter Types from configuration.
      *
+     * @param repositoryConfiguration repo config
      * @return List Space Filter.
      */
     public static List<String> getSpacesNameIncludeFilter(ConfluenceSourceConfig repositoryConfiguration) {
@@ -70,6 +72,12 @@ public class ConfluenceConfigHelper {
     }
 
 
+    /**
+     * Validate Confluence Configuration
+     *
+     * @param config holding user pipeline yaml inputs
+     * @return boolean indicating pipeline yaml inputs are valid or not
+     */
     public static boolean validateConfig(ConfluenceSourceConfig config) {
         if (config.getAccountUrl() == null) {
             throw new RuntimeException("Account URL is missing.");

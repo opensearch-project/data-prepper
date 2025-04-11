@@ -45,7 +45,7 @@ public class OutputCodecTest {
     }
 
     @Test
-    public void testWriteMetrics() throws JsonProcessingException {
+    public void testWriteMetrics() throws JsonProcessingException, IOException {
         OutputCodec outputCodec = new OutputCodec() {
             @Override
             public void start(OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
@@ -73,6 +73,7 @@ public class OutputCodecTest {
         final JacksonEvent event = JacksonLog.builder().withData(json).withEventMetadata(defaultEventMetadata).build();
         Event tagsToEvent = outputCodec.addTagsToEvent(event, "Tag");
         assertNotEquals(event.toJsonString(), tagsToEvent.toJsonString());
+        assertThat(outputCodec.getEstimatedSize(event, new OutputCodecContext()), equalTo(0L));
     }
 
     private static Map<String, Object> generateJson() {

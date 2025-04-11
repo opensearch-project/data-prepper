@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -145,6 +146,19 @@ class JsonOutputCodecTest {
         }
 
         assertThat(index, equalTo(numberOfRecords));
+    }
+
+    @Test
+    void testGetEstimatedSize() throws Exception {
+        int numberOfRecords = 1;
+        JsonOutputCodec jsonOutputCodec = createObjectUnderTest();
+        outputStream = new ByteArrayOutputStream();
+        OutputCodecContext codecContext = new OutputCodecContext();
+        final List<Map<String, Object>> expectedData = generateRecords(numberOfRecords);
+        final Event event = convertToEvent(expectedData.get(0));
+        jsonOutputCodec.start(outputStream, null, codecContext);
+        String expectedEventString = "{\"events\":[{\"name\":\"Person0\",\"age\":0}]";
+        assertThat(jsonOutputCodec.getEstimatedSize(event, codecContext), greaterThanOrEqualTo((long)(expectedEventString.length())));
     }
 
     @Test

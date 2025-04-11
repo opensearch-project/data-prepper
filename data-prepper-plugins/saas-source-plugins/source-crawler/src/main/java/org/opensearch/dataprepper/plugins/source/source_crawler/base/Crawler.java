@@ -39,18 +39,15 @@ public class Crawler {
     }
 
     public Instant crawl(LeaderPartition leaderPartition,
-                         EnhancedSourceCoordinator coordinator, int batchSize, Duration pollingTimezoneOffset) {
+                         EnhancedSourceCoordinator coordinator, int batchSize) {
         long startTime = System.currentTimeMillis();
         Instant lastLeaderSavedInstant = Instant.now();
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         // Leader state is always saved in UTC since the timestamps in the api response are always in UTC
         Instant lastPollTime = leaderProgressState.getLastPollTime();
-        // Adjust the time specific to the crawling source service setting before polling for changes
-        Instant lastPollTimeWithOffsetAdjustment = lastPollTime.plusSeconds(pollingTimezoneOffset.toSeconds());
-        client.setLastPollTime(lastPollTimeWithOffsetAdjustment);
-        Iterator<ItemInfo> itemInfoIterator = client.listItems();
+        Iterator<ItemInfo> itemInfoIterator = client.listItems(lastPollTime);
         Instant latestModifiedTime = lastPollTime;
-        log.info("Starting to crawl the source with lastPollTime: {}", lastPollTimeWithOffsetAdjustment);
+        log.info("Starting to crawl the source with lastPollTime: {}", lastPollTime);
         do {
             final List<ItemInfo> itemInfoList = new ArrayList<>();
             for (int i = 0; i < batchSize && itemInfoIterator.hasNext(); i++) {

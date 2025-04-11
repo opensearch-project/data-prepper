@@ -15,7 +15,7 @@ public class OTelProtoCommonUtils {
         return Instant.ofEpochSecond(0L, unixNano).toString();
     }
 
-    public static long timeISO8601ToNanos(final String timeISO08601) {
+    public static long convertISO8601ToNanos(final String timeISO08601) {
         final Instant instant = Instant.parse(timeISO08601);
         return instant.getEpochSecond() * NANO_MULTIPLIER + instant.getNano();
     }
@@ -23,5 +23,6 @@ public class OTelProtoCommonUtils {
     public static String convertByteStringToString(ByteString bs) {
         return Hex.encodeHexString(bs.toByteArray());
     }
+
 }
 
