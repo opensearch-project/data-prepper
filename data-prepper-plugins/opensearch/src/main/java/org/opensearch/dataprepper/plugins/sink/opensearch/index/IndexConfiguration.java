@@ -164,7 +164,7 @@ public class IndexConfiguration {
 
         String documentIdField = builder.documentIdField;
         String documentId = builder.documentId;
-        if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW) || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_STANDARD)) {
+        if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW) || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)) {
             documentId = "${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentId = "${hashId}";
@@ -430,17 +430,17 @@ public class IndexConfiguration {
             InputStream s3TemplateFile = null;
             if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-            } else if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW_STANDARD)) {
+            } else if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_STANDARD_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.LOG_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_DEFAULT_TEMPLATE_FILE);
-            } else if (indexType.equals(IndexType.LOG_ANALYTICS_STANDARD)) {
+            } else if (indexType.equals(IndexType.LOG_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.LOGS_STANDARD_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.METRIC_ANALYTICS)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_DEFAULT_TEMPLATE_FILE);
-            } else if (indexType.equals(IndexType.METRIC_ANALYTICS_STANDARD)) {
+            } else if (indexType.equals(IndexType.METRIC_ANALYTICS_PLAIN)) {
                 templateURL = loadExistingTemplate(templateType, IndexConstants.METRICS_STANDARD_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
