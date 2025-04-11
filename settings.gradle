@@ -61,7 +61,7 @@ dependencyResolutionManagement {
             library('commons-io', 'commons-io', 'commons-io').version('2.15.1')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
-            version('parquet', '1.14.1')
+            version('parquet', '1.15.1')
             library('parquet-common', 'org.apache.parquet', 'parquet-common').versionRef('parquet')
             library('parquet-avro', 'org.apache.parquet', 'parquet-avro').versionRef('parquet')
             library('parquet-column', 'org.apache.parquet', 'parquet-column').versionRef('parquet')
