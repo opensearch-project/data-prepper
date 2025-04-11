@@ -55,15 +55,15 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
                 .requestTimeoutMillis(config.getRequestTimeout())
                 .service(GrpcService.builder()
                         .addService(new OTelLogsGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
-                        buffer, pluginMetrics))
+                                buffer, pluginMetrics))
                         .build())
                 .service(GrpcService.builder()
                         .addService(new OTelMetricsGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
-                        metricBuffer  , pluginMetrics))  
+                                metricBuffer, pluginMetrics))
                         .build())
                 .service(GrpcService.builder()
                         .addService(new OTelTraceGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
-                        buffer, pluginMetrics))
+                                buffer, pluginMetrics))
                         .build())
                 .service(GrpcService.builder()
                         .addService(ProtoReflectionService.newInstance())
@@ -75,9 +75,8 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
             final Certificate certificate = certificateProvider.getCertificate();
             serverBuilder.https(config.getPort())
                     .tls(
-                        new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
-                        new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8))
-                    );
+                            new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                            new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
         }
 
         if (config.isHealthCheckServiceEnabled()) {
