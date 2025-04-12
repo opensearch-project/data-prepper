@@ -2,19 +2,28 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.opensearch.dataprepper.plugins.sink.xrayotlp;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.otel.codec.OtlpTraceOutputCodec;
+import org.opensearch.dataprepper.plugins.sink.xrayotlp.configuration.XRayOTLPSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.xrayotlp.http.SigV4Signer;
+import org.opensearch.dataprepper.plugins.sink.xrayotlp.http.XRayOtlpHttpSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Collection;
 
 /**
- * A Data Prepper Sink plugin that forwards traces to AWS X-Ray's OTLP endpoint.
+ * A Data Prepper Sink plugin that forwards spans to AWS X-Ray OTLP endpoint using
+ * OTLP Protobuf encoding and AWS SigV4 authentication.
  */
 @DataPrepperPlugin(
         name = "xray_otlp_sink",
@@ -24,41 +33,58 @@ public class XRayOTLPSink implements Sink<Record<Span>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(XRayOTLPSink.class);
 
+    private final OutputCodec codec;
+    private final XRayOtlpHttpSender httpSender;
+
     /**
-     * Constructs the OTLP X-Ray Sink.
-     * Configuration loading will be added in a later iteration.
+     * Default constructor used by Data Prepper. Initializes codec and HTTP sender
+     * using default ApacheHttpClient and basic configuration.
      */
     public XRayOTLPSink() {
-        // TODO: Inject config or plugin setting.
+        this.codec = new OtlpTraceOutputCodec();
+        final XRayOTLPSinkConfig config = new XRayOTLPSinkConfig(); // TODO: Load real config
+        final SigV4Signer signer = new SigV4Signer(config);
+        this.httpSender = new XRayOtlpHttpSender(signer, ApacheHttpClient.builder().build());
     }
 
     /**
-     * Lifecycle hook invoked during pipeline startup.
-     * Initialize AWS clients or other resources here.
+     * Constructor for unit testing with injected dependencies.
+     *
+     * @param codec      the OutputCodec to encode spans
+     * @param httpSender the HTTP sender to transmit OTLP data
+     */
+    public XRayOTLPSink(final OutputCodec codec, final XRayOtlpHttpSender httpSender) {
+        this.codec = codec;
+        this.httpSender = httpSender;
+    }
+
+    /**
+     * Initializes the sink. Called once during pipeline startup.
      */
     @Override
     public void initialize() {
         // TODO: Initialize AWS X-Ray client
+        LOG.info("Initialized XRay OTLP Sink");
     }
 
     /**
-     * Called each time a batch of records is emitted to the sink.
-     * This method is responsible for handling delivery to AWS X-Ray.
+     * Processes a batch of spans and sends them to the AWS X-Ray OTLP endpoint.
      *
-     * @param records Collection of OTLP log records to process.
+     * @param records a collection of span records
      */
     @Override
     public void output(final Collection<Record<Span>> records) {
-        for (Record<Span> record : records) {
-            final Span span = record.getData();
+        if (records == null || records.isEmpty()) {
+            return;
+        }
 
-            LOG.info("===> Span name: {}", span.getName());
-            LOG.info("===> Trace ID: {}", span.getTraceId());
-            LOG.info("===> Span ID: {}", span.getSpanId());
-            LOG.info("===> Parent ID: {}", span.getParentSpanId());
-            LOG.info("===> Start time (epoch nanos): {}", span.getStartTime());
-            LOG.info("===> End time (epoch nanos): {}", span.getEndTime());
-            LOG.info("===> Attributes: {}", span.getAttributes());
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (final Record<Span> record : records) {
+                codec.writeEvent(record.getData(), out);
+            }
+            httpSender.send(out.toByteArray());
+        } catch (final Exception e) {
+            LOG.error("Failed to process span records", e);
         }
     }
 
@@ -79,6 +105,7 @@ public class XRayOTLPSink implements Sink<Record<Span>> {
     @Override
     public void shutdown() {
         // TODO: Clean up resources
+        httpSender.close();
     }
 
     /**

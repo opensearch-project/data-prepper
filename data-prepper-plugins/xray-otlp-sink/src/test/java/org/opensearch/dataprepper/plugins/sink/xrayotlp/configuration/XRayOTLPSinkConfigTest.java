@@ -9,6 +9,8 @@ import software.amazon.awssdk.regions.Region;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 class XRayOTLPSinkConfigTest {
     @Test
@@ -30,5 +32,19 @@ class XRayOTLPSinkConfigTest {
         assertThat(config.getAwsRegion(), equalTo(Region.of(expectedRegion)));
         assertThat(config.getStsRoleArn(), equalTo(expectedRoleArn));
         assertThat(config.getStsExternalId(), equalTo(expectedExternalId));
+    }
+
+    @Test
+    void testDefaultConstructorAndSetters() {
+        final XRayOTLPSinkConfig config = new XRayOTLPSinkConfig();
+        assertThat(config, notNullValue());
+    }
+
+    @Test
+    void testBuilder_withNullAwsAuthConfig() {
+        XRayOTLPSinkConfig config = XRayOTLPSinkConfig.builder()
+                .awsAuthenticationConfiguration(null)
+                .build();
+        assertThat(config.getAwsAuthenticationConfiguration(), nullValue());
     }
 }

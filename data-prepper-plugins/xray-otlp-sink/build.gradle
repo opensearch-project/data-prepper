@@ -18,11 +18,14 @@ dependencies {
     implementation 'software.amazon.awssdk:auth:2.28.23'
     implementation 'software.amazon.awssdk:sts:2.28.23'
     implementation 'software.amazon.awssdk:regions:2.28.23'
+    implementation("software.amazon.awssdk:http-client-spi")
+    implementation("software.amazon.awssdk:apache-client")
 
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:otel-proto-common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'

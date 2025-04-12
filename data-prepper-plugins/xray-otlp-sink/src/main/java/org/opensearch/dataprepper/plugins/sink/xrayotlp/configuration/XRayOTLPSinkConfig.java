@@ -7,7 +7,10 @@ package org.opensearch.dataprepper.plugins.sink.xrayotlp.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import software.amazon.awssdk.regions.Region;
 
 /**
@@ -18,7 +21,10 @@ import software.amazon.awssdk.regions.Region;
  *
  * @since 2.6
  */
+@Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class XRayOTLPSinkConfig {
     /**
      * AWS configuration for X-Ray access.
