@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.converter;
 
-import com.github.shyiko.mysql.binlog.event.EventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.event.TestEventFactory;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 
 import java.util.List;
 import java.util.Map;
@@ -57,7 +57,7 @@ class StreamRecordConverterTest {
         final String databaseName = UUID.randomUUID().toString();
         final String schemaName = UUID.randomUUID().toString();
         final String tableName = UUID.randomUUID().toString();
-        final EventType eventType = EventType.EXT_WRITE_ROWS;
+        final StreamEventType eventType = StreamEventType.INSERT;
         final OpenSearchBulkActions bulkAction = OpenSearchBulkActions.INDEX;
         final List<String> primaryKeys = List.of("key1");
         final long eventCreateTimeEpochMillis = random.nextLong();
