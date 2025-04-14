@@ -214,7 +214,7 @@ public class RdsService {
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
         Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getDatabase());
         sourceConfig.applyTableFilter(tableNames);
-        LOG.info("These tables will be include in processing: {}", tableNames);
+        LOG.info("These tables will be included in processing: {}", tableNames);
         return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
 }

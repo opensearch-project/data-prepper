@@ -209,6 +209,10 @@ public class RdsSourceConfig {
      * @param tableNames        The set of table names to be filtered
      */
     public void applyTableFilter(Set<String> tableNames) {
+        if (tableFilterConfig == null) {
+            return;
+        }
+
         if (!tableFilterConfig.getInclude().isEmpty()) {
             List<String> includeTableList = tableFilterConfig.getInclude().stream()
                     .map(item -> getDatabase() + "." + item)
