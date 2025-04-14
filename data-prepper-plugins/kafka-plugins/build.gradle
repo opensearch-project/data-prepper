@@ -29,6 +29,7 @@ dependencies {
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:otel-proto-common')
     // bump io.confluent:* dependencies correspondingly when bumping org.apache.kafka.*
     // https://docs.confluent.io/platform/current/release-notes/index.html
     implementation 'org.apache.kafka:kafka-clients:3.6.1'
@@ -67,12 +68,14 @@ dependencies {
     testImplementation 'org.apache.curator:curator-test:5.7.1'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
-    testImplementation project(':data-prepper-plugins:otel-proto-common')
     testImplementation libs.opentelemetry.proto
     testImplementation libs.protobuf.util
     testImplementation libs.commons.io
     testImplementation libs.armeria.grpc
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
+    implementation libs.opentelemetry.proto
+    implementation libs.protobuf.util
 
     integrationTestImplementation testLibs.junit.vintage
     integrationTestImplementation 'io.confluent:kafka-schema-registry:7.6.0'
