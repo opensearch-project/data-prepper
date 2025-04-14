@@ -35,7 +35,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.parcer.KafkaOtelJsonTraceParser;
+import org.opensearch.dataprepper.plugins.kafka.parser.KafkaOtelJsonTraceParser;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;

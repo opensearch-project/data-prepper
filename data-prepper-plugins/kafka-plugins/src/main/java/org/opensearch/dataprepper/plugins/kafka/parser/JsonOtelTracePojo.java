@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.kafka.parcer;
+package org.opensearch.dataprepper.plugins.kafka.parser;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

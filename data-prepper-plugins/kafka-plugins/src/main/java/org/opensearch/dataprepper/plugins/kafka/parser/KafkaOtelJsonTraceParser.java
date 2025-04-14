@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.kafka.parcer;
+package org.opensearch.dataprepper.plugins.kafka.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.event.Event;
@@ -22,6 +22,7 @@ public class KafkaOtelJsonTraceParser {
     static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
     static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
     static final String INSTRUMENTATION_SCOPE_ATTRIBUTES = "instrumentationScope.attributes";
+    ObjectMapper objectMapper = new ObjectMapper();
 
     public List<Span> parse(String inputJson, Instant receivedTimeStamp, Consumer<Record<Event>> eventConsumer) throws IOException {
 
@@ -34,8 +35,6 @@ public class KafkaOtelJsonTraceParser {
     }
 
     private List<Span> parseSpans(String inputJson, Instant receivedTimeStamp) throws IOException {
-
-        ObjectMapper objectMapper = new ObjectMapper();
         JsonOtelTracePojo otelTracePojo = objectMapper.readValue(inputJson, JsonOtelTracePojo.class);
 
         String serviceName = readServiceName(otelTracePojo);
