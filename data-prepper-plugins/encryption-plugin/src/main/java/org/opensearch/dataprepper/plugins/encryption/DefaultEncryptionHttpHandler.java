@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.encryption;
 
 import com.sun.net.httpserver.HttpExchange;
-import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

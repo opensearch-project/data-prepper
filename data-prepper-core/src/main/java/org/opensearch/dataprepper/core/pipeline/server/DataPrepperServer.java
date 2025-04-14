@@ -10,7 +10,7 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionHttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

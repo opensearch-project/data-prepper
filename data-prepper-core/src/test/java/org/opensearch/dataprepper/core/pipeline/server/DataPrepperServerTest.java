@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionHttpHandler;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;

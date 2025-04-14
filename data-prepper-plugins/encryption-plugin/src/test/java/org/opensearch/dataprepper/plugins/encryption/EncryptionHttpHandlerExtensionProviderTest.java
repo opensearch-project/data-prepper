@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.encryption.EncryptionHttpHandler;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;

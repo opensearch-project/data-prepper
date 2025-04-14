@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-plugins {
-    id("java")
-}
-
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
     implementation project(':data-prepper-api')
@@ -23,10 +19,4 @@ dependencies {
     implementation libs.commons.io
     implementation libs.caffeine
     implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-}
-
-test {
-    useJUnitPlatform()
 }
