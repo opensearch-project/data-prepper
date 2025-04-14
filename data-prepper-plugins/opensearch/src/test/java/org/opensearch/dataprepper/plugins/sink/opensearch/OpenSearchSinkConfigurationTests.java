@@ -50,7 +50,7 @@ public class OpenSearchSinkConfigurationTests {
         OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTION_CONFIG));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidActions() throws IOException {
         OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTIONS_CONFIG));
 
@@ -63,7 +63,7 @@ public class OpenSearchSinkConfigurationTests {
         OpenSearchSinkConfiguration.readOSConfig(generateOpenSearchSinkConfig(INVALID_ACTION_WITH_EXPRESSION_CONFIG), expressionEvaluator);
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidActionsWithExpression() throws IOException {
         expressionEvaluator = mock(ExpressionEvaluator.class);
         when(expressionEvaluator.isValidExpressionStatement(anyString())).thenReturn(false);

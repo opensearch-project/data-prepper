@@ -23,8 +23,8 @@ import java.time.Instant;
 
 public class OTelTraceDecoder implements ByteDecoder {
     private final OTelProtoCodec.OTelProtoDecoder otelProtoDecoder;
-    public OTelTraceDecoder() {
-        otelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+    public OTelTraceDecoder(OTelOutputFormat otelOutputFormat) {
+        otelProtoDecoder = otelOutputFormat == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder();
     }
     public void parse(InputStream inputStream, Instant timeReceivedMs, Consumer<Record<Event>> eventConsumer) throws IOException {
         ExportTraceServiceRequest request = ExportTraceServiceRequest.parseFrom(inputStream);

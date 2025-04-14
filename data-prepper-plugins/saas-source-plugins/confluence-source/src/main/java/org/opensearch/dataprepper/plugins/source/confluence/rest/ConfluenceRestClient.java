@@ -45,24 +45,24 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
     public static final String LIMIT_PARAM = "limit";
+    static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
     private static final String PAGE_FETCH_LATENCY_TIMER = "pageFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
     private static final String PAGES_REQUESTED = "pagesRequested";
     private static final String PAGE_REQUESTS_FAILED = "pageRequestsFailed";
     private static final String PAGE_REQUESTS_SUCCESS = "pageRequestsSuccess";
-    private static final String SEARCH_REQUESTS_FAILED = "searchRequestsFailed";
+    final Counter pageRequestsFailedCounter;
+    private final Counter searchRequestsFailedCounter;
     private final RestTemplate restTemplate;
     private final AtlassianAuthConfig authConfig;
     private final Timer contentFetchLatencyTimer;
     private final Timer searchCallLatencyTimer;
     private final Counter contentRequestedCounter;
-    private final Counter pageRequestsFailedCounter;
     private final Counter pageRequestsSuccessCounter;
-    private final Counter searchRequestsFailedCounter;
 
     public ConfluenceRestClient(RestTemplate restTemplate, AtlassianAuthConfig authConfig,
                                 PluginMetrics pluginMetrics) {
-        super(restTemplate, authConfig);
+        super(restTemplate, authConfig, pluginMetrics);
         this.restTemplate = restTemplate;
         this.authConfig = authConfig;
 

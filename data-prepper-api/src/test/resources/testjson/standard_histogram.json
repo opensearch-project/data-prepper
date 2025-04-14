@@ -1,0 +1,41 @@
+{
+  "kind": "HISTOGRAM",
+  "buckets": [
+    {
+      "min": 0.0,
+      "max": 5.0,
+      "count": 2
+    },
+    {
+      "min": 5.0,
+      "max": 10.0,
+      "count": 5
+    }
+  ],
+  "count": 2,
+  "bucketCountsList": [
+    1,
+    2,
+    3
+  ],
+  "description": "description",
+  "sum": 1.0,
+  "serviceName": "service",
+  "schemaUrl": "schema",
+  "unit": "unit",
+  "aggregationTemporality": "AGGREGATIONTEMPORALITY",
+  "bucketCounts": 2,
+  "name": "name",
+  "startTime": "%s",
+  "explicitBoundsCount": 2,
+  "time": "%s",
+  "explicitBounds": [
+    5.0,
+    10.0,
+    100.0
+  ],
+  "attributes": {
+      "key1": %s,
+      "key2": "%s"
+  }
+}

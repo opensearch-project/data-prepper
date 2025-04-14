@@ -38,41 +38,44 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonExponentialHistogramTest {
 
-    private static final Long TEST_KEY1_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+    protected static final Long TEST_KEY1_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
             LocalDateTime.of(2020, 5, 24, 14, 0, 0),
             ZoneOffset.UTC).toInstant().toEpochMilli());
 
-    private static final String TEST_KEY2 = UUID.randomUUID().toString();
+    protected static final String TEST_KEY2 = UUID.randomUUID().toString();
 
-    private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
+    protected static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", TEST_KEY1_TIME,
             "key2", TEST_KEY2);
-    private static final String TEST_SERVICE_NAME = "service";
-    private static final String TEST_NAME = "name";
-    private static final String TEST_DESCRIPTION = "description";
-    private static final String TEST_UNIT_NAME = "unit";
-    private static final String TEST_START_TIME = UUID.randomUUID().toString();
-    private static final String TEST_TIME = UUID.randomUUID().toString();
-    private static final String TEST_EVENT_KIND = Metric.KIND.EXPONENTIAL_HISTOGRAM.name();
-    private static final Double TEST_SUM = 1D;
-    private static final List<Bucket> TEST_POSITIVE_BUCKETS = Arrays.asList(
+    protected static final String TEST_SERVICE_NAME = "service";
+    protected static final String TEST_NAME = "name";
+    protected static final String TEST_DESCRIPTION = "description";
+    protected static final String TEST_UNIT_NAME = "unit";
+    protected static final String TEST_START_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_EVENT_KIND = Metric.KIND.EXPONENTIAL_HISTOGRAM.name();
+    protected static final Double TEST_SUM = 1D;
+    protected static final List<Bucket> TEST_POSITIVE_BUCKETS = Arrays.asList(
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
 
-    private static final List<Bucket> TEST_NEGATIVE_BUCKETS = Arrays.asList(
+    protected static final List<Bucket> TEST_NEGATIVE_BUCKETS = Arrays.asList(
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
-    private static final List<Long> TEST_NEGATIVE = Arrays.asList(1L, 2L, 3L);
-    private static final List<Long> TEST_POSITIVE = Arrays.asList(4L, 5L);
-    private static final Long TEST_COUNT = 2L;
-    private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
-    private static final String TEST_SCHEMA_URL = "schema";
-    private static final Integer TEST_SCALE = -3;
-    private static final Long TEST_ZERO_COUNT = 1L;
-    private static final Integer TEST_NEGATIVE_OFFSET = 2;
-    private static final Integer TEST_POSITIVE_OFFSET = 5;
+    protected static final List<Long> TEST_NEGATIVE = Arrays.asList(1L, 2L, 3L);
+    protected static final List<Long> TEST_POSITIVE = Arrays.asList(4L, 5L);
+    protected static final Long TEST_COUNT = 2L;
+    protected static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
+    protected static final String TEST_SCHEMA_URL = "schema";
+    protected static final Integer TEST_SCALE = -3;
+    protected static final Long TEST_ZERO_COUNT = 1L;
+    protected static final Double TEST_ZERO_THRESHOLD = 0.1d;
+    protected static final Double TEST_MIN = 10d;
+    protected static final Double TEST_MAX = 100d;
+    protected static final Integer TEST_NEGATIVE_OFFSET = 2;
+    protected static final Integer TEST_POSITIVE_OFFSET = 5;
 
     private JacksonExponentialHistogram histogram;
 
@@ -97,6 +100,9 @@ public class JacksonExponentialHistogramTest {
                 .withSchemaUrl(TEST_SCHEMA_URL)
                 .withScale(TEST_SCALE)
                 .withZeroCount(TEST_ZERO_COUNT)
+                .withZeroThreshold(TEST_ZERO_THRESHOLD)
+                .withMin(TEST_MIN)
+                .withMax(TEST_MAX)
                 .withPositiveOffset(TEST_POSITIVE_OFFSET)
                 .withNegativeOffset(TEST_NEGATIVE_OFFSET)
                 .withNegative(TEST_NEGATIVE)
@@ -173,6 +179,24 @@ public class JacksonExponentialHistogramTest {
     public void testGetScale() {
         Integer scale = histogram.getScale();
         assertThat(scale, is(equalTo(TEST_SCALE)));
+    }
+
+    @Test
+    public void testGetMin() {
+        Double min = histogram.getMin();
+        assertThat(min, is(equalTo(TEST_MIN)));
+    }
+
+    @Test
+    public void testGetMax() {
+        Double max = histogram.getMax();
+        assertThat(max, is(equalTo(TEST_MAX)));
+    }
+
+    @Test
+    public void testZeroThreshold() {
+        Double zeroThreshold = histogram.getZeroThreshold();
+        assertThat(zeroThreshold, is(equalTo(TEST_ZERO_THRESHOLD)));
     }
 
     @Test
@@ -278,7 +302,7 @@ public class JacksonExponentialHistogramTest {
     }
 
     @Test
-    public void testHistogramToJsonString() throws JSONException {
+    public void testHistogramToJsonString() throws Exception {
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));

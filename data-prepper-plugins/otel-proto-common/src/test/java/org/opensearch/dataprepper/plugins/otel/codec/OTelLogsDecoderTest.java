@@ -25,8 +25,8 @@ import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 public class OTelLogsDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
     
-    public OTelLogsDecoder createObjectUnderTest() {
-        return new OTelLogsDecoder();
+    public OTelLogsDecoder createObjectUnderTest(OTelOutputFormat outputFormat) {
+        return new OTelLogsDecoder(outputFormat);
     }
 
     private String getFileAsJsonString(String requestJsonFileName) throws IOException {
@@ -66,7 +66,7 @@ public class OTelLogsDecoderTest {
     public void testParse() throws Exception {
         final ExportLogsServiceRequest request = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_FILE);
         InputStream inputStream = new ByteArrayInputStream((byte[])request.toByteArray());
-        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH).parse(inputStream, Instant.now(), (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
         

@@ -32,24 +32,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonSummaryTest {
 
-    private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
+    protected static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", new Date().getTime(),
             "key2", UUID.randomUUID().toString());
-    private static final String TEST_SERVICE_NAME = "service";
-    private static final String TEST_NAME = "name";
-    private static final String TEST_DESCRIPTION = "description";
-    private static final String TEST_UNIT_NAME = "unit";
-    private static final String TEST_START_TIME = UUID.randomUUID().toString();
-    private static final String TEST_TIME = UUID.randomUUID().toString();
-    private static final String TEST_EVENT_KIND = Metric.KIND.SUMMARY.name();
-    private static final Double TEST_SUM = 1D;
-    private static final List<Quantile> TEST_QUANTILES = Arrays.asList(
+    protected static final String TEST_SERVICE_NAME = "service";
+    protected static final String TEST_NAME = "name";
+    protected static final String TEST_DESCRIPTION = "description";
+    protected static final String TEST_UNIT_NAME = "unit";
+    protected static final String TEST_START_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_EVENT_KIND = Metric.KIND.SUMMARY.name();
+    protected static final Double TEST_SUM = 1D;
+    protected static final List<Quantile> TEST_QUANTILES = Arrays.asList(
             new DefaultQuantile(0.4, 0.5),
             new DefaultQuantile(0.2, 0.6)
     );
-    private static final Integer TEST_QUANTILES_COUNT = 2;
-    private static final Long TEST_COUNT = 2L;
-    private static final String TEST_SCHEMA_URL = "schema";
+    protected static final Integer TEST_QUANTILES_COUNT = 2;
+    protected static final Long TEST_COUNT = 2L;
+    protected static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonSummary summary;
 

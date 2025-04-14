@@ -16,8 +16,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class OTelLogsJsonDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-request-multiple-logs.json";
     
-    public OTelLogsJsonDecoder createObjectUnderTest() {
-        return new OTelLogsJsonDecoder();
+    public OTelLogsJsonDecoder createObjectUnderTest(OTelOutputFormat outputFormat) {
+        return new OTelLogsJsonDecoder(outputFormat);
     }
 
     private void validateLog(OpenTelemetryLog logRecord) {
@@ -40,7 +40,7 @@ public class OTelLogsJsonDecoderTest {
     @Test
     public void testParse() throws Exception {
         InputStream inputStream = OTelLogsJsonDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
-        createObjectUnderTest().parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH).parse(inputStream, Instant.now(), (record) -> {
             validateLog((OpenTelemetryLog)record.getData());
         });
         

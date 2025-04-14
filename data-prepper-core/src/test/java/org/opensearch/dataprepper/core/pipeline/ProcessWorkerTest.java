@@ -31,7 +31,6 @@ public class ProcessWorkerTest {
     @Mock
     private Buffer buffer;
 
-    @Mock
     private PipelineRunnerImpl pipelineRunner;
 
     private List<Processor> processors;
@@ -44,27 +43,22 @@ public class ProcessWorkerTest {
     }
 
     private ProcessWorker createObjectUnderTest() {
-        return createObjectUnderTest(true);
-    }
-
-    private ProcessWorker createObjectUnderTest(boolean withPipelineRunner) {
-        if (withPipelineRunner) {
-            when(pipeline.getProcessors()).thenReturn(processors);
-            when(pipeline.getBuffer()).thenReturn(buffer);
-            when(pipelineRunner.getPipeline()).thenReturn(pipeline);
-            return new ProcessWorker(pipelineRunner);
+        try(final MockedConstruction<PipelineRunnerImpl> ignored = mockConstruction(PipelineRunnerImpl.class, (mock, context) -> {
+            pipelineRunner = mock;
+        })) {
+            return new ProcessWorker(buffer, processors, pipeline);
         }
-        return new ProcessWorker(buffer, processors, pipeline);
     }
 
     @Test
     void testProcessWorkerHappyPath() {
         when(processor.isReadyForShutdown()).thenReturn(true);
-        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
         processors = List.of(processor);
 
-       final ProcessWorker processWorker = createObjectUnderTest();
-       processWorker.run();
+        final ProcessWorker processWorker = createObjectUnderTest();
+        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
+
+        processWorker.run();
 
         verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();
     }
@@ -74,15 +68,10 @@ public class ProcessWorkerTest {
         when(processor.isReadyForShutdown()).thenReturn(true);
         processors = List.of(processor);
 
-        try (MockedConstruction<PipelineRunnerImpl> pipelineRunnerMockedConstruction = mockConstruction(PipelineRunnerImpl.class,
-                (mock, context) -> doNothing().when(mock).runAllProcessorsAndPublishToSinks())) {
-            final ProcessWorker processWorker = createObjectUnderTest(false);
-            processWorker.run();
+        final ProcessWorker processWorker = createObjectUnderTest();
+        processWorker.run();
 
-            pipelineRunnerMockedConstruction.constructed().forEach(pipelineRunner -> {
-                verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();
-            });
-        }
+        verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();
     }
 
     @Test
@@ -92,9 +81,11 @@ public class ProcessWorkerTest {
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(1));
         when(buffer.isEmpty()).thenReturn(true);
         when(processor.isReadyForShutdown()).thenReturn(true);
-        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
 
         final ProcessWorker processWorker = createObjectUnderTest();
+
+        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
+
         processWorker.run();
 
         verify(processor, atLeastOnce()).prepareForShutdown();
@@ -108,9 +99,10 @@ public class ProcessWorkerTest {
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(1));
         when(buffer.isEmpty()).thenReturn(false, true);
         when(processor.isReadyForShutdown()).thenReturn(true);
-        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
 
         final ProcessWorker processWorker = createObjectUnderTest();
+
+        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
         processWorker.run();
 
         // Verify multiple invocations due to the wait loop in shutdown phase 2.
@@ -125,9 +117,10 @@ public class ProcessWorkerTest {
         when(buffer.isEmpty()).thenReturn(false);
         when(pipeline.isForceStopReadingBuffers()).thenReturn(true);
         when(processor.isReadyForShutdown()).thenReturn(true);
-        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
 
         final ProcessWorker processWorker = createObjectUnderTest();
+
+        doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
         processWorker.run();
 
         verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();

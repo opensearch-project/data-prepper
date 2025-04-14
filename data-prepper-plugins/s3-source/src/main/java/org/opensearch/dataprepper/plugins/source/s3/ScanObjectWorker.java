@@ -16,6 +16,10 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionN
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanSchedulingOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanBucketOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.s3.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,6 +101,7 @@ public class ScanObjectWorker implements Runnable {
     private final Map<String, Set<DeleteObjectRequest>> objectsToDeleteForAcknowledgmentSets;
 
     private final Map<String, AtomicInteger> acknowledgmentsRemainingForPartitions;
+    private final Map<String, Map<String, S3DataSelection>> bucketDataSelectionMap;
 
     private final Duration acknowledgmentSetTimeout;
 
@@ -116,6 +122,27 @@ public class ScanObjectWorker implements Runnable {
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
+        this.bucketDataSelectionMap = new HashMap<>();
+        if (s3SourceConfig.getS3ScanScanOptions().getBuckets() != null) {
+            for (S3ScanBucketOptions bucketOption: s3SourceConfig.getS3ScanScanOptions().getBuckets()) {
+                S3ScanBucketOption s3ScanBucketOption = bucketOption.getS3ScanBucketOption();
+                if (s3ScanBucketOption != null) {
+                    final String bucketName = s3ScanBucketOption.getName();
+                    Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.containsKey(bucketName) ?
+                                                     bucketDataSelectionMap.get(bucketName) :
+                                                     new HashMap<>();
+
+                    S3ScanKeyPathOption scanFilter = s3ScanBucketOption.getS3ScanFilter();
+                    S3DataSelection dataSelection = s3ScanBucketOption.getDataSelection();
+                    if (scanFilter != null && scanFilter.getS3scanIncludePrefixOptions() != null) {
+                        for (final String prefix : scanFilter.getS3scanIncludePrefixOptions()) {
+                            prefixMap.put(prefix, dataSelection == null ? S3DataSelection.DATA_AND_METADATA : dataSelection);
+                        }
+                        bucketDataSelectionMap.put(bucketName, prefixMap);
+                    }
+                }
+            }
+        }
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.deleteS3ObjectsOnRead = s3SourceConfig.isDeleteS3ObjectsOnRead();
@@ -173,7 +200,6 @@ public class ScanObjectWorker implements Runnable {
 
     private void startProcessingObject(final long waitTimeMillis) {
         final Optional<SourcePartition<S3SourceProgressState>> objectToProcess = sourceCoordinator.getNextPartition(partitionCreationSupplier, folderPartitioningOptions != null);
-
         if (objectToProcess.isEmpty()) {
             try {
                 Thread.sleep(waitTimeMillis);
@@ -234,7 +260,9 @@ public class ScanObjectWorker implements Runnable {
                 acknowledgementSet.complete();
             } else {
                 sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
-                deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
+                if (s3ObjectDeleteWorker != null) {
+                    deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
+                }
                 partitionKeys.remove(objectToProcess.get().getPartitionKey());
             }
         } catch (final NoSuchKeyException e) {
@@ -251,13 +279,24 @@ public class ScanObjectWorker implements Runnable {
                                                           final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
-            s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
-            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled) {
+            Map<String, S3DataSelection> prefixMap = bucketDataSelectionMap.get(s3ObjectReference.getBucketName());
+            S3DataSelection dataSelection = S3DataSelection.DATA_AND_METADATA;
+            final String objectKey = s3ObjectReference.getKey();
+            if (prefixMap != null) {
+                for (Map.Entry<String, S3DataSelection> entry : prefixMap.entrySet()) {
+                    if (objectKey.startsWith(entry.getKey())) {
+                        dataSelection = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            s3ObjectHandler.processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
+            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled && s3ObjectDeleteWorker != null) {
                 final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
                 return Optional.of(deleteObjectRequest);
             }
         } catch (final IOException ex) {
-            LOG.error("Error while process the parseS3Object. ",ex);
+            LOG.error("Error while process the processS3Object. ",ex);
         }
         return Optional.empty();
     }
@@ -333,6 +372,7 @@ public class ScanObjectWorker implements Runnable {
 
         return false;
     }
+
 
     private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
                                                   final SourcePartition<S3SourceProgressState> folderPartition) {

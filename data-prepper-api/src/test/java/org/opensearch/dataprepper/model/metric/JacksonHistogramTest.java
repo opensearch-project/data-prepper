@@ -35,33 +35,33 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JacksonHistogramTest {
 
-    private static final Long TEST_KEY1_TIME = new Date().getTime();
-    private static final String TEST_KEY2 = UUID.randomUUID().toString();
-    private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
+    protected static final Long TEST_KEY1_TIME = new Date().getTime();
+    protected static final String TEST_KEY2 = UUID.randomUUID().toString();
+    protected static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", TEST_KEY1_TIME,
             "key2", TEST_KEY2);
-    private static final String TEST_SERVICE_NAME = "service";
-    private static final String TEST_NAME = "name";
-    private static final String TEST_DESCRIPTION = "description";
-    private static final String TEST_UNIT_NAME = "unit";
-    private static final String TEST_START_TIME = UUID.randomUUID().toString();
-    private static final String TEST_TIME = UUID.randomUUID().toString();
-    private static final String TEST_EVENT_KIND = Metric.KIND.HISTOGRAM.name();
-    private static final Double TEST_SUM = 1D;
-    private static final Double TEST_MIN = 0.5D;
-    private static final Double TEST_MAX = 50.5D;
-    private static final List<Bucket> TEST_BUCKETS = Arrays.asList(
+    protected static final String TEST_SERVICE_NAME = "service";
+    protected static final String TEST_NAME = "name";
+    protected static final String TEST_DESCRIPTION = "description";
+    protected static final String TEST_UNIT_NAME = "unit";
+    protected static final String TEST_START_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_TIME = UUID.randomUUID().toString();
+    protected static final String TEST_EVENT_KIND = Metric.KIND.HISTOGRAM.name();
+    protected static final Double TEST_SUM = 1D;
+    protected static final Double TEST_MIN = 0.5D;
+    protected static final Double TEST_MAX = 50.5D;
+    protected static final List<Bucket> TEST_BUCKETS = Arrays.asList(
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
 
-    private static final List<Long> TEST_BUCKET_COUNTS_LIST = Arrays.asList(1L, 2L, 3L);
-    private static final List<Double> TEST_EXPLICIT_BOUNDS_LIST = Arrays.asList(5D, 10D, 100D);
-    private static final Integer TEST_BUCKETS_COUNT = 2;
-    private static final Long TEST_COUNT = 2L;
-    private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
-    private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
-    private static final String TEST_SCHEMA_URL = "schema";
+    protected static final List<Long> TEST_BUCKET_COUNTS_LIST = Arrays.asList(1L, 2L, 3L);
+    protected static final List<Double> TEST_EXPLICIT_BOUNDS_LIST = Arrays.asList(5D, 10D, 100D);
+    protected static final Integer TEST_BUCKETS_COUNT = 2;
+    protected static final Long TEST_COUNT = 2L;
+    protected static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
+    protected static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
+    protected static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonHistogram histogram;
 
@@ -246,7 +246,7 @@ class JacksonHistogramTest {
     }
 
     @Test
-    public void testHistogramToJsonString() throws JSONException {
+    public void testHistogramToJsonString() throws Exception {
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));

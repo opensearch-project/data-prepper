@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
-import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
-import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
@@ -230,9 +228,10 @@ public class PipelineTransformer {
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
 
-            if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
-                ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline));
-            }
+            // TODO: Re-enable zero-buffer
+            //if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+            //    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline, processors));
+            //}
 
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {

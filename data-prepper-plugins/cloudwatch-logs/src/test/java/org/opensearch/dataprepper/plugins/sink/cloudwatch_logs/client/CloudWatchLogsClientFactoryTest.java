@@ -19,12 +19,16 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
+
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mockStatic;
@@ -34,20 +38,39 @@ class CloudWatchLogsClientFactoryTest {
     private AwsConfig mockAwsConfig;
     private AwsCredentialsSupplier mockAwsCredentialsSupplier;
     private AwsCredentialsOptions mockAwsCredentialsOptions;
+    private AwsCredentialsProvider mockAwsCredentialsProvider;
 
     @BeforeEach
     void setUp() {
         mockAwsConfig = mock(AwsConfig.class);
         mockAwsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         mockAwsCredentialsOptions = mock(AwsCredentialsOptions.class);
+        mockAwsCredentialsProvider = mock(AwsCredentialsProvider.class);
         when(mockAwsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        when(mockAwsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.US_EAST_1));
     }
 
     @Test
     void GIVEN_default_credentials_SHOULD_return_non_null_client() {
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
         final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
 
         assertNotNull(cloudWatchLogsClientToTest);
+    }
+
+    @Test
+    void GIVEN_default_credentials_with_no_provider_SHOULD_return_null_client() {
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+
+        assertNull(cloudWatchLogsClientToTest);
+    }
+
+    @Test
+    void GIVEN_default_credentials_with_no_region_SHOULD_return_null_client() {
+        when(mockAwsConfig.getAwsRegion()).thenReturn(null);
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+
+        assertNull(cloudWatchLogsClientToTest);
     }
 
     @Test

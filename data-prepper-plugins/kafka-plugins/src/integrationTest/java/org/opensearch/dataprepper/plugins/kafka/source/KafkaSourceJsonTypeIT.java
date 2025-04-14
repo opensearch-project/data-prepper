@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -95,6 +96,9 @@ public class KafkaSourceJsonTypeIT {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     private KafkaSource kafkaSource;
 
     private Counter counter;
@@ -111,7 +115,8 @@ public class KafkaSourceJsonTypeIT {
     private byte[] headerValue2;
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier, pluginConfigObservable);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
+                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier);
     }
 
     @BeforeEach
@@ -125,6 +130,7 @@ public class KafkaSourceJsonTypeIT {
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
         encryptionConfig = mock(EncryptionConfig.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         receivedRecords = new ArrayList<>();
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);

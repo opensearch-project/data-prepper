@@ -31,6 +31,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.27.0'
     testImplementation testLibs.slf4j.simple
     testImplementation libs.commons.io
+    testImplementation 'org.skyscreamer:jsonassert:1.5.3'
 }
 
 jacocoTestCoverageVerification {

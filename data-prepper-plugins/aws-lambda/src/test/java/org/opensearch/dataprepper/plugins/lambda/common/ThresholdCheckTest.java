@@ -55,6 +55,7 @@ class ThresholdCheckTest {
     void testTimeoutExceededTrue() {
         // Simulate a buffer that has been open for 6 minutes (exceeding the 5-minute limit)
         when(buffer.getDuration()).thenReturn(Duration.ofMinutes(6));
+        when(buffer.getEventCount()).thenReturn(1);
         assertTrue(ThresholdCheck.checkTimeoutExceeded(buffer, maxCollectionDuration),
                 "Expected timeout threshold to be exceeded.");
     }
@@ -63,6 +64,7 @@ class ThresholdCheckTest {
     void testTimeoutExceededFalse() {
         // Simulate a buffer that has been open for 4 minutes (within the limit)
         when(buffer.getDuration()).thenReturn(Duration.ofMinutes(4));
+        when(buffer.getEventCount()).thenReturn(1);
         assertFalse(ThresholdCheck.checkTimeoutExceeded(buffer, maxCollectionDuration),
                 "Expected timeout threshold to NOT be exceeded.");
     }
@@ -71,6 +73,7 @@ class ThresholdCheckTest {
     @Test
     void testSizeThresholdExceedTrue() {
         long maxBytesValue = maxBytes.getBytes();
+        when(buffer.getEventCount()).thenReturn(1);
         when(buffer.getSize()).thenReturn(maxBytesValue - 1);
         // The record's estimated size is 2 bytes (from "{}").
         // So, adding the record yields: (maxBytes - 1) + 2 = maxBytes + 1 (exceeds limit).

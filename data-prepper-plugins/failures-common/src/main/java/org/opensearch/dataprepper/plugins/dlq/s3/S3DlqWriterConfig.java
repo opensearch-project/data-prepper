@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.opensearch.dataprepper.aws.validator.AwsAccountId;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
@@ -60,6 +61,10 @@ public class S3DlqWriterConfig {
     @JsonProperty("sts_header_overrides")
     private Map<String, String> stsHeaderOverrides;
 
+    @JsonProperty("bucket_owner")
+    @AwsAccountId
+    private String bucketOwner;
+
     public String getBucket() {
         if (bucket.startsWith(S3_PREFIX)) {
             return bucket.substring(S3_PREFIX.length());
@@ -74,6 +79,8 @@ public class S3DlqWriterConfig {
     public Region getRegion() {
         return Region.of(region);
     }
+
+    public String getBucketOwner() { return bucketOwner; }
 
     private AwsCredentialsProvider getAwsCredentialsProvider() {
 

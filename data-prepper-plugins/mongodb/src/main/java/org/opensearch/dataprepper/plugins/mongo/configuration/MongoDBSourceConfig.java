@@ -57,7 +57,6 @@ public class MongoDBSourceConfig {
     private Boolean directConnection;
 
     @JsonProperty("aws")
-    @NotNull
     @Valid
     private AwsConfig awsConfig;
 

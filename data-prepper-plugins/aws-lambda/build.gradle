@@ -12,8 +12,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'software.amazon.awssdk:lambda:2.17.99'
-    implementation 'software.amazon.awssdk:sdk-core:2.x.x'
+    implementation 'software.amazon.awssdk:lambda'
+    implementation 'software.amazon.awssdk:sdk-core'
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'software.amazon.awssdk:sts'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
@@ -29,9 +29,6 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation project(':data-prepper-test-common')
     testImplementation testLibs.slf4j.simple
-    testImplementation 'org.mockito:mockito-core:4.6.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
 test {

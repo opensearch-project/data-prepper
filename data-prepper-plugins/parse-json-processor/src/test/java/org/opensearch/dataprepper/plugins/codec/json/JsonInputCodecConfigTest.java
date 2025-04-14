@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.codec.json;
 
 import org.junit.jupiter.api.Test;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class JsonInputCodecConfigTest {
@@ -21,5 +23,6 @@ public class JsonInputCodecConfigTest {
         assertNull(jsonInputCodecConfig.getKeyName());
         assertNull(jsonInputCodecConfig.getIncludeKeys());
         assertNull(jsonInputCodecConfig.getIncludeKeysMetadata());
+        assertThat(jsonInputCodecConfig.getMaxEventLength(), equalTo(null));
     }
 }

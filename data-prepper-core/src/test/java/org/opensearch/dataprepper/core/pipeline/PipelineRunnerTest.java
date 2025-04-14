@@ -85,13 +85,19 @@ class PipelineRunnerTest {
     EventHandle eventHandle;
     @Mock
     DefaultEventHandle defaultEventHandle;
+    private List<Processor> processors;
 
     private void setupPipeline(boolean shouldEnableAcknowledgements) {
         lenient().when(pipeline.areAcknowledgementsEnabled()).thenReturn(shouldEnableAcknowledgements);
     }
 
     private PipelineRunnerImpl createObjectUnderTest() {
-        return new PipelineRunnerImpl(pipeline);
+        return new PipelineRunnerImpl(pipeline, processors);
+    }
+
+    @BeforeEach
+    void setUp() {
+        processors = List.of(processor);
     }
 
     @Nested
@@ -268,7 +274,7 @@ class PipelineRunnerTest {
 
             when(processor.holdsEvents()).thenReturn(false);
             when(processor.execute(records)).thenReturn(List.of());
-            List<Processor> processors = List.of(processor);
+
 
             final PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
             pipelineRunner.runProcessorsAndProcessAcknowledgements(processors, records);
@@ -370,7 +376,6 @@ class PipelineRunnerTest {
             setupPipeline(true);
             // Set up additional pipeline behavior
             when(pipeline.getBuffer()).thenReturn(buffer);
-            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
@@ -397,7 +402,6 @@ class PipelineRunnerTest {
             when(pipeline.getBuffer()).thenReturn(buffer);
             when(pipeline.getReadBatchTimeoutInMillis()).thenReturn(BUFFER_READ_TIMEOUT_MILLIS);
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
-            when(pipeline.getProcessors()).thenReturn(List.of(processor));
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
 
