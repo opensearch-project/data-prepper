@@ -24,7 +24,7 @@ import java.io.OutputStream;
  * into OpenTelemetry Protocol (OTLP) binary format using protobuf.
  * <p>
  * This codec is primarily intended for use with trace data that will be
- * forwarded to systems such as AWS X-Ray via OTLP.
+ * forwarded to OTLP endpoint.
  */
 @DataPrepperPlugin(name = "otlp_trace", pluginType = OutputCodec.class)
 public class OtlpTraceOutputCodec implements OutputCodec {
@@ -49,8 +49,17 @@ public class OtlpTraceOutputCodec implements OutputCodec {
     /**
      * Writes a single {@link Span} event to the output stream in OTLP binary format.
      *
+     * <p>This method throws a {@link RuntimeException} (e.g., wrapping {@link DecoderException})
+     * if the span is malformed or cannot be encoded. This allows upstream components (such as Sink plugins)
+     * to track and report failed span encoding attempts via plugin metrics or perform custom error handling.
+     *
+     * <p>Failing fast here instead of silently logging ensures invalid spans are not silently dropped and
+     * gives pipeline developers better visibility into pipeline health and data loss.
+     *
      * @param event The event to encode. Must be of type {@link Span}.
      * @param outputStream The stream to which the encoded bytes will be written.
+     * @throws IllegalArgumentException If the event is not a {@link Span}.
+     * @throws RuntimeException If encoding the span fails.
      */
     @Override
     public void writeEvent(@NonNull final Event event, @NonNull final OutputStream outputStream) {
@@ -68,8 +77,10 @@ public class OtlpTraceOutputCodec implements OutputCodec {
             outputStream.write(request.toByteArray());
         } catch (final DecoderException e) {
             LOG.warn("Skipping invalid span with ID [{}] due to decoding error.", span.getSpanId(), e);
+            throw new RuntimeException(e);
         } catch (final Exception e) {
             LOG.error("Unexpected error while writing span with ID [{}] to OTLP output.", span.getSpanId(), e);
+            throw new RuntimeException(e);
         }
     }
 

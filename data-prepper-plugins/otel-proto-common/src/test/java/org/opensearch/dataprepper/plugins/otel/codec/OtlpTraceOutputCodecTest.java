@@ -85,15 +85,13 @@ class OtlpTraceOutputCodecTest {
     }
 
     @Test
-    void testWriteEvent_withBadTraceId_logsAndSkips() throws Exception {
+    void testWriteEvent_withBadTraceId_throwsException() throws Exception {
         final Span span = buildSpanFromTestFile(TEST_SPAN_EVENT_JSON_FILE,"bad-trace-id" );
 
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
-        codec.writeEvent(span, outputStream);
-
-        // Since traceId is invalid hex, it will trigger DecoderException
-        assertThat(outputStream.toByteArray()).isEmpty(); // nothing written
+        assertThatThrownBy(() -> codec.writeEvent(span, outputStream))
+                .isInstanceOf(RuntimeException.class);
     }
 
     @Test

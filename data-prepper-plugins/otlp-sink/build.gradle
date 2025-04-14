@@ -1,0 +1,116 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+plugins {
+    id 'java-library'
+    id 'jacoco'
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+sourceSets {
+    integrationTest {
+        java.srcDir file('src/integrationTest/java')
+        resources.srcDir file('src/integrationTest/resources')
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+dependencies {
+    // AWS SDK
+    implementation 'software.amazon.awssdk:core:2.28.23'
+    implementation 'software.amazon.awssdk:auth:2.28.23'
+    implementation 'software.amazon.awssdk:sts:2.28.23'
+    implementation 'software.amazon.awssdk:regions:2.28.23'
+    implementation 'software.amazon.awssdk:http-client-spi'
+    implementation 'software.amazon.awssdk:apache-client'
+
+    // OkHttp
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // OpenTelemetry Protobuf
+    implementation libs.opentelemetry.proto
+    implementation libs.protobuf.util
+    testImplementation libs.opentelemetry.proto
+    testImplementation libs.protobuf.util
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // Data Prepper Projects
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:otel-proto-common')
+
+    // Unit Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.1'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.7'
+    testImplementation 'org.mockito:mockito-core:5.10.0'
+
+    // Integration Testing
+    integrationTestImplementation project(':data-prepper-test-common')
+    integrationTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    integrationTestRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+    useJUnitPlatform()
+}
+
+check.dependsOn integrationTest
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled = true
+            element = 'CLASS'
+            includes = ['org.opensearch.dataprepper.plugins.sink.otlp.*']
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.95
+            }
+        }
+    }
+}
+
+tasks.named('jacocoTestReport') {
+    doLast {
+        def reportPath = layout.buildDirectory.file("reports/jacoco/test/html/index.html").get().asFile.toURI()
+        println "\nView test coverage report here:\n   ${reportPath}\n"
+    }
+}
