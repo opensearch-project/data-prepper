@@ -1,38 +1,182 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.source.oteltelemetry;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
+import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
+
 public class OTelTelemetrySourceConfig {
-    private int port = 21892;
-    private long requestTimeout = 10000;
-    private boolean sslEnabled = false;
+    static final String REQUEST_TIMEOUT = "request_timeout";
+    static final String PORT = "port";
+    static final String SSL = "ssl";
+    static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
+    static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
+    static final String HEALTH_CHECK_SERVICE = "health_check_service";
+    static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
+    static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
+    static final String SSL_KEY_FILE = "sslKeyFile";
+    static final String ACM_CERT_ARN = "acmCertificateArn";
+    static final String ACM_PRIVATE_KEY_PASSWORD = "acmPrivateKeyPassword";
+    static final String AWS_REGION = "awsRegion";
+    static final String THREAD_COUNT = "thread_count";
+    static final String MAX_CONNECTION_COUNT = "max_connection_count";
+    static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
+    static final String COMPRESSION = "compression";
+    static final String RETRY_INFO = "retry_info";
+    static final String LOGS_PATH = "logs_path";
+    static final String METRICS_PATH = "metrics_path";
+    static final String TRACES_PATH = "traces_path";
+    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+    static final int DEFAULT_PORT = 21892;
+    static final int DEFAULT_THREAD_COUNT = 200;
+    static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
+    static final boolean DEFAULT_SSL = true;
+    static final boolean DEFAULT_ENABLED_UNFRAMED_REQUESTS = false;
+    static final boolean DEFAULT_HEALTH_CHECK = false;
+    static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
+    static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    private static final String S3_PREFIX = "s3://";
+
+    @JsonProperty(REQUEST_TIMEOUT)
+    private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
+
+    @JsonProperty(PORT)
+    private int port = DEFAULT_PORT;
+
+    @JsonProperty(LOGS_PATH)
+    @Size(min = 1, message = "logsPath length should be at least 1")
+    private String logsPath;
+
+    @JsonProperty(METRICS_PATH)
+    @Size(min = 1, message = "metricsPath length should be at least 1")
+    private String metricsPath;
+
+    @JsonProperty(TRACES_PATH)
+    @Size(min = 1, message = "tracesPath length should be at least 1")
+    private String tracesPath;
+
+    @JsonProperty(HEALTH_CHECK_SERVICE)
+    private boolean healthCheck = DEFAULT_HEALTH_CHECK;
+
+    @JsonProperty(PROTO_REFLECTION_SERVICE)
+    private boolean protoReflectionService = DEFAULT_PROTO_REFLECTION_SERVICE;
+
+    @JsonProperty(ENABLE_UNFRAMED_REQUESTS)
+    private boolean enableUnframedRequests = DEFAULT_ENABLED_UNFRAMED_REQUESTS;
+
+    @JsonProperty(SSL)
+    private boolean ssl = DEFAULT_SSL;
+
+    @JsonProperty("output_format")
+    private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
+
+    @JsonProperty(USE_ACM_CERT_FOR_SSL)
+    private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
+
+    @JsonProperty(ACM_CERT_ISSUE_TIME_OUT_MILLIS)
+    private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
+
+    @JsonProperty(SSL_KEY_CERT_FILE)
     private String sslKeyCertChainFile;
+
+    @JsonProperty(SSL_KEY_FILE)
     private String sslKeyFile;
-    private boolean healthCheckServiceEnabled = true;
-    private String logsPath = "/v1/logs";
-    private String metricsPath = "/v1/metrics";
-    private String tracesPath = "/v1/traces";
+
+    private boolean sslCertAndKeyFileInS3;
+
+    @JsonProperty(ACM_CERT_ARN)
+    private String acmCertificateArn;
+
+    @JsonProperty(ACM_PRIVATE_KEY_PASSWORD)
+    private String acmPrivateKeyPassword;
+
+    @JsonProperty(AWS_REGION)
+    private String awsRegion;
+
+    @JsonProperty(THREAD_COUNT)
+    private int threadCount = DEFAULT_THREAD_COUNT;
+
+    @JsonProperty(MAX_CONNECTION_COUNT)
+    private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
+
+    @JsonProperty("authentication")
+    private PluginModel authentication;
+
+    @JsonProperty(COMPRESSION)
+    private CompressionOption compression = CompressionOption.NONE;
+
+    @JsonProperty("max_request_length")
+    private ByteCount maxRequestLength;
+
+    @JsonProperty(RETRY_INFO)
+    private RetryInfoConfig retryInfo;
+
+    @AssertTrue(message = "logsPath should start with /")
+    boolean isLogsPathValid() {
+        return logsPath == null || logsPath.startsWith("/");
+    }
+
+    @AssertTrue(message = "metricsPath should start with /")
+    boolean isMetricsPathValid() {
+        return metricsPath == null || metricsPath.startsWith("/");
+    }
+
+    @AssertTrue(message = "tracesPath should start with /")
+    boolean isTracesPathValid() {
+        return tracesPath == null || tracesPath.startsWith("/");
+    }
+
+    public void validateAndInitializeCertAndKeyFileInS3() {
+        boolean certAndKeyFileInS3 = false;
+        if (useAcmCertForSSL) {
+            validateSSLArgument(String.format("%s is enabled", USE_ACM_CERT_FOR_SSL), acmCertificateArn, ACM_CERT_ARN);
+            validateSSLArgument(String.format("%s is enabled", USE_ACM_CERT_FOR_SSL), awsRegion, AWS_REGION);
+        } else if(ssl) {
+            validateSSLCertificateFiles();
+            certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
+            if (certAndKeyFileInS3) {
+                validateSSLArgument("The certificate and key files are located in S3", awsRegion, AWS_REGION);
+            }
+        }
+        sslCertAndKeyFileInS3 = certAndKeyFileInS3;
+    }
+
+    private void validateSSLArgument(final String sslTypeMessage, final String argument, final String argumentName) {
+        if (StringUtils.isEmpty(argument)) {
+            throw new IllegalArgumentException(String.format("%s, %s can not be empty or null", sslTypeMessage, argumentName));
+        }
+    }
+
+    private void validateSSLCertificateFiles() {
+        validateSSLArgument(String.format("%s is enabled", SSL), sslKeyCertChainFile, SSL_KEY_CERT_FILE);
+        validateSSLArgument(String.format("%s is enabled", SSL), sslKeyFile, SSL_KEY_FILE);
+    }
+
+    private boolean isSSLCertificateLocatedInS3() {
+        return sslKeyCertChainFile.toLowerCase().startsWith(S3_PREFIX) &&
+                sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
+    }
+
+    public int getRequestTimeoutInMillis() {
+        return requestTimeoutInMillis;
+    }
+
+    public OTelOutputFormat getOutputFormat() {
+        return outputFormat;
+    }
 
     public int getPort() {
         return port;
-    }
-
-    public long getRequestTimeout() {
-        return requestTimeout;
-    }
-
-    public boolean isSslEnabled() {
-        return sslEnabled;
-    }
-
-    public String getSslKeyCertChainFile() {
-        return sslKeyCertChainFile;
-    }
-
-    public String getSslKeyFile() {
-        return sslKeyFile;
-    }
-
-    public boolean isHealthCheckServiceEnabled() {
-        return healthCheckServiceEnabled;
     }
 
     public String getLogsPath() {
@@ -47,33 +191,77 @@ public class OTelTelemetrySourceConfig {
         return tracesPath;
     }
 
+    public boolean hasHealthCheck() {
+        return healthCheck;
+    }
+
+    public boolean hasProtoReflectionService() {
+        return protoReflectionService;
+    }
+
+    public boolean enableUnframedRequests() {
+        return enableUnframedRequests;
+    }
+
+    public boolean isSsl() {
+        return ssl;
+    }
+
     public boolean useAcmCertForSSL() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'useAcmCertForSSL'");
+        return useAcmCertForSSL;
     }
 
     public long getAcmCertIssueTimeOutMillis() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAcmCertIssueTimeOutMillis'");
+        return acmCertIssueTimeOutMillis;
     }
 
-    public String getAwsRegion() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAwsRegion'");
+    public String getSslKeyCertChainFile() {
+        return sslKeyCertChainFile;
     }
 
-    public boolean isSslCertAndKeyFileInS3() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'isSslCertAndKeyFileInS3'");
-    }
-
-    public String getAcmPrivateKeyPassword() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAcmPrivateKeyPassword'");
+    public String getSslKeyFile() {
+        return sslKeyFile;
     }
 
     public String getAcmCertificateArn() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAcmCertificateArn'");
+        return acmCertificateArn;
+    }
+
+    public String getAcmPrivateKeyPassword() {
+        return acmPrivateKeyPassword;
+    }
+
+    public boolean isSslCertAndKeyFileInS3() {
+        return sslCertAndKeyFileInS3;
+    }
+
+    public String getAwsRegion() {
+        return awsRegion;
+    }
+
+    public int getThreadCount() {
+        return threadCount;
+    }
+
+    public int getMaxConnectionCount() {
+        return maxConnectionCount;
+    }
+
+    public PluginModel getAuthentication() { return authentication; }
+
+    public CompressionOption getCompression() {
+        return compression;
+    }
+
+    public ByteCount getMaxRequestLength() {
+        return maxRequestLength;
+    }
+
+    public RetryInfoConfig getRetryInfo() {
+        return retryInfo;
+    }
+
+    public void setRetryInfo(RetryInfoConfig retryInfo) {
+        this.retryInfo = retryInfo;
     }
 }

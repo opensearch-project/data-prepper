@@ -52,7 +52,7 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
         Buffer<Record<? extends Metric>> metricBuffer = (Buffer<Record<? extends Metric>>) (Object) buffer;
         final ServerBuilder serverBuilder = Server.builder()
                 .http(config.getPort())
-                .requestTimeoutMillis(config.getRequestTimeout())
+                .requestTimeoutMillis(config.getRequestTimeoutInMillis())
                 .service(GrpcService.builder()
                         .addService(new OTelLogsGrpcService(10000, new OTelProtoStandardCodec.OTelProtoDecoder(),
                                 buffer, pluginMetrics))
@@ -69,7 +69,7 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
                         .addService(ProtoReflectionService.newInstance())
                         .build());
 
-        if (config.isSslEnabled()) {
+        if (config.isSsl()) {
             LOG.info("SSL/TLS is enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
@@ -79,7 +79,7 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
                             new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)));
         }
 
-        if (config.isHealthCheckServiceEnabled()) {
+        if (config.hasHealthCheck()) {
             serverBuilder.serviceUnder("/health", GrpcService.builder().build());
         }
 
