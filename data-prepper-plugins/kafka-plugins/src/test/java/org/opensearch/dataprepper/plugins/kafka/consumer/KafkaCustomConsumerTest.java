@@ -239,7 +239,7 @@ public class KafkaCustomConsumerTest {
             return null;
         }).when(mockBuffer).writeAll(any(), anyInt());
 
-        doAnswer((i)-> {
+        doAnswer((i) -> {
             if (paused && !resumed)
                 return List.of();
             return consumerRecords;
