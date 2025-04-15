@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
