@@ -232,14 +232,14 @@ public class KafkaCustomConsumerTest {
         when(topicConfig.getMaxPollInterval()).thenReturn(Duration.ofMillis(4000));
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic, 0L);
-        doAnswer((i) -> {
+        doAnswer((i)-> {
             if (!paused && !resumed)
                 throw new SizeOverflowException("size overflow");
             buffer.writeAll(i.getArgument(0), i.getArgument(1));
             return null;
         }).when(mockBuffer).writeAll(any(), anyInt());
 
-        doAnswer((i) -> {
+        doAnswer((i)-> {
             if (paused && !resumed)
                 return List.of();
             return consumerRecords;
@@ -290,8 +290,7 @@ public class KafkaCustomConsumerTest {
         try {
             consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
             consumer.consumeRecords();
-        } catch (Exception e) {
-        }
+        } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
@@ -381,8 +380,7 @@ public class KafkaCustomConsumerTest {
         try {
             consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
             consumer.consumeRecords();
-        } catch (Exception e) {
-        }
+        } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
@@ -446,7 +444,7 @@ public class KafkaCustomConsumerTest {
                 testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             if (kafkaKey.equals(testKey2)) {
-                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k, v)));
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
@@ -589,7 +587,7 @@ public class KafkaCustomConsumerTest {
                 testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             if (kafkaKey.equals(testKey2)) {
-                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k, v)));
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
@@ -658,7 +656,7 @@ public class KafkaCustomConsumerTest {
                 testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             if (kafkaKey.equals(testKey2)) {
-                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k, v)));
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
             Assertions.assertNotNull(event.getMetadata().getExternalOriginationTime());
             Assertions.assertNotNull(event.getEventHandle().getExternalOriginationTime());
@@ -682,7 +680,7 @@ public class KafkaCustomConsumerTest {
     private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
         Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
         ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, startOffset, testKey1, testValue1);
-        ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, startOffset + 1, testKey2, testValue2);
+        ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, startOffset+1, testKey2, testValue2);
         records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
     }
