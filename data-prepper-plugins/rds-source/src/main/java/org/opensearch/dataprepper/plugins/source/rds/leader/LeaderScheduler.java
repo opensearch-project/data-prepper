@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.source.rds.leader;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
@@ -116,21 +115,6 @@ public class LeaderScheduler implements Runnable {
 
     public void shutdown() {
         shutdownRequested = true;
-
-        // Clean up publication and replication slot for Postgres
-        if (streamPartition != null) {
-            streamPartition.getProgressState().ifPresent(progressState -> {
-                if (EngineType.fromString(progressState.getEngineType()).isPostgres()) {
-                    final PostgresStreamState postgresStreamState = progressState.getPostgresStreamState();
-                    final String publicationName = postgresStreamState.getPublicationName();
-                    final String replicationSlotName = postgresStreamState.getReplicationSlotName();
-                    LOG.info("Cleaned up logical replication slot {} and publication {}",
-                            replicationSlotName, publicationName);
-                    ((PostgresSchemaManager) schemaManager).deleteLogicalReplicationSlot(
-                            publicationName, replicationSlotName);
-                }
-            });
-        }
     }
 
     private void init() {
