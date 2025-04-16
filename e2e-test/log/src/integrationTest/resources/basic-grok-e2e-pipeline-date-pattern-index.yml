@@ -11,5 +11,5 @@ grok-pipeline:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
-        index: "test-grok-index"
+        index: "test-grok-index-%{yyyy.MM.dd}"
         flush_timeout: 5000
