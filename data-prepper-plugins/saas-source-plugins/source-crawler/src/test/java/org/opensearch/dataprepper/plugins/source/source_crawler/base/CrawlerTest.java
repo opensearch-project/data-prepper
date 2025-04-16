@@ -55,7 +55,7 @@ public class CrawlerTest {
 
     @BeforeEach
     public void setup() {
-        crawler = new Crawler(client, pluginMetrics);
+        crawler = new PaginationCrawler(client, pluginMetrics);
         when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
     }
 
@@ -77,7 +77,7 @@ public class CrawlerTest {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         when(client.listItems(lastPollTime)).thenReturn(Collections.emptyIterator());
         when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator);
         verify(coordinator, never()).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -88,7 +88,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("itemId"));
         }
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
 
     }
@@ -100,29 +100,28 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator);
         verify(coordinator, times(2)).createPartition(any(SaasSourcePartition.class));
     }
 
     @Test
     void testBatchSize() {
         List<ItemInfo> itemInfoList = new ArrayList<>();
-        int maxItemsPerPage = 50;
+        int maxItemsPerPage = DEFAULT_BATCH_SIZE;
         for (int i = 0; i < maxItemsPerPage; i++) {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage);
+        crawler.crawl(leaderPartition, coordinator);
         int expectedNumberOfInvocations = 1;
         verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
 
         List<ItemInfo> itemInfoList2 = new ArrayList<>();
-        int maxItemsPerPage2 = 25;
-        for (int i = 0; i < maxItemsPerPage; i++) {
+        for (int i = 0; i < maxItemsPerPage * 2; i++) {
             itemInfoList2.add(new TestItemInfo("testId"));
         }
         when(client.listItems(any())).thenReturn(itemInfoList2.iterator());
-        crawler.crawl(leaderPartition, coordinator, maxItemsPerPage2);
+        crawler.crawl(leaderPartition, coordinator);
         expectedNumberOfInvocations += 2;
         verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
     }
@@ -135,7 +134,7 @@ public class CrawlerTest {
             itemInfoList.add(new TestItemInfo("testId"));
         }
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        crawler.crawl(leaderPartition, coordinator);
         verify(coordinator, times(1)).createPartition(any(SaasSourcePartition.class));
     }
 
@@ -145,7 +144,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator);
         assertNotEquals(Instant.ofEpochMilli(0), updatedPollTime);
     }
 
@@ -156,7 +155,7 @@ public class CrawlerTest {
         ItemInfo testItem = createTestItemInfo("1");
         itemInfoList.add(testItem);
         when(client.listItems(lastPollTime)).thenReturn(itemInfoList.iterator());
-        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator, DEFAULT_BATCH_SIZE);
+        Instant updatedPollTime = crawler.crawl(leaderPartition, coordinator);
         assertNotEquals(lastPollTime, updatedPollTime);
     }
 

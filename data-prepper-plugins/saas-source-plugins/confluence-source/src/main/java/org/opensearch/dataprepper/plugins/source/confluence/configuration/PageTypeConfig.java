@@ -33,8 +33,7 @@ public class PageTypeConfig {
     @AssertTrue(message = "Confluence PageType should be one of [page, blogpost, comment, attachment]")
     boolean isValidPageType() {
         return checkGivenListForValidPageTypes(include)
-                && checkGivenListForValidPageTypes(exclude)
-                && noOverlapBetweenIncludeAndExclude();
+                && checkGivenListForValidPageTypes(exclude);
     }
 
     @AssertTrue(message = "There should be no overlap between include and exclude values under PageType filter")
