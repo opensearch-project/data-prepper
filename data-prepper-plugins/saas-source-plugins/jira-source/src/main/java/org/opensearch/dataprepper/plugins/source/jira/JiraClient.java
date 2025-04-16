@@ -121,6 +121,7 @@ public class JiraClient implements CrawlerClient {
                         .withData(t)
                         .build())
                 .map(Record::new)
+                .peek(record -> record.getData().getMetadata().setAttribute(PROJECT, project.toLowerCase()))
                 .collect(Collectors.toList());
 
         try {

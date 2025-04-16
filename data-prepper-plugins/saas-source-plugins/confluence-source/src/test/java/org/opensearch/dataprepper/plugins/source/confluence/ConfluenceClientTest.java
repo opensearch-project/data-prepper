@@ -77,7 +77,7 @@ public class ConfluenceClientTest {
     void testExecutePartition() throws Exception {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
-        keyAttributes.put("project", "test");
+        keyAttributes.put("space", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
         List<String> itemIds = new ArrayList<>();
         itemIds.add(null);
@@ -127,7 +127,7 @@ public class ConfluenceClientTest {
     void bufferWriteRuntimeTest() throws Exception {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
-        keyAttributes.put("project", "test");
+        keyAttributes.put("space", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
         List<String> itemIds = List.of("ID1", "ID2", "ID3", "ID4");
         when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);

@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.confluence.configuration.NameConfig.VALID_SPACE_KEY_REGEX;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.LAST_MODIFIED;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CLOSING_ROUND_BRACKET;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_IN;
@@ -238,20 +238,19 @@ public class ConfluenceService {
         List<String> badFilters = new ArrayList<>();
         Set<String> includedSpaces = new HashSet<>();
         List<String> includedAndExcludedSpaces = new ArrayList<>();
-        Pattern regex = Pattern.compile("[^A-Z0-9]");
         ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).forEach(spaceFilter -> {
-            Matcher matcher = regex.matcher(spaceFilter);
+            Matcher matcher = VALID_SPACE_KEY_REGEX.matcher(spaceFilter);
             includedSpaces.add(spaceFilter);
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
+            if (!matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });
         ConfluenceConfigHelper.getSpacesNameExcludeFilter(configuration).forEach(spaceFilter -> {
-            Matcher matcher = regex.matcher(spaceFilter);
+            Matcher matcher = VALID_SPACE_KEY_REGEX.matcher(spaceFilter);
             if (includedSpaces.contains(spaceFilter)) {
                 includedAndExcludedSpaces.add(spaceFilter);
             }
-            if (matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
+            if (!matcher.find() || spaceFilter.length() <= 1 || spaceFilter.length() > 100) {
                 badFilters.add(spaceFilter);
             }
         });

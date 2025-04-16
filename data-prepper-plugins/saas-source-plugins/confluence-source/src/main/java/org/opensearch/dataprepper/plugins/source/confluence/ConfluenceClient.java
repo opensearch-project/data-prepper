@@ -124,6 +124,7 @@ public class ConfluenceClient implements CrawlerClient {
                         .withData(t)
                         .build())
                 .map(Record::new)
+                .peek(record -> record.getData().getMetadata().setAttribute(SPACE, space.toLowerCase()))
                 .collect(Collectors.toList());
 
         try {
