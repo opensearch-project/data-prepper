@@ -99,6 +99,15 @@ public class DeleteEntryProcessorConfig {
     boolean hasBothConfigurations() {
         return entries != null && withKeys != null;
     }
+    @JsonPropertyDescription(
+            "Specifies the key of the list of object to iterate over and delete the keys specified in with_keys.")
+    @JsonProperty("iterate_on")
+    private String iterateOn;
+
+    @JsonPropertyDescription("Specifies whether the JSON pointer in the expression statement " +
+            "should be within the context of the iterated object specified by the iterate_on key.")
+    @JsonProperty("use_iterate_on_context")
+    private boolean useIterateOnContext;
 
     public List<EventKey> getWithKeys() {
         return withKeys;
@@ -110,5 +119,13 @@ public class DeleteEntryProcessorConfig {
 
     public List<Entry> getEntries() {
         return entries;
+    }
+
+    public String getIterateOn() {
+        return iterateOn;
+    }
+
+    public boolean isUseIterateOnContext() {
+        return useIterateOnContext;
     }
 }
