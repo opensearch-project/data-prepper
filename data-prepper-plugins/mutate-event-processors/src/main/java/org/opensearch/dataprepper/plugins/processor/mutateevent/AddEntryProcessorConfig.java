@@ -64,6 +64,10 @@ public class AddEntryProcessorConfig {
 
     @JsonPropertyOrder
     public static class Entry {
+        private String iterateOn;
+
+        private boolean useIterateOnContext;
+
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
                 "<code>myKey</code>, and <code>object/sub_Key</code>. The key can also be a format expression, for example, <code>${/key1}</code> to " +
                 "use the value of field <code>key1</code> as the key. Exactly one of <code>key</code> or <code>metadata_key</code> is required.")
@@ -154,6 +158,14 @@ public class AddEntryProcessorConfig {
                 @Example(value = "/some_key == null", description = "Only runs the add_entries processor if the key some_key is null or does not exist.")
         })
         private String addWhen;
+
+        public String getIterateOn() {
+            return iterateOn;
+        }
+
+        public boolean isUseIterateOnContext() {
+            return useIterateOnContext;
+        }
 
         public String getKey() {
             return key;

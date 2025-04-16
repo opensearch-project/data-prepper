@@ -39,11 +39,23 @@ public class DeleteEntryProcessorConfig {
     })
     private String deleteWhen;
 
+    private String iterateOn;
+
+    private boolean useIterateOnContext;
+
     public List<EventKey> getWithKeys() {
         return withKeys;
     }
 
     public String getDeleteWhen() {
         return deleteWhen;
+    }
+
+    public String getIterateOn() {
+        return iterateOn;
+    }
+
+    public boolean isUseIterateOnContext() {
+        return useIterateOnContext;
     }
 }
