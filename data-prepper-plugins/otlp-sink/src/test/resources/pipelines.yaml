@@ -1,4 +1,4 @@
-otel_trace_source_to_xray:
+otlp_pipeline:
   source:
     otel_trace_source:
       ssl: false

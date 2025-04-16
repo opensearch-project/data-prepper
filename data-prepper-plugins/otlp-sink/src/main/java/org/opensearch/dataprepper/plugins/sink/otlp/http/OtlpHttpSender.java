@@ -12,6 +12,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
@@ -41,14 +42,15 @@ public class OtlpHttpSender implements AutoCloseable {
     private final Sleeper sleeper;
     private final int maxRetries;
     private final List<Integer> retryDelaysMs;
+    private final OtlpSinkMetrics sinkMetrics;
 
     /**
      * Constructor for the OtlpHttpSender.
      * Initializes the signer and HTTP client.
      * @param config The configuration for the OTLP sink plugin.
      */
-    public OtlpHttpSender(@Nonnull final OtlpSinkConfig config) {
-        this(config, null, null, null);
+    public OtlpHttpSender(@Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
+        this(config, sinkMetrics, null, null, null);
     }
 
     /**
@@ -59,7 +61,8 @@ public class OtlpHttpSender implements AutoCloseable {
      * @param httpClient The OkHttpClient instance for making HTTP requests.
      */
     @VisibleForTesting
-    OtlpHttpSender(@Nonnull final OtlpSinkConfig config, final SigV4Signer signer, final OkHttpClient httpClient, final Sleeper sleeper) {
+    OtlpHttpSender(@Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics, final SigV4Signer signer, final OkHttpClient httpClient, final Sleeper sleeper) {
+        this.sinkMetrics = sinkMetrics;
         this.signer = signer != null ? signer : new SigV4Signer(config);
         this.httpClient = httpClient != null ? httpClient : new OkHttpClient();
         this.sleeper = sleeper != null ? sleeper : new ThreadSleeper();
@@ -108,7 +111,11 @@ public class OtlpHttpSender implements AutoCloseable {
 
                 final Request request = requestBuilder.build();
 
+                final long startTime = System.currentTimeMillis();
                 try (final Response response = httpClient.newCall(request).execute()) {
+                    final long duration = System.currentTimeMillis() - startTime;
+                    sinkMetrics.recordHttpLatency(duration);
+
                     handleResponse(response);
                     return;
                 }
@@ -118,6 +125,7 @@ public class OtlpHttpSender implements AutoCloseable {
                     final int retryIndex = Math.min(attempt, retryDelaysMs.size() - 1);
                     final int delay = retryDelaysMs.get(retryIndex) + jitter;
                     LOG.warn("Retrying after failure in attempt {}. Sleeping {}ms.", attempt + 1, delay, e);
+                    sinkMetrics.incrementRetriesCount();
                     try {
                         sleeper.sleep(delay);
                     } catch (final InterruptedException ie) {
@@ -141,6 +149,8 @@ public class OtlpHttpSender implements AutoCloseable {
      */
     private void handleResponse(@Nonnull final Response response) throws IOException {
         final int status = response.code();
+        sinkMetrics.recordResponseCode(status);
+
         final byte[] responseBytes = response.body() != null
                 ? response.body().bytes()
                 : null;
@@ -173,6 +183,8 @@ public class OtlpHttpSender implements AutoCloseable {
             if (otlpResponse.hasPartialSuccess()) {
                 final var partial = otlpResponse.getPartialSuccess();
                 final long rejectedSpans = partial.getRejectedSpans();
+                sinkMetrics.incrementRejectedSpansCount(rejectedSpans);
+
                 final String errorMessage = partial.getErrorMessage();
 
                 if (rejectedSpans > 0 || !errorMessage.isEmpty()) {
@@ -185,6 +197,7 @@ public class OtlpHttpSender implements AutoCloseable {
             }
         } catch (final Exception e) {
             LOG.error("Could not parse OTLP response as ExportTraceServiceResponse: {}", e.getMessage());
+            sinkMetrics.incrementErrorsCount();
         }
     }
 

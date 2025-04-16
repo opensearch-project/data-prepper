@@ -21,6 +21,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.regions.Region;
 
@@ -54,6 +55,7 @@ class OtlpHttpSenderTest {
     private SigV4Signer mockSigner;
     private OkHttpClient mockHttpClient;
     private Sleeper mockSleeper;
+    private OtlpSinkMetrics mockSinkMetrics;
     private OtlpHttpSender target;
 
     @BeforeEach
@@ -68,8 +70,9 @@ class OtlpHttpSenderTest {
         mockSigner = mock(SigV4Signer.class);
         mockHttpClient = mock(OkHttpClient.class);
         mockSleeper = mock(Sleeper.class);
+        mockSinkMetrics = mock(OtlpSinkMetrics.class);
 
-        target = new OtlpHttpSender(mockConfig, mockSigner, mockHttpClient, mockSleeper);
+        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockSigner, mockHttpClient, mockSleeper);
     }
 
     @AfterEach
@@ -225,7 +228,7 @@ class OtlpHttpSenderTest {
 
         doThrow(new InterruptedException("interrupted")).when(mockSleeper).sleep(anyInt());
 
-        target = new OtlpHttpSender(mockConfig, mockSigner, mockHttpClient, mockSleeper);
+        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockSigner, mockHttpClient, mockSleeper);
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () ->
                 target.send(PAYLOAD)
@@ -390,7 +393,7 @@ class OtlpHttpSenderTest {
 
     @Test
     void testDefaultConstructorInitializesDefaults() {
-        target = new OtlpHttpSender(mockConfig);
+        target = new OtlpHttpSender(mockConfig, mockSinkMetrics);
 
         // Reflection to assert internal fields (not great, but useful for unit validation)
         assertNotNull(getPrivateField(target, "signer"));
