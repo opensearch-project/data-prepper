@@ -1,1 +1,3 @@
 ssl: false
+metricRegistries:
+  - CloudWatch

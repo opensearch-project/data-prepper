@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -20,6 +23,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +38,7 @@ import static org.mockito.Mockito.when;
 class OtlpSinkIT {
 
     private OtlpSinkConfig mockConfig;
+    private PluginMetrics mockPluginMetrics;
     private OtlpSink target;
 
     @BeforeEach
@@ -46,7 +51,12 @@ class OtlpSinkIT {
         when(mockConfig.getMaxRetries()).thenReturn(3);
         when(mockConfig.getBatchSize()).thenReturn(100);
 
-        target = new OtlpSink(mockConfig);
+        mockPluginMetrics = mock(PluginMetrics.class);
+        mockPluginMetrics = mock(PluginMetrics.class);
+        when(mockPluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
+        when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
+
+        target = new OtlpSink(mockConfig, mockPluginMetrics);
     }
 
     @AfterEach
@@ -75,7 +85,7 @@ class OtlpSinkIT {
                 .build();
 
         final Record<Span> record = new Record<>(testSpan);
-        final OtlpSink sink = new OtlpSink(mockConfig, mock(OTelProtoStandardCodec.OTelProtoEncoder.class), mock(OtlpHttpSender.class));
+        final OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics, mock(OTelProtoStandardCodec.OTelProtoEncoder.class), mock(OtlpHttpSender.class));
 
         sink.initialize();
         sink.output(List.of(record));

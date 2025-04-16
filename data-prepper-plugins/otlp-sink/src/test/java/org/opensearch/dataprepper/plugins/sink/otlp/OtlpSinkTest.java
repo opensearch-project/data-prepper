@@ -5,11 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.apache.commons.codec.DecoderException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -18,10 +21,14 @@ import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import software.amazon.awssdk.regions.Region;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -35,6 +42,7 @@ class OtlpSinkTest {
     private OtlpSinkConfig mockConfig;
     private OTelProtoStandardCodec.OTelProtoEncoder mockEncoder;
     private OtlpHttpSender mockSender;
+    private PluginMetrics mockPluginMetrics;
     private OtlpSink target;
 
     @BeforeEach
@@ -50,7 +58,12 @@ class OtlpSinkTest {
         mockEncoder = mock(OTelProtoStandardCodec.OTelProtoEncoder.class);
         mockSender = mock(OtlpHttpSender.class);
 
-        target = new OtlpSink(mockConfig, mockEncoder, mockSender);
+        mockPluginMetrics = mock(PluginMetrics.class);
+        mockPluginMetrics = mock(PluginMetrics.class);
+        when(mockPluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
+        when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
+
+        target = new OtlpSink(mockConfig, mockPluginMetrics, mockEncoder, mockSender);
     }
 
     @AfterEach
@@ -142,8 +155,42 @@ class OtlpSinkTest {
     }
 
     @Test
+    void testUpdateLatencyMetrics_shouldRecordLatency() {
+        Span mockSpan = mock(Span.class);
+        String startTime = Instant.now().minusSeconds(5).toString();
+        when(mockSpan.getStartTime()).thenReturn(startTime);
+
+        Record<Span> mockRecord = mock(Record.class);
+        when(mockRecord.getData()).thenReturn(mockSpan);
+
+        Collection<Record<Span>> events = List.of(mockRecord);
+
+        target.updateLatencyMetrics(events);
+
+        verify(mockPluginMetrics.summary("deliveryLatency"), times(1)).record(any(Double.class));
+    }
+
+    @Test
+    void testUpdateLatencyMetrics_shouldHandleInvalidStartTime() {
+        // Mock a Span with an invalid start time string
+        final Span badSpan = mock(Span.class);
+        when(badSpan.getStartTime()).thenReturn("invalid-timestamp");
+
+        final Record<Span> badRecord = mock(Record.class);
+        when(badRecord.getData()).thenReturn(badSpan);
+
+        final List<Record<Span>> records = List.of(badRecord);
+
+        target.updateLatencyMetrics(records);
+
+        // Ensure it attempted to parse and failed gracefully
+        verify(mockPluginMetrics.summary("deliveryLatency"), never()).record(anyDouble());
+        verify(mockPluginMetrics.counter("errorsCount")).increment(1);
+    }
+
+    @Test
     void testConstructor_withOnlyConfig_shouldInitializeWithoutException() {
-        OtlpSink sink = new OtlpSink(mockConfig);
+        OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics);
 
         sink.initialize();
         sink.shutdown();

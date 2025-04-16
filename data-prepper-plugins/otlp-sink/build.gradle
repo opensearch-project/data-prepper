@@ -56,6 +56,7 @@ dependencies {
     // Data Prepper Projects
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:otel-proto-common')
+    implementation 'io.micrometer:micrometer-core'
 
     // Unit Testing
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
