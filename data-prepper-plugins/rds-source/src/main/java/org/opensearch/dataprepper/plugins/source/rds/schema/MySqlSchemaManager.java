@@ -156,6 +156,7 @@ public class MySqlSchemaManager implements SchemaManager {
         while (retry <= NUM_OF_RETRIES) {
             try (final Connection connection = connectionManager.getConnection()) {
                 final String mySqlVersion = connection.getMetaData().getDatabaseProductVersion();
+                LOG.info("MySQL version: {}", mySqlVersion);
                 final Statement statement = connection.createStatement();
                 final ResultSet rs = VersionUtil.compareVersions(mySqlVersion, MYSQL_VERSION_8_4) >= 0 ?
                         statement.executeQuery(NEW_BINLOG_STATUS_QUERY) :

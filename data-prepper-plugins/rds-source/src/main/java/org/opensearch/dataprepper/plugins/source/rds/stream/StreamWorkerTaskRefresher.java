@@ -114,6 +114,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     }
 
     public void shutdown() {
+        streamWorker.shutdown();
         executorService.shutdownNow();
     }
 
@@ -127,6 +128,7 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
             binaryLogClient.registerEventListener(BinlogEventListener.create(
                     streamPartition, buffer, sourceConfig, s3Prefix, pluginMetrics, binaryLogClient,
                     streamCheckpointer, acknowledgementSetManager, dbTableMetadata, cascadeActionDetector));
+            binaryLogClient.registerLifecycleListener(new BinlogClientLifecycleListener());
         } else {
             final LogicalReplicationClient logicalReplicationClient = (LogicalReplicationClient) replicationLogClient;
             logicalReplicationClient.setEventProcessor(LogicalReplicationEventProcessor.create(
