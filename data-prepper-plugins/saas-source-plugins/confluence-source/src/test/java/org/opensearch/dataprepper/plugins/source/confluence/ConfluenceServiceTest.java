@@ -187,7 +187,7 @@ public class ConfluenceServiceTest {
     public void testGetPages() throws JsonProcessingException {
         List<String> contentType = new ArrayList<>();
         List<String> spaceKey = new ArrayList<>();
-        contentType.add("PAGE");
+        contentType.add("page");
         spaceKey.add("KAN");
         ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, contentType, spaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
@@ -220,7 +220,7 @@ public class ConfluenceServiceTest {
     public void buildIssueItemInfoMultipleFutureThreads() throws JsonProcessingException {
         List<String> pageType = new ArrayList<>();
         List<String> spaceKey = new ArrayList<>();
-        pageType.add("PAGE");
+        pageType.add("page");
         ConfluenceSourceConfig confluenceSourceConfig = createConfluenceConfiguration(BASIC, pageType, spaceKey);
         ConfluenceService confluenceService = spy(new ConfluenceService(confluenceSourceConfig, confluenceRestClient, pluginMetrics));
         List<ConfluenceItem> mockIssues = new ArrayList<>();
@@ -247,7 +247,7 @@ public class ConfluenceServiceTest {
     public void testBadSpaceKeys() throws JsonProcessingException {
         List<String> pageType = new ArrayList<>();
         List<String> spaceKey = new ArrayList<>();
-        pageType.add("PAGE");
+        pageType.add("page");
         spaceKey.add("Bad Project Key");
         spaceKey.add("A");
         spaceKey.add("!@#$");
