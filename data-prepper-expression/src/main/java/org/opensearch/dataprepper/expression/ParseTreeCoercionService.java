@@ -58,6 +58,11 @@ class ParseTreeCoercionService {
                         }
                         argList.add(trimmedArg);
                     } else {
+                        try {
+                            argList.add(Integer.parseInt(trimmedArg));
+                            continue;
+                        } catch (final Exception e) {
+                        }
                         throw new RuntimeException("Unsupported type passed as function argument");
                     }
                 }
