@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.converter;
 
-import com.github.shyiko.mysql.binlog.event.EventType;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -52,7 +52,7 @@ public abstract class RecordConverter {
                          final List<String> primaryKeys,
                          final long eventCreateTimeEpochMillis,
                          final long eventVersionNumber,
-                         final EventType eventType) {
+                         final StreamEventType eventType) {
 
         EventMetadata eventMetadata = event.getMetadata();
 

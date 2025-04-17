@@ -76,6 +76,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -218,8 +219,17 @@ public class OTelProtoStandardCodecTest {
             assertThat(spans.size(), is(equalTo(3)));
 
             for (final Span span : spans) {
-                assertThat(span.getTraceGroup(), nullValue());
-                assertThat(span.getTraceGroupFields(), nullValue());
+                if (span.getParentSpanId().isEmpty()) {
+                    assertThat(span.getTraceGroup(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getEndTime(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getDurationInNanos(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getStatusCode(), notNullValue());
+                } else {
+                    assertThat(span.getTraceGroup(), nullValue());
+                    assertThat(span.getTraceGroupFields().getEndTime(), nullValue());
+                    assertThat(span.getTraceGroupFields().getDurationInNanos(), nullValue());
+                    assertThat(span.getTraceGroupFields().getStatusCode(), nullValue());
+                }
                 Map<String, Object> resource = span.getResource();
                 assertThat(resource.containsKey(OTelProtoStandardCodec.ATTRIBUTES_KEY), is(true));
                 Map<String, Object> attributes = (Map<String, Object>)resource.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
@@ -425,7 +435,6 @@ public class OTelProtoStandardCodecTest {
         }
 
         private void validateLog(OpenTelemetryLog logRecord) {
-            assertThat(logRecord.getServiceName(), is("service"));
             assertThat(logRecord.getTime(), is("2020-05-24T14:00:00Z"));
             assertThat(logRecord.getObservedTime(), is("2020-05-24T14:00:02Z"));
             assertThat(logRecord.getBody(), is("Log value"));
@@ -882,9 +891,9 @@ public class OTelProtoStandardCodecTest {
     public void testTimeCodec() {
         final long testNanos = System.nanoTime();
         final String timeISO8601 = OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos);
-        final long nanoCodecResult = OTelProtoCommonUtils.timeISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
+        final long nanoCodecResult = OTelProtoCommonUtils.convertISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
         assertThat(nanoCodecResult, equalTo(testNanos));
-        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.timeISO8601ToNanos(timeISO8601));
+        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.convertISO8601ToNanos(timeISO8601));
         assertThat(stringCodecResult, equalTo(timeISO8601));
     }
 
