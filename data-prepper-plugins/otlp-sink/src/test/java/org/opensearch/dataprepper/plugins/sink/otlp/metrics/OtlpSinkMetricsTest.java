@@ -7,9 +7,12 @@ package org.opensearch.dataprepper.plugins.sink.otlp.metrics;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+
+import java.time.Duration;
 
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
@@ -20,6 +23,7 @@ class OtlpSinkMetricsTest {
 
     private PluginMetrics pluginMetrics;
     private Counter counterMock;
+    private Timer timerMock;
     private DistributionSummary summaryMock;
     private OtlpSinkMetrics sinkMetrics;
 
@@ -28,9 +32,11 @@ class OtlpSinkMetricsTest {
         pluginMetrics = mock(PluginMetrics.class);
         counterMock = mock(Counter.class);
         summaryMock = mock(DistributionSummary.class);
+        timerMock = mock(Timer.class);
 
         when(pluginMetrics.counter(anyString())).thenReturn(counterMock);
         when(pluginMetrics.summary(anyString())).thenReturn(summaryMock);
+        when(pluginMetrics.timer(anyString())).thenReturn(timerMock);
 
         sinkMetrics = new OtlpSinkMetrics(pluginMetrics);
     }
@@ -68,13 +74,13 @@ class OtlpSinkMetricsTest {
     @Test
     void testRecordDeliveryLatency() {
         sinkMetrics.recordDeliveryLatency(150);
-        verify(summaryMock).record(150);
+        verify(timerMock).record(Duration.ofMillis(150));
     }
 
     @Test
     void testRecordHttpLatency() {
         sinkMetrics.recordHttpLatency(150);
-        verify(summaryMock).record(150);
+        verify(timerMock).record(Duration.ofMillis(150));
     }
 
     @Test

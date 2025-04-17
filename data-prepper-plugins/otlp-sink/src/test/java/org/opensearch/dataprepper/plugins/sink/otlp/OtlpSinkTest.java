@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.apache.commons.codec.DecoderException;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,7 @@ import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import software.amazon.awssdk.regions.Region;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,6 +64,7 @@ class OtlpSinkTest {
         mockPluginMetrics = mock(PluginMetrics.class);
         when(mockPluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
         when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
+        when(mockPluginMetrics.timer(anyString())).thenReturn(mock(Timer.class));
 
         target = new OtlpSink(mockConfig, mockPluginMetrics, mockEncoder, mockSender);
     }
@@ -167,7 +170,7 @@ class OtlpSinkTest {
 
         target.updateLatencyMetrics(events);
 
-        verify(mockPluginMetrics.summary("deliveryLatency"), times(1)).record(any(Double.class));
+        verify(mockPluginMetrics.timer("deliveryLatency"), times(1)).record(any(Duration.class));
     }
 
     @Test

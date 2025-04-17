@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp.metrics;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import javax.annotation.Nonnull;
+import java.time.Duration;
 
 /**
  * Metrics class for the otlp-sink
@@ -46,11 +47,11 @@ public class OtlpSinkMetrics {
     }
 
     public void recordDeliveryLatency(long durationMillis) {
-        pluginMetrics.summary("deliveryLatency").record(durationMillis);
+        pluginMetrics.timer("deliveryLatency").record(Duration.ofMillis(durationMillis));
     }
 
     public void recordHttpLatency(long durationMillis) {
-        pluginMetrics.summary("httpLatency").record(durationMillis);
+        pluginMetrics.timer("httpLatency").record(Duration.ofMillis(durationMillis));
     }
 
     public void incrementRetriesCount() {
