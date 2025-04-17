@@ -17,6 +17,9 @@ import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 public class OTelTelemetrySourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
+    static final String LOGS_PATH = "logs_path";
+    static final String METRICS_PATH = "metrics_path";
+    static final String TRACES_PATH = "traces_path";
     static final String SSL = "ssl";
     static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
@@ -32,9 +35,6 @@ public class OTelTelemetrySourceConfig {
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
-    static final String LOGS_PATH = "logs_path";
-    static final String METRICS_PATH = "metrics_path";
-    static final String TRACES_PATH = "traces_path";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21892;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -46,6 +46,7 @@ public class OTelTelemetrySourceConfig {
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
+    static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -112,6 +113,9 @@ public class OTelTelemetrySourceConfig {
     @JsonProperty("authentication")
     private PluginModel authentication;
 
+    @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
+    private boolean unauthenticatedHealthCheck = false;
+
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
 
@@ -141,7 +145,7 @@ public class OTelTelemetrySourceConfig {
         if (useAcmCertForSSL) {
             validateSSLArgument(String.format("%s is enabled", USE_ACM_CERT_FOR_SSL), acmCertificateArn, ACM_CERT_ARN);
             validateSSLArgument(String.format("%s is enabled", USE_ACM_CERT_FOR_SSL), awsRegion, AWS_REGION);
-        } else if(ssl) {
+        } else if (ssl) {
             validateSSLCertificateFiles();
             certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
             if (certAndKeyFileInS3) {
@@ -153,7 +157,8 @@ public class OTelTelemetrySourceConfig {
 
     private void validateSSLArgument(final String sslTypeMessage, final String argument, final String argumentName) {
         if (StringUtils.isEmpty(argument)) {
-            throw new IllegalArgumentException(String.format("%s, %s can not be empty or null", sslTypeMessage, argumentName));
+            throw new IllegalArgumentException(
+                    String.format("%s, %s can not be empty or null", sslTypeMessage, argumentName));
         }
     }
 
@@ -193,6 +198,10 @@ public class OTelTelemetrySourceConfig {
 
     public boolean hasHealthCheck() {
         return healthCheck;
+    }
+
+    public boolean enableHttpHealthCheck() {
+        return enableUnframedRequests() && hasHealthCheck();
     }
 
     public boolean hasProtoReflectionService() {
@@ -247,7 +256,13 @@ public class OTelTelemetrySourceConfig {
         return maxConnectionCount;
     }
 
-    public PluginModel getAuthentication() { return authentication; }
+    public PluginModel getAuthentication() {
+        return authentication;
+    }
+
+    public boolean isUnauthenticatedHealthCheck() {
+        return unauthenticatedHealthCheck;
+    }
 
     public CompressionOption getCompression() {
         return compression;

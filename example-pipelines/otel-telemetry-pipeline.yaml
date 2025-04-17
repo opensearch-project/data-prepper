@@ -1,6 +1,7 @@
 otel-telemetry-pipeline:
   source:
     otel_telemetry_source:
+      ssl: false
   route:
     - logs: "getMetadata(\"eventType\") == \"LOG\""
     - traces: "getMetadata(\"eventType\") == \"TRACE\""

@@ -1,0 +1,9 @@
+{
+  "java.format.settings.url": "eclipse-formatter.xml",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "[java]": {
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.insertSpaces": true
+  }
+}
