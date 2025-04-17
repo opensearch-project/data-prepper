@@ -32,15 +32,18 @@ public class PaginationCrawler implements Crawler {
     private static final Logger log = LoggerFactory.getLogger(PaginationCrawler.class);
     private static final int batchSize = 50;
     private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
+    private static final String INVALID_PAGINATION_ITEMS = "invalidPaginationItems";
     private final Timer crawlingTimer;
     private final CrawlerClient client;
     private final Counter parititionsCreatedCounter;
+    private final Counter invalidPaginationItemsCounter;
 
 
     public PaginationCrawler(CrawlerClient client, PluginMetrics pluginMetrics) {
         this.client = client;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
         this.parititionsCreatedCounter = pluginMetrics.counter(PAGINATION_WORKER_PARTITIONS_CREATED);
+        this.invalidPaginationItemsCounter = pluginMetrics.counter(INVALID_PAGINATION_ITEMS);
 
     }
 
@@ -61,6 +64,7 @@ public class PaginationCrawler implements Crawler {
                 if (nextItem == null) {
                     //we don't expect null items, but just in case, we'll skip them
                     log.info("Unexpected encounter of a null item.");
+                    invalidPaginationItemsCounter.increment();
                     continue;
                 }
                 itemInfoList.add(nextItem);
