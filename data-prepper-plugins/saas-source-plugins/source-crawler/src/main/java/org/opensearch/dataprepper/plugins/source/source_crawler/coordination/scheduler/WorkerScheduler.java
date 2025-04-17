@@ -27,10 +27,14 @@ public class WorkerScheduler implements Runnable {
 
     public static final String ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME = "acknowledgementSetSuccesses";
     public static final String ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME = "acknowledgementSetFailures";
+    private static final String WORKER_PARTITIONS_COMPLETED = "workerPartitionsCompleted";
+    private static final String WORKER_PARTITIONS_FAILED = "workerPartitionsFailed";
     private static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofSeconds(20);
     private static final Logger log = LoggerFactory.getLogger(WorkerScheduler.class);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
     private static final Duration DEFAULT_SLEEP_DURATION_MILLIS = Duration.ofMillis(10000);
+    private final Counter parititionsCompletedCounter;
+    private final Counter parititionsFailedCounter;
     private final EnhancedSourceCoordinator sourceCoordinator;
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
@@ -59,6 +63,8 @@ public class WorkerScheduler implements Runnable {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetSuccesses = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_SUCCESS_METRIC_NAME);
         this.acknowledgementSetFailures = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_FAILURES_METRIC_NAME);
+        this.parititionsCompletedCounter = pluginMetrics.counter(WORKER_PARTITIONS_COMPLETED);
+        this.parititionsFailedCounter = pluginMetrics.counter(WORKER_PARTITIONS_FAILED);
     }
 
     @Override
@@ -73,6 +79,7 @@ public class WorkerScheduler implements Runnable {
                 if (partition.isPresent()) {
                     // Process the partition (source extraction logic)
                     processPartition(partition.get(), buffer);
+                    parititionsCompletedCounter.increment();
 
                 } else {
                     log.debug("No partition available. This thread will sleep for {}", DEFAULT_SLEEP_DURATION_MILLIS);
@@ -85,6 +92,7 @@ public class WorkerScheduler implements Runnable {
                 }
             } catch (Exception e) {
                 log.error("Error processing partition", e);
+                parititionsFailedCounter.increment();
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
                 } catch (InterruptedException ex) {

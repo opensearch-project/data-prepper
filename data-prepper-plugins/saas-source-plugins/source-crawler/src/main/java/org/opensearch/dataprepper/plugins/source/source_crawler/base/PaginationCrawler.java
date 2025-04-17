@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
@@ -30,13 +31,17 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 public class PaginationCrawler implements Crawler {
     private static final Logger log = LoggerFactory.getLogger(PaginationCrawler.class);
     private static final int batchSize = 50;
+    private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
     private final Timer crawlingTimer;
-
     private final CrawlerClient client;
+    private final Counter parititionsCreatedCounter;
+
 
     public PaginationCrawler(CrawlerClient client, PluginMetrics pluginMetrics) {
         this.client = client;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
+        this.parititionsCreatedCounter = pluginMetrics.counter(PAGINATION_WORKER_PARTITIONS_CREATED);
+
     }
 
     public Instant crawl(LeaderPartition leaderPartition,
@@ -106,6 +111,7 @@ public class PaginationCrawler implements Crawler {
         state.setLoadedItems(itemInfoList.size());
         SaasSourcePartition sourcePartition = new SaasSourcePartition(state, partitionKey);
         coordinator.createPartition(sourcePartition);
+        parititionsCreatedCounter.increment();
     }
 
 }

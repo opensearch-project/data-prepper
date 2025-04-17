@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
 @ExtendWith(MockitoExtension.class)
-public class CrawlerTest {
+public class PaginationCrawlerTest {
     private static final int DEFAULT_BATCH_SIZE = 50;
     @Mock
     private AcknowledgementSet acknowledgementSet;
