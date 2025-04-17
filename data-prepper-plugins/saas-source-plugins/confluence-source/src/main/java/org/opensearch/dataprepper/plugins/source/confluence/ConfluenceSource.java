@@ -24,8 +24,8 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +54,7 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
                             final AtlassianAuthConfig jiraOauthConfig,
                             final PluginFactory pluginFactory,
                             final AcknowledgementSetManager acknowledgementSetManager,
-                            Crawler crawler,
+                            final PaginationCrawler crawler,
                             PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, confluenceSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Confluence Source Plugin");

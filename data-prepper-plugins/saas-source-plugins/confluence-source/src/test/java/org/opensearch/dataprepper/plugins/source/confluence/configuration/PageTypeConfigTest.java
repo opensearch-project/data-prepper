@@ -35,7 +35,7 @@ class PageTypeConfigTest {
         pageTypeConfig.exclude.add("page");
         pageTypeConfig.exclude.add("blogpost");
 
-        assertFalse(pageTypeConfig.isValidPageType());
+        assertFalse(pageTypeConfig.noOverlapBetweenIncludeAndExclude());
     }
 
     @Test
