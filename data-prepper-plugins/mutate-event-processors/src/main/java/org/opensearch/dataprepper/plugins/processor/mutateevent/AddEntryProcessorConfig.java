@@ -64,8 +64,13 @@ public class AddEntryProcessorConfig {
 
     @JsonPropertyOrder
     public static class Entry {
+        @JsonPropertyDescription(
+                "Specifies the key of the list of object to iterate over and add entry into.")
         private String iterateOn;
 
+        @JsonPropertyDescription("Specifies whether the JSON pointer in the expression" +
+                "(<a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">Expression syntax</a>) statement " +
+                "should be within the context of the iterated object specified by the iterate_on key.")
         private boolean useIterateOnContext;
 
         @JsonPropertyDescription("The key of the new entry to be added. Some examples of keys include <code>my_key</code>, " +
@@ -214,13 +219,18 @@ public class AddEntryProcessorConfig {
                      final String valueExpression,
                      final boolean overwriteIfKeyExists,
                      final boolean appendIfKeyExists,
-                     final String addWhen)
+                     final String addWhen,
+                     final String iterateOn,
+                     final boolean useIterateOnContext)
         {
             if (key != null && metadataKey != null) {
                 throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
             }
             if (key == null && metadataKey == null) {
                 throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
+            }
+            if (metadataKey != null && iterateOn != null) {
+                throw new IllegalArgumentException("iterate_on cannot be applied to metadata");
             }
             this.key = key;
             this.metadataKey = metadataKey;
@@ -230,6 +240,8 @@ public class AddEntryProcessorConfig {
             this.overwriteIfKeyExists = overwriteIfKeyExists;
             this.appendIfKeyExists = appendIfKeyExists;
             this.addWhen = addWhen;
+            this.iterateOn = iterateOn;
+            this.useIterateOnContext = useIterateOnContext;
         }
 
         public Entry() {
