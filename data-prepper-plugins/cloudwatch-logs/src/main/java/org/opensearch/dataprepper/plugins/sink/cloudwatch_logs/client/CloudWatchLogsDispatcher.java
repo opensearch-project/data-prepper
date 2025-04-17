@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import com.linecorp.armeria.client.retry.Backoff;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.model.failures.DlqObject;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -29,8 +31,6 @@ import java.util.concurrent.Executor;
 
 @Builder
 public class CloudWatchLogsDispatcher {
-    private static final long UPPER_RETRY_TIME_BOUND_MILLISECONDS = 2000;
-    private static final float EXP_TIME_SCALE = 1.25F;
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsDispatcher.class);
     private CloudWatchLogsClient cloudWatchLogsClient;
     private CloudWatchLogsMetrics cloudWatchLogsMetrics;
@@ -39,19 +39,18 @@ public class CloudWatchLogsDispatcher {
     private String logGroup;
     private String logStream;
     private int retryCount;
-    private long backOffTimeBase;
     public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                     final DlqPushHandler dlqPushHandler,
                                     final Executor executor,
-                                    final String logGroup, final String logStream,
-                                    final int retryCount, final long backOffTimeBase) {
+                                    final String logGroup,
+                                    final String logStream,
+                                    final int retryCount) {
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
         this.logGroup = logGroup;
         this.logStream = logStream;
         this.retryCount = retryCount;
-        this.backOffTimeBase = backOffTimeBase;
         this.dlqPushHandler = dlqPushHandler;
 
         this.executor = executor;
@@ -97,13 +96,14 @@ public class CloudWatchLogsDispatcher {
                 .putLogEventsRequest(putLogEventsRequest)
                 .eventHandles(eventHandles)
                 .totalEventCount(inputLogEvents.size())
-                .backOffTimeBase(backOffTimeBase)
                 .retryCount(retryCount)
                 .build());
     }
 
     @Builder
     protected static class Uploader implements Runnable {
+        static final long INITIAL_DELAY_MS = 50;
+        static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
         private final CloudWatchLogsClient cloudWatchLogsClient;
         private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
         private DlqPushHandler dlqPushHandler;
@@ -111,7 +111,6 @@ public class CloudWatchLogsDispatcher {
         private final List<EventHandle> eventHandles;
         private final int totalEventCount;
         private final int retryCount;
-        private final long backOffTimeBase;
 
         @Override
         public void run() {
@@ -124,6 +123,7 @@ public class CloudWatchLogsDispatcher {
             String failureMessage = "";
             PutLogEventsResponse putLogEventsResponse = null;
             List<DlqObject> dlqObjects = new ArrayList<>();
+            final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(retryCount);
 
             try {
                 while (failedToTransmit && (failCount < retryCount)) {
@@ -136,8 +136,11 @@ public class CloudWatchLogsDispatcher {
                         failureMessage = e.getMessage();
                         LOG.error(NOISY, "Failed to push logs with error: {}", e.getMessage());
                         cloudWatchLogsMetrics.increaseRequestFailCounter(1);
-                        Thread.sleep(calculateBackOffTime(backOffTimeBase, failCount));
                         failCount++;
+                        final long delayMillis = backoff.nextDelayMillis(failCount);
+                        if (delayMillis > 0) {
+                            Thread.sleep(delayMillis);
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -195,16 +198,6 @@ public class CloudWatchLogsDispatcher {
                 }
             }
             return dlqObjects;
-        }
-
-        private long calculateBackOffTime(final long backOffTimeBase, final int failCounter) {
-            long scale = (long)Math.pow(EXP_TIME_SCALE, failCounter);
-
-            if (scale >= UPPER_RETRY_TIME_BOUND_MILLISECONDS) {
-                return UPPER_RETRY_TIME_BOUND_MILLISECONDS;
-            }
-
-            return scale * backOffTimeBase;
         }
 
     }

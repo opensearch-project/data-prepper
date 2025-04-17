@@ -202,12 +202,10 @@ public class CloudWatchLogsIT {
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
         when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(logStreamName);
         when(cloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
-        when(cloudWatchLogsSinkConfig.getBufferType()).thenReturn(CloudWatchLogsSinkConfig.DEFAULT_BUFFER_TYPE);
+        when(cloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
 
         thresholdConfig = mock(ThresholdConfig.class);
-        when(thresholdConfig.getBackOffTime()).thenReturn(500L);
         when(thresholdConfig.getLogSendInterval()).thenReturn(60L);
-        when(thresholdConfig.getRetryCount()).thenReturn(10);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
     }
