@@ -78,11 +78,11 @@ public class DeleteEntryProcessorConfig {
 
     @JsonProperty("with_keys")
     @EventKeyConfiguration(EventKeyFactory.EventAction.DELETE)
-    @JsonPropertyDescription("A list of keys to be deleted (legacy format).")
+    @JsonPropertyDescription("A list of keys to be deleted. May not be used with entries.")
     private List<@NotNull @NotEmpty EventKey> withKeys;
 
     @JsonProperty("delete_when")
-    @JsonPropertyDescription("Specifies under what condition the deletion should be performed (legacy format).")
+    @JsonPropertyDescription("Specifies under what condition the deletion should be performed.")
     private String deleteWhen;
 
     @Valid
