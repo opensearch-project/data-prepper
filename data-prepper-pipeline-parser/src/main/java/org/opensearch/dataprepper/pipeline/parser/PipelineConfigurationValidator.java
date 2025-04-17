@@ -9,7 +9,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
-import org.opensearch.dataprepper.pipeline.parser.InvalidPipelineConfigurationException;
 import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
