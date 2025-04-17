@@ -21,7 +21,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -78,24 +77,23 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                     }
                     final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
                     if (iterateOnList != null) {
-                        final List<Map<String, Object>> result = new ArrayList<>();
-                        for (final Map<String, Object> item : iterateOnList) {
+                        for (int i = 0; i < iterateOnList.size(); i++) {
+                            final Map<String, Object> item = iterateOnList.get(i);
                             final Event context = JacksonEvent.builder()
                                     .withEventMetadata(recordEvent.getMetadata())
                                     .withData(item)
                                     .build();
                             if (applyIterateDeleteWhen &&
                                     !expressionEvaluator.evaluateConditional(deleteWhen, context)) {
-                                result.add(item);
                                 continue;
                             }
 
                             for (final EventKey entry : entries) {
                                 context.delete(entry);
                             }
-                            result.add(context.toMap());
+                            iterateOnList.set(i, context.toMap());
                         }
-                        recordEvent.put(iterateOn, result);
+                        recordEvent.put(iterateOn, iterateOnList);
                     }
                 }
             } catch (final Exception e) {
