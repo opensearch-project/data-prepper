@@ -61,8 +61,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
   // accessible only in the same package for unit test
   OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics,
       final PluginFactory pluginFactory,
-      final CertificateProviderFactory certificateProviderFactory,
-      final PipelineDescription pipelineDescription) {
+      final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
     oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
     this.oTelTraceSourceConfig = oTelTraceSourceConfig;
     this.pluginMetrics = pluginMetrics;
@@ -143,8 +142,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
   private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
     final PluginModel authenticationConfiguration = oTelTraceSourceConfig.getAuthentication();
 
-    if (authenticationConfiguration == null || authenticationConfiguration.getPluginName()
-        .equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
+    if (authenticationConfiguration == null
+        || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
       LOG.warn("Creating otel-trace-source without authentication. This is not secure.");
       LOG.warn(
           "In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
