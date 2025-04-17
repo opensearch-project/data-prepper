@@ -56,7 +56,7 @@ public class ScanObjectWorker implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScanObjectWorker.class);
     private static final Integer MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET = 1;
-
+    static final Integer MAX_RETRIES = 5;
     static final Duration CHECKPOINT_OWNERSHIP_INTERVAL = Duration.ofMinutes(2);
 
     static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofHours(1);
@@ -215,7 +215,7 @@ public class ScanObjectWorker implements Runnable {
                 processFolderPartition(objectToProcess.get());
             } catch (final Exception e) {
                 LOG.error("An exception occurred while processing folder partition {}, giving up this partition", objectToProcess.get().getPartitionKey(), e);
-                sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey(), Instant.now());
+                sourceCoordinator.giveUpPartition(objectToProcess.get().getPartitionKey(), Instant.now(), MAX_RETRIES);
                 partitionKeys.remove(objectToProcess.get().getPartitionKey());
             }
             return;
@@ -323,7 +323,7 @@ public class ScanObjectWorker implements Runnable {
                 return;
             }
             LOG.debug("No objects to process, giving up partition");
-            sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
+            sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), MAX_RETRIES);
             return;
         }
 
@@ -441,7 +441,7 @@ public class ScanObjectWorker implements Runnable {
                 objectsToDeleteForAcknowledgmentSets.remove(acknowledgmentSetId);
                 partitionKeys.remove(folderPartition.getPartitionKey());
                 LOG.info("Received all acknowledgments for folder partition {}, giving up this partition", folderPartition.getPartitionKey());
-                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now());
+                sourceCoordinator.giveUpPartition(folderPartition.getPartitionKey(), Instant.now(), MAX_RETRIES);
             }
         }, acknowledgmentSetTimeout);
     }
