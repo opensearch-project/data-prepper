@@ -16,7 +16,9 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -355,6 +357,110 @@ class ListToMapProcessorTest {
         assertThat(resultEvent.toMap(), equalTo(testRecord.getData().toMap()));
     }
 
+    @Test
+    void invalid_list_to_map_when_with_entries_format_throws_InvalidPluginConfigurationException(){
+        final List<ListToMapProcessorConfig.Entry> entries = List.of(
+                new ListToMapProcessorConfig.Entry(
+                        "mylist",
+                        "target",
+                        "name",
+                        "value",
+                        false,
+                        false,
+                        true,
+                        ListToMapProcessorConfig.FlattenedElement.FIRST,
+                        null,
+                        "invalid_condition"
+                )
+        );
+
+        when(mockConfig.getEntries()).thenReturn(entries);
+        when(expressionEvaluator.isValidExpressionStatement("invalid_condition")).thenReturn(false);
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void testMultipleEntriesFormatWithDifferentConditions() {
+        final List<ListToMapProcessorConfig.Entry> entries = Arrays.asList(
+                new ListToMapProcessorConfig.Entry(
+                        "mylist",
+                        "target1",
+                        "name",
+                        "value",
+                        false,
+                        false,
+                        true,
+                        ListToMapProcessorConfig.FlattenedElement.FIRST,
+                        null,
+                        "condition1"
+                ),
+                new ListToMapProcessorConfig.Entry(
+                        "mylist2",
+                        "target2",
+                        "name2",
+                        "value2",
+                        false,
+                        false,
+                        true,
+                        ListToMapProcessorConfig.FlattenedElement.FIRST,
+                        null,
+                        "condition2"
+                )
+        );
+
+        when(mockConfig.getEntries()).thenReturn(entries);
+        when(expressionEvaluator.isValidExpressionStatement("condition1")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("condition2")).thenReturn(true);
+
+        final Record<Event> testRecord = createTestRecordWithMultipleLists();
+
+        when(expressionEvaluator.evaluateConditional("condition1", testRecord.getData())).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional("condition2", testRecord.getData())).thenReturn(false);
+
+        final ListToMapProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+
+        assertThat(resultRecord.size(), is(1));
+
+        final Event resultEvent = resultRecord.get(0).getData();
+        assertThat(resultEvent.get("target1/a", String.class), is("val-a"));
+        assertThat(resultEvent.get("target2", Object.class), is(nullValue()));
+    }
+
+    @Test
+    public void test_both_configurations_used_together() {
+        final ListToMapProcessorConfig configObjectUnderTest = new ListToMapProcessorConfig();
+        ReflectionTestUtils.setField(configObjectUnderTest, "source", "mylist");
+
+        final ListToMapProcessorConfig.Entry entry = new ListToMapProcessorConfig.Entry(
+                "mylist2",
+                "target2",
+                "name",
+                "value",
+                false,
+                false,
+                true,
+                ListToMapProcessorConfig.FlattenedElement.FIRST,
+                null,
+                "condition"
+        );
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
+
+        assertThat(configObjectUnderTest.isNotUsingBothConfigurations(), is(false));
+    }
+
+    @Test
+    public void test_no_configuration_used() {
+        final ListToMapProcessorConfig configObjectUnderTest = new ListToMapProcessorConfig();
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "source", null);
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", null);
+
+        assertThat(configObjectUnderTest.isUsingAtLeastOneConfiguration(), is(false));
+    }
+
     private ListToMapProcessor createObjectUnderTest() {
         return new ListToMapProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
@@ -378,6 +484,30 @@ class ListToMapProcessorTest {
                         Map.of("name", "a", "value", "val-a"),
                         Map.of("name", "b", "value", "val-b"),
                         Map.of("badname", "c", "value", "val-c")));
+        final Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build();
+        return new Record<>(event);
+    }
+
+    private Record<Event> createTestRecordWithMultipleLists() {
+        final Map<String, Object> data = Map.of(
+                "mylist", List.of(
+                        Map.of("name", "a", "value", "val-a"),
+                        Map.of("name", "b", "value", "val-b1"),
+                        Map.of("name", "b", "value", "val-b2"),
+                        Map.of("name", "c", "value", "val-c")
+                ),
+                "mylist2", List.of(
+                        Map.of("name2", "x", "value2", "val-x"),
+                        Map.of("name2", "y", "value2", "val-y1"),
+                        Map.of("name2", "y", "value2", "val-y2"),
+                        Map.of("name2", "z", "value2", "val-z")
+                ),
+                "nolist", "single-value"
+
+        );
         final Event event = JacksonEvent.builder()
                 .withData(data)
                 .withEventType("event")
