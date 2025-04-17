@@ -194,4 +194,4 @@ include 'data-prepper-plugins:saas-source-plugins:source-crawler'
 include 'data-prepper-plugins:saas-source-plugins:jira-source'
 include 'data-prepper-plugins:saas-source-plugins:confluence-source'
 include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
-
+include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
