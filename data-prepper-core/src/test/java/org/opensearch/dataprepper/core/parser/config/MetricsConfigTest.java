@@ -170,11 +170,10 @@ class MetricsConfigTest {
         final Counter blockedCounter = registry.counter("test.metric.blocked");
         final Counter allowedCounter = registry.counter("test.metric.allowed");
 
-        assertThat(blockedCounter.count(), equalTo(0.0)); // Not incremented
+        assertThat(blockedCounter.count(), equalTo(0.0));
         allowedCounter.increment();
-        assertThat(allowedCounter.count(), equalTo(1.0)); // Should increment fine
+        assertThat(allowedCounter.count(), equalTo(1.0));
     }
-
 
     @Test
     public void testGivenConfigWithCloudWatchMeterRegistryThenNoMeterRegistryCreated() {
