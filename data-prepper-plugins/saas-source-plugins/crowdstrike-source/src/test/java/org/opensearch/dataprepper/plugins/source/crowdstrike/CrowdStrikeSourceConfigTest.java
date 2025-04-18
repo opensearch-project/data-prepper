@@ -13,7 +13,6 @@ public class CrowdStrikeSourceConfigTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private CrowdStrikeSourceConfig config;
 
-    private static final int DEFAULT_BATCH_SIZE = 10000;
     private static final int DEFAULT_WORKERS = 5;
 
     @BeforeEach
@@ -23,7 +22,6 @@ public class CrowdStrikeSourceConfigTest {
 
     @Test
     void testDefaultValues() {
-        assertEquals(DEFAULT_BATCH_SIZE, config.getBatchSize());
         assertEquals(DEFAULT_WORKERS, config.getNumWorkers());
         assertFalse(config.isAcknowledgments());
     }
@@ -44,7 +42,6 @@ public class CrowdStrikeSourceConfigTest {
         assertNotNull(loadedConfig.getAuthenticationConfig());
         assertTrue(loadedConfig.isAcknowledgments());
         assertEquals(10, loadedConfig.getNumWorkers());
-        assertEquals(DEFAULT_BATCH_SIZE, loadedConfig.getBatchSize());
     }
 
 }

@@ -35,6 +35,9 @@ public class CrowdStrikeAuthClient {
     RestTemplate restTemplate = new RestTemplate();
     private static final Logger log = LoggerFactory.getLogger(CrowdStrikeAuthClient.class);
     private static final String OAUTH_TOKEN_URL = "https://api.crowdstrike.com/oauth2/token";
+    private static final String ACCESS_TOKEN = "access_token";
+    private static final String EXPIRE_IN = "expires_in";
+
 
 
     public CrowdStrikeAuthClient(final CrowdStrikeSourceConfig sourceConfig) {
@@ -66,10 +69,10 @@ public class CrowdStrikeAuthClient {
         HttpEntity<String> request = new HttpEntity<>(headers);
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(OAUTH_TOKEN_URL, request, Map.class);
-            Map<String, Object> tokenData = response.getBody();
-            this.bearerToken = (String) tokenData.get("access_token");
-            this.expireTime = Instant.now().plusSeconds((Integer) tokenData.get("expires_in"));
-            log.info("Access token acquired successfully, expires in {} seconds", tokenData.get("expires_in"));
+            Map tokenData = response.getBody();
+            this.bearerToken = (String) tokenData.get(ACCESS_TOKEN);
+            this.expireTime = Instant.now().plusSeconds((Integer) tokenData.get(EXPIRE_IN));
+            log.info("Access token acquired successfully");
         } catch (HttpClientErrorException ex) {
             this.expireTime = Instant.ofEpochMilli(0);
             HttpStatus statusCode = ex.getStatusCode();
@@ -87,6 +90,6 @@ public class CrowdStrikeAuthClient {
      * Refreshes the bearer token by retrieving a new one from CrowdStrike.
      */
     public void refreshToken() {
-        //getAuthenticationToken();
+
     }
 }
