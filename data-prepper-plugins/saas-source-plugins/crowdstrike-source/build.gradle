@@ -1,15 +1,7 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '2.7.0'
 }
 
-bootJar {
-    mainClass.set('org.opensearch.dataprepper.plugins.source.crowdstrike.CrowdStrikeSource')
-}
-
-repositories {
-    mavenCentral()
-}
 dependencies {
 
     implementation project(path: ':data-prepper-plugins:saas-source-plugins:source-crawler')
@@ -30,18 +22,10 @@ dependencies {
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
     testImplementation project(path: ':data-prepper-test-common')
-    testImplementation 'ch.qos.logback:logback-classic:1.4.12'   // For SLF4J 2.x
+    testImplementation 'ch.qos.logback:logback-classic:1.4.12'
     testImplementation 'org.slf4j:slf4j-api:2.0.7'
-    implementation('org.springframework.boot:spring-boot-starter-webflux:2.7.0') {
-        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
-        exclude group: 'ch.qos.logback', module: 'logback-classic'
-    }
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation(libs.spring.web)
-}
-
-test {
-    useJUnitPlatform()
 }

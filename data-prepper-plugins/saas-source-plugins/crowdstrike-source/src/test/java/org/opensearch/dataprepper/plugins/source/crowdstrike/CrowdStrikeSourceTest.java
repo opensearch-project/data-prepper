@@ -14,11 +14,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.rest.CrowdStrikeAuthClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-
 import java.util.concurrent.ExecutorService;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
+
 
 @ExtendWith(MockitoExtension.class)
 public class CrowdStrikeSourceTest {

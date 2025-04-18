@@ -5,16 +5,16 @@ import org.opensearch.dataprepper.plugins.source.crowdstrike.CrowdStrikeSourceCo
 import org.opensearch.dataprepper.plugins.source.crowdstrike.configuration.AuthenticationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.util.Map;
-import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.reactive.function.client.WebClient;
-
 import javax.inject.Named;
-
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 
@@ -32,6 +32,7 @@ public class CrowdStrikeAuthClient {
     private Instant expireTime;
     private final String clientId;
     private final String clientSecret;
+    RestTemplate restTemplate = new RestTemplate();
     private static final Logger log = LoggerFactory.getLogger(CrowdStrikeAuthClient.class);
     private static final String OAUTH_TOKEN_URL = "https://api.crowdstrike.com/oauth2/token";
 
@@ -48,7 +49,7 @@ public class CrowdStrikeAuthClient {
      */
     public void initCredentials() {
         log.info("Getting CrowdStrike Authentication Token");
-        getAuthenticationToken();
+        getAuthToken();
     }
 
     /**
@@ -57,33 +58,25 @@ public class CrowdStrikeAuthClient {
      *
      * @throws RuntimeException if the token cannot be retrieved.
      */
-    private void getAuthenticationToken() {
-        WebClient webClient = WebClient.builder().build();
+    private void getAuthToken() {
         log.info(NOISY, "You are trying to access token");
-
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>(3) {{
-            add("client_id", clientId);
-            add("client_secret", clientSecret);
-            add("grant_type", "client_credentials");
-        }};
-
-            Map response = webClient.post()
-                    .uri(OAUTH_TOKEN_URL)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .bodyValue(form)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
-
-            if (response == null || !response.containsKey("access_token")) {
-                log.error("Token response missing access_token");
-                throw new RuntimeException("Token response missing access_token");
-            }
-
-            this.bearerToken = response.get("access_token").toString();
-            int expiresInSeconds = (Integer) response.get("expires_in");
-            this.expireTime = Instant.now().plusSeconds(expiresInSeconds);
-            log.info("Access token acquired, expires in {} seconds", expiresInSeconds);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.setBasicAuth(this.clientId, this.clientSecret);
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(OAUTH_TOKEN_URL, request, Map.class);
+            Map<String, Object> tokenData = response.getBody();
+            this.bearerToken = (String) tokenData.get("access_token");
+            this.expireTime = Instant.now().plusSeconds((Integer) tokenData.get("expires_in"));
+            log.info("Access token acquired successfully, expires in {} seconds", tokenData.get("expires_in"));
+        } catch (HttpClientErrorException ex) {
+            this.expireTime = Instant.ofEpochMilli(0);
+            HttpStatus statusCode = ex.getStatusCode();
+            log.error("Failed to acquire access token. Status code: {}, Error Message: {}",
+                    statusCode, ex.getMessage());
+            throw new RuntimeException("Error while requesting token:" + ex.getMessage(), ex);
+        }
     }
 
     public boolean isTokenExpired() {

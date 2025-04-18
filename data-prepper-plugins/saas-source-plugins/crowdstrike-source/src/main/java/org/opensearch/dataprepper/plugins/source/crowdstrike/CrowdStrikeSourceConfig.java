@@ -16,7 +16,7 @@ public class CrowdStrikeSourceConfig implements CrawlerSourceConfig {
     /**
      * Batch size for fetching Threat Intel Feeds
      */
-    private static final int DEFAULT_BATCH_SIZE = 10000;
+    private static final int DEFAULT_IOC_FETCH_BATCH_SIZE = 10000;
     private static final int DEFAULT_NUMBER_OF_WORKERS = 5;
 
     @JsonProperty("authentication")
@@ -34,7 +34,7 @@ public class CrowdStrikeSourceConfig implements CrawlerSourceConfig {
 
     @Override
     public int getBatchSize() {
-        return DEFAULT_BATCH_SIZE;
+        return DEFAULT_IOC_FETCH_BATCH_SIZE;
     }
 
 }

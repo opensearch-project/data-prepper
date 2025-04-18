@@ -2,86 +2,72 @@ package org.opensearch.dataprepper.plugins.source.crowdstrike.rest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.CrowdStrikeSourceConfig;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.configuration.AuthenticationConfig;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.util.Map;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
+@ExtendWith(MockitoExtension.class)
 class CrowdStrikeAuthClientTest {
 
-    private CrowdStrikeSourceConfig mockSourceConfig;
-    private WebClient.Builder mockWebClientBuilder;
-    private WebClient.ResponseSpec responseSpec;
+    @Mock
+    private RestTemplate restTemplateMock;
 
-    @SuppressWarnings("unchecked")
+    private CrowdStrikeAuthClient authClient;
+
     @BeforeEach
     void setUp() {
-        mockSourceConfig = mock(CrowdStrikeSourceConfig.class);
-        AuthenticationConfig mockAuthConfig = mock(AuthenticationConfig.class);
-
-        when(mockSourceConfig.getAuthenticationConfig()).thenReturn(mockAuthConfig);
-        when(mockAuthConfig.getClientId()).thenReturn("test-client-id");
-        when(mockAuthConfig.getClientSecret()).thenReturn("test-client-secret");
-
-        // Mock the full WebClient chain
-        mockWebClientBuilder = mock(WebClient.Builder.class);
-        WebClient mockWebClient = mock(WebClient.class);
-        WebClient.RequestBodyUriSpec uriSpec = mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestBodySpec bodySpec = mock(WebClient.RequestBodySpec.class);
-        WebClient.RequestHeadersSpec headersSpec = mock(WebClient.RequestHeadersSpec.class);
-        responseSpec = mock(WebClient.ResponseSpec.class);
-
-        when(mockWebClientBuilder.build()).thenReturn(mockWebClient);
-        when(mockWebClient.post()).thenReturn(uriSpec);
-        when(uriSpec.uri(anyString())).thenReturn(bodySpec);
-        when(bodySpec.contentType(any())).thenReturn(bodySpec);
-        when(bodySpec.bodyValue(any())).thenReturn(headersSpec);
-        when(headersSpec.retrieve()).thenReturn(responseSpec);
+        CrowdStrikeSourceConfig mockSourceConfig = mock(CrowdStrikeSourceConfig.class);
+        AuthenticationConfig authConfig = mock(AuthenticationConfig.class);
+        when(mockSourceConfig.getAuthenticationConfig()).thenReturn(authConfig);
+        when(authConfig.getClientId()).thenReturn("test-id");
+        when(authConfig.getClientSecret()).thenReturn("test-secret");
+        authClient = new CrowdStrikeAuthClient(mockSourceConfig);
+        authClient.restTemplate = restTemplateMock;
     }
 
     @Test
-    void testInitCredentials_shouldSetBearerTokenAndExpiry() {
+    void testInitCredentials_success() {
         Map<String, Object> mockResponse = Map.of(
-                "access_token", "test-access-token",
+                "access_token", "mock-token",
                 "expires_in", 3600
         );
-
-        when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.just(mockResponse));
-
-        try (MockedStatic<WebClient> webClientStatic = mockStatic(WebClient.class)) {
-            webClientStatic.when(WebClient::builder).thenReturn(mockWebClientBuilder);
-
-            CrowdStrikeAuthClient client = new CrowdStrikeAuthClient(mockSourceConfig);
-            Instant beforeCall = Instant.now();
-            client.initCredentials();
-
-            assertEquals("test-access-token", client.getBearerToken());
-            assertNotNull(client.getExpireTime());
-            assertTrue(client.getExpireTime().isAfter(beforeCall));
-            assertFalse(client.isTokenExpired());
-        }
+        when(restTemplateMock.postForEntity(anyString(), any(), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(mockResponse));
+        authClient.initCredentials();
+        assertEquals("mock-token", authClient.getBearerToken());
+        assertNotNull(authClient.getExpireTime());
     }
 
     @Test
-    void testInitCredentials_whenTokenMissing_shouldThrowException() {
-        Map<String, Object> badResponse = Map.of(); // No access_token
+    void testHttpClientErrorExceptionHandled() {
+        HttpClientErrorException forbidden = HttpClientErrorException.create(
+                HttpStatus.FORBIDDEN, "Forbidden", HttpHeaders.EMPTY, null, null);
 
-        when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.just(badResponse));
+        when(restTemplateMock.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(forbidden);
 
-        try (MockedStatic<WebClient> webClientStatic = mockStatic(WebClient.class)) {
-            webClientStatic.when(WebClient::builder).thenReturn(mockWebClientBuilder);
-
-            CrowdStrikeAuthClient client = new CrowdStrikeAuthClient(mockSourceConfig);
-
-            RuntimeException ex = assertThrows(RuntimeException.class, client::initCredentials);
-            assertTrue(ex.getMessage().contains("access_token"));
-        }
+        RuntimeException ex = assertThrows(RuntimeException.class, authClient::initCredentials);
+        assertTrue(ex.getMessage().contains("Error while requesting token"));
+        assertEquals(Instant.ofEpochMilli(0), authClient.getExpireTime());
     }
+
 }
