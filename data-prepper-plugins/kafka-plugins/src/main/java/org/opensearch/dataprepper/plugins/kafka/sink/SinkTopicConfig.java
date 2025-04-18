@@ -42,6 +42,11 @@ public class SinkTopicConfig extends CommonTopicConfig implements TopicProducerC
     }
 
     @Override
+    public String getEncryptionId() {
+        return null;
+    }
+
+    @Override
     public String getEncryptionKey() {
         return null;
     }
