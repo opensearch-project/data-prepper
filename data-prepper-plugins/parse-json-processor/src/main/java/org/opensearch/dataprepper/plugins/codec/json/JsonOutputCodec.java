@@ -55,10 +55,12 @@ public class JsonOutputCodec implements OutputCodec {
         generator.writeStartObject();
         generator.writeFieldName(config.getKeyName());
         generator.writeStartArray();
+        System.out.println(codecContext+"CODEC START..."+outputStream);
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
+        System.out.println(codecContext+"CODEC COMPL..."+outputStream);
         generator.writeEndArray();
         generator.writeEndObject();
         generator.close();
@@ -67,29 +69,35 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
+    public long getEstimatedSize(final Event event, final OutputCodecContext outputCodecContext) throws IOException {
+        Map<String, Object> map = getDataMapToSerialize(event, outputCodecContext);
+        return 8 + objectMapper.writeValueAsString(map).length();
+    }
+
+    @Override
     public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
-        Map<String, Object> dataMap = getDataMapToSerialize(event);
+        Map<String, Object> dataMap = getDataMapToSerialize(event, codecContext);
         objectMapper.writeValue(generator, dataMap);
         generator.flush();
     }
 
-    private Map<String, Object> getDataMapToSerialize(Event event) throws JsonProcessingException {
+    private Map<String, Object> getDataMapToSerialize(Event event, final OutputCodecContext cContext) throws JsonProcessingException {
         final Event modifiedEvent;
-        if (codecContext.getTagsTargetKey() != null) {
-            modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
+        if (cContext.getTagsTargetKey() != null) {
+            modifiedEvent = addTagsToEvent(event, cContext.getTagsTargetKey());
         } else {
             modifiedEvent = event;
         }
         Map<String, Object> dataMap = modifiedEvent.toMap();
 
-        if ((codecContext.getIncludeKeys() != null && !codecContext.getIncludeKeys().isEmpty()) ||
-                (codecContext.getExcludeKeys() != null && !codecContext.getExcludeKeys().isEmpty())) {
+        if ((cContext.getIncludeKeys() != null && !cContext.getIncludeKeys().isEmpty()) ||
+                (cContext.getExcludeKeys() != null && !cContext.getExcludeKeys().isEmpty())) {
 
             Map<String, Object> finalDataMap = dataMap;
             dataMap = dataMap.keySet()
                     .stream()
-                    .filter(codecContext::shouldIncludeKey)
+                    .filter(cContext::shouldIncludeKey)
                     .collect(Collectors.toMap(Function.identity(), finalDataMap::get));
         }
         return dataMap;

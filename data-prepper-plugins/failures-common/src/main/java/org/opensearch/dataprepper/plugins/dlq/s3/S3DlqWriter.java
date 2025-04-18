@@ -103,17 +103,22 @@ public class S3DlqWriter implements DlqWriter {
     }
 
     private void doWrite(final List<DlqObject> dlqObjects, final String pipelineName, final String pluginId) throws IOException {
+        System.out.println("________1____");
         final PutObjectRequest putObjectRequest = PutObjectRequest.builder()
             .bucket(bucket)
             .expectedBucketOwner(bucketOwner)
             .key(buildKey(pipelineName, pluginId))
             .build();
+        System.out.println("________2____");
 
         final String content = deserialize(dlqObjects);
+        System.out.println("________2.5____");
 
         final PutObjectResponse response = timedPutObject(putObjectRequest, content);
+        System.out.println("________3____");
 
         if (!response.sdkHttpResponse().isSuccessful()) {
+        System.out.println("________4___CODE=_"+response.sdkHttpResponse().statusCode());
             LOG.error(SENSITIVE, "Failed to write content [{}] to S3 dlq", content);
             LOG.error("Failed to write to S3 dlq due to status code: [{}]", response.sdkHttpResponse().statusCode());
             throw new IOException(String.format(
@@ -144,13 +149,17 @@ public class S3DlqWriter implements DlqWriter {
     private String deserialize(final List<DlqObject> dlqObjects) throws IOException {
         try {
             final Map<String, Object> output = Map.of(DLQ_OBJECTS, dlqObjects);
+            System.out.println("_1_______DESER____"+output);
 
             final String content = objectMapper.writeValueAsString(output);
+            System.out.println("_2_______DESER____CONTENT__"+content);
 
             dlqS3RequestSizeBytesSummary.record(content.getBytes(StandardCharsets.UTF_8).length);
+            System.out.println("_3_______DESER____");
 
             return content;
         } catch (JsonProcessingException e) {
+            System.out.println("_4_______EXCEP.."+e);
             LOG.error(SENSITIVE, "Failed to build valid S3 request body with dlqObjects: [{}]", dlqObjects, e);
             throw new IOException("Failed to build valid S3 request body", e);
         }

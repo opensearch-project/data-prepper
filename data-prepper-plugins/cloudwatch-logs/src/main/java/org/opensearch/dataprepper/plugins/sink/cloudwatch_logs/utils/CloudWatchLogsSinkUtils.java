@@ -19,7 +19,7 @@ public class CloudWatchLogsSinkUtils {
     public static DlqObject createDlqObject(final int status, final EventHandle eventHandle, final String message, final String failureMessage, final DlqPushHandler dlqPushHandler) {
         if (dlqPushHandler != null) {
             CloudWatchLogsSinkDlqData cloudWatchLogsSinkDlqData = CloudWatchLogsSinkDlqData.createDlqData(status, message, failureMessage);
-            return DlqObject.createDlqObject(dlqPushHandler.getPluginSetting(), eventHandle, cloudWatchLogsSinkDlqData);
+            return DlqObject.createDlqObject(dlqPushHandler.getPluginSetting(), List.of(eventHandle), cloudWatchLogsSinkDlqData);
         } else {
             eventHandle.release(false);
         }
@@ -35,7 +35,7 @@ public class CloudWatchLogsSinkUtils {
             result = dlqPushHandler.perform(dlqObjects);
         } 
         for (final DlqObject dlqObject : dlqObjects) {
-            dlqObject.getEventHandle().release(result);
+            dlqObject.releaseEventHandles(result);
         }
     }
 }
