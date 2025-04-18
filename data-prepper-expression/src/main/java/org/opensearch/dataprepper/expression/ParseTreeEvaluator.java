@@ -36,6 +36,8 @@ class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
             final ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operatorProvider, coercionService, event);
             walker.walk(listener, parseTree);
             return listener.getResult();
+        } catch (IllegalArgumentException iae) {
+            throw iae;
         } catch (final Exception e) {
             LOG.error(e.getMessage());
             throw new ExpressionEvaluationException(e.getMessage(), e);

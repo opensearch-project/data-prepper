@@ -44,12 +44,12 @@ class ParseTreeCoercionService {
                 final int funcNameIndex = nodeStringValue.indexOf("(");
                 final String functionName = nodeStringValue.substring(0, funcNameIndex);
                 final int argsEndIndex = nodeStringValue.indexOf(")", funcNameIndex);
-                final String argsStr = nodeStringValue.substring(funcNameIndex+1, argsEndIndex);
+                final String argsStr = nodeStringValue.substring(funcNameIndex + 1, argsEndIndex);
                 // Split at commas if there's no backslash before the commas, because commas can be part of a function parameter
                 final String[] args = argsStr.split("(?<!\\\\),");
                 List<Object> argList = new ArrayList<>();
-                for (final String arg: args) {
-                    String trimmedArg = arg.trim();
+                for (final String arg : args) {
+                    final String trimmedArg = arg.trim();
                     if (trimmedArg.charAt(0) == '/') {
                         argList.add(trimmedArg);
                     } else if (trimmedArg.charAt(0) == '"') {
@@ -57,6 +57,13 @@ class ParseTreeCoercionService {
                             throw new RuntimeException("Invalid string argument: check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`.");
                         }
                         argList.add(trimmedArg);
+                    } else if (Character.isDigit(trimmedArg.charAt(0)) || trimmedArg.charAt(0) == '-') {
+                        final Long longValue = Long.valueOf(trimmedArg);
+                        if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE) {
+                            argList.add(longValue);
+                        } else {
+                            argList.add(Integer.valueOf(trimmedArg));
+                        }
                     } else {
                         throw new RuntimeException("Unsupported type passed as function argument");
                     }
