@@ -33,8 +33,6 @@ public class BinlogClientWrapper implements ReplicationLogClient {
 
     @Override
     public void disconnect() throws IOException {
-        binlogClient.disconnect();
-
         List<BinaryLogClient.EventListener> eventListenerList = binlogClient.getEventListeners();
         if (!eventListenerList.isEmpty()) {
             for (BinaryLogClient.EventListener eventListener : eventListenerList) {
@@ -49,6 +47,8 @@ public class BinlogClientWrapper implements ReplicationLogClient {
 
         LOG.debug("Unregistering binlog client lifecycle listeners.");
         binlogClient.getLifecycleListeners().forEach(binlogClient::unregisterLifecycleListener);
+
+        binlogClient.disconnect();
     }
 
     public BinaryLogClient getBinlogClient() {

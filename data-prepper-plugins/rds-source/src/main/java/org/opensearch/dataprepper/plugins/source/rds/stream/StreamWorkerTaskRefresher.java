@@ -114,7 +114,10 @@ public class StreamWorkerTaskRefresher implements PluginConfigObserver<RdsSource
     }
 
     public void shutdown() {
-        streamWorker.shutdown();
+        if (streamWorker != null) {
+            streamWorker.shutdown();
+        }
+        LOG.info("Stream worker stopped.");
         executorService.shutdownNow();
     }
 

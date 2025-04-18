@@ -35,6 +35,5 @@ public class BinlogClientLifecycleListener implements BinaryLogClient.LifecycleL
     @Override
     public void onDisconnect(BinaryLogClient binaryLogClient) {
         LOG.info("Binlog client disconnected.");
-
     }
 }
