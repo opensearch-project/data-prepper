@@ -170,6 +170,12 @@ You can also deny a release by using _deny_ or _denied_ in the comment.
 
 **NOTE** The smoke tests currently report a build failure, even when they succeed. Thus, you need to manually verify the output.
 
+### OpenSearch CI server build
+
+After two maintainers approve the GitHub issue, the [OpenSearch CI server](https://build.ci.opensearch.org/) will start a build.
+This is a Jenkins server that promotes our releases. 
+You can check the promotion status by checking the [release-data-prepper](https://build.ci.opensearch.org/job/release-data-prepper/) job.
+
 ### Further details
 
 For more details on the release build, or to setup your own GitHub repository, see [release/README.md](release/README.md).
