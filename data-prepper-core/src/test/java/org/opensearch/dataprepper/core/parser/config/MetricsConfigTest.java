@@ -19,6 +19,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -156,6 +157,25 @@ class MetricsConfigTest {
     }
 
     @Test
+    public void testGivenDisabledMetricsThenDisabledMetricsFilterDeniesMatchingMetric() {
+        final DataPrepperConfiguration config = mock(DataPrepperConfiguration.class);
+
+        when(config.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
+        when(config.getMetricTags()).thenReturn(Collections.emptyMap());
+        when(config.getMetricTagFilters()).thenReturn(Collections.emptyList());
+        when(config.getDisabledMetrics()).thenReturn(List.of("test.metric.blocked"));
+
+        final MeterRegistry registry = metricsConfig.prometheusMeterRegistry(config);
+        final Counter blockedCounter = registry.counter("test.metric.blocked");
+        final Counter allowedCounter = registry.counter("test.metric.allowed");
+
+        assertThat(blockedCounter.count(), equalTo(0.0));
+        allowedCounter.increment();
+        assertThat(allowedCounter.count(), equalTo(1.0));
+    }
+
+    @Test
     public void testGivenConfigWithCloudWatchMeterRegistryThenNoMeterRegistryCreated() {
         final CloudWatchMeterRegistryProvider provider = mock(CloudWatchMeterRegistryProvider.class);
         final CloudWatchMeterRegistry expected = mock(CloudWatchMeterRegistry.class);
@@ -231,30 +251,44 @@ class MetricsConfigTest {
         final MeterBinder binder = mock(MeterBinder.class);
         final List<MeterBinder> meterBinders = Collections.nCopies(copies, binder);
 
-        final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
-        final List<MeterRegistry> meterRegistries = Collections.nCopies(1, meterRegistryMock);
+        final MeterRegistry realRegistry = new SimpleMeterRegistry();
+        final List<MeterRegistry> meterRegistries = Collections.singletonList(realRegistry);
+
+        final DataPrepperConfiguration config = mock(DataPrepperConfiguration.class);
+        when(config.getMetricTags()).thenReturn(Collections.emptyMap());
+        when(config.getMetricTagFilters()).thenReturn(Collections.emptyList());
+        when(config.getDisabledMetrics()).thenReturn(Collections.emptyList());
 
         final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
                 meterBinders,
-                meterRegistries);
+                meterRegistries,
+                config);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
         verify(binder, times(copies)).bindTo(any(MeterRegistry.class));
     }
 
+
     @Test
     public void testGivenEmptyListOfMeterBindersWhenSystemMeterRegistryThenNoMeterBindersRegistered() {
         final List<MeterBinder> meterBinders = Collections.emptyList();
 
-        final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
+        final MeterRegistry meterRegistryMock = new SimpleMeterRegistry();
         final List<MeterRegistry> meterRegistries = Collections.nCopies(1, meterRegistryMock);
+
+        final DataPrepperConfiguration config = mock(DataPrepperConfiguration.class);
+        when(config.getMetricTags()).thenReturn(Collections.emptyMap());
+        when(config.getMetricTagFilters()).thenReturn(Collections.emptyList());
+        when(config.getDisabledMetrics()).thenReturn(Collections.emptyList());
 
         final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
                 meterBinders,
-                meterRegistries);
+                meterRegistries,
+                config);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
     }
+
 
     private static Stream<Arguments> provideMetricRegistryTypesAndCreators() {
         return Stream.of(

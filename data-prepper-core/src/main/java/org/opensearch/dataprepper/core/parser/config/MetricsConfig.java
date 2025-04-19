@@ -82,16 +82,20 @@ public class MetricsConfig {
 
     private void configureMetricRegistry(final Map<String, String> metricTags,
                                          final List<MetricTagFilter> metricTagFilters,
-                                         final MeterRegistry meterRegistry) {
+                                         final List<String> disabledMetrics,
+                                         final MeterRegistry meterRegistry){
+        meterRegistry.config().meterFilter(new DisableMetricsFilter(disabledMetrics));
         meterRegistry.config().meterFilter(new CustomTagsMeterFilter(metricTags, metricTagFilters));
     }
+
 
     @Bean
     public PrometheusMeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
             configureMetricRegistry(
-                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
+                    dataPrepperConfiguration.getDisabledMetrics(),  meterRegistry
             );
 
             return meterRegistry;
@@ -127,7 +131,8 @@ public class MetricsConfig {
             try {
                 final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
                 configureMetricRegistry(
-                        dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+                        dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
+                        dataPrepperConfiguration.getDisabledMetrics(), meterRegistry
                 );
 
                 return meterRegistry;
@@ -146,7 +151,8 @@ public class MetricsConfig {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
             final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
             configureMetricRegistry(
-                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(),
+                    dataPrepperConfiguration.getDisabledMetrics(), meterRegistry
             );
             return meterRegistry;
         } else {
@@ -157,18 +163,25 @@ public class MetricsConfig {
     @Bean
     public CompositeMeterRegistry systemMeterRegistry(
             final List<MeterBinder> meterBinders,
-            final List<MeterRegistry> meterRegistries
+            final List<MeterRegistry> meterRegistries,
+            final DataPrepperConfiguration dataPrepperConfiguration
     ) {
         final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
 
-        LOG.debug("{} Meter Binder beans registered.", meterBinders.size());
-        meterBinders.forEach(binder -> binder.bindTo(compositeMeterRegistry));
-
         meterRegistries.forEach(meterRegistry -> {
-            compositeMeterRegistry.add(meterRegistry);
+            configureMetricRegistry(
+                    dataPrepperConfiguration.getMetricTags(),
+                    dataPrepperConfiguration.getMetricTagFilters(),
+                    dataPrepperConfiguration.getDisabledMetrics(),
+                    meterRegistry
+            );
             Metrics.addRegistry(meterRegistry);
+            compositeMeterRegistry.add(meterRegistry);
         });
+
+        meterBinders.forEach(binder -> binder.bindTo(compositeMeterRegistry));
 
         return compositeMeterRegistry;
     }
+
 }
