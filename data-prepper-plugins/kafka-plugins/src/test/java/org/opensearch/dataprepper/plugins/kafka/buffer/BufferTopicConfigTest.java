@@ -7,10 +7,15 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
+
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class BufferTopicConfigTest {
@@ -52,6 +57,26 @@ class BufferTopicConfigTest {
 
         setField(BufferTopicConfig.class, objectUnderTest, "fetchMaxBytes", ByteCount.zeroBytes());
         assertThrows(RuntimeException.class, () -> objectUnderTest.getFetchMaxBytes());
+    }
+
+    @Test
+    void invalid_encryption_at_rest_setting_with_both_encryption_id_and_encryption_key()
+            throws NoSuchFieldException, IllegalAccessException {
+        BufferTopicConfig objectUnderTest = createObjectUnderTest();
+
+        setField(BufferTopicConfig.class, objectUnderTest, "encryptionId", UUID.randomUUID().toString());
+        setField(BufferTopicConfig.class, objectUnderTest, "encryptionKey", UUID.randomUUID().toString());
+        assertThat(objectUnderTest.IsEncryptionAtRestSettingValid(), is(false));
+    }
+
+    @Test
+    void invalid_encryption_at_rest_setting_with_both_encryption_id_and_kms()
+            throws NoSuchFieldException, IllegalAccessException {
+        BufferTopicConfig objectUnderTest = createObjectUnderTest();
+
+        setField(BufferTopicConfig.class, objectUnderTest, "encryptionId", UUID.randomUUID().toString());
+        setField(BufferTopicConfig.class, objectUnderTest, "kmsConfig", mock(KmsConfig.class));
+        assertThat(objectUnderTest.IsEncryptionAtRestSettingValid(), is(false));
     }
 
 }
