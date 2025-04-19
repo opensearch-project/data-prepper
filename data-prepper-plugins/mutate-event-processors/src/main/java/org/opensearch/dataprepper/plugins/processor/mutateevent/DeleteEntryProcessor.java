@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "delete_entries", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
@@ -32,10 +34,12 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     private final String deleteWhen;
 
     private final ExpressionEvaluator expressionEvaluator;
+    private final DeleteEntryProcessorConfig deleteEntryProcessorConfig;
 
     @DataPrepperPluginConstructor
     public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
+        this.deleteEntryProcessorConfig = config;
         this.entries = config.getWithKeys();
         this.deleteWhen = config.getDeleteWhen();
         this.expressionEvaluator = expressionEvaluator;
@@ -53,13 +57,44 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
             final Event recordEvent = record.getData();
 
             try {
-                if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
-                    continue;
-                }
+                final String iterateOn = deleteEntryProcessorConfig.getIterateOn();
+                if (Objects.isNull(iterateOn)) {
+                    if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+                        continue;
+                    }
 
 
-                for (final EventKey entry : entries) {
-                    recordEvent.delete(entry);
+                    for (final EventKey entry : entries) {
+                        recordEvent.delete(entry);
+                    }
+                } else {
+                    final boolean applyEventDeleteWhen = !deleteEntryProcessorConfig.isUseIterateOnContext() &&
+                            Objects.nonNull(deleteWhen);
+                    final boolean applyIterateDeleteWhen = deleteEntryProcessorConfig.isUseIterateOnContext() &&
+                            Objects.nonNull(deleteWhen);
+                    if (applyEventDeleteWhen && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+                        continue;
+                    }
+                    final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+                    if (iterateOnList != null) {
+                        for (int i = 0; i < iterateOnList.size(); i++) {
+                            final Map<String, Object> item = iterateOnList.get(i);
+                            final Event context = JacksonEvent.builder()
+                                    .withEventMetadata(recordEvent.getMetadata())
+                                    .withData(item)
+                                    .build();
+                            if (applyIterateDeleteWhen &&
+                                    !expressionEvaluator.evaluateConditional(deleteWhen, context)) {
+                                continue;
+                            }
+
+                            for (final EventKey entry : entries) {
+                                context.delete(entry);
+                            }
+                            iterateOnList.set(i, context.toMap());
+                        }
+                        recordEvent.put(iterateOn, iterateOnList);
+                    }
                 }
             } catch (final Exception e) {
                 LOG.atError()

@@ -24,9 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,6 +68,132 @@ public class DeleteEntryProcessorTests {
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKey() {
+        final String testKey = "testKey";
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(null);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKey_applyEventLevelDeleteWhen_when_deleteWhen_returns_true() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("condition", Boolean.class);
+        });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of(
+                "condition", true,
+                "message", mapList
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("condition"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKey_applyEventLevelDeleteWhen_when_deleteWhen_returns_false() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("condition", Boolean.class);
+        });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of(
+                "condition", false,
+                "message", mapList
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("condition"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(mapList));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKey_applyIterativeDeleteWhen_when_deleteWhen_returns_true() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("condition", Boolean.class);
+        });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+        when(mockConfig.isUseIterateOnContext()).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(
+                "condition", true,
+                testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Map.of("condition", true))));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKey_applyIterativeDeleteWhen_when_deleteWhen_returns_false() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("condition", Boolean.class);
+        });
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+        when(mockConfig.isUseIterateOnContext()).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(
+                "condition", false,
+                testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(mapList));
     }
 
     @Test

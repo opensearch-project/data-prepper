@@ -39,11 +39,27 @@ public class DeleteEntryProcessorConfig {
     })
     private String deleteWhen;
 
+    @JsonPropertyDescription(
+            "Specifies the key of the list of object to iterate over and delete the keys specified in with_keys.")
+    private String iterateOn;
+
+    @JsonPropertyDescription("Specifies whether the JSON pointer in the expression statement " +
+            "should be within the context of the iterated object specified by the iterate_on key.")
+    private boolean useIterateOnContext;
+
     public List<EventKey> getWithKeys() {
         return withKeys;
     }
 
     public String getDeleteWhen() {
         return deleteWhen;
+    }
+
+    public String getIterateOn() {
+        return iterateOn;
+    }
+
+    public boolean isUseIterateOnContext() {
+        return useIterateOnContext;
     }
 }
