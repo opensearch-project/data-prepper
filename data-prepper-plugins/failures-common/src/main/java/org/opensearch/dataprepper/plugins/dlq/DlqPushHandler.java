@@ -77,6 +77,8 @@ public class DlqPushHandler {
     public boolean perform(final List<DlqObject> dlqObjects) {
         try {
             if (dlqWriter != null && dlqObjects != null && dlqObjects.size() > 0) {
+                for (DlqObject dlqObject: dlqObjects) {
+                }
                 dlqWriter.write(dlqObjects, dlqPluginSetting.getPipelineName(), dlqPluginSetting.getName());
                 dlqSuccessCounter.increment(dlqObjects.size());
                 return true;

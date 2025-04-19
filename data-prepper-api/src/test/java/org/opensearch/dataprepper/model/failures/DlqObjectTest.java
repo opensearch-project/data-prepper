@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -69,6 +70,22 @@ public class DlqObjectTest {
 
         assertThat(testObject, is(notNullValue()));
     }
+
+    @Test
+    public void test_build_with_timestamp_with_event_handles() {
+
+        final DlqObject testObject = DlqObject.builder()
+                .withPluginId(pluginId)
+                .withPluginName(pluginName)
+                .withPipelineName(pipelineName)
+                .withFailedData(failedData)
+                .withEventHandles(List.of(eventHandle))
+                .withTimestamp(randomUUID().toString())
+                .build();
+
+        assertThat(testObject, is(notNullValue()));
+    }
+
 
     @Test
     public void test_build_without_timestamp() {
@@ -133,9 +150,9 @@ public class DlqObjectTest {
             when(pluginSetting.getPipelineName()).thenReturn(testPipelineName);
             eventHandle = mock(EventHandle.class);
             Map<String, Object> data = new HashMap<>();
-            DlqObject dlqObject = DlqObject.createDlqObject(pluginSetting, eventHandle, data);
+            DlqObject dlqObject = DlqObject.createDlqObject(pluginSetting, List.of(eventHandle), data);
             assertThat(dlqObject, is(notNullValue()));
-            assertThat(dlqObject.getEventHandle(), is(eventHandle));
+            assertThat(dlqObject.getEventHandles(), is(List.of(eventHandle)));
             assertThat(dlqObject.getFailedData(), is(data));
             assertThat(dlqObject.getPluginName(), is(testName));
             assertThat(dlqObject.getPipelineName(), is(testPipelineName));
@@ -191,10 +208,20 @@ public class DlqObjectTest {
         @Test
         public void test_get_release_eventHandle() {
             doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
-            final Object actualEventHandle = testObject.getEventHandle();
-            assertThat(actualEventHandle, is(notNullValue()));
-            assertThat(actualEventHandle, is(eventHandle));
+            final List<EventHandle> actualEventHandles = testObject.getEventHandles();
+            assertThat(actualEventHandles, is(notNullValue()));
+            assertThat(actualEventHandles, is(List.of(eventHandle)));
             testObject.releaseEventHandle(true);
+            verify(eventHandle).release(any(Boolean.class));
+        }
+
+        @Test
+        public void test_get_release_eventHandles() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            final List<EventHandle> actualEventHandles = testObject.getEventHandles();
+            assertThat(actualEventHandles, is(notNullValue()));
+            assertThat(actualEventHandles, is(List.of(eventHandle)));
+            testObject.releaseEventHandles(true);
             verify(eventHandle).release(any(Boolean.class));
         }
 
