@@ -22,6 +22,27 @@ public interface OutputCodec {
 
     static final ObjectMapper objectMapper = new ObjectMapper();
 
+    interface Writer {
+        void writeEvent(Event event) throws IOException;
+        void complete() throws IOException;
+    }
+
+    default Writer createWriter(final OutputStream outputStream, final Event sampleEvent, final OutputCodecContext codecContext) throws IOException {
+        final OutputCodec codec = this;
+        codec.start(outputStream, sampleEvent, codecContext);
+        return new Writer() {
+            @Override
+            public void writeEvent(final Event event) throws IOException {
+                codec.writeEvent(event, outputStream);
+            }
+
+            @Override
+            public void complete() throws IOException {
+                codec.complete(outputStream);
+            }
+        };
+    }
+
     /**
      * this method get called from {@link Sink} to do initial wrapping in {@link OutputStream}
      * Implementors should do initial wrapping according to the implementation
@@ -30,7 +51,9 @@ public interface OutputCodec {
      * @param event         Event to auto-generate schema
      * @param context       Extra Context used in Codec.
      * @throws IOException  throws IOException when invalid input is received or not able to create wrapping
+     * @deprecated Use {@link OutputCodec#createWriter(OutputStream, Event, OutputCodecContext)} instead.
      */
+    @Deprecated
     void start(OutputStream outputStream, Event event, OutputCodecContext context) throws IOException;
 
     /**
@@ -40,7 +63,9 @@ public interface OutputCodec {
      * @param event         event Record event
      * @param outputStream  outputStream param to hold the event data
      * @throws IOException throws IOException when not able to write data to {@link OutputStream}
+     * @deprecated @deprecated Use {@link OutputCodec.Writer#writeEvent(Event)} instead.
      */
+    @Deprecated
     void writeEvent(Event event, OutputStream outputStream) throws IOException;
 
     /**
@@ -49,7 +74,9 @@ public interface OutputCodec {
      *
      * @param outputStream outputStream param for wrapping
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
+     * @deprecated @deprecated Use {@link Writer#complete()} instead.
      */
+    @Deprecated
     void complete(OutputStream outputStream) throws IOException;
 
     /**
