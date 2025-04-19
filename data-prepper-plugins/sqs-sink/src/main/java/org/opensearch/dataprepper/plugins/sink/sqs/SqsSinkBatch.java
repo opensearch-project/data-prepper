@@ -97,7 +97,7 @@ public class SqsSinkBatch {
             if (currentBatchEntry.getEventCount() < maxEvents &&
                 currentBatchEntry.getSize() + estimatedSize < maxMessageSize) {
                 currentBatchEntry.addEvent(event);
-                return false;
+                return isFull();
             } else {
                 currentBatchEntry.complete();
             }
