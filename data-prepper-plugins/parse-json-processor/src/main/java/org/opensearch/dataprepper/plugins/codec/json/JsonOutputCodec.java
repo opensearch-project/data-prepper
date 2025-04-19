@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
  */
 @DataPrepperPlugin(name = "json", pluginType = OutputCodec.class, pluginConfigurationType = JsonOutputCodecConfig.class)
 public class JsonOutputCodec implements OutputCodec {
+    private final int OVERHEAD_BYTES = 16;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String JSON = "json";
     private static final JsonFactory factory = new JsonFactory();
@@ -55,12 +56,10 @@ public class JsonOutputCodec implements OutputCodec {
         generator.writeStartObject();
         generator.writeFieldName(config.getKeyName());
         generator.writeStartArray();
-        System.out.println(codecContext+"CODEC START..."+outputStream);
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
-        System.out.println(codecContext+"CODEC COMPL..."+outputStream);
         generator.writeEndArray();
         generator.writeEndObject();
         generator.close();
@@ -71,7 +70,7 @@ public class JsonOutputCodec implements OutputCodec {
     @Override
     public long getEstimatedSize(final Event event, final OutputCodecContext outputCodecContext) throws IOException {
         Map<String, Object> map = getDataMapToSerialize(event, outputCodecContext);
-        return 8 + objectMapper.writeValueAsString(map).length();
+        return OVERHEAD_BYTES + objectMapper.writeValueAsString(map).length();
     }
 
     @Override

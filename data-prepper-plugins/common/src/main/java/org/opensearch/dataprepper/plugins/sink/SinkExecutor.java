@@ -13,12 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collection;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 

@@ -78,7 +78,6 @@ public class DlqPushHandler {
         try {
             if (dlqWriter != null && dlqObjects != null && dlqObjects.size() > 0) {
                 for (DlqObject dlqObject: dlqObjects) {
-                    System.out.println("----"+dlqObject);
                 }
                 dlqWriter.write(dlqObjects, dlqPluginSetting.getPipelineName(), dlqPluginSetting.getName());
                 dlqSuccessCounter.increment(dlqObjects.size());
@@ -86,7 +85,6 @@ public class DlqPushHandler {
             }
         } catch (Exception e) {
             LOG.error(NOISY, "failed to write to DLQ", e);
-            System.out.println("failed to write to DLQ...."+ e);
             dlqFailedCounter.increment(dlqObjects.size());
         }
         return false;

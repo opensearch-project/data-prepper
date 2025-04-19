@@ -281,10 +281,8 @@ public class SqsSinkService extends SinkExecutor {
             Map.Entry<String, SqsSinkBatch> qUrlEntry = iterator.next();
             String qUrl = qUrlEntry.getKey();
             SqsSinkBatch batch = qUrlEntry.getValue();
-            System.out.println("---now---"+now+"----"+batch.getLastFlushedTime()+"..."+thresholdConfig.getFlushInterval());
             if (now - batch.getLastFlushedTime() > thresholdConfig.getFlushInterval()) {
                 result = result || setFlushReady(qUrl, batch);
-                System.out.println("--result--"+result);
             }
         }
         return result;

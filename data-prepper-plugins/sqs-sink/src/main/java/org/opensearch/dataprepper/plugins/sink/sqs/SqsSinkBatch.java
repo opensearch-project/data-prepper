@@ -110,7 +110,6 @@ public class SqsSinkBatch {
         currentBatchEntry.addEvent(event);
         final String id = UUID.randomUUID().toString();
         entries.put(id, currentBatchEntry);
-        System.out.println("---added with id---"+id+"..."+event.toJsonString()+"....isFull.."+isFull());
         return isFull();
     }
 

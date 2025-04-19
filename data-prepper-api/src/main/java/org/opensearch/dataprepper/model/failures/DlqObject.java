@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.List;
+import java.util.ArrayList;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -188,7 +189,8 @@ public class DlqObject {
         }
 
         public Builder withEventHandle(final EventHandle eventHandle) {
-            this.eventHandles = List.of(eventHandle);
+            this.eventHandles = new ArrayList<>();
+            this.eventHandles.add(eventHandle);
             return this;
         }
 

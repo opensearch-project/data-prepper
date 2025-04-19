@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
 
-import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
