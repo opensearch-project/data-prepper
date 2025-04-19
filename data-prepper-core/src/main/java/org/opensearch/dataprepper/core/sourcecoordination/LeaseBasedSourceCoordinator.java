@@ -343,14 +343,37 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void giveUpPartition(final String partitionKey) {
-        giveUpPartitionInternal(partitionKey, null);
+        giveUpPartitionInternalWithRetries(partitionKey, null);
     }
 
     @Override
     public void giveUpPartition(final String partitionKey, final Instant priorityTimestamp) {
-        giveUpPartitionInternal(partitionKey, priorityTimestamp);
+        giveUpPartitionInternalWithRetries(partitionKey, priorityTimestamp);
     }
 
+    public void giveUpPartitionInternalWithRetries(final String partitionKey, final Instant priorityTimestamp) {
+        final int maxRetries = 5;
+        final long backoffMillis = 200;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                giveUpPartitionInternal(partitionKey, priorityTimestamp);
+                return;
+            } catch (PartitionNotOwnedException e) {
+                if (attempt == maxRetries) {
+                    throw e;
+                }
+                LOG.warn("Partition {} not owned on attempt {}/{}. Retrying...", partitionKey, attempt, maxRetries);
+            }
+
+            try {
+                Thread.sleep(backoffMillis);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.warn("Interrupted while retrying giveUpPartition for partition {} with message {}", partitionKey, ie);
+                throw new RuntimeException(ie);
+            }
+        }
+    }
     private void giveUpPartitionInternal(final String partitionKey, final Instant priorityTimestamp) {
         if (!initialized) {
             return;
