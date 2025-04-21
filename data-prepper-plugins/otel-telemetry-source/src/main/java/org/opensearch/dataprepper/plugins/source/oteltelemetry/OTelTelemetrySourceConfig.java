@@ -12,7 +12,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
 public class OTelTelemetrySourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
@@ -36,7 +35,7 @@ public class OTelTelemetrySourceConfig {
     static final String COMPRESSION = "compression";
     static final String RETRY_INFO = "retry_info";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
-    static final int DEFAULT_PORT = 21892;
+    static final int DEFAULT_PORT = 21893;
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
     static final boolean DEFAULT_SSL = true;
@@ -77,9 +76,6 @@ public class OTelTelemetrySourceConfig {
 
     @JsonProperty(SSL)
     private boolean ssl = DEFAULT_SSL;
-
-    @JsonProperty("output_format")
-    private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
 
     @JsonProperty(USE_ACM_CERT_FOR_SSL)
     private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -125,19 +121,27 @@ public class OTelTelemetrySourceConfig {
     @JsonProperty(RETRY_INFO)
     private RetryInfoConfig retryInfo;
 
-    @AssertTrue(message = "logsPath should start with /")
+    @AssertTrue(message = LOGS_PATH + " should start with /")
     boolean isLogsPathValid() {
         return logsPath == null || logsPath.startsWith("/");
     }
 
-    @AssertTrue(message = "metricsPath should start with /")
+    @AssertTrue(message = METRICS_PATH + " should start with /")
     boolean isMetricsPathValid() {
         return metricsPath == null || metricsPath.startsWith("/");
     }
 
-    @AssertTrue(message = "tracesPath should start with /")
+    @AssertTrue(message = TRACES_PATH + " should start with /")
     boolean isTracesPathValid() {
         return tracesPath == null || tracesPath.startsWith("/");
+    }
+
+    @AssertTrue(message = LOGS_PATH + ", " + METRICS_PATH + ", and " + TRACES_PATH + " should be distinct")
+    boolean arePathsDistinct() {
+        if (logsPath == null || metricsPath == null || tracesPath == null) {
+            return true; // Validation is not applicable if any of the paths are null
+        }
+        return !logsPath.equals(metricsPath) && !logsPath.equals(tracesPath) && !metricsPath.equals(tracesPath);
     }
 
     public void validateAndInitializeCertAndKeyFileInS3() {
@@ -174,10 +178,6 @@ public class OTelTelemetrySourceConfig {
 
     public int getRequestTimeoutInMillis() {
         return requestTimeoutInMillis;
-    }
-
-    public OTelOutputFormat getOutputFormat() {
-        return outputFormat;
     }
 
     public int getPort() {
