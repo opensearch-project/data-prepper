@@ -1,11 +1,11 @@
 package org.opensearch.dataprepper.plugins.source.crowdstrike;
 
 
-import com.google.common.annotations.Beta;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -27,7 +27,7 @@ import static org.opensearch.dataprepper.plugins.source.crowdstrike.utils.Consta
  * 🚧 Work in progress — under active development.
  * Not ready for production use.
  */
-@Beta
+@Experimental
 @DataPrepperPlugin(name = PLUGIN_NAME,
         pluginType = Source.class,
         pluginConfigurationType = CrowdStrikeSourceConfig.class,
