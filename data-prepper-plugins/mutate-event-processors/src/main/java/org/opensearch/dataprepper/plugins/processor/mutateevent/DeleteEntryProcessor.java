@@ -28,23 +28,42 @@ import java.util.Objects;
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeleteEntryProcessor.class);
-    private final List<EventKey> entries;
+    private final List<EventKey> withKeys;
     private final String deleteWhen;
+    private final List<DeleteEntryProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
     public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
-        this.entries = config.getWithKeys();
+        this.withKeys = config.getWithKeys();
         this.deleteWhen = config.getDeleteWhen();
         this.expressionEvaluator = expressionEvaluator;
 
         if (deleteWhen != null
-                    && !expressionEvaluator.isValidExpressionStatement(deleteWhen)) {
-                throw new InvalidPluginConfigurationException(
-                        String.format("delete_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
+                && !expressionEvaluator.isValidExpressionStatement(deleteWhen)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("delete_when %s is not a valid expression statement. See https://opensearch" +
+                            ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
+
+        if (this.withKeys != null && !this.withKeys.isEmpty()) {
+            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, this.deleteWhen);
+            this.entries = List.of(entry);
+        } else {
+            this.entries = config.getEntries();
+        }
+
+        this.entries.forEach(entry -> {
+            if (entry.getDeleteWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getDeleteWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("delete_when %s is not a valid expression statement. See https://opensearch" +
+                                        ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                                entry.getDeleteWhen()));
+            }
+        });
     }
 
     @Override
@@ -53,13 +72,15 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
             final Event recordEvent = record.getData();
 
             try {
-                if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
-                    continue;
-                }
+                for (final DeleteEntryProcessorConfig.Entry entry : entries) {
+                    if (Objects.nonNull(entry.getDeleteWhen()) && !expressionEvaluator.evaluateConditional(entry.getDeleteWhen(),
+                            recordEvent)) {
+                        continue;
+                    }
 
-
-                for (final EventKey entry : entries) {
-                    recordEvent.delete(entry);
+                    for (final EventKey key : entry.getWithKeys()) {
+                        recordEvent.delete(key);
+                    }
                 }
             } catch (final Exception e) {
                 LOG.atError()
