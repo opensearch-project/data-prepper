@@ -34,7 +34,6 @@ import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelLogsDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsGrpcService;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsGrpcService;
@@ -46,7 +45,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -81,7 +79,6 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final ByteDecoder byteDecoder;
     private Server server;
 
     @DataPrepperPluginConstructor
@@ -105,12 +102,6 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelLogsDecoder(oTelTelemetrySourceConfig.getOutputFormat());
-    }
-
-    @Override
-    public ByteDecoder getDecoder() {
-        return byteDecoder;
     }
 
     @Override
@@ -157,7 +148,9 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
             final String oTelMetricsSourcePath = oTelTelemetrySourceConfig.getMetricsPath();
             final String oTelTraceSourcePath = oTelTelemetrySourceConfig.getTracesPath();
 
-            if (oTelTraceSourcePath != null) {
+            // If the path is null for any of the sources, we will not transform the path
+            // and use the default path
+            if (oTelTraceSourcePath != null && oTelMetricsSourcePath != null && oTelLogsSourcePath != null) {
                 final String transformedOTelLogsSourcePath = oTelLogsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER,
                         pipelineName);
                 final String transformedOTelMetricsSourcePath = oTelMetricsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER,
@@ -246,52 +239,6 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
 
-        // @SuppressWarnings("unchecked")
-        // Buffer<Record<? extends Metric>> metricBuffer = (Buffer<Record<? extends
-        // Metric>>) (Object) buffer;
-        // final ServerBuilder serverBuilder = Server.builder()
-        // .http(oTelTelemetrySourceConfig.getPort())
-        // .requestTimeoutMillis(oTelTelemetrySourceConfig.getRequestTimeoutInMillis())
-        // .service(GrpcService.builder()
-        // .addService(new OTelLogsGrpcService(10000,
-        // new OTelProtoStandardCodec.OTelProtoDecoder(),
-        // buffer, pluginMetrics))
-        // .build())
-        // .service(GrpcService.builder()
-        // .addService(new OTelMetricsGrpcService(10000,
-        // new OTelProtoStandardCodec.OTelProtoDecoder(),
-        // metricBuffer, pluginMetrics))
-        // .build())
-        // .service(GrpcService.builder()
-        // .addService(new OTelTraceGrpcService(10000,
-        // new OTelProtoStandardCodec.OTelProtoDecoder(),
-        // buffer, pluginMetrics))
-        // .build())
-        // .service(GrpcService.builder()
-        // .addService(ProtoReflectionService.newInstance())
-        // .build());
-
-        // if (oTelTelemetrySourceConfig.isSsl()) {
-        // LOG.info("SSL/TLS is enabled.");
-        // final CertificateProvider certificateProvider = certificateProviderFactory
-        // .getCertificateProvider();
-        // final Certificate certificate = certificateProvider.getCertificate();
-        // serverBuilder.https(oTelTelemetrySourceConfig.getPort())
-        // .tls(
-        // new ByteArrayInputStream(certificate.getCertificate()
-        // .getBytes(StandardCharsets.UTF_8)),
-        // new ByteArrayInputStream(certificate.getPrivateKey()
-        // .getBytes(StandardCharsets.UTF_8)));
-        // }
-
-        // if (oTelTelemetrySourceConfig.hasHealthCheck()) {
-        // serverBuilder.serviceUnder("/health", GrpcService.builder().build());
-        // }
-
-        // server = serverBuilder.build();
-        // pluginMetrics.gauge("serverConnections", server, Server::numConnections);
-        // server.start().join();
-
         try {
             server.start().get();
         } catch (ExecutionException ex) {
@@ -347,9 +294,9 @@ public class OTelTelemetrySource implements Source<Record<Object>> {
 
         if (authenticationConfiguration == null || authenticationConfiguration.getPluginName()
                 .equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
-            LOG.warn("Creating otel-logs-source without authentication. This is not secure.");
+            LOG.warn("Creating otel-telemetry-source without authentication. This is not secure.");
             LOG.warn(
-                    "In order to set up Http Basic authentication for the otel-logs-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-logs-source#authentication-configurations");
+                    "In order to set up Http Basic authentication for the otel-logs-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-telemetry-source#authentication-configurations");
         }
 
         final PluginSetting authenticationPluginSetting;
