@@ -130,7 +130,7 @@ public class JiraService {
      * @param ts            Input Parameter
      * @return String Builder created issue filter criteria
      */
-    private StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
+     StringBuilder createIssueFilterCriteria(JiraSourceConfig configuration, Instant ts) {
 
         log.info("Creating issue filter criteria");
         if (!CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameIncludeFilter(configuration)) || !CollectionUtils.isEmpty(JiraConfigHelper.getProjectNameExcludeFilter(configuration))) {
