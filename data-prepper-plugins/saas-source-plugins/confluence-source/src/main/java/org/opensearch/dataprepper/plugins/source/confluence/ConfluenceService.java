@@ -181,7 +181,7 @@ public class ConfluenceService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        cQl.append(" order by " + LAST_MODIFIED);
+        cQl.append(" order by " + LAST_MODIFIED + " asc ");
         log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
     }
