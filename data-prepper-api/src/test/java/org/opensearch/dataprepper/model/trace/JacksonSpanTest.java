@@ -47,6 +47,7 @@ public class JacksonSpanTest {
     protected static final String TEST_PARENT_SPAN_ID =  UUID.randomUUID().toString();
     protected static final String TEST_NAME =  UUID.randomUUID().toString();
     protected static final String TEST_KIND =  UUID.randomUUID().toString();
+    protected static final String TEST_SCHEMA_URL =  UUID.randomUUID().toString();
     protected static final int TEST_FLAGS = 10;
     protected static final String TEST_START_TIME =  UUID.randomUUID().toString();
     protected static final String TEST_END_TIME =  UUID.randomUUID().toString();
@@ -106,6 +107,7 @@ public class JacksonSpanTest {
                 .withResource(TEST_RESOURCE)
                 .withStatus(TEST_STATUS)
                 .withStartTime(TEST_START_TIME)
+                .withSchemaUrl(TEST_SCHEMA_URL)
                 .withEndTime(TEST_END_TIME)
                 .withAttributes(TEST_ATTRIBUTES)
                 .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
@@ -166,6 +168,12 @@ public class JacksonSpanTest {
     public void testGetFlags() {
         final Integer flags = jacksonSpan.getFlags();
         assertThat(flags, is(equalTo(TEST_FLAGS)));
+    }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String schemaUrl = jacksonSpan.getSchemaUrl();
+        assertThat(schemaUrl, is(equalTo(TEST_SCHEMA_URL)));
     }
 
     @Test

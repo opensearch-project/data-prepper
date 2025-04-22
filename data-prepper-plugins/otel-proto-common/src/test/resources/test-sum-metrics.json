@@ -2,6 +2,7 @@
   "resourceMetrics": [
     {
       "resource": {
+        "droppedAttributesCount": 0,
         "attributes": [
           {
             "key": "resource-attr",
@@ -11,8 +12,10 @@
           }
         ]
       },
+      "schemaUrl": "resourceSchemaUrl",
       "scopeMetrics": [
         {
+          "schemaUrl": "metricsSchemaUrl",
           "scope": {
             "name": "my.library",
             "version": "1.0.0",
@@ -29,6 +32,26 @@
             {
               "name": "sum-int",
               "unit": 1,
+              "metadata": [
+                {
+                    "key": "metadataKey1",
+                    "value": {
+                      "stringValue": "metadataValue1"
+                    }
+                },
+                {
+                    "key": "metadataKey2",
+                    "value": {
+                      "intValue": "200"
+                    }
+                },
+                {
+                    "key": "metadataKey3",
+                    "value": {
+                      "stringValue": "metadataValue3"
+                    }
+                }
+              ],
               "sum": {
                 "dataPoints": [
                   {
