@@ -290,7 +290,7 @@ public class ConfluenceServiceTest {
                 .format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
         StringBuilder contentFilterCriteria = confluenceService.createContentFilterCriteria(confluenceSourceConfig, pollingTime);
         assertNotNull(contentFilterCriteria);
-        String cqlToAssert = "lastModified>=\"" + formattedZonedPollingTime + "\" order by lastModified";
+        String cqlToAssert = "lastModified>=\"" + formattedZonedPollingTime + "\" order by lastModified asc ";
         assertEquals(cqlToAssert, contentFilterCriteria.toString());
     }
 
