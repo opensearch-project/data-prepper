@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -39,6 +40,7 @@ class OtlpSinkIT {
 
     private OtlpSinkConfig mockConfig;
     private PluginMetrics mockPluginMetrics;
+    private PluginSetting mockPluginSetting;
     private OtlpSink target;
 
     @BeforeEach
@@ -56,7 +58,11 @@ class OtlpSinkIT {
         when(mockPluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
         when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
 
-        target = new OtlpSink(mockConfig, mockPluginMetrics);
+        mockPluginSetting = mock(PluginSetting.class);
+        when(mockPluginSetting.getPipelineName()).thenReturn("otlp_pipeline");
+        when(mockPluginSetting.getName()).thenReturn("otlp");
+
+        target = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting);
     }
 
     @AfterEach
@@ -68,8 +74,6 @@ class OtlpSinkIT {
 
     /**
      * This test is not part of the Data Prepper build. It requires AWS credentials to be set up in the environment.
-     *
-     * @throws InterruptedException
      */
     @Test
     void testSinkProcessesHardcodedSpan() {
@@ -85,7 +89,7 @@ class OtlpSinkIT {
                 .build();
 
         final Record<Span> record = new Record<>(testSpan);
-        final OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics, mock(OTelProtoStandardCodec.OTelProtoEncoder.class), mock(OtlpHttpSender.class));
+        final OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting, mock(OTelProtoStandardCodec.OTelProtoEncoder.class), mock(OtlpHttpSender.class));
 
         sink.initialize();
         sink.output(List.of(record));
