@@ -4,13 +4,13 @@
 
 ### Features
 
-* Integrate OpenSearch Ml-Commons into Data Prepper ([#5509](https://github.com/opensearch-project/data-prepper/issues/5509))
 * Support AWS Aurora/RDS PostgreSQL as source ([#5309](https://github.com/opensearch-project/data-prepper/issues/5309))
 * Support SQS as a Source ([#1049](https://github.com/opensearch-project/data-prepper/issues/1049))
 * Jira Connector - to seamlessly sync all the ticket details to OpenSearch ([#4754](https://github.com/opensearch-project/data-prepper/issues/4754))
 * AWS Lambda as Processor and Sink ([#4699](https://github.com/opensearch-project/data-prepper/issues/4699))
 * Support AWS Aurora/RDS MySQL as source ([#4561](https://github.com/opensearch-project/data-prepper/issues/4561))
 * AWS Lambda as Sink ([#4170](https://github.com/opensearch-project/data-prepper/issues/4170))
+* Integrate OpenSearch Ml-Commons into Data Prepper ([#5509](https://github.com/opensearch-project/data-prepper/issues/5509))
 
 ### Enhancements
 
@@ -23,7 +23,8 @@
 * Kafka local AWS Glue registry support ([#5377](https://github.com/opensearch-project/data-prepper/issues/5377))
 * Address Scale Items for Lambda Processor and Sink ([#5031](https://github.com/opensearch-project/data-prepper/issues/5031))
 * Add support to skip remote peer forwarding based on configuration ([#5127](https://github.com/opensearch-project/data-prepper/pull/5127))
-* Add index_types for OTEL logs and metrics #3148 ([#3929](https://github.com/opensearch-project/data-prepper/pull/3929))
+* Add index_types for OTel logs and metrics #3148 ([#3929](https://github.com/opensearch-project/data-prepper/pull/3929))
+* Send RetryInfo on OTel timeouts to improve or clarify backpressure on OTel gRPC sources ([#4294](https://github.com/opensearch-project/data-prepper/pull/4294), [#4119](https://github.com/opensearch-project/data-prepper/issues/4119))
 * Enhance Lambda processor to retry based on certain class of exception ([#5340](https://github.com/opensearch-project/data-prepper/issues/5340))
 * Support multiple delete_when condition in delete_entries processor ([#5315](https://github.com/opensearch-project/data-prepper/issues/5315))
 * Add additional index_types ([#3148](https://github.com/opensearch-project/data-prepper/issues/3148))
