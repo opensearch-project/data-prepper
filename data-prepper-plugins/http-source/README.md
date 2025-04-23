@@ -96,7 +96,7 @@ Make sure to replace the paths for the `ssl_certificate_file` and `ssl_key_file`
 Send a sample log with the following https curl command
 
 ```
-curl -k -XPOST -H "Content-Type: application/json" -d '[{"log": "sample log"}]' https://localhost:2021/log/ingest
+curl -k -X POST -H "Content-Type: application/json" -d '[{"log": "sample log"}]' https://localhost:2021/log/ingest
 ```
 
 # Metrics
