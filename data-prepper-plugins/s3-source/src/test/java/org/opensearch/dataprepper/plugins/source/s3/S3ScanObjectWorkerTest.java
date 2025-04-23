@@ -74,6 +74,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.source.s3.S3ScanEnvironmentVariables.STOP_S3_SCAN_PROCESSING_PROPERTY;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.CHECKPOINT_OWNERSHIP_INTERVAL;
+import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.MAX_RETRIES;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.NO_OBJECTS_FOUND_FOR_FOLDER_PARTITION;
 import static org.opensearch.dataprepper.plugins.source.s3.ScanObjectWorker.PARTITION_OWNERSHIP_UPDATE_ERRORS;
@@ -523,14 +524,15 @@ class S3ScanObjectWorkerTest {
         when(listObjectsV2Response.contents()).thenReturn(Collections.emptyList());
 
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
-        doNothing().when(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class));
+        doNothing().when(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class),
+                eq(MAX_RETRIES));
         doNothing().when(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
         scanObjectWorker.runWithoutInfiniteLoop();
 
         verify(sourceCoordinator).saveProgressStateForPartition(eq(partitionKey), any(S3SourceProgressState.class));
-        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class));
+        verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
 
         final ArgumentCaptor<ListObjectsV2Request> listObjectsV2RequestArgumentCaptor = ArgumentCaptor.forClass(ListObjectsV2Request.class);
 
@@ -653,7 +655,7 @@ class S3ScanObjectWorkerTest {
         secondAckCallback.accept(true);
 
         inOrder.verify(s3ObjectDeleteWorker).deleteS3Object(secondObjectDeleteRequest);
-        inOrder.verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class));
+        inOrder.verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), eq(MAX_RETRIES));
     }
 
     @Test
@@ -727,7 +729,7 @@ class S3ScanObjectWorkerTest {
         ackCallback.accept(true);
 
         inOrder.verify(s3ObjectDeleteWorker).deleteS3Object(firstObjectDeleteRequest);
-        inOrder.verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class));
+        inOrder.verify(sourceCoordinator).giveUpPartition(eq(partitionKey), any(Instant.class), any(Integer.class));
     }
 
     @Test
