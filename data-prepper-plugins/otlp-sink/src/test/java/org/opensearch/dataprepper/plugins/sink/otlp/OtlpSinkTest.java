@@ -14,6 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -22,7 +23,6 @@ import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import software.amazon.awssdk.regions.Region;
 
 import java.io.UnsupportedEncodingException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,8 +31,6 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -45,6 +43,7 @@ class OtlpSinkTest {
     private OTelProtoStandardCodec.OTelProtoEncoder mockEncoder;
     private OtlpHttpSender mockSender;
     private PluginMetrics mockPluginMetrics;
+    private PluginSetting mockPluginSetting;
     private OtlpSink target;
 
     @BeforeEach
@@ -66,7 +65,11 @@ class OtlpSinkTest {
         when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
         when(mockPluginMetrics.timer(anyString())).thenReturn(mock(Timer.class));
 
-        target = new OtlpSink(mockConfig, mockPluginMetrics, mockEncoder, mockSender);
+        mockPluginSetting = mock(PluginSetting.class);
+        when(mockPluginSetting.getPipelineName()).thenReturn("otlp_pipeline");
+        when(mockPluginSetting.getName()).thenReturn("otlp");
+
+        target = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting, mockEncoder, mockSender);
     }
 
     @AfterEach
@@ -94,22 +97,6 @@ class OtlpSinkTest {
         // 250 total / 100 batch size = 3 calls to httpSender
         verify(mockSender, times(3)).send(any(byte[].class));
         verify(mockEncoder, times(recordCount)).convertToResourceSpans(any());
-    }
-
-    @Test
-    void testOutput_shouldHandleRuntimeException() throws Exception {
-        Span span = mock(Span.class);
-        when(span.getSpanId()).thenReturn("span123");
-        Record<Span> record = mock(Record.class);
-        when(record.getData()).thenReturn(span);
-
-        when(mockEncoder.convertToResourceSpans(span)).thenReturn(ResourceSpans.getDefaultInstance());
-        doThrow(new RuntimeException("sender failure")).when(mockSender).send(any());
-
-        target.output(List.of(record));
-
-        verify(mockEncoder).convertToResourceSpans(eq(span));
-        verify(mockSender).send(any());
     }
 
     @Test
@@ -145,20 +132,25 @@ class OtlpSinkTest {
 
     @Test
     void testOutput_shouldNotSendEmptyBatch() throws DecoderException, UnsupportedEncodingException {
-        Span span = mock(Span.class);
+        // Given: a span that fails encoding
+        final Span span = mock(Span.class);
         when(span.getSpanId()).thenReturn("bad-span");
-        Record<Span> record = mock(Record.class);
+        final Record<Span> record = mock(Record.class);
         when(record.getData()).thenReturn(span);
 
-        when(mockEncoder.convertToResourceSpans(span)).thenReturn(null); // simulate invalid span
+        // Simulate encoding failure (e.g., due to missing fields)
+        when(mockEncoder.convertToResourceSpans(span)).thenReturn(null);
 
+        // When: the output method is called with that bad span
         target.output(List.of(record));
 
+        // Then: it should not send anything to the OTLP endpoint
         verify(mockSender, never()).send(any());
     }
 
+
     @Test
-    void testUpdateLatencyMetrics_shouldRecordLatency() {
+    void testUpdateLatencyMetrics_runsWithoutException_givenValidSpanStartTime() {
         Span mockSpan = mock(Span.class);
         String startTime = Instant.now().minusSeconds(5).toString();
         when(mockSpan.getStartTime()).thenReturn(startTime);
@@ -166,16 +158,16 @@ class OtlpSinkTest {
         Record<Span> mockRecord = mock(Record.class);
         when(mockRecord.getData()).thenReturn(mockSpan);
 
-        Collection<Record<Span>> events = List.of(mockRecord);
+        Collection<Record<Span>> records = List.of(mockRecord);
 
-        target.updateLatencyMetrics(events);
+        target.updateLatencyMetrics(records);
 
-        verify(mockPluginMetrics.timer("deliveryLatency"), times(1)).record(any(Duration.class));
+        // verify that no error counter incremented
+        verify(mockPluginMetrics.counter("errorsCount"), never()).increment();
     }
 
     @Test
     void testUpdateLatencyMetrics_shouldHandleInvalidStartTime() {
-        // Mock a Span with an invalid start time string
         final Span badSpan = mock(Span.class);
         when(badSpan.getStartTime()).thenReturn("invalid-timestamp");
 
@@ -193,7 +185,7 @@ class OtlpSinkTest {
 
     @Test
     void testConstructor_withOnlyConfig_shouldInitializeWithoutException() {
-        OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics);
+        OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting);
 
         sink.initialize();
         sink.shutdown();

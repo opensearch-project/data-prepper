@@ -5,7 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.metrics;
 
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
@@ -16,14 +20,63 @@ import java.time.Duration;
 public class OtlpSinkMetrics {
 
     private final PluginMetrics pluginMetrics;
+    private final Timer httpLatency;
+    private final Timer deliveryLatency;
+    private final DistributionSummary payloadSize;
+    private final DistributionSummary payloadGzipSize;
 
     /**
      * Constructor for OtlpSinkMetrics
      *
-     * @param pluginMetrics The plugin metrics instance
+     * @param pluginMetrics The plugin metrics
+     * @param pluginSetting The plugin setting
      */
-    public OtlpSinkMetrics(@Nonnull final PluginMetrics pluginMetrics) {
+    public OtlpSinkMetrics(@Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
         this.pluginMetrics = pluginMetrics;
+
+        final String pipelineName = pluginSetting.getPipelineName();
+        final String pluginName = pluginSetting.getName();
+
+        httpLatency = buildLatencyTimer(pipelineName, pluginName, "httpLatency");
+        deliveryLatency = buildLatencyTimer(pipelineName, pluginName, "deliveryLatency");
+
+        payloadSize = buildDistributionSummary(pipelineName, pluginName, "payloadSize");
+        payloadGzipSize = buildDistributionSummary(pipelineName, pluginName, "payloadGzipSize");
+    }
+
+    /**
+     * Builds a timer for latency metrics with percentiles
+     *
+     * @param pipelineName The pipeline name
+     * @param pluginName   The plugin name
+     * @param metricName   The metric name
+     * @return The timer
+     */
+    private static Timer buildLatencyTimer(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
+        return Timer.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
+                .publishPercentiles(0.5, 0.9, 0.95, 1.0)
+                .publishPercentileHistogram(true)
+                .distributionStatisticBufferLength(1024)
+                .distributionStatisticExpiry(Duration.ofMinutes(10))
+                .register(Metrics.globalRegistry);
+    }
+
+    /**
+     * Builds a distribution summary for payload size metrics with percentiles
+     *
+     * @param pipelineName The pipeline name
+     * @param pluginName   The plugin name
+     * @param metricName   The metric name
+     * @return The distribution summary
+     */
+    private static DistributionSummary buildDistributionSummary(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
+        return DistributionSummary.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
+                .baseUnit("bytes")
+                .publishPercentiles(0.5, 0.9, 0.95, 1.0)
+                .publishPercentileHistogram(true)
+                .distributionStatisticBufferLength(1024)
+                .distributionStatisticExpiry(Duration.ofMinutes(10))
+                .register(Metrics.globalRegistry);
     }
 
     public void incrementRecordsIn(long count) {
@@ -34,24 +87,24 @@ public class OtlpSinkMetrics {
         pluginMetrics.counter("recordsOut").increment(count);
     }
 
-    public void incrementDroppedRecords(long count) {
-        pluginMetrics.counter("droppedRecords").increment(count);
-    }
-
     public void incrementErrorsCount() {
         pluginMetrics.counter("errorsCount").increment(1);
     }
 
     public void incrementPayloadSize(long bytes) {
-        pluginMetrics.summary("payloadSize").record(bytes);
+        payloadSize.record(bytes);
+    }
+
+    public void incrementPayloadGzipSize(long bytes) {
+        payloadGzipSize.record(bytes);
     }
 
     public void recordDeliveryLatency(long durationMillis) {
-        pluginMetrics.timer("deliveryLatency").record(Duration.ofMillis(durationMillis));
+        deliveryLatency.record(Duration.ofMillis(durationMillis));
     }
 
     public void recordHttpLatency(long durationMillis) {
-        pluginMetrics.timer("httpLatency").record(Duration.ofMillis(durationMillis));
+        httpLatency.record(Duration.ofMillis(durationMillis));
     }
 
     public void incrementRetriesCount() {

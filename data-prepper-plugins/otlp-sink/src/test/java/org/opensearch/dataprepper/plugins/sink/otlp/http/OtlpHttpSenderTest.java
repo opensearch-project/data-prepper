@@ -30,10 +30,12 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,7 +56,8 @@ class OtlpHttpSenderTest {
     private OtlpSinkConfig mockConfig;
     private SigV4Signer mockSigner;
     private OkHttpClient mockHttpClient;
-    private Sleeper mockSleeper;
+    private Consumer<Integer> mockSleeper;
+    private Function<byte[], Optional<byte[]>> mockGzipCompressor;
     private OtlpSinkMetrics mockSinkMetrics;
     private OtlpHttpSender target;
 
@@ -69,10 +72,16 @@ class OtlpHttpSenderTest {
 
         mockSigner = mock(SigV4Signer.class);
         mockHttpClient = mock(OkHttpClient.class);
-        mockSleeper = mock(Sleeper.class);
+        mockSleeper = mock(ThreadSleeper.class);
         mockSinkMetrics = mock(OtlpSinkMetrics.class);
 
-        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockSigner, mockHttpClient, mockSleeper);
+        mockGzipCompressor = mock(GzipCompressor.class);
+        when(mockGzipCompressor.apply(any())).thenAnswer(invocation -> {
+            byte[] input = invocation.getArgument(0);
+            return input == null ? Optional.empty() : Optional.of(input);
+        });
+
+        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockGzipCompressor, mockSigner, mockHttpClient, mockSleeper);
     }
 
     @AfterEach
@@ -167,7 +176,7 @@ class OtlpHttpSenderTest {
     }
 
     @Test
-    void testSend_failsAfterAllRetries() throws IOException {
+    void testSend_doesNotThrowException_failsAfterAllRetries() throws IOException {
         SdkHttpFullRequest mockSignedRequest = mock(SdkHttpFullRequest.class);
         when(mockSignedRequest.getUri()).thenReturn(HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
         when(mockSignedRequest.headers()).thenReturn(Map.of());
@@ -178,11 +187,11 @@ class OtlpHttpSenderTest {
         when(mockHttpClient.newCall(any())).thenReturn(mockCall);
         when(mockCall.execute()).thenThrow(new IOException("always fail"));
 
-        assertThrows(RuntimeException.class, () -> target.send(PAYLOAD));
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
     }
 
     @Test
-    void testSend_throwsIOException_on500ResponseWithBody() throws IOException {
+    void testSend_doesNotThrowsException_on500ResponseWithBody() throws IOException {
         // Mock signed request
         SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
                 .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
@@ -211,11 +220,11 @@ class OtlpHttpSenderTest {
         when(call.execute()).thenReturn(mockResponse);
 
         // Run test
-        assertThrows(RuntimeException.class, () -> target.send(PAYLOAD));
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
     }
 
     @Test
-    void testInterruptedExceptionDuringRetryThrowsRuntimeException() throws IOException, InterruptedException {
+    void testSend_doesNotThrowsException_onInterruptedExceptionDuringRetry() throws IOException {
         final SdkHttpFullRequest signedRequest = mock(SdkHttpFullRequest.class);
 
         when(mockSigner.signRequest(any())).thenReturn(signedRequest);
@@ -226,15 +235,11 @@ class OtlpHttpSenderTest {
         when(mockCall.execute()).thenThrow(new IOException("boom"));
         when(mockHttpClient.newCall(any())).thenReturn(mockCall);
 
-        doThrow(new InterruptedException("interrupted")).when(mockSleeper).sleep(anyInt());
+        doThrow(new RuntimeException("")).when(mockSleeper).accept(anyInt());
 
-        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockSigner, mockHttpClient, mockSleeper);
+        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockGzipCompressor, mockSigner, mockHttpClient, mockSleeper);
 
-        final RuntimeException thrown = assertThrows(RuntimeException.class, () ->
-                target.send(PAYLOAD)
-        );
-
-        assertTrue(thrown.getMessage().contains("Retry interrupted"));
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
         assertTrue(Thread.currentThread().isInterrupted());
     }
 
@@ -389,6 +394,16 @@ class OtlpHttpSenderTest {
 
         // Should not throw, just logs error
         assertDoesNotThrow(() -> target.send(PAYLOAD));
+    }
+
+    @Test
+    void testSend_skipsSend_whenGzipCompressionFails() {
+        when(mockGzipCompressor.apply(any())).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
+
+        verify(mockSigner, times(0)).signRequest(any());
+        verify(mockHttpClient, times(0)).newCall(any());
     }
 
     @Test

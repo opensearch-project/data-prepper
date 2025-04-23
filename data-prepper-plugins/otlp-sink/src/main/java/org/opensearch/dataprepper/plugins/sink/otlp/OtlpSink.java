@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.trace.Span;
@@ -49,26 +50,24 @@ public class OtlpSink implements Sink<Record<Span>> {
     private final OtlpSinkMetrics sinkMetrics;
 
     /**
-     * Constructor for the OTLPSink plugin.
+     * Constructor for the OTLP sink plugin.
      *
-     * @param config the configuration for the OTLP sink
+     * @param config        the configuration for the sink
+     * @param pluginMetrics the plugin metrics to use
+     * @param pluginSetting the plugin setting to use
      */
     @DataPrepperPluginConstructor
-    public OtlpSink(@Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics) {
-        this(config, pluginMetrics, null, null);
+    public OtlpSink(@Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
+        this(config, pluginMetrics, pluginSetting, null, null);
     }
 
     /**
-     * Constructor for testing purposes.
-     *
-     * @param config     the configuration for the OTLP sink
-     * @param encoder    OTEL Protobuf encoder to use
-     * @param httpSender the HTTP sender to use
+     * Constructor for the OTLP sink plugin. Used for testing ONLY.
      */
     @VisibleForTesting
-    OtlpSink(@Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, final OTelProtoStandardCodec.OTelProtoEncoder encoder, final OtlpHttpSender httpSender) {
+    OtlpSink(@Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting, final OTelProtoStandardCodec.OTelProtoEncoder encoder, final OtlpHttpSender httpSender) {
         this.batchSize = config.getBatchSize();
-        this.sinkMetrics = new OtlpSinkMetrics(pluginMetrics);
+        this.sinkMetrics = new OtlpSinkMetrics(pluginMetrics, pluginSetting);
 
         if (encoder == null && httpSender == null) {
             this.encoder = new OTelProtoStandardCodec.OTelProtoEncoder();
@@ -77,13 +76,6 @@ public class OtlpSink implements Sink<Record<Span>> {
             this.encoder = encoder;
             this.httpSender = httpSender;
         }
-
-        LOG.info("Config setting: endpoint = {}", config.getEndpoint());
-        LOG.info("Config setting: batch_size = {}", config.getBatchSize());
-        LOG.info("Config setting: max_retries = {}", config.getMaxRetries());
-        LOG.info("Config setting: aws_region = {}", config.getAwsRegion());
-        LOG.info("Config setting: aws_sts_role_arn = {}", config.getStsRoleArn());
-        LOG.info("Config setting: aws_sts_external_id = {}", config.getStsExternalId());
     }
 
     /**
@@ -91,7 +83,7 @@ public class OtlpSink implements Sink<Record<Span>> {
      */
     @Override
     public void initialize() {
-        LOG.info("Initialized OTLP Sink");
+        LOG.debug("Initialized OTLP Sink");
     }
 
     /**
@@ -107,35 +99,23 @@ public class OtlpSink implements Sink<Record<Span>> {
         for (int i = 0; i < recordList.size(); i += this.batchSize) {
             final int end = Math.min(i + this.batchSize, recordList.size());
             final List<Record<Span>> batch = recordList.subList(i, end);
+            final List<ResourceSpans> resourceSpans = batch.stream()
+                    .map(Record::getData)
+                    .map(this::getResourceSpans)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
 
-            try {
-                final List<ResourceSpans> resourceSpans = batch.stream()
-                        .map(Record::getData)
-                        .map(this::getResourceSpans)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-
-                if (resourceSpans.isEmpty()) {
-                    LOG.debug("Skipping empty span batch, nothing to send.");
-                    continue;
-                }
-
-                final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
-                        .addAllResourceSpans(resourceSpans)
-                        .build();
-                final byte[] payload = request.toByteArray();
-                sinkMetrics.incrementPayloadSize(payload.length);
-
-                httpSender.send(payload);
-                LOG.info("Finished processing {} spans.", resourceSpans.size());
-
-                sinkMetrics.incrementRecordsOut(batch.size());
-            } catch (final RuntimeException e) {
-                LOG.error("Unexpected error processing OTLP span batch: {}", e.getMessage(), e);
-
-                sinkMetrics.incrementDroppedRecords(batch.size());
-                sinkMetrics.incrementErrorsCount();
+            if (resourceSpans.isEmpty()) {
+                LOG.debug("Skipping empty span batch, nothing to send.");
+                continue;
             }
+
+            final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
+                    .addAllResourceSpans(resourceSpans)
+                    .build();
+            final byte[] payload = request.toByteArray();
+            httpSender.send(payload);
+            sinkMetrics.incrementRecordsOut(resourceSpans.size());
         }
     }
 
@@ -165,8 +145,7 @@ public class OtlpSink implements Sink<Record<Span>> {
      */
     @Override
     public void shutdown() {
-        // OkHttpClient is shared and self-managed; no need to explicitly close
-        LOG.info("OTLP Sink shutdown complete");
+        httpSender.close();
     }
 
     /**
