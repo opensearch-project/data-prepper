@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
@@ -15,7 +16,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * A Jackson implementation for {@link Metric}s.
@@ -25,6 +25,8 @@ import java.util.function.Function;
 public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     protected static final String NAME_KEY = "name";
+    protected static final String SCOPE_KEY = "instrumentationScope";
+    protected static final String RESOURCE_KEY = "resource";
     protected static final String DESCRIPTION_KEY = "description";
     protected static final String START_TIME_KEY = "startTime";
     protected static final String TIME_KEY = "time";
@@ -35,6 +37,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
+    protected static final String METADATA_KEY = "metadata";
     private boolean flattenAttributes;
 
     protected JacksonMetric(Builder builder, boolean flattenAttributes) {
@@ -48,6 +51,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     boolean getFlattenAttributes() {
         return flattenAttributes;
+    }
+
+    protected void checkAndSetDefaultValues() {
+        putIfAbsent(ATTRIBUTES_KEY, Map.class, new HashMap<>());
     }
 
     @Override
@@ -96,8 +103,23 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     }
 
     @Override
+    public Map<String, Object> getMetricMetadata() {
+        return this.get(METADATA_KEY, Map.class);
+    }
+
+    @Override
     public String getStartTime() {
         return this.get(START_TIME_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getScope() {
+        return this.get(SCOPE_KEY, Map.class);
+    }
+
+    @Override
+    public Map<String, Object> getResource() {
+        return this.get(RESOURCE_KEY, Map.class);
     }
 
     @Override
@@ -142,12 +164,8 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             eventHandle = null;
         }
 
-	public void put(String key, Object value) {
-            mdata.put(key, value);
-	}
-
-        public void computeIfAbsent(String key, Function<? super String,? extends Object> f) {
-            mdata.computeIfAbsent(key, f);
+        public void put(String key, Object value) {
+                mdata.put(key, value);
         }
 
         /**
@@ -172,10 +190,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             return getThis();
         }
 
-	public T withEventHandle(final EventHandle eventHandle) {
-            this.eventHandle = eventHandle;
-            return getThis();
-	}
+        public T withEventHandle(final EventHandle eventHandle) {
+                this.eventHandle = eventHandle;
+                return getThis();
+        }
 
         /**
          * Optional - sets the attributes for this event. Default is an empty map.
@@ -244,6 +262,42 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
         }
 
         /**
+         * Sets the scope of the metric event
+         *
+         * @param scope scope to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public T withScope(final Map<String, Object> scope) {
+            put(SCOPE_KEY, scope);
+            return getThis();
+        }
+
+        /**
+         * Sets the metadata of the metric event
+         *
+         * @param metadata metadata to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public T withMetricMetadata(final Map<String, Object> metadata) {
+            put(METADATA_KEY, metadata);
+            return getThis();
+        }
+
+        /**
+         * Sets the resource of the metric event
+         *
+         * @param resource resource to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public T withResource(final Map<String, Object> resource) {
+            put(RESOURCE_KEY, resource);
+            return getThis();
+        }
+
+        /**
          * Sets the schema url of the metric event
          * @param schemaUrl sets the url of the schema
          * @return the builder
@@ -289,5 +343,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
             return getThis();
         }
 
+        protected void populateEvent(final String kind) {
+            this.withData(data);
+            this.withEventKind(kind);
+            this.withEventType(EventType.METRIC.toString());
+        }
     }
 }

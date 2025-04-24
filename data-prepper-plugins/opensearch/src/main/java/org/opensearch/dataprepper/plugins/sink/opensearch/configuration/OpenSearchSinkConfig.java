@@ -13,6 +13,7 @@ import lombok.Getter;
 import org.opensearch.dataprepper.model.opensearch.OpenSearchBulkActions;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.model.QueryForExistingDocumentConfiguration;
 
 import java.util.List;
 import java.util.Map;
@@ -150,20 +151,9 @@ public class OpenSearchSinkConfig {
     @JsonProperty("ism_policy_file")
     private String ismPolicyFile = null;
 
+    @Getter
     @JsonProperty("action")
-    private OpenSearchBulkActions action = OpenSearchBulkActions.INDEX;
-
-    @AssertTrue(message = "action must be one of index, create, update, upsert, delete")
-    boolean isActionValid() {
-        if (action == null) {         //action will be null if the string doesn't match one of the enums
-            return false;
-        }
-        return true;
-    }
-
-    public String getAction() {
-        return action.toString();
-    }
+    private String action = OpenSearchBulkActions.INDEX.toString();
 
     @Getter
     @Valid
@@ -185,6 +175,10 @@ public class OpenSearchSinkConfig {
     @Getter
     @JsonProperty("dlq")
     private DlqConfiguration dlq;
+
+    @Getter
+    @JsonProperty("query_lookup")
+    private QueryForExistingDocumentConfiguration queryExistingConfiguration;
 
     @AssertTrue(message = "dlq_file option cannot be used along with dlq option")
     public boolean isDlqValid() {

@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTyp
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
@@ -45,13 +46,15 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 public class BinlogEventListener implements BinaryLogClient.EventListener {
 
@@ -66,6 +69,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     static final String BYTES_RECEIVED = "bytesReceived";
     static final String BYTES_PROCESSED = "bytesProcessed";
     static final String REPLICATION_LOG_EVENT_PROCESSING_TIME = "replicationLogEntryProcessingTime";
+    static final String REPLICATION_LOG_PROCESSING_ERROR_COUNT = "replicationLogEntryProcessingErrors";
     static final String SEPARATOR = ".";
 
     /**
@@ -83,7 +87,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final StreamRecordConverter recordConverter;
     private final BinaryLogClient binaryLogClient;
     private final Buffer<Record<Event>> buffer;
-    private final List<String> tableNames;
+    private final Set<String> tableNames;
     private final String s3Prefix;
     private final boolean isAcknowledgmentsEnabled;
     private final PluginMetrics pluginMetrics;
@@ -98,7 +102,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     private final DistributionSummary bytesReceivedSummary;
     private final DistributionSummary bytesProcessedSummary;
     private final Timer eventProcessingTimer;
-
+    private final Counter eventProcessingErrorCounter;
 
     /**
      * currentBinlogCoordinate is the coordinate where next event will start
@@ -121,7 +125,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         tableMetadataMap = new HashMap<>();
         recordConverter = new StreamRecordConverter(s3Prefix, sourceConfig.getPartitionCount());
         this.s3Prefix = s3Prefix;
-        tableNames = sourceConfig.getTableNames();
+        tableNames = dbTableMetadata.getTableColumnDataTypeMap().keySet();
         isAcknowledgmentsEnabled = sourceConfig.isAcknowledgmentsEnabled();
         this.pluginMetrics = pluginMetrics;
         pipelineEvents = new ArrayList<>();
@@ -143,6 +147,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         bytesReceivedSummary = pluginMetrics.summary(BYTES_RECEIVED);
         bytesProcessedSummary = pluginMetrics.summary(BYTES_PROCESSED);
         eventProcessingTimer = pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
+        eventProcessingErrorCounter = pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
     }
 
     public static BinlogEventListener create(final StreamPartition streamPartition,
@@ -196,6 +201,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
+    public void stopCheckpointManager() {
+        streamCheckpointManager.stop();
+    }
+
     void handleRotateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final RotateEventData data = event.getData();
         currentBinlogCoordinate = new BinlogCoordinate(data.getBinlogFilename(), data.getBinlogPosition());
@@ -211,22 +220,28 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
 
     void handleTableMapEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final TableMapEventData eventData = event.getData();
+        final String databaseName = eventData.getDatabase();
+        final String tableName = eventData.getTable();
+        final String fullTableName = databaseName + SEPARATOR + tableName;
+
+        if (!isTableOfInterest(fullTableName)) {
+            return;
+        }
+
         final TableMapEventMetadata tableMapEventMetadata = eventData.getEventMetadata();
         final List<String> columnNames = tableMapEventMetadata.getColumnNames();
         final List<String> primaryKeys = tableMapEventMetadata.getSimplePrimaryKeys().stream()
                 .map(columnNames::get)
                 .collect(Collectors.toList());
         final TableMetadata tableMetadata = TableMetadata.builder()
-                .withTableName(eventData.getTable())
-                .withDatabaseName(eventData.getDatabase())
+                .withTableName(tableName)
+                .withDatabaseName(databaseName)
                 .withColumnNames(columnNames)
                 .withPrimaryKeys(primaryKeys)
                 .withSetStrValues(getSetStrValues(eventData))
                 .withEnumStrValues(getEnumStrValues(eventData))
                 .build();
-        if (isTableOfInterest(tableMetadata.getFullTableName())) {
-            tableMetadataMap.put(eventData.getTableId(), tableMetadata);
-        }
+        tableMetadataMap.put(eventData.getTableId(), tableMetadata);
     }
 
     private Map<String, String[]> getSetStrValues(final TableMapEventData eventData) {
@@ -273,7 +288,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX));
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX), StreamEventType.INSERT);
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -309,7 +324,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             bulkActions.add(OpenSearchBulkActions.INDEX);
         }
 
-        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions);
+        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions, StreamEventType.UPDATE);
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -323,7 +338,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingDeletes(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE));
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE), StreamEventType.DELETE);
     }
 
     // Visible For Testing
@@ -345,7 +360,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
                               long tableId,
                               List<Serializable[]> rows,
-                              List<OpenSearchBulkActions> bulkActions) {
+                              List<OpenSearchBulkActions> bulkActions,
+                              StreamEventType streamEventType) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
@@ -397,7 +413,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     primaryKeys,
                     eventTimestampMillis,
                     eventTimestampMillis,
-                    event.getHeader().getEventType());
+                    streamEventType);
             pipelineEvents.add(pipelineEvent);
         }
 
@@ -412,7 +428,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     }
 
     private boolean isTableOfInterest(String tableName) {
-        return new HashSet<>(tableNames).contains(tableName);
+        return tableNames.contains(tableName);
     }
 
     private void writeToBuffer(BufferAccumulator<Record<Event>> bufferAccumulator, AcknowledgementSet acknowledgementSet) {
@@ -431,7 +447,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             bufferAccumulator.add(record);
         } catch (Exception e) {
-            LOG.error("Failed to add event to buffer", e);
+            LOG.error(NOISY, "Failed to add event to buffer", e);
         }
     }
 
@@ -442,7 +458,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         } catch (Exception e) {
             // this will only happen if writing to buffer gets interrupted from shutdown,
             // otherwise bufferAccumulator will keep retrying with backoff
-            LOG.error("Failed to flush buffer", e);
+            LOG.error(NOISY, "Failed to flush buffer", e);
             changeEventErrorCounter.increment(eventCount);
         }
     }
@@ -456,7 +472,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             eventProcessingTimer.record(() -> function.accept(event));
         } catch (Exception e) {
-            LOG.error("Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            LOG.error(NOISY, "Failed to process change event of type {}", event.getHeader().getEventType(), e);
+            eventProcessingErrorCounter.increment();
         }
     }
 }

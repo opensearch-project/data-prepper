@@ -36,9 +36,9 @@ public class OTelLogsProtoBufDecoderTest {
     private static final String TEST_REQUEST_LOGS_FILE = "test-otel-log.protobuf";
     // This protobuf format file is generated using OTEL collector and file exporter and then sending multiple log events to the collector
     private static final String TEST_REQUEST_MULTI_LOGS_FILE = "test-otel-multi-log.protobuf";
-    
-    public OTelLogsProtoBufDecoder createObjectUnderTest(boolean lengthPrefixedEncoding) {
-        return new OTelLogsProtoBufDecoder(lengthPrefixedEncoding);
+
+    public OTelLogsProtoBufDecoder createObjectUnderTest(OTelOutputFormat outputFormat, boolean lengthPrefixedEncoding) {
+        return new OTelLogsProtoBufDecoder(outputFormat, lengthPrefixedEncoding);
     }
 
     private void assertLog(OpenTelemetryLog logRecord, final int severityNumber, final String time, final String spanId) {
@@ -53,24 +53,23 @@ public class OTelLogsProtoBufDecoderTest {
         assertThat(logRecord.getSeverityText(), is("Information"));
         assertThat(logRecord.getSpanId(), is(spanId));
         assertThat(logRecord.getTraceId(), is("5b8efff798038103d269b633813fc60c"));
-        Map<String, Object> mergedAttributes = logRecord.getAttributes(); 
-        assertThat(mergedAttributes.keySet().size(), is(9)); 
+        Map<String, Object> mergedAttributes = logRecord.getAttributes();
+        assertThat(mergedAttributes.keySet().size(), is(10));
     }
 
     @Test
     public void testParse() throws Exception {
         InputStream inputStream = OTelLogsProtoBufDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_LOGS_FILE);
-        createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH, false).parse(inputStream, Instant.now(), (record) -> {
             assertLog((OpenTelemetryLog)record.getData(), 50, "2025-01-26T20:07:20Z", "eee19b7ec3c1b174");
         });
-        
     }
 
     @Test
     public void testParseWithLengthPrefixedEncoding() throws Exception {
         InputStream inputStream = OTelLogsProtoBufDecoderTest.class.getClassLoader().getResourceAsStream(TEST_REQUEST_MULTI_LOGS_FILE);
         List<Record<Event>> parsedRecords = new ArrayList<>();
-        createObjectUnderTest(true).parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH, true).parse(inputStream, Instant.now(), (record) -> {
             parsedRecords.add(record);
         });
         assertThat(parsedRecords.size(), equalTo(3));
@@ -116,14 +115,14 @@ public class OTelLogsProtoBufDecoderTest {
     public void testParseWithDynamicRequest() throws Exception {
         final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_JSON_LOGS_FILE);
         InputStream inputStream = new ByteArrayInputStream(exportLogsServiceRequest.toByteArray());
-        createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
+        createObjectUnderTest(OTelOutputFormat.OPENSEARCH, false).parse(inputStream, Instant.now(), (record) -> {
             assertLogFromRequest((OpenTelemetryLog)record.getData());
         });
     }
-        
+
     @Test
     public void testParseWithLargeDynamicRequest_ThrowsException() throws Exception {
-        
+
         // Create a request larger than 8MB
         List<LogRecord> records = new ArrayList<>();
         for (int i = 0; i < 4 * 1024 * 1024; i++) {
@@ -136,7 +135,7 @@ public class OTelLogsProtoBufDecoderTest {
                     .build())).build();
 
         InputStream inputStream = new ByteArrayInputStream(exportLogsServiceRequest.toByteArray());
-        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(false).parse(inputStream, Instant.now(), (record) -> {
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(OTelOutputFormat.OPENSEARCH, false).parse(inputStream, Instant.now(), (record) -> {
             assertLogFromRequest((OpenTelemetryLog)record.getData());
         }));
     }

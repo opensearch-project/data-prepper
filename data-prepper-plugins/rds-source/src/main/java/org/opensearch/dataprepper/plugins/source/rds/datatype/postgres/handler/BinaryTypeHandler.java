@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -15,6 +16,13 @@ public class BinaryTypeHandler implements PostgresDataTypeHandler {
         if (!columnType.isBinary()) {
             throw new IllegalArgumentException("ColumnType is not Binary : " + columnType);
         }
+       if(columnType.isSubCategoryArray())
+            return PgArrayParser.parseTypedArray(value.toString(), PostgresDataType.getScalarType(columnType),
+                    this::parseBinaryValue);
+       return parseBinaryValue(columnType, value);
+    }
+
+    private Object parseBinaryValue(PostgresDataType columnType, Object value) {
         if (value instanceof Map) {
             Object data = ((Map<?, ?>)value).get(BYTES_KEY);
             byte[] bytes = ((String) data).getBytes(StandardCharsets.ISO_8859_1);
@@ -22,5 +30,4 @@ public class BinaryTypeHandler implements PostgresDataTypeHandler {
         }
         return value.toString();
     }
-
 }

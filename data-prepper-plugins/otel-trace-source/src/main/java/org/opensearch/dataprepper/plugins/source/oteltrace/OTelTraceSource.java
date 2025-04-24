@@ -23,7 +23,9 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.server.CreateServer;
 import org.opensearch.dataprepper.plugins.server.ServerConfiguration;
@@ -63,7 +65,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
-        this.byteDecoder = new OTelTraceDecoder();
+        this.byteDecoder = new OTelTraceDecoder(oTelTraceSourceConfig.getOutputFormat());
     }
 
     @Override
@@ -81,7 +83,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                     (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    new OTelProtoCodec.OTelProtoDecoder(),
+                    oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );

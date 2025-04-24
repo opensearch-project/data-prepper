@@ -24,15 +24,8 @@ public interface CrawlerClient {
      *
      * @return returns an {@link Iterator} of {@link ItemInfo}
      */
-    Iterator<ItemInfo> listItems();
-
-
-    /**
-     * Method to set the last time we polled the service to check for any changes.
-     *
-     * @param lastPollTime time in milliseconds
-     */
-    void setLastPollTime(Instant lastPollTime);
+    Iterator<ItemInfo> listItems(Instant lastPollTime);
+    
 
     /**
      * Method for executing a particular partition or a chunk of work

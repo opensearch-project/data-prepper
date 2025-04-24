@@ -247,6 +247,11 @@ public interface Event extends Serializable {
      */
     EventHandle getEventHandle();
 
+    default void putIfAbsent(final String key, final Class clazz, final Object value) {
+        if (get(key, clazz) == null)
+            put(key, value);
+    }
+
     JsonStringBuilder jsonBuilder();
 
     abstract class JsonStringBuilder {

@@ -1,6 +1,7 @@
 {
   "resourceLogs": [{
     "resource": {
+      "droppedAttributesCount": 0,
       "attributes": [{
         "key": "service.name",
         "value": {
@@ -8,7 +9,21 @@
         }
       }]
     },
+    "schemaUrl": "resourceSchemaUrl",
     "scopeLogs": [{
+      "schemaUrl": "logsSchemaUrl",
+      "scope": {
+        "name": "my.library",
+        "version": "1.0.0",
+        "attributes": [
+          {
+            "key": "my.scope.attribute",
+            "value": {
+              "stringValue": "log scope attribute"
+            }
+          }
+        ]
+      },
       "logRecords": [{
         "timeUnixNano": "1590328800000000000",
         "severityNumber": "SEVERITY_NUMBER_DEBUG",
@@ -28,7 +43,6 @@
         "spanId": "LMg6yQ68Rpw=",
         "observedTimeUnixNano": "1590328802000000000"
       }]
-    }],
-    "schemaUrl": "schemaurl"
+    }]
   }]
 }

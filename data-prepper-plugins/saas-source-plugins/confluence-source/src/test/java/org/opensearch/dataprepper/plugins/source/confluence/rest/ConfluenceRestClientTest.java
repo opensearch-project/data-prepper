@@ -10,6 +10,11 @@
 
 package org.opensearch.dataprepper.plugins.source.confluence.rest;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,7 +62,7 @@ public class ConfluenceRestClientTest {
 
     @Mock
     private AtlassianAuthConfig authConfig;
-
+    private MeterRegistry meterRegistry;
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("jiraRestClient", "aws");
 
     private static Stream<Arguments> provideHttpStatusCodesWithExceptionClass() {
@@ -67,6 +72,18 @@ public class ConfluenceRestClientTest {
                 Arguments.of(HttpStatus.TOO_MANY_REQUESTS, RuntimeException.class),
                 Arguments.of(HttpStatus.INSUFFICIENT_STORAGE, RuntimeException.class)
         );
+    }
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        Metrics.globalRegistry.add(meterRegistry);
+    }
+
+    @AfterEach
+    void tearDown() {
+        meterRegistry.clear();
+        Metrics.globalRegistry.clear();
     }
 
     @ParameterizedTest
@@ -131,14 +148,14 @@ public class ConfluenceRestClientTest {
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         ConfluenceSearchResults mockConfluenceSearchResults = mock(ConfluenceSearchResults.class);
         String oauthUrlHost = "http://mock-service.jira.com/cloud-id/";
-        String paginationNextLink = "/Search?next-token=adsflkajdsflakdjflkasfdmdsfad";
+        String paginationNextLink = "/Search?cursor=adsflkajdsflakdjflkasfdmdsfad";
         ConfluencePaginationLinks paginationLinks = new ConfluencePaginationLinks();
         paginationLinks.setNext(paginationNextLink);
         paginationLinks.setBase("http://base-host-name/");
         doReturn(oauthUrlHost).when(authConfig).getUrl();
         doReturn(new ResponseEntity<>(mockConfluenceSearchResults, HttpStatus.OK))
                 .when(restTemplate)
-                .getForEntity(new URI(oauthUrlHost + paginationNextLink), ConfluenceSearchResults.class);
+                .getForEntity(new URI(oauthUrlHost + ConfluenceRestClient.WIKI_PARAM + paginationNextLink), ConfluenceSearchResults.class);
         ConfluenceSearchResults results = confluenceRestClient.getAllContent(jql, 0, paginationLinks);
         assertNotNull(results);
     }
@@ -160,6 +177,7 @@ public class ConfluenceRestClientTest {
         when(authConfig.getUrl()).thenReturn("https://224.0.0.1/");
         ConfluenceRestClient confluenceRestClient = new ConfluenceRestClient(restTemplate, authConfig, pluginMetrics);
         assertThrows(BadRequestException.class, () -> confluenceRestClient.getContent("TEST-1"));
+        assertEquals(1, confluenceRestClient.pageRequestsFailedCounter.count());
     }
 
 }

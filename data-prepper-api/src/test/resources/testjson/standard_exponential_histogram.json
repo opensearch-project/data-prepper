@@ -1,0 +1,55 @@
+{
+  "kind": "EXPONENTIAL_HISTOGRAM",
+  "count": 2,
+  "description": "description",
+  "scale": -3,
+  "sum": 1.0,
+  "positiveOffset": 5,
+  "positive": [
+    4,
+    5
+  ],
+  "serviceName": "service",
+  "negativeBuckets": [
+    {
+      "min": 0.0,
+      "max": 5.0,
+      "count": 2
+    },
+    {
+      "min": 5.0,
+      "max": 10.0,
+      "count": 5
+    }
+  ],
+  "schemaUrl": "schema",
+  "zeroCount": 1,
+  "unit": "unit",
+  "aggregationTemporality": "AGGREGATIONTEMPORALITY",
+  "negative": [
+    1,
+    2,
+    3
+  ],
+  "name": "name",
+  "startTime": "%s",
+  "time": "%s",
+  "positiveBuckets": [
+    {
+      "min": 0.0,
+      "max": 5.0,
+      "count": 2
+    },
+    {
+      "min": 5.0,
+      "max": 10.0,
+      "count": 5
+    }
+  ],
+  "negativeOffset": 2,
+  "attributes": {
+      "key1": %s,
+      "key2": "%s"
+  }
+}
+

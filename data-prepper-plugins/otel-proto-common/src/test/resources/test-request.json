@@ -69,11 +69,21 @@
         ],
         "droppedAttributesCount": 0
       },
+      "schemaUrl": "resourceSchemaUrl",
       "scopeSpans": [
         {
+          "schemaUrl": "spansSchemaUrl",
           "scope": {
             "name": "io.opentelemetry.auto.spring-webmvc-3.1",
-            "version": ""
+            "version": "",
+            "attributes": [
+              {
+                "key": "my.scope.attribute",
+                "value": {
+                  "stringValue": "span scope attribute"
+                }
+              }
+            ]
           },
           "spans": [
             {
@@ -101,7 +111,15 @@
         {
           "scope": {
             "name": "io.opentelemetry.auto.apache-httpasyncclient-4.0",
-            "version": ""
+            "version": "",
+            "attributes": [
+              {
+                "key": "my.scope.attribute",
+                "value": {
+                  "stringValue": "span scope attribute"
+                }
+              }
+            ]
           },
           "spans": [
             {
@@ -148,7 +166,15 @@
         {
           "scope": {
             "name": "io.opentelemetry.auto.servlet-3.0",
-            "version": ""
+            "version": "",
+            "attributes": [
+              {
+                "key": "my.scope.attribute",
+                "value": {
+                  "stringValue": "span scope attribute"
+                }
+              }
+            ]
           },
           "spans": [
             {

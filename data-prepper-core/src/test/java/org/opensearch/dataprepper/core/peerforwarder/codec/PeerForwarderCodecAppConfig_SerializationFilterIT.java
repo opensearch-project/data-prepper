@@ -25,13 +25,20 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.log.JacksonOtelLog;
+import org.opensearch.dataprepper.model.log.JacksonStandardOTelLog;
 import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.metric.JacksonStandardExponentialHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonStandardGauge;
+import org.opensearch.dataprepper.model.metric.JacksonStandardHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonStandardSum;
+import org.opensearch.dataprepper.model.metric.JacksonStandardSummary;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.JacksonStandardSpan;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 
@@ -535,9 +542,28 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                             .withDurationInNanos(100L)
                             .withTraceGroupFields(DefaultTraceGroupFields.builder().build())
                     ),
+                    arguments(JacksonStandardSpan.builder()
+                            .withTraceId(UUID.randomUUID().toString())
+                            .withTraceGroup(UUID.randomUUID().toString())
+                            .withSpanId(UUID.randomUUID().toString())
+                            .withName(UUID.randomUUID().toString())
+                            .withKind(UUID.randomUUID().toString())
+                            .withStartTime(Instant.now().toString())
+                            .withEndTime(Instant.now().toString())
+                            .withDurationInNanos(100L)
+                            .withTraceGroupFields(DefaultTraceGroupFields.builder().build())
+                    ),
+                    arguments(JacksonLog.builder()),
                     arguments(JacksonLog.builder()),
                     arguments(JacksonOtelLog.builder()),
+                    arguments(JacksonStandardOTelLog.builder()),
                     arguments(JacksonExponentialHistogram.builder()
+                            .withName(UUID.randomUUID().toString())
+                            .withEventKind(UUID.randomUUID().toString())
+                            .withTime(Instant.now().toString())
+                            .withSum(10.0)
+                    ),
+                    arguments(JacksonStandardExponentialHistogram.builder()
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
@@ -549,7 +575,19 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                             .withTime(Instant.now().toString())
                             .withValue(10.0)
                     ),
+                    arguments(JacksonStandardGauge.builder()
+                            .withName(UUID.randomUUID().toString())
+                            .withEventKind(UUID.randomUUID().toString())
+                            .withTime(Instant.now().toString())
+                            .withValue(10.0)
+                    ),
                     arguments(JacksonHistogram.builder()
+                            .withName(UUID.randomUUID().toString())
+                            .withEventKind(UUID.randomUUID().toString())
+                            .withTime(Instant.now().toString())
+                            .withSum(10.0)
+                    ),
+                    arguments(JacksonStandardHistogram.builder()
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())
@@ -562,7 +600,20 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                             .withValue(10.0)
                             .withIsMonotonic(true)
                     ),
+                    arguments(JacksonStandardSum.builder()
+                            .withName(UUID.randomUUID().toString())
+                            .withEventKind(UUID.randomUUID().toString())
+                            .withTime(Instant.now().toString())
+                            .withValue(10.0)
+                            .withIsMonotonic(true)
+                    ),
                     arguments(JacksonSummary.builder()
+                            .withName(UUID.randomUUID().toString())
+                            .withEventKind(UUID.randomUUID().toString())
+                            .withTime(Instant.now().toString())
+                            .withAttributes(Collections.emptyMap())
+                    ),
+                    arguments(JacksonStandardSummary.builder()
                             .withName(UUID.randomUUID().toString())
                             .withEventKind(UUID.randomUUID().toString())
                             .withTime(Instant.now().toString())

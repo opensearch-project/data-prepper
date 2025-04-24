@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 public class OTelLogsSourceConfig {
@@ -67,6 +68,9 @@ public class OTelLogsSourceConfig {
 
     @JsonProperty(SSL)
     private boolean ssl = DEFAULT_SSL;
+
+    @JsonProperty("output_format")
+    private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
 
     @JsonProperty(USE_ACM_CERT_FOR_SSL)
     private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -147,6 +151,10 @@ public class OTelLogsSourceConfig {
 
     public int getRequestTimeoutInMillis() {
         return requestTimeoutInMillis;
+    }
+
+    public OTelOutputFormat getOutputFormat() {
+        return outputFormat;
     }
 
     public int getPort() {

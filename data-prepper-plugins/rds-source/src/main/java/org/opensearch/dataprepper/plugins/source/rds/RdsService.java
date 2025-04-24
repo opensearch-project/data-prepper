@@ -42,9 +42,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class RdsService {
     private static final Logger LOG = LoggerFactory.getLogger(RdsService.class);
@@ -168,7 +168,8 @@ public class RdsService {
         }
     }
 
-    private SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
+    // Visible for testing
+    SchemaManager getSchemaManager(final RdsSourceConfig sourceConfig, final DbMetadata dbMetadata) {
         final ConnectionManager connectionManager = new ConnectionManagerFactory(sourceConfig, dbMetadata).getConnectionManager();
         return new SchemaManagerFactory(connectionManager).getSchemaManager();
     }
@@ -196,7 +197,9 @@ public class RdsService {
         final String s3PathPrefix;
         if (sourceCoordinator.getPartitionPrefix() != null ) {
             // The prefix will be used in RDS export, which has a limit of 60 characters.
-            s3PathPrefix = s3UserPathPrefix + S3_PATH_DELIMITER + IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
+            final String uniqueIdentifier = IdentifierShortener.shortenIdentifier(sourceCoordinator.getPartitionPrefix(), MAX_SOURCE_IDENTIFIER_LENGTH);
+            s3PathPrefix = s3UserPathPrefix.isEmpty() ? uniqueIdentifier : s3UserPathPrefix + S3_PATH_DELIMITER + uniqueIdentifier;
+            LOG.info("Unique identifier used in S3 path prefix is {}", uniqueIdentifier);
         } else {
             s3PathPrefix = s3UserPathPrefix;
         }
@@ -209,11 +212,9 @@ public class RdsService {
     }
 
     private Map<String, Map<String, String>> getColumnDataTypeMap(final SchemaManager schemaManager) {
-        return sourceConfig.getTableNames().stream()
-                .collect(Collectors.toMap(
-                        fullTableName -> fullTableName,
-                        fullTableName -> schemaManager.getColumnDataTypes(fullTableName)
-                ));
+        Set<String> tableNames = schemaManager.getTableNames(sourceConfig.getDatabase());
+        sourceConfig.applyTableFilter(tableNames);
+        LOG.info("These tables will be included in processing: {}", tableNames);
+        return schemaManager.getColumnDataTypes(new ArrayList<>(tableNames));
     }
-
 }

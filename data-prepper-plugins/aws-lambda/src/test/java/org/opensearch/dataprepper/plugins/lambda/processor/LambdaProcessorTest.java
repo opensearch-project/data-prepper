@@ -22,11 +22,13 @@ import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
@@ -38,23 +40,35 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.BatchOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.ClientOptions;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.processor.exception.StrictResponseModeNotRespectedException;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import software.amazon.awssdk.services.lambda.model.LambdaException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -66,6 +80,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
@@ -124,6 +140,9 @@ public class LambdaProcessorTest {
     private DistributionSummary responsePayloadMetric;
 
     @Mock
+    private Counter circuitBreakerTripsCounter;
+
+    @Mock
     private InvokeResponse invokeResponse;
 
     @Mock
@@ -134,6 +153,9 @@ public class LambdaProcessorTest {
 
     @Mock
     private LambdaAsyncClient lambdaAsyncClient;
+
+    @Mock
+    CircuitBreaker circuitBreaker;
 
     private static Stream<Arguments> getLambdaResponseConversionSamplesForStrictAndAggregateMode() {
         return Stream.of(
@@ -274,7 +296,7 @@ public class LambdaProcessorTest {
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
                 configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(lambdaProcessor);
 
 
@@ -295,7 +317,7 @@ public class LambdaProcessorTest {
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
                 configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(lambdaProcessor);
 
 
@@ -328,7 +350,7 @@ public class LambdaProcessorTest {
         // Processor instant creation and executing
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         // Clearing up previous interactions in case if they have any
         reset(numberOfRecordsSuccessCounter);
         reset(numberOfRecordsFailedCounter);
@@ -354,7 +376,7 @@ public class LambdaProcessorTest {
         when(invokeResponse.payload()).thenReturn(null);
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(lambdaProcessor);
         // Act
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
@@ -379,7 +401,7 @@ public class LambdaProcessorTest {
         // Act
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
         // Assert
@@ -403,7 +425,7 @@ public class LambdaProcessorTest {
         // Instantiate the LambdaProcessor manually
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         // Mock condition evaluator to return false
         when(expressionEvaluator.evaluateConditional(anyString(), eq(event))).thenReturn(false);
 
@@ -437,7 +459,7 @@ public class LambdaProcessorTest {
         // Instantiate the LambdaProcessor manually
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator,circuitBreaker);
         populatePrivateFields(lambdaProcessor);
         Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
 
@@ -486,7 +508,7 @@ public class LambdaProcessorTest {
         // Act
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator,circuitBreaker);
         List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock,
                 invokeResponse);
 
@@ -549,7 +571,7 @@ public class LambdaProcessorTest {
         // Act
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
         LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         List<Record<Event>> resultRecords = lambdaProcessor.convertLambdaResponseToEvent(bufferMock, invokeResponse);
         // Assert
         // Verify that three records are added to the result
@@ -567,7 +589,7 @@ public class LambdaProcessorTest {
         // Set responseEventsMatch to false
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
         LambdaProcessor localLambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting,
-                lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
+                lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator,circuitBreaker);
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
         // Mock LambdaResponse with a valid payload containing three events
         when(invokeResponse.payload()).thenReturn(lambdaResponse);
@@ -597,7 +619,7 @@ public class LambdaProcessorTest {
         // Set responseEventsMatch to false
         LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFile);
         LambdaProcessor localLambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting,
-                lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator);
+                lambdaProcessorConfig, awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
 
         InvokeResponse invokeResponse = mock(InvokeResponse.class);
         LambdaAsyncClient lambdaAsyncClient = mock(LambdaAsyncClient.class);
@@ -615,63 +637,6 @@ public class LambdaProcessorTest {
             assertEquals("[lambda_failure]", record.getData().getMetadata().getTags().toString());
         }
     }
-
-    //NOTE: This test will not pass as invoke failure is handled internally through sdk.
-    // The first attempt will fail and the second attempt will not even be considered for execution.
-//    @Test
-//    public void testDoExecute_retryScenario_successOnSecondAttempt() throws Exception {
-//        // Arrange
-//        final List<Record<Event>> records = getSampleEventRecords(2);
-//
-//        // First attempt throws TooManyRequestsException => no valid payload
-//        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
-//                .thenReturn(CompletableFuture.failedFuture(
-//                        TooManyRequestsException.builder()
-//                                .message("First attempt throttled")
-//                                .build()
-//                ))
-//                // Second attempt => success with 200
-//                .thenReturn(CompletableFuture.completedFuture(
-//                        InvokeResponse.builder()
-//                                .statusCode(200)
-//                                .payload(SdkBytes.fromUtf8String(
-//                                        "[{\"successKey1\":\"successValue1\"},{\"successKey2\":\"successValue2\"}]"))
-//                                .build()
-//                ));
-//
-//        // Create a config which has at least 1 maxConnectionRetries so we can retry once.
-//        final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
-//
-//        // Instantiate the processor
-//        final LambdaProcessor processor = new LambdaProcessor(
-//                pluginFactory,
-//                pluginSetting,
-//                config,
-//                awsCredentialsSupplier,
-//                expressionEvaluator
-//        );
-//        populatePrivateFields(processor);
-//
-//        // Act
-//        final Collection<Record<Event>> resultRecords = processor.doExecute(records);
-//
-//        // Assert
-//        // Because the second invocation is successful (200),
-//        // we expect the final records to NOT have the "lambda_failure" tag
-//        assertEquals(records.size(), resultRecords.size());
-//        for (Record<Event> record : resultRecords) {
-//            assertFalse(
-//                    record.getData().getMetadata().getTags().contains("lambda_failure"),
-//                    "Record should NOT have a failure tag after a successful retry"
-//            );
-//        }
-//
-//        // We invoked the lambda client 2 times total: first attempt + one retry
-//        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
-//
-//        // Second attempt is success => increment success counters
-//        verify(numberOfRequestsSuccessCounter, times(1)).increment();
-//    }
 
     @Test
     public void testDoExecute_retryScenario_failsAfterMaxRetries() throws Exception {
@@ -695,7 +660,7 @@ public class LambdaProcessorTest {
 
         // Instantiate the processor
         final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(processor);
 
         // Act
@@ -735,7 +700,7 @@ public class LambdaProcessorTest {
         final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
 
         final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(processor);
 
         // Act
@@ -765,7 +730,7 @@ public class LambdaProcessorTest {
         final LambdaProcessorConfig config = createLambdaConfigurationFromYaml("lambda-processor-with-retries.yaml");
 
         final LambdaProcessor processor = new LambdaProcessor(pluginFactory, pluginSetting, config,
-                awsCredentialsSupplier, expressionEvaluator);
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
         populatePrivateFields(processor);
 
         // Act
@@ -782,5 +747,284 @@ public class LambdaProcessorTest {
         // Attempted only once
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
         verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-large-payload.yaml"})
+    public void testPayloadSizeBasedBatching(String configFileName) throws Exception {
+        AwsServiceException lambdaException = LambdaException.builder()
+                .statusCode(413)
+                .message("Status Code: 413")
+                .build();
+
+        // Create a successful InvokeResponse instance
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        // Create three distinct futures:
+        CompletableFuture<InvokeResponse> future1 = CompletableFuture.completedFuture(successfulResponse);
+        // Batch 2: fails with an exception (simulate payload too large)
+        CompletableFuture<InvokeResponse> future2 = CompletableFuture.failedFuture(lambdaException);
+        CompletableFuture<InvokeResponse> future3 = CompletableFuture.completedFuture(successfulResponse);
+
+        // Mock the invoke method to return a completed future
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(future1)
+                .thenReturn(future2)
+                .thenReturn(future3);
+
+        int oneMB = 1 * 1024 * 1024;
+        int sevenMB = 7 * 1024 * 1024;
+
+        Record<Event> oneMbRecord = createLargeRecord(oneMB);
+        Record<Event> sevenMbRecord = createLargeRecord(sevenMB);
+        List<Record<Event>> records = List.of(oneMbRecord, sevenMbRecord, oneMbRecord);
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+        assertEquals(3, results.size());
+        // Expect 2 successful invocations (i.e. batches) based on payload size accumulation
+        verify(numberOfRequestsSuccessCounter, times(2)).increment();
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-large-payload.yaml"})
+    public void testPayloadEventBasedBatching(String configFileName) throws Exception {
+        AwsServiceException lambdaException = LambdaException.builder()
+                .statusCode(413)
+                .message("Status Code: 413")
+                .build();
+
+        // Create a successful InvokeResponse instance
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        // Create three distinct futures:
+        CompletableFuture<InvokeResponse> future1 = CompletableFuture.completedFuture(successfulResponse);
+        // Batch 2: fails with an exception (simulate payload too large)
+        CompletableFuture<InvokeResponse> future2 = CompletableFuture.failedFuture(lambdaException);
+        CompletableFuture<InvokeResponse> future3 = CompletableFuture.completedFuture(successfulResponse);
+
+        // Mock the invoke method to return a completed future
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class)))
+                .thenReturn(future1)
+                .thenReturn(future2)
+                .thenReturn(future3);
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+        LambdaProcessor lambdaProcessor = createObjectUnderTest(lambdaProcessorConfig);
+        populatePrivateFields(lambdaProcessor);
+
+        // Create 2000 events
+        List<Record<Event>> records = getSampleEventRecords(2000);
+        Collection<Record<Event>> results = lambdaProcessor.doExecute(records);
+        // Expect 20 batches (thus 20 successful invocations)
+        verify(numberOfRequestsSuccessCounter, times(19)).increment();
+        verify(numberOfRequestsFailedCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    void testCircuitBreakerOpen_WaitsUntilClosed(String configFileName) throws Exception {
+        // Setup
+        List<Record<Event>> records = getSampleEventRecords(1);
+
+        AtomicBoolean circuitBreakerOpen = new AtomicBoolean(true);
+        CountDownLatch processingStarted = new CountDownLatch(1);
+        CountDownLatch circuitBreakerClosed = new CountDownLatch(1);
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(successfulResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(future);
+
+        when(circuitBreaker.isOpen()).thenAnswer(invocation -> {
+            if (processingStarted.getCount() > 0) {
+                processingStarted.countDown();
+            }
+            return circuitBreakerOpen.get();
+        });
+
+        // Start a thread that will close the circuit breaker after a short delay
+        Thread circuitBreakerCloser = new Thread(() -> {
+            try {
+                processingStarted.await(1, TimeUnit.SECONDS);
+                Thread.sleep(500);
+                circuitBreakerOpen.set(false);
+                circuitBreakerClosed.countDown();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        circuitBreakerCloser.start();
+
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(
+                pluginFactory,
+                pluginSetting,
+                lambdaProcessorConfig,
+                awsCredentialsSupplier,
+                expressionEvaluator,
+                circuitBreaker
+        );
+        populatePrivateFields(lambdaProcessor);
+
+        // Execute
+        lambdaProcessor.doExecute(records);
+
+        // Verify
+        verify(circuitBreaker, atLeast(1)).isOpen();
+        assertTrue(circuitBreakerClosed.await(2, TimeUnit.SECONDS));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        verify(circuitBreaker, atLeast(2)).isOpen();
+    }
+
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config.yaml"})
+    void testCircuitBreakerClosedImmediately(String configFileName) throws Exception {
+        // Setup
+        List<Record<Event>> records = getSampleEventRecords(1);
+
+        AtomicBoolean circuitBreakerOpen = new AtomicBoolean(false);
+        CountDownLatch processingStarted = new CountDownLatch(1);
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+
+        InvokeResponse successfulResponse = InvokeResponse.builder()
+                .statusCode(200)
+                .payload(SdkBytes.fromUtf8String("[{\"key\":\"value\"}]"))
+                .build();
+
+        CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(successfulResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(future);
+
+        when(circuitBreaker.isOpen()).thenAnswer(invocation -> {
+            processingStarted.countDown();
+            return circuitBreakerOpen.get();
+        });
+
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(
+                pluginFactory,
+                pluginSetting,
+                lambdaProcessorConfig,
+                awsCredentialsSupplier,
+                expressionEvaluator,
+                circuitBreaker
+        );
+        populatePrivateFields(lambdaProcessor);
+
+        // Execute
+        lambdaProcessor.doExecute(records);
+
+        // Verify
+        verify(circuitBreaker, times(1)).isOpen();
+        assertTrue(processingStarted.await(1, TimeUnit.SECONDS));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-circuit-breaker-config.yaml"})
+    void testWaitForCircuitBreakerClosesBeforeMaxRetries(String configFileName) throws Exception {
+        // Setup
+        int closeAfterRetries = 3;
+        AtomicInteger retryCount = new AtomicInteger(0);
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+
+        // Mock circuit breaker that closes after a few retries
+        CircuitBreaker mockBreaker = mock(CircuitBreaker.class);
+        when(mockBreaker.isOpen()).thenAnswer(inv -> {
+            return retryCount.incrementAndGet() <= closeAfterRetries;
+        });
+
+        LambdaProcessor processor = new LambdaProcessor(
+                pluginFactory,
+                pluginSetting,
+                lambdaProcessorConfig,
+                awsCredentialsSupplier,
+                expressionEvaluator,
+                mockBreaker
+        );
+
+        // Create and process some records
+        List<Record<Event>> records = getSampleEventRecords(1);
+        Collection<Record<Event>> results = processor.doExecute(records);
+
+        // Verify
+        verify(mockBreaker, atLeast(closeAfterRetries + 1)).isOpen(); // At least the number of retries plus initial check
+        assertThat(results, hasSize(records.size()));
+        verify(mockBreaker, atMost(6)).isOpen();
+    }
+
+    // Helper method to set private field
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    // Helper methods
+    private List<Record<Event>> createMockRecords(int count) {
+        List<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Record<Event> record = mock(Record.class);
+            Event event = mock(Event.class);
+            when(record.getData()).thenReturn(event);
+            records.add(record);
+        }
+        return records;
+    }
+
+    private Map<Buffer, CompletableFuture<InvokeResponse>> createMockBufferFutureMap(int count) {
+        Map<Buffer, CompletableFuture<InvokeResponse>> map = new HashMap<>();
+        for (int i = 0; i < count; i++) {
+            Buffer buffer = mock(Buffer.class);
+            when(buffer.getRecords()).thenReturn(createMockRecords(2));
+            when(buffer.getEventCount()).thenReturn(2);
+            when(buffer.stopLatencyWatch()).thenReturn(Duration.ofMillis(100));
+
+            CompletableFuture<InvokeResponse> future = CompletableFuture.completedFuture(
+                    InvokeResponse.builder()
+                            .statusCode(200)
+                            .payload(SdkBytes.fromUtf8String("[]"))
+                            .build()
+            );
+
+            map.put(buffer, future);
+        }
+        return map;
+    }
+
+
+    private Record<Event> createLargeRecord(final int sizeInBytes) {
+        StringBuilder sb = new StringBuilder(sizeInBytes);
+        for (int i = 0; i < sizeInBytes; i++) {
+            sb.append("a");
+        }
+        String payload = sb.toString();
+        // Create a simple map for event data
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("payload", payload);
+        Event event = JacksonEvent.builder()
+                .withData(data)
+                .withEventType("test")
+                .build();
+        return new Record<>(event);
+    }
+
+    private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
+        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
     }
 }

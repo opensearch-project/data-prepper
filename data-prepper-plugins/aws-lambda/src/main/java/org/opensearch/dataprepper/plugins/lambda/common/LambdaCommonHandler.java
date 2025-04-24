@@ -63,15 +63,22 @@ public class LambdaCommonHandler {
 
         LOG.debug("Batch size received to lambda processor: {}", records.size());
         for (Record<Event> record : records) {
+            //check size has exceeded threshold
+            if (currentBufferPerBatch.getEventCount() > 0 &&
+                    ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
+                batchedBuffers.add(currentBufferPerBatch);
+                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+            }
 
             currentBufferPerBatch.addRecord(record);
-            if (ThresholdCheck.checkThresholdExceed(currentBufferPerBatch, maxEvents, maxBytes,
-                    maxCollectionDuration)) {
+
+            // After adding, check if the event count threshold is reached.
+            if (currentBufferPerBatch.getEventCount() > 0 &&
+                    ThresholdCheck.checkEventCountThresholdExceeded(currentBufferPerBatch, maxEvents)) {
                 batchedBuffers.add(currentBufferPerBatch);
                 currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
             }
         }
-
         if (currentBufferPerBatch.getEventCount() > 0) {
             batchedBuffers.add(currentBufferPerBatch);
         }
@@ -97,10 +104,13 @@ public class LambdaCommonHandler {
         for (Buffer buffer : batchedBuffers) {
             InvokeRequest requestPayload = buffer.getRequestPayload(config.getFunctionName(),
                     config.getInvocationType().getAwsLambdaValue());
-            CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
-            bufferToFutureMap.put(buffer, future);
+            if(requestPayload!=null) {
+                CompletableFuture<InvokeResponse> future = lambdaAsyncClient.invoke(requestPayload);
+                bufferToFutureMap.put(buffer, future);
+            }else{
+                LOG.warn("Request Payload is null, skipping lambda invocation");
+            }
         }
-        waitForFutures(bufferToFutureMap.values());
         return bufferToFutureMap;
     }
 

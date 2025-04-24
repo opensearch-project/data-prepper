@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.rds.stream;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 
@@ -50,12 +52,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogEventListener.REPLICATION_LOG_EVENT_PROCESSING_TIME;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogEventListener.REPLICATION_LOG_PROCESSING_ERROR_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 class BinlogEventListenerTest {
@@ -104,12 +108,18 @@ class BinlogEventListenerTest {
     private BinlogEventListener objectUnderTest;
 
     private Timer eventProcessingTimer;
+    private Counter eventProcessingErrorCounter;
+    private Counter defaultCounter;
 
     @BeforeEach
     void setUp() {
         s3Prefix = UUID.randomUUID().toString();
-        eventProcessingTimer = Metrics.timer("test-timer");
+        eventProcessingTimer = Metrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME);
+        eventProcessingErrorCounter = Metrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT);
+        defaultCounter = Metrics.counter("default-test-counter");
         when(pluginMetrics.timer(REPLICATION_LOG_EVENT_PROCESSING_TIME)).thenReturn(eventProcessingTimer);
+        lenient().when(pluginMetrics.counter(REPLICATION_LOG_PROCESSING_ERROR_COUNT)).thenReturn(eventProcessingErrorCounter);
+        lenient().when(pluginMetrics.counter(any())).thenReturn(defaultCounter);
         try (final MockedStatic<Executors> executorsMockedStatic = mockStatic(Executors.class)) {
             executorsMockedStatic.when(() -> Executors.newFixedThreadPool(anyInt(), any(ThreadFactory.class))).thenReturn(eventListnerExecutorService);
             executorsMockedStatic.when(Executors::newSingleThreadExecutor).thenReturn(checkpointManagerExecutorService);
@@ -199,7 +209,7 @@ class BinlogEventListenerTest {
         // verify rowList and bulkActionList that were sent to handleRowChangeEvent() were correct
         ArgumentCaptor<List<Serializable[]>> rowListArgumentCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<OpenSearchBulkActions>> bulkActionListArgumentCaptor = ArgumentCaptor.forClass(List.class);
-        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListArgumentCaptor.capture(), bulkActionListArgumentCaptor.capture());
+        verify(objectUnderTest).handleRowChangeEvent(eq(binlogEvent), eq(tableId), rowListArgumentCaptor.capture(), bulkActionListArgumentCaptor.capture(), eq(StreamEventType.UPDATE));
         List<Serializable[]> rowList = rowListArgumentCaptor.getValue();
         List<OpenSearchBulkActions> bulkActionList = bulkActionListArgumentCaptor.getValue();
 

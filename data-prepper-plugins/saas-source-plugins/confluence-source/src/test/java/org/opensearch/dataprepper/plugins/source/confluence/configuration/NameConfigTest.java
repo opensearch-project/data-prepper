@@ -1,3 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
 package org.opensearch.dataprepper.plugins.source.confluence.configuration;
 
 
@@ -17,6 +26,7 @@ class NameConfigTest {
         nameConfig.include.add("ABC123");
         nameConfig.include.add("XYZ789");
         nameConfig.exclude.add("TEST123");
+        nameConfig.exclude.add("Test123");
 
         assertTrue(nameConfig.isValidSpaceKeys());
     }
@@ -32,6 +42,8 @@ class NameConfigTest {
         NameConfig nameConfig = new NameConfig();
         nameConfig.include.add("ABC-123"); // Contains invalid character
         nameConfig.exclude.add("TEST123");
+        nameConfig.exclude.add("Test123");
+        nameConfig.exclude.add("<<space-key>>");
 
         assertFalse(nameConfig.isValidSpaceKeys());
     }
@@ -40,7 +52,8 @@ class NameConfigTest {
     void testValidSpaceKeys_WithInvalidExclude() {
         NameConfig nameConfig = new NameConfig();
         nameConfig.include.add("ABC123");
-        nameConfig.exclude.add("TEST@123"); // Contains invalid character
+        nameConfig.exclude.add("TEST@123");
+        nameConfig.exclude.add("Test@123");// Contains invalid character
 
         assertFalse(nameConfig.isValidSpaceKeys());
     }
@@ -51,7 +64,7 @@ class NameConfigTest {
         List<String> testList = new ArrayList<>();
         testList.add(null);
 
-        assertTrue(nameConfig.checkGivenListForRegex(testList));
+        assertFalse(nameConfig.checkGivenListForRegex(testList));
     }
 
 }

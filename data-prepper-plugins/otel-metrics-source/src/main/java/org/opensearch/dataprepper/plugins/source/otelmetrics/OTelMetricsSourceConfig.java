@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
@@ -67,6 +68,9 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(SSL)
     private boolean ssl = DEFAULT_SSL;
+
+    @JsonProperty("output_format")
+    private OTelOutputFormat outputFormat = OTelOutputFormat.OPENSEARCH;
 
     @JsonProperty(USE_ACM_CERT_FOR_SSL)
     private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -178,6 +182,10 @@ public class OTelMetricsSourceConfig {
 
     public boolean isSsl() {
         return ssl;
+    }
+
+    public OTelOutputFormat getOutputFormat() {
+        return outputFormat;
     }
 
     public boolean useAcmCertForSSL() {

@@ -58,6 +58,12 @@ public interface Span extends Event {
     String getKind();
 
     /**
+     * Gets the span's flags
+     * @return the flags
+     */
+    Integer getFlags();
+
+    /**
      * Gets ISO8601 representation of the start time.
      * @return the start time
      * @since 1.2
@@ -153,4 +159,43 @@ public interface Span extends Event {
      * @since 1.3
      */
     void setTraceGroupFields(TraceGroupFields traceGroupFields);
+
+    /**
+     * Sets the service name for this span.
+     * @param serviceName service name
+     * @since 2.11
+     */
+    void setServiceName(final String serviceName);
+
+    /**
+     * Gets the schema url of this span event.
+     *
+     * @return the schema url
+     * @since 2.11
+     */
+    String getSchemaUrl();
+
+    /**
+     * Gets the scope of this span event.
+     *
+     * @return the scope
+     * @since 2.11
+     */
+    Map<String, Object> getScope();
+
+    /**
+     * Gets the resource of this span event.
+     *
+     * @return the resource
+     * @since 2.11
+     */
+    Map<String, Object> getResource();
+
+    /**
+     * Gets the status of this span event.
+     *
+     * @return the status
+     * @since 2.11
+     */
+    Map<String, Object> getStatus();
 }

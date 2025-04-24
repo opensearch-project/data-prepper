@@ -10,15 +10,19 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
+import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Configuration for RDS Source
@@ -43,11 +47,12 @@ public class RdsSourceConfig {
     @NotNull
     private EngineType engine;
 
-    /**
-     * The table name is in the format of `database.table` for MySQL engine
-     */
-    @JsonProperty("table_names")
-    private List<String> tableNames;
+    @JsonProperty("database")
+    @NotEmpty
+    private String database;
+
+    @JsonProperty("tables")
+    private TableFilterConfig tableFilterConfig;
 
     @JsonProperty("aws")
     @NotNull
@@ -114,8 +119,12 @@ public class RdsSourceConfig {
         return engine.isAurora();
     }
 
-    public List<String> getTableNames() {
-        return tableNames;
+    public String getDatabase() {
+        return database;
+    }
+
+    public TableFilterConfig getTables() {
+        return tableFilterConfig;
     }
 
     public AwsAuthenticationConfig getAwsAuthenticationConfig() {
@@ -191,6 +200,31 @@ public class RdsSourceConfig {
 
         public String getPassword() {
             return password;
+        }
+    }
+
+    /**
+     * This method applies the table filter configuration to the given set of table names.
+     *
+     * @param tableNames        The set of table names to be filtered
+     */
+    public void applyTableFilter(Set<String> tableNames) {
+        if (tableFilterConfig == null) {
+            return;
+        }
+
+        if (!tableFilterConfig.getInclude().isEmpty()) {
+            List<String> includeTableList = tableFilterConfig.getInclude().stream()
+                    .map(item -> getDatabase() + "." + item)
+                    .collect(Collectors.toList());
+            tableNames.retainAll(includeTableList);
+        }
+
+        if (!tableFilterConfig.getExclude().isEmpty()) {
+            List<String> excludeTableList = tableFilterConfig.getExclude().stream()
+                    .map(item -> getDatabase() + "." + item)
+                    .collect(Collectors.toList());
+            excludeTableList.forEach(tableNames::remove);
         }
     }
 }

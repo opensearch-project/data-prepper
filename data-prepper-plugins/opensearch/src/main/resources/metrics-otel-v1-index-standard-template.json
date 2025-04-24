@@ -1,0 +1,298 @@
+{
+  "version": 1,
+  "mappings": {
+    "date_detection": false,
+    "_source": {
+      "enabled": true
+    },
+    "dynamic_templates": [
+      {
+        "long_resource_attributes": {
+          "mapping": {
+            "type": "long"
+          },
+          "path_match": "resource.attributes.*",
+          "match_mapping_type": "long"
+        }
+      },
+      {
+        "double_resource_attributes": {
+          "mapping": {
+            "type": "double"
+          },
+          "path_match": "resource.attributes.*",
+          "match_mapping_type": "double"
+        }
+      },
+      {
+        "string_resource_attributes": {
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "path_match": "resource.attributes.*",
+          "match_mapping_type": "string"
+        }
+      },
+      {
+        "long_scope_attributes": {
+          "mapping": {
+            "type": "long"
+          },
+          "path_match": "instrumentationScope.attributes.*",
+          "match_mapping_type": "long"
+        }
+      },
+      {
+        "double_scope_attributes": {
+          "mapping": {
+            "type": "double"
+          },
+          "path_match": "instrumentationScope.attributes.*",
+          "match_mapping_type": "double"
+        }
+      },
+      {
+        "string_scope_attributes": {
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "path_match": "instrumentationScope.attributes.*",
+          "match_mapping_type": "string"
+        }
+      },
+      {
+        "long_attributes": {
+          "mapping": {
+            "type": "long"
+          },
+          "path_match": "attributes.*",
+          "match_mapping_type": "long"
+        }
+      },
+      {
+        "double_attributes": {
+          "mapping": {
+            "type": "double"
+          },
+          "path_match": "attributes.*",
+          "match_mapping_type": "double"
+        }
+      },
+      {
+        "string_attributes": {
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "path_match": "attributes.*",
+          "match_mapping_type": "string"
+        }
+      }
+    ],
+    "properties": {
+      "droppedAttributesCount": {
+        "type": "integer"
+      },
+      "instrumentationScope": {
+        "properties": {
+          "droppedAttributesCount": {
+            "type": "integer"
+          },
+          "schemaUrl": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "name": {
+            "type": "keyword",
+            "ignore_above": 128
+          },
+          "version": {
+            "type": "keyword",
+            "ignore_above": 64
+          }
+        }
+      },
+      "resource": {
+        "properties": {
+          "droppedAttributesCount": {
+            "type": "integer"
+          },
+          "schemaUrl": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "name": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
+      "description": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "flags": {
+        "type": "long"
+      },
+      "unit": {
+        "type": "keyword",
+        "ignore_above": 128
+      },
+      "kind": {
+        "type": "keyword",
+        "ignore_above": 32
+      },
+      "aggregationTemporality": {
+        "type": "keyword",
+        "ignore_above": 64
+      },
+      "monotonic": {
+        "type": "boolean"
+      },
+      "startTime": {
+        "type": "date_nanos"
+      },
+      "@timestamp": {
+        "type": "date_nanos"
+      },
+      "time": {
+        "type": "date_nanos"
+      },
+      "value@int": {
+        "type": "long"
+      },
+      "value@double": {
+        "type": "double"
+      },
+      "value": {
+        "type": "double"
+      },
+      "buckets": {
+        "type" : "nested",
+        "properties": {
+          "count": {
+            "type": "long"
+          },
+          "sum": {
+            "type": "double"
+          },
+          "max": {
+            "type": "double"
+          },
+          "min": {
+            "type": "double"
+          }
+        }
+      },
+      "bucketCount": {
+        "type": "long"
+      },
+      "bucketCountsList": {
+        "type": "long"
+      },
+      "explicitBoundsList": {
+        "type": "double"
+      },
+      "explicitBoundsCount": {
+        "type": "double"
+      },
+      "quantiles": {
+        "properties": {
+          "quantile": {
+            "type": "double"
+          },
+          "value": {
+            "type": "double"
+          }
+        }
+      },
+      "quantileValuesCount": {
+        "type": "long"
+      },
+      "positiveBuckets": {
+        "type" : "nested",
+        "properties": {
+          "count": {
+            "type": "long"
+          },
+          "max": {
+            "type": "double"
+          },
+          "min": {
+            "type": "double"
+          }
+        }
+      },
+      "negativeBuckets": {
+        "type" : "nested",
+        "properties": {
+          "count": {
+            "type": "long"
+          },
+          "max": {
+            "type": "double"
+          },
+          "min": {
+            "type": "double"
+          }
+        }
+      },
+      "negativeOffset": {
+        "type": "integer"
+      },
+      "positiveOffset": {
+        "type": "integer"
+      },
+      "zeroCount": {
+        "type": "long"
+      },
+      "scale": {
+        "type": "long"
+      },
+      "max": {
+        "type": "double"
+      },
+      "min": {
+        "type": "double"
+      },
+      "sum": {
+        "type": "double"
+      },
+      "count": {
+        "type": "long"
+      },
+      "exemplar": {
+        "properties": {
+          "time": {
+            "type": "date_nanos"
+          },
+          "traceId": {
+            "ignore_above": 256,
+            "type": "keyword"
+          },
+          "spanId": {
+            "ignore_above": 256,
+            "type": "keyword"
+          },
+          "value@int": {
+            "type": "long"
+          },
+          "value@double": {
+            "type": "double"
+          },
+          "value": {
+            "type": "double"
+          }
+        }
+      }
+    }
+  }
+}
+

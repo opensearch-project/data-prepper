@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.handler;
 
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataType;
 import org.opensearch.dataprepper.plugins.source.rds.datatype.postgres.PostgresDataTypeHandler;
+import org.opensearch.dataprepper.plugins.source.rds.utils.PgArrayParser;
 import org.postgresql.geometric.PGbox;
 import org.postgresql.geometric.PGcircle;
 import org.postgresql.geometric.PGline;
@@ -20,37 +21,30 @@ public class SpatialTypeHandler implements PostgresDataTypeHandler {
         if (!columnType.isSpatial()) {
             throw new IllegalArgumentException("ColumnType is not spatial: " + columnType);
         }
-        final String val = value.toString();
-        final String dataType = columnType.getDataType();
-        return parseGeometry(val, columnName, dataType);
+        if(columnType.isSubCategoryArray())
+            return PgArrayParser.parseTypedArray(value.toString(), PostgresDataType.getScalarType(columnType),
+                    this::parseGeometry);
+        return parseGeometry(columnType, value.toString());
     }
 
-    private Object parseGeometry(final String val, final String columnName, final String dataType) {
-        try {
-            return parseGeometry(val, dataType);
-        } catch (Exception e) {
-            throw new RuntimeException("Error processing the geometry data type value for columnName: " + columnName, e);
-        }
-    }
-
-    private Object parseGeometry(final String val, final String dataType) {
-        switch (dataType) {
-            case "point":
+    private Object parseGeometry(final PostgresDataType columnType, final String val) {
+        switch (columnType) {
+            case POINT:
                 return parsePoint(val);
-            case "line":
+            case LINE:
                 return parseLine(val);
-            case "lseg":
+            case LSEG:
                 return parseLseg(val);
-            case "box":
+            case BOX:
                 return parseBox(val);
-            case "path":
+            case PATH:
                 return parsePath(val);
-            case "polygon":
+            case POLYGON:
                 return parsePolygon(val);
-            case "circle":
+            case CIRCLE:
                 return parseCircle(val);
             default:
-                throw new IllegalArgumentException("Unsupported spatial data type: " + dataType);
+                return val;
         }
     }
 

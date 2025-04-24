@@ -267,7 +267,15 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         for (final Map.Entry<String, List<String>> entry : grokProcessorConfig.getMatch().entrySet()) {
             fieldToGrok.put(entry.getKey(), entry.getValue()
                             .stream()
-                            .map(item -> grokCompiler.compile(item, grokProcessorConfig.isNamedCapturesOnly()))
+                            .map(item -> {
+                                try {
+                                    return grokCompiler.compile(item, grokProcessorConfig.isNamedCapturesOnly());
+                                } catch (IllegalArgumentException e) {
+                                    throw new InvalidPluginConfigurationException(
+                                            String.format("Invalid regular expression pattern in match: %s",
+                                                    entry.getKey()), e);
+                                }
+                            })
                             .collect(Collectors.toList()));
         }
     }

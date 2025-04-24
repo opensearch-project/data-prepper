@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
+
 public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
 
@@ -63,14 +64,20 @@ public class StreamWorker {
             replicationLogClient.connect();
         } catch (Exception e) {
             LOG.warn("Error while connecting to replication stream, will retry.");
+            LOG.debug("Give up stream partition and shut down stream worker");
             sourceCoordinator.giveUpPartition(streamPartition);
+            shutdown();
             throw new RuntimeException(e);
-        } finally {
-            try {
-                replicationLogClient.disconnect();
-            } catch (Exception e) {
-                LOG.error("Binary log client failed to disconnect.", e);
-            }
+        }
+
+        LOG.debug("Exited connect() method in stream worker.");
+    }
+
+    public void shutdown() {
+        try {
+            replicationLogClient.disconnect();
+        } catch (Exception e) {
+            LOG.error("Replication log client failed to disconnect.", e);
         }
     }
 

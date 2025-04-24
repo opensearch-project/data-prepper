@@ -1,0 +1,15 @@
+function_name: "lambdaProcessorTest"
+response_events_match: true
+tags_on_failure: [ "lambda_failure" ]
+batch:
+  key_name: "osi_key"
+  threshold:
+    event_count: 100
+    maximum_size: 100b
+    event_collect_timeout: 335
+client:
+  max_retries: 50
+  max_concurrency: 5
+aws:
+  region: "us-east-1"
+  sts_role_arn: "arn:aws:iam::1234567890:role/sample-pipeine-role"

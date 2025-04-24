@@ -24,7 +24,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -107,11 +106,11 @@ public class StreamAcknowledgementManagerTest {
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
            .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(partitionCheckpoint).checkpoint(resumeToken, recordCount));
+                verify(partitionCheckpoint, times(2)).checkpoint(resumeToken, recordCount));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
         verify(positiveAcknowledgementSets).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment();
     }
 
     @Test
@@ -146,12 +145,12 @@ public class StreamAcknowledgementManagerTest {
         assertThat(ackCheckpointStatus.isPositiveAcknowledgement(), is(true));
         await()
             .atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                verify(partitionCheckpoint).checkpoint(resumeToken2, recordCount2));
+                verify(partitionCheckpoint, times(2)).checkpoint(resumeToken2, recordCount2));
         assertThat(streamAckManager.getCheckpoints().peek(), is(nullValue()));
 
         verify(positiveAcknowledgementSets, atLeastOnce()).increment();
         verifyNoInteractions(negativeAcknowledgementSets);
-        verify(recordsCheckpointed, atLeastOnce()).increment(anyDouble());
+        verify(recordsCheckpointed, atLeastOnce()).increment();
     }
 
     @Test

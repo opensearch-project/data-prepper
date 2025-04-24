@@ -26,7 +26,7 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -188,7 +188,7 @@ public class CreateServerTest {
     private TestService getTestService(Buffer<Record<? extends Metric>> buffer){
         TestService testService = new TestService(
                 80,
-                new OTelProtoCodec.OTelProtoDecoder(),
+                new OTelProtoStandardCodec.OTelProtoDecoder(),
                 buffer,
                 pluginMetrics
         );

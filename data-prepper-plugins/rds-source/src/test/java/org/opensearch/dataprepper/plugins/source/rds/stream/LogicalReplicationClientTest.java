@@ -119,6 +119,7 @@ class LogicalReplicationClientTest {
         when(logicalStreamBuilder.start()).thenReturn(stream);
         when(stream.readPending()).thenReturn(message).thenReturn(null);
         when(stream.getLastReceiveLSN()).thenReturn(lsn);
+        when(stream.isClosed()).thenReturn(false, true);
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> logicalReplicationClient.connect());
@@ -155,6 +156,7 @@ class LogicalReplicationClientTest {
         when(logicalStreamBuilder.start()).thenReturn(stream);
         when(stream.readPending()).thenReturn(message).thenReturn(null);
         when(stream.getLastReceiveLSN()).thenReturn(lsn);
+        when(stream.isClosed()).thenReturn(false, true);
 
         // First connect
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -174,6 +176,7 @@ class LogicalReplicationClientTest {
 
         // Second connect
         when(stream.readPending()).thenReturn(message).thenReturn(null);
+        when(stream.isClosed()).thenReturn(false, true);
         executorService.submit(() -> logicalReplicationClient.connect());
         await().atMost(Duration.ofSeconds(1))
                 .untilAsserted(() -> verify(eventProcessor, times(2)).process(message));
