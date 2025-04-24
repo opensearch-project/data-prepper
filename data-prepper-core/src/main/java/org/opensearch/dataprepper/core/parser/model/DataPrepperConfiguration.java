@@ -90,7 +90,6 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             @JsonProperty("metric_tag_filters")
             final List<MetricTagFilter> metricTagFilters,
             @JsonProperty("disabled_metrics")
-            @JsonAlias("disabledMetrics")
             final List<String> disabledMetrics,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processor_shutdown_timeout")
