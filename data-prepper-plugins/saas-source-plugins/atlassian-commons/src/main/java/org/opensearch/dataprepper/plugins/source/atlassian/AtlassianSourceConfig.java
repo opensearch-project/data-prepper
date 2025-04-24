@@ -50,4 +50,9 @@ public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
     }
 
     public abstract String getOauth2UrlContext();
+
+    @Override
+    public int getNumberOfWorkers() {
+        return DEFAULT_NUMBER_OF_WORKERS;
+    }
 }

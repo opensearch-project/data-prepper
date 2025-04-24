@@ -7,6 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.CrowdStrikeSourceConfig;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.configuration.AuthenticationConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -14,28 +16,36 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CrowdStrikeAuthClientTest {
+    private static final Logger log = LoggerFactory.getLogger(CrowdStrikeAuthClientTest.class);
 
     @Mock
     private RestTemplate restTemplateMock;
-
     private CrowdStrikeAuthClient authClient;
+    @Mock
+    private CrowdStrikeSourceConfig mockSourceConfig;
+
 
     @BeforeEach
     void setUp() {
-        CrowdStrikeSourceConfig mockSourceConfig = mock(CrowdStrikeSourceConfig.class);
         AuthenticationConfig authConfig = mock(AuthenticationConfig.class);
         when(mockSourceConfig.getAuthenticationConfig()).thenReturn(authConfig);
         when(authConfig.getClientId()).thenReturn("test-id");
@@ -66,8 +76,92 @@ class CrowdStrikeAuthClientTest {
                 .thenThrow(forbidden);
 
         RuntimeException ex = assertThrows(RuntimeException.class, authClient::initCredentials);
-        assertTrue(ex.getMessage().contains("Error while requesting token"));
+        assertTrue(ex.getMessage().contains("Failed to acquire access token even after 6 retry attempts"));
         assertEquals(Instant.ofEpochMilli(0), authClient.getExpireTime());
     }
 
+    @Test
+    void testTooManyRequestsBacksOffAndRetries() {
+        Map<String, Object> tokenMap = new HashMap<>();
+        tokenMap.put("access_token", "mock-token");
+        tokenMap.put("expires_in", 3600);
+
+        HttpClientErrorException tooManyRequestsException =
+                HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests",
+                        null, null, null);
+
+        when(restTemplateMock.postForEntity(any(String.class), any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(tooManyRequestsException)
+                .thenReturn(new ResponseEntity<>(tokenMap, HttpStatus.OK)); // 2nd succeeds
+
+        authClient.initCredentials();
+
+        assertEquals("mock-token", authClient.getBearerToken());
+        assertTrue(authClient.getExpireTime().isAfter(Instant.now()));
+    }
+
+    @Test
+    void testRefreshToken_skipsIfTokenIsValidInitially() {
+        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
+            @Override
+            protected boolean isTokenValid() {
+                return true;
+            }
+
+            @Override
+            protected void getAuthToken() {
+                fail("getAuthToken should not be called when token is already valid.");
+            }
+        });
+
+        client.refreshToken();
+        verify(client, times(1)).isTokenValid();
+        verify(client, never()).getAuthToken();
+    }
+
+    @Test
+    void testRefreshToken_getsCalledWhenTokenInvalid() {
+        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
+            private int checkCount = 0;
+
+            @Override
+            protected boolean isTokenValid() {
+                // First call: false, Second call (inside lock): false
+                return checkCount++ > 1;
+            }
+
+            @Override
+            protected void getAuthToken() {
+                log.info("Mock getAuthToken called");
+            }
+        });
+
+        client.refreshToken();
+
+        verify(client, times(2)).isTokenValid();
+        verify(client, times(1)).getAuthToken();
+    }
+
+    @Test
+    void testRefreshToken_skipsIfValidInsideLock() {
+        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
+            private int checkCount = 0;
+
+            @Override
+            protected boolean isTokenValid() {
+                // First call: false, Second call inside lock: true
+                return ++checkCount == 2;
+            }
+
+            @Override
+            protected void getAuthToken() {
+                fail("getAuthToken should not be called if token becomes valid inside lock.");
+            }
+        });
+
+        client.refreshToken();
+
+        verify(client, times(2)).isTokenValid();
+        verify(client, never()).getAuthToken();
+    }
 }

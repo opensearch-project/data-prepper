@@ -61,7 +61,6 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.executorService = executorServiceProvider.get();
     }
 
-
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
@@ -73,7 +72,7 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler);
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
-        for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
+        for (int i = 0; i < sourceConfig.getNumberOfWorkers(); i++) {
             WorkerScheduler workerScheduler = new WorkerScheduler(sourcePluginName, buffer, coordinator,
                     sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
             this.executorService.submit(new Thread(workerScheduler));
