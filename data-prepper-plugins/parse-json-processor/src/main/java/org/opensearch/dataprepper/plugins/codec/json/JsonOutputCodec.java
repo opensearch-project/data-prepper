@@ -71,7 +71,6 @@ public class JsonOutputCodec implements OutputCodec {
             outputStream.close();
         }
 
-
         private Map<String, Object> getDataMapToSerialize(final Event event) throws JsonProcessingException {
             final Event modifiedEvent;
             if (codecContext.getTagsTargetKey() != null) {
