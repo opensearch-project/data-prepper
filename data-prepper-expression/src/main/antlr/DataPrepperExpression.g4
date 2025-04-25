@@ -269,6 +269,10 @@ VariableNameCharacter
     | [0-9-]
     ;
 
+RawString
+    : [r] DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
+    ;
+
 String
     : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
     ;

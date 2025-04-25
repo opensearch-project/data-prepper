@@ -70,6 +70,9 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.String:
                 final String nodeStringValueWithQuotesStripped = nodeStringValue.substring(1, nodeStringValue.length() - 1);
                 return nodeStringValueWithQuotesStripped;
+            case DataPrepperExpressionParser.RawString:
+                final String nodeStringValueWithRAndQuotesStripped = nodeStringValue.substring(2, nodeStringValue.length() - 1);
+                return nodeStringValueWithRAndQuotesStripped;
             case DataPrepperExpressionParser.Integer:
                 Long longValue = Long.valueOf(nodeStringValue);
                 if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE) {
