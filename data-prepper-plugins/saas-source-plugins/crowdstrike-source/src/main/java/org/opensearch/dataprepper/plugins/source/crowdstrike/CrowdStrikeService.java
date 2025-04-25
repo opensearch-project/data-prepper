@@ -13,6 +13,9 @@ import javax.inject.Named;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Optional;
+
 import static org.opensearch.dataprepper.plugins.source.crowdstrike.utils.Constants.BATCH_SIZE;
 import static org.opensearch.dataprepper.plugins.source.crowdstrike.utils.Constants.FILTER_KEY;
 import static org.opensearch.dataprepper.plugins.source.crowdstrike.utils.Constants.LAST_UPDATED;
@@ -44,35 +47,30 @@ public class CrowdStrikeService {
      *   @param paginationLink  An optional pagination URL suffix (used when fetching next pages).
      *   @return                A {@link CrowdStrikeApiResponse} containing response body and headers.
      */
-    public CrowdStrikeApiResponse getAllContent(Long startTime, Long endTime, String paginationLink) {
+    public CrowdStrikeApiResponse getThreatIndicators(Instant startTime, Instant endTime, Optional<String> paginationLink) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("startTime and endTime must not be null");
+        }
         URI uri = buildCrowdStrikeUri(startTime, endTime, paginationLink);
-
         return searchCallLatencyTimer.record(() -> {
-            try {
-                log.debug("Calling CrowdStrike API with URI: {}", uri);
-                ResponseEntity<CrowdStrikeIndicatorResult> responseEntity = crowdStrikeRestClient.invokeGetApi(uri, CrowdStrikeIndicatorResult.class);
 
-                CrowdStrikeApiResponse response = new CrowdStrikeApiResponse();
-                response.setBody(responseEntity.getBody());
-                response.setHeaders(responseEntity.getHeaders());
-                return response;
-            } catch (Exception e) {
-                log.error("Error fetching CrowdStrike content from URI: {}", uri, e);
-                throw new RuntimeException("CrowdStrike API call failed", e);
-            }
+            log.debug("Calling CrowdStrike API with URI: {}", uri);
+            ResponseEntity<CrowdStrikeIndicatorResult> responseEntity = crowdStrikeRestClient.invokeGetApi(uri, CrowdStrikeIndicatorResult.class);
+
+            return new CrowdStrikeApiResponse(responseEntity.getBody(), responseEntity.getHeaders());
         });
     }
 
-    protected URI buildCrowdStrikeUri(Long startTime, Long endTime, String paginationLink) {
+    protected URI buildCrowdStrikeUri(Instant startTime, Instant endTime,  Optional<String> paginationLink) {
         try {
-            if (paginationLink != null) {
-                String urlString = BASE_URL + paginationLink;
+            if (paginationLink.isPresent()) {
+                String urlString = BASE_URL + paginationLink.get();
                 urlString = CrowdStrikeNextLinkValidator.validateAndSanitizeURL(urlString);
                 return new URI(urlString);
             } else {
                 // Manually construct and encode the query string
-                String filter1 = URLEncoder.encode(LAST_UPDATED + ":>=" + startTime, StandardCharsets.UTF_8);
-                String filter2 = URLEncoder.encode(LAST_UPDATED + ":<" + endTime, StandardCharsets.UTF_8);
+                String filter1 = URLEncoder.encode(LAST_UPDATED + ":>=" + startTime.getEpochSecond(), StandardCharsets.UTF_8);
+                String filter2 = URLEncoder.encode(LAST_UPDATED + ":<" + endTime.getEpochSecond(), StandardCharsets.UTF_8);
                 String encodedFilter = filter1 + "%2B" + filter2;  // Use literal '+' // ensure literal '+'
 
                 UriComponentsBuilder builder = UriComponentsBuilder

@@ -67,37 +67,43 @@ public class CrowdStrikeAuthClient {
      * @throws UnauthorizedException Runtime exception if the token cannot be retrieved.
      */
     protected void getAuthToken() {
-        log.info(NOISY, "You are trying to access token");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.setBasicAuth(this.clientId, this.clientSecret);
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        int retryCount = 0;
-        while(retryCount < MAX_RETRIES) {
-            try {
-                ResponseEntity<Map> response = restTemplate.postForEntity(OAUTH_TOKEN_URL, request, Map.class);
-                Map tokenData = response.getBody();
-                this.bearerToken = (String) tokenData.get(ACCESS_TOKEN);
-                this.expireTime = Instant.now().plusSeconds((Integer) tokenData.get(EXPIRE_IN));
-                log.info("Access token acquired successfully");
+        synchronized (tokenRenewLock) {
+            if (isTokenValid()) {
+                //Someone else must have already renewed it
                 return;
-            } catch (HttpClientErrorException ex) {
-                this.expireTime = Instant.ofEpochMilli(0);
-                HttpStatus statusCode = ex.getStatusCode();
-                String statusMessage = ex.getMessage();
-                log.error("Failed to acquire access token. Status code: {}, Error Message: {}",
-                        statusCode, statusMessage);
-                try {
-                    Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * SLEEP_TIME_MULTIPLIER);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
-                }
             }
-            retryCount++;
+            log.info(NOISY, "You are trying to access token");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setBasicAuth(this.clientId, this.clientSecret);
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            int retryCount = 0;
+            while (retryCount < MAX_RETRIES) {
+                try {
+                    ResponseEntity<Map> response = restTemplate.postForEntity(OAUTH_TOKEN_URL, request, Map.class);
+                    Map tokenData = response.getBody();
+                    this.bearerToken = (String) tokenData.get(ACCESS_TOKEN);
+                    this.expireTime = Instant.now().plusSeconds((Integer) tokenData.get(EXPIRE_IN));
+                    log.info("Access token acquired successfully");
+                    return;
+                } catch (HttpClientErrorException ex) {
+                    this.expireTime = Instant.ofEpochMilli(0);
+                    HttpStatus statusCode = ex.getStatusCode();
+                    String statusMessage = ex.getMessage();
+                    log.error("Failed to acquire access token. Status code: {}, Error Message: {}",
+                            statusCode, statusMessage);
+                    try {
+                        Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * SLEEP_TIME_MULTIPLIER);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
+                    }
+                }
+                retryCount++;
+            }
+            String errorMessage = String.format("Failed to acquire access token even after %s retry attempts", MAX_RETRIES);
+            log.error(errorMessage);
+            throw new UnauthorizedException(errorMessage);
         }
-        String errorMessage = String.format("Failed to acquire access token even after %s retry attempts", MAX_RETRIES);
-        log.error(errorMessage);
-        throw new UnauthorizedException(errorMessage);
     }
 
     protected boolean isTokenValid() {
@@ -113,13 +119,7 @@ public class CrowdStrikeAuthClient {
             //There is still time to renew, or someone else must have already renewed it
             return;
         }
-        synchronized (tokenRenewLock) {
-            if (isTokenValid()) {
-                //Someone else must have already renewed it
-                return;
-            }
-            log.info("Renewing authentication token for CrowdStrike Connector.");
-            getAuthToken();
-        }
+        log.info("Renewing authentication token for CrowdStrike Connector.");
+        getAuthToken();
     }
 }

@@ -9,15 +9,6 @@ import lombok.Setter;
  * Represents a threat intelligence indicator from CrowdStrike's API.
  * This class encapsulates information about potential security threats,
  * including indicators of compromise (IoCs) and associated metadata.
- *
- * <p>A threat indicator may include various attributes such as:
- * <ul>
- *     <li>Type of the indicator (IP, Domain, Hash, etc.)</li>
- *     <li>Value of the indicator</li>
- *     <li>Confidence score</li>
- *     <li>Associated timestamps</li>
- * </ul>
- * </p>
  */
 @Setter
 @Getter

@@ -11,7 +11,7 @@ public class CrowdStrikeNextLinkValidatorTest {
 
     @Test
     void testValidEncodedCrowdStrikeUrlPreserved() throws MalformedURLException {
-        String url = "https://api.crowdstrike.com//intel/combined/indicators/v1" +
+        String url = "https://api.crowdstrike.com/intel/combined/indicators/v1" +
                 "?filter=last_updated%3A%3E%3D1745519529%2Blast_updated%3A%3C1745523129%2B_marker%3A%3C%2717455225567d09efadf14547a1aee2bc25cabc525e%27" +
                 "&limit=10000";
 

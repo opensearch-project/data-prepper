@@ -16,6 +16,11 @@ import java.util.Map;
     private CrowdStrikeIndicatorResult body;
     private Map<String, List<String>> headers;
 
+    public CrowdStrikeApiResponse(CrowdStrikeIndicatorResult body, Map<String, List<String>> headers) {
+        this.body = body;
+        this.headers = headers;
+    }
+
     // Convenience method to get a specific header
     public List<String> getHeader(String headerName) {
         return headers.getOrDefault(headerName, Collections.emptyList());

@@ -7,8 +7,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.CrowdStrikeSourceConfig;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.configuration.AuthenticationConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -35,7 +33,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CrowdStrikeAuthClientTest {
-    private static final Logger log = LoggerFactory.getLogger(CrowdStrikeAuthClientTest.class);
 
     @Mock
     private RestTemplate restTemplateMock;
@@ -116,52 +113,6 @@ class CrowdStrikeAuthClientTest {
 
         client.refreshToken();
         verify(client, times(1)).isTokenValid();
-        verify(client, never()).getAuthToken();
-    }
-
-    @Test
-    void testRefreshToken_getsCalledWhenTokenInvalid() {
-        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
-            private int checkCount = 0;
-
-            @Override
-            protected boolean isTokenValid() {
-                // First call: false, Second call (inside lock): false
-                return checkCount++ > 1;
-            }
-
-            @Override
-            protected void getAuthToken() {
-                log.info("Mock getAuthToken called");
-            }
-        });
-
-        client.refreshToken();
-
-        verify(client, times(2)).isTokenValid();
-        verify(client, times(1)).getAuthToken();
-    }
-
-    @Test
-    void testRefreshToken_skipsIfValidInsideLock() {
-        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
-            private int checkCount = 0;
-
-            @Override
-            protected boolean isTokenValid() {
-                // First call: false, Second call inside lock: true
-                return ++checkCount == 2;
-            }
-
-            @Override
-            protected void getAuthToken() {
-                fail("getAuthToken should not be called if token becomes valid inside lock.");
-            }
-        });
-
-        client.refreshToken();
-
-        verify(client, times(2)).isTokenValid();
         verify(client, never()).getAuthToken();
     }
 }
