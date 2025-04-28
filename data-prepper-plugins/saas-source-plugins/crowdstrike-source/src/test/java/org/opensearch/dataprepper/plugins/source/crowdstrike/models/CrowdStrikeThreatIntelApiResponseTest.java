@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CrowdStrikeApiResponseTest {
+class CrowdStrikeThreatIntelApiResponseTest {
     @Mock
     CrowdStrikeIndicatorResult mockResult;
     Map<String, List<String>> headers = Map.of(
@@ -40,7 +40,7 @@ class CrowdStrikeApiResponseTest {
         result.setResults(List.of(indicator1, indicator2));
 
         // Create response
-        CrowdStrikeApiResponse response = new CrowdStrikeApiResponse(result, headers);
+        CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(result, headers);
         response.setBody(result);
 
         // Verify body content
@@ -52,7 +52,7 @@ class CrowdStrikeApiResponseTest {
 
     @Test
     void testGetHeader_existingHeader() {
-        CrowdStrikeApiResponse response = new CrowdStrikeApiResponse(mockResult, headers);
+        CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, headers);
         response.setHeaders(headers);
 
         List<String> values = response.getHeader("X-Rate-Limit");
@@ -61,7 +61,7 @@ class CrowdStrikeApiResponseTest {
 
     @Test
     void testGetHeader_nonExistingHeaderReturnsEmptyList() {
-        CrowdStrikeApiResponse response = new CrowdStrikeApiResponse(mockResult, Collections.emptyMap());
+        CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, Collections.emptyMap());
         List<String> result = response.getHeader("Missing");
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -73,7 +73,7 @@ class CrowdStrikeApiResponseTest {
                 "Content-Type", List.of("application/json", "charset=utf-8")
         );
 
-        CrowdStrikeApiResponse response = new CrowdStrikeApiResponse(mockResult, headers);
+        CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, headers);
         response.setHeaders(headers);
 
         String first = response.getFirstHeaderValue("Content-Type");
@@ -86,7 +86,7 @@ class CrowdStrikeApiResponseTest {
                 "X-Empty", List.of()
         );
 
-        CrowdStrikeApiResponse response = new CrowdStrikeApiResponse(mockResult, headers);
+        CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, headers);
         response.setHeaders(headers);
 
         assertNull(response.getFirstHeaderValue("X-Empty"));

@@ -66,7 +66,7 @@ public class CrowdStrikeAuthClient {
      *
      * @throws UnauthorizedException Runtime exception if the token cannot be retrieved.
      */
-    protected void getAuthToken() {
+    private void getAuthToken() {
         synchronized (tokenRenewLock) {
             if (isTokenValid()) {
                 //Someone else must have already renewed it

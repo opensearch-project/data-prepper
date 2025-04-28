@@ -42,18 +42,10 @@ public class CrowdStrikeRestClientTest {
         restTemplate = mock(RestTemplate.class);
         uri = new URI("https://api.crowdstrike.com/intel/combined/indicators/v1");
 
-        restClient = new CrowdStrikeRestClient(pluginMetrics, authClient) {
-            {
-                // inject mock RestTemplate
-                try {
-                    var restTemplateField = CrowdStrikeRestClient.class.getDeclaredField("restTemplate");
-                    restTemplateField.setAccessible(true);
-                    restTemplateField.set(this, restTemplate);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        };
+        restClient = new CrowdStrikeRestClient(pluginMetrics, authClient);
+        var restTemplateField = CrowdStrikeRestClient.class.getDeclaredField("restTemplate");
+        restTemplateField.setAccessible(true);
+        restTemplateField.set(restClient, restTemplate);
     }
 
     @Test

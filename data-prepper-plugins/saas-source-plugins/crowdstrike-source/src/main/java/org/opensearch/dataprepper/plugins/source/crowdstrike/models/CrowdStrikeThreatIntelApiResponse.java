@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.crowdstrike.models;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import org.springframework.util.CollectionUtils;
 import java.util.Collections;
 import java.util.List;
@@ -10,13 +9,13 @@ import java.util.Map;
 /**
  * Represents the response returned from a CrowdStrike API call.
  */
-@Getter @Setter
- public class CrowdStrikeApiResponse {
+@Data
+ public class CrowdStrikeThreatIntelApiResponse {
 
     private CrowdStrikeIndicatorResult body;
     private Map<String, List<String>> headers;
 
-    public CrowdStrikeApiResponse(CrowdStrikeIndicatorResult body, Map<String, List<String>> headers) {
+    public CrowdStrikeThreatIntelApiResponse(CrowdStrikeIndicatorResult body, Map<String, List<String>> headers) {
         this.body = body;
         this.headers = headers;
     }

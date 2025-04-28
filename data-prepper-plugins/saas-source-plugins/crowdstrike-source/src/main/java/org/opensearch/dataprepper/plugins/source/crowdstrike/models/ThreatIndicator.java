@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.source.crowdstrike.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,8 +11,7 @@ import lombok.Setter;
  * This class encapsulates information about potential security threats,
  * including indicators of compromise (IoCs) and associated metadata.
  */
-@Setter
-@Getter
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ThreatIndicator {
     /**

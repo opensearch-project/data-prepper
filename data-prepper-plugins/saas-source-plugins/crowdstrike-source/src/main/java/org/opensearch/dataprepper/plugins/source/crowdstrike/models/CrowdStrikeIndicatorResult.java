@@ -2,16 +2,16 @@ package org.opensearch.dataprepper.plugins.source.crowdstrike.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
 
 /**
- * The result of Falcon query search.
+ * Represents the response from a CrowdStrike Falcon Query Language (FQL) search for threat indicators.
  */
-@Getter
-@Setter
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CrowdStrikeIndicatorResult {
 

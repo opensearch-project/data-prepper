@@ -13,19 +13,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -97,22 +102,37 @@ class CrowdStrikeAuthClientTest {
         assertTrue(authClient.getExpireTime().isAfter(Instant.now()));
     }
 
+
     @Test
-    void testRefreshToken_skipsIfTokenIsValidInitially() {
-        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig) {
-            @Override
-            protected boolean isTokenValid() {
-                return true;
-            }
+    void testConcurrentRefreshToken_onlyOneApiCall() throws Exception {
+        CrowdStrikeAuthClient client = spy(new CrowdStrikeAuthClient(mockSourceConfig));
+        Field restTemplateField = CrowdStrikeAuthClient.class.getDeclaredField("restTemplate");
+        restTemplateField.setAccessible(true);
+        restTemplateField.set(client, restTemplateMock);
+        when(restTemplateMock.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "access_token", "mock_access_token",
+                        "expires_in", 3600
+                )));
 
-            @Override
-            protected void getAuthToken() {
-                fail("getAuthToken should not be called when token is already valid.");
-            }
-        });
+        // Launch two parallel refreshToken() calls
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Future<?> firstCall = executor.submit(client::refreshToken);
+        Future<?> secondCall = executor.submit(client::refreshToken);
 
-        client.refreshToken();
-        verify(client, times(1)).isTokenValid();
-        verify(client, never()).getAuthToken();
+        await()
+                .atMost(10, SECONDS)
+                .pollInterval(10, MILLISECONDS)
+                .until(() -> firstCall.isDone() && secondCall.isDone());
+
+        executor.shutdown();
+
+        // Validate only 1 token request is made
+        assertNotNull(client.getBearerToken());
+        assertEquals("mock_access_token", client.getBearerToken());
+        assertNotNull(client.getExpireTime());
+        assertTrue(client.getExpireTime().isAfter(Instant.now().minusSeconds(3500)));
+
+        verify(restTemplateMock, times(1)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
     }
 }
