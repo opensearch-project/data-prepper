@@ -42,15 +42,9 @@ import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
-import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriterConfig;
-import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqProvider;
-import org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriterConfig;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
