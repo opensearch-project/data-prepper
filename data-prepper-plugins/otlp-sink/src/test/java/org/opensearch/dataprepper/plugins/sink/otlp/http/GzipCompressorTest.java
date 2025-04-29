@@ -54,6 +54,7 @@ class GzipCompressorTest {
 
         assertTrue(result.isEmpty());
         verify(sinkMetrics).incrementErrorsCount();
+        verify(sinkMetrics).incrementRejectedSpansCount(1);
     }
 
     private byte[] decompress(byte[] compressed) throws IOException {

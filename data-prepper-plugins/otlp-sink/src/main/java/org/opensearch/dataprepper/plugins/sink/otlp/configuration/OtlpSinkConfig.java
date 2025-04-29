@@ -6,9 +6,8 @@ package org.opensearch.dataprepper.plugins.sink.otlp.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import software.amazon.awssdk.regions.Region;
@@ -22,28 +21,40 @@ import software.amazon.awssdk.regions.Region;
  * to preserve encapsulation and maintain control over exposed configuration data.
  * <p>
  * This class is automatically wired by the Data Prepper framework during pipeline initialization.
- *
- * @since 2.6
  */
 @NoArgsConstructor
 public class OtlpSinkConfig {
 
     @Getter
     @JsonProperty("endpoint")
-    @Size(min = 1, message = "endpoint cannot be empty string")
+    @NotBlank(message = "endpoint is required")
     private String endpoint;
 
     @Getter
-    @JsonProperty("batch_size")
-    @Min(value = 10, message = "batch_size must be at least 10")
-    @Max(value = 512, message = "batch_size must be at most 512")
-    private int batchSize = 100;
-
-    @Getter
     @JsonProperty("max_retries")
-    @Min(value = 1, message = "max_retries must be at least 1")
-    @Max(value = 5, message = "max_retries must be at most 5")
-    private int maxRetries = 3;
+    @Min(value = 0)
+    private int maxRetries = 5;
+
+    /**
+     * The threshold configuration for sending spans to the OTLP endpoint.
+     * This field is kept private and its contents should be accessed via the generated getter methods.
+     * Using eager-default values and allows the configuration to be optional in the pipeline configuration.
+     */
+    @JsonProperty("threshold")
+    @Valid
+    private ThresholdConfig thresholdConfig = new ThresholdConfig();
+
+    public int getMaxEvents() {
+        return thresholdConfig.getMaxEvents();
+    }
+
+    public long getMaxBatchSize() {
+        return thresholdConfig.getMaxBatchSize().getBytes();
+    }
+
+    public long getFlushTimeoutMillis() {
+        return thresholdConfig.getFlushTimeout().toMillis();
+    }
 
     /**
      * AWS authentication configuration.
@@ -52,29 +63,29 @@ public class OtlpSinkConfig {
      */
     @JsonProperty("aws")
     @Valid
-    private AwsAuthenticationConfiguration awsAuthenticationConfiguration;
+    private AwsAuthenticationConfig awsAuthenticationConfig;
 
     public Region getAwsRegion() {
-        if (awsAuthenticationConfiguration == null) {
+        if (awsAuthenticationConfig == null) {
             return null;
         }
 
-        return awsAuthenticationConfiguration.getAwsRegion();
+        return awsAuthenticationConfig.getAwsRegion();
     }
 
     public String getStsRoleArn() {
-        if (awsAuthenticationConfiguration == null) {
+        if (awsAuthenticationConfig == null) {
             return null;
         }
 
-        return awsAuthenticationConfiguration.getAwsStsRoleArn();
+        return awsAuthenticationConfig.getAwsStsRoleArn();
     }
 
     public String getStsExternalId() {
-        if (awsAuthenticationConfiguration == null) {
+        if (awsAuthenticationConfig == null) {
             return null;
         }
 
-        return awsAuthenticationConfiguration.getAwsStsExternalId();
+        return awsAuthenticationConfig.getAwsStsExternalId();
     }
 }

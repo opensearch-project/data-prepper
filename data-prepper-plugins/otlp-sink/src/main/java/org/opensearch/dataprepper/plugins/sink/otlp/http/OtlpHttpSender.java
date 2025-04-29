@@ -25,11 +25,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Responsible for sending signed OTLP Protobuf trace data to AWS OTLP endpoint using OkHttp.
+ * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using OkHttp.
  */
 public class OtlpHttpSender implements AutoCloseable {
     @VisibleForTesting
@@ -51,6 +52,7 @@ public class OtlpHttpSender implements AutoCloseable {
     /**
      * Constructor for the OtlpHttpSender.
      * Initializes the signer and HTTP client.
+     *
      * @param config The configuration for the OTLP sink plugin.
      * @param sinkMetrics The metrics for the OTLP sink plugin.
      */
@@ -68,11 +70,22 @@ public class OtlpHttpSender implements AutoCloseable {
         this.sinkMetrics = sinkMetrics;
         this.gzipCompressor = gzipCompressor;
         this.signer = signer != null ? signer : new SigV4Signer(config);
-        this.httpClient = httpClient != null ? httpClient : new OkHttpClient();
         this.sleeper = sleeper != null ? sleeper : new ThreadSleeper();
+        this.httpClient = httpClient != null ? httpClient : buildOkHttpClient(config.getFlushTimeoutMillis());
 
         this.retryDelaysMs = generateExponentialBackoffDelays(config.getMaxRetries());
         this.maxRetries = config.getMaxRetries();
+    }
+
+    private static OkHttpClient buildOkHttpClient(final long flushTimeoutMs) {
+        final long httpTimeoutMs = Math.min(
+                Math.max(flushTimeoutMs * 2, 3_000),
+                10_000
+        );
+
+        return new OkHttpClient.Builder()
+                .callTimeout(httpTimeoutMs, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     /**
@@ -81,8 +94,8 @@ public class OtlpHttpSender implements AutoCloseable {
      * @param retries Number of retries.
      * @return List of delay durations in milliseconds.
      */
-    private List<Integer> generateExponentialBackoffDelays(final int retries) {
-        List<Integer> delays = new ArrayList<>();
+    private static List<Integer> generateExponentialBackoffDelays(final int retries) {
+        final List<Integer> delays = new ArrayList<>();
         for (int i = 0; i < retries; i++) {
             // Exponential backoff: 100ms, 200ms, 400ms, ...
             delays.add(BASE_RETRY_DELAY_MS * (1 << i));
@@ -92,12 +105,13 @@ public class OtlpHttpSender implements AutoCloseable {
     }
 
     /**
-     * Sends the provided OTLP Protobuf trace data to the OTLP endpoint.
+     * Sends the provided OTLP Protobuf payload to the OTLP endpoint.
      * Retries with exponential backoff and jitter on failure.
      *
-     * @param payload The OTLP Protobuf-encoded trace data to be sent.
+     * @param payload       The OTLP Protobuf-encoded data to be sent.
+     * @throws IOException  when failed to send the payload.
      */
-    public void send(@Nonnull final byte[] payload) {
+    public void send(@Nonnull final byte[] payload) throws IOException {
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
                 final Optional<byte[]> compressedPayload = gzipCompressor.apply(payload);
@@ -135,20 +149,16 @@ public class OtlpHttpSender implements AutoCloseable {
                     final int jitter = random.nextInt(100);
                     final int retryIndex = Math.min(attempt, retryDelaysMs.size() - 1);
                     final int delay = retryDelaysMs.get(retryIndex) + jitter;
-                    LOG.debug("Retrying after failure in attempt {}. Sleeping {}ms.", attempt + 1, delay, ioException);
-                    sinkMetrics.incrementRetriesCount();
                     try {
                         sleeper.accept(delay);
+
+                        LOG.info("Retrying after failure in attempt {}. Sleeping {}ms.", attempt + 1, delay, ioException);
+                        sinkMetrics.incrementRetriesCount();
                     } catch (final RuntimeException runtimeException) {
-                        Thread.currentThread().interrupt();
-                        LOG.error("Interrupted while sleeping between retries", runtimeException);
-                        sinkMetrics.incrementErrorsCount();
-                        return;
+                        throw new IOException("Sender failed to sleep before retrying.", runtimeException);
                     }
                 } else {
-                    LOG.error("Failed to sign/send data after all retries", ioException);
-                    sinkMetrics.incrementErrorsCount();
-                    return;
+                    throw ioException;
                 }
             }
         }
@@ -176,18 +186,16 @@ public class OtlpHttpSender implements AutoCloseable {
 
         final String responseBody = responseBytes != null ? new String(responseBytes, StandardCharsets.UTF_8) : "<no body>";
         if (NON_RETRYABLE_STATUS_CODES.contains(status)) {
-            LOG.error("Non-retryable client error. Status: {}, Response: {}", status, responseBody);
+            LOG.error("Non-retryable error. Status: {}, Response: {}", status, responseBody);
             return;
         }
 
-        final String errorMsg = String.format("Failed to send OTLP data. Status: %d, Response: %s", status, responseBody);
-        LOG.error(errorMsg);
-        throw new IOException(errorMsg);
+        throw new IOException(String.format("Failed to send OTLP data. Status: %d, Response: %s", status, responseBody));
     }
 
     private void handleSuccessfulResponse(final byte[] responseBytes) {
         if (responseBytes == null || responseBytes.length == 0) {
-            LOG.debug("OTLP export successful. No response body.");
+            LOG.info("OTLP export successful. No response body.");
             return;
         }
 
@@ -199,8 +207,9 @@ public class OtlpHttpSender implements AutoCloseable {
                 final long rejectedSpans = partial.getRejectedSpans();
                 final String errorMessage = partial.getErrorMessage();
                 if (rejectedSpans > 0 || !errorMessage.isEmpty()) {
-                    LOG.warn("OTLP Partial Success: rejectedSpans={}, message={}", rejectedSpans, errorMessage);
+                    LOG.error("OTLP Partial Success: rejectedSpans={}, message={}", rejectedSpans, errorMessage);
                     sinkMetrics.incrementRejectedSpansCount(rejectedSpans);
+                    sinkMetrics.incrementErrorsCount();
                 }
             }
         } catch (final Exception e) {

@@ -35,6 +35,9 @@ dependencies {
     implementation 'software.amazon.awssdk:http-client-spi'
     implementation 'software.amazon.awssdk:apache-client'
 
+    // Hibernate
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
     // OkHttp
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
