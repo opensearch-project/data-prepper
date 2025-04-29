@@ -16,6 +16,9 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.zip.GZIPOutputStream;
 
+/**
+ * Perform GZIP-compression on OTLP byte payloads.
+ */
 class GzipCompressor implements Function<byte[], Optional<byte[]>> {
     private static final Logger LOG = LoggerFactory.getLogger(GzipCompressor.class);
     private final OtlpSinkMetrics sinkMetrics;
@@ -42,6 +45,7 @@ class GzipCompressor implements Function<byte[], Optional<byte[]>> {
             return Optional.of(compressInternal(payload));
         } catch (final IOException e) {
             LOG.error("Failed to compress payload", e);
+            sinkMetrics.incrementRejectedSpansCount(1);
             sinkMetrics.incrementErrorsCount();
             return Optional.empty();
         }

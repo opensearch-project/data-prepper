@@ -12,14 +12,11 @@ import software.amazon.awssdk.regions.Region;
 
 /**
  * Configuration class for AWS authentication settings.
- * Handles region, STS role ARN, and external ID configurations required for AWS service access.
  * This class will be automatically wired by Data-Prepper.
- *
- * @since 2.6
  */
 @Getter
 @NoArgsConstructor
-class AwsAuthenticationConfiguration {
+class AwsAuthenticationConfig {
     /**
      * AWS region.
      * Must be a valid AWS region identifier (e.g., us-east-1, us-west-2).

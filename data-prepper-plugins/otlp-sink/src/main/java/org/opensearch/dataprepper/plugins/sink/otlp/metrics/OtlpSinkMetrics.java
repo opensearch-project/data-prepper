@@ -13,9 +13,14 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
+import java.util.concurrent.BlockingQueue;
 
 /**
- * Metrics class for the otlp-sink
+ * A central metrics facade for the OTLP sink plugin.
+ * <p>
+ * All OTLP sink components should use this class to record and expose common metrics
+ * such as record counts, latencies, payload sizes, and queue statistics.
+ * </p>
  */
 public class OtlpSinkMetrics {
 
@@ -54,7 +59,7 @@ public class OtlpSinkMetrics {
      */
     private static Timer buildLatencyTimer(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
         return Timer.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
-                .publishPercentiles(0.5, 0.9, 0.95, 1.0)
+                .publishPercentiles(0.5, 0.9, 0.95, 0.99, 1.0)
                 .publishPercentileHistogram(true)
                 .distributionStatisticBufferLength(1024)
                 .distributionStatisticExpiry(Duration.ofMinutes(10))
@@ -72,18 +77,14 @@ public class OtlpSinkMetrics {
     private static DistributionSummary buildDistributionSummary(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
         return DistributionSummary.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
                 .baseUnit("bytes")
-                .publishPercentiles(0.5, 0.9, 0.95, 1.0)
+                .publishPercentiles(0.5, 0.9, 0.95, 0.99, 1.0)
                 .publishPercentileHistogram(true)
                 .distributionStatisticBufferLength(1024)
                 .distributionStatisticExpiry(Duration.ofMinutes(10))
                 .register(Metrics.globalRegistry);
     }
 
-    public void incrementRecordsIn(long count) {
-        pluginMetrics.counter("recordsIn").increment(count);
-    }
-
-    public void incrementRecordsOut(long count) {
+    public void incrementRecordsOut(final long count) {
         pluginMetrics.counter("recordsOut").increment(count);
     }
 
@@ -91,19 +92,19 @@ public class OtlpSinkMetrics {
         pluginMetrics.counter("errorsCount").increment(1);
     }
 
-    public void incrementPayloadSize(long bytes) {
+    public void incrementPayloadSize(final long bytes) {
         payloadSize.record(bytes);
     }
 
-    public void incrementPayloadGzipSize(long bytes) {
+    public void incrementPayloadGzipSize(final long bytes) {
         payloadGzipSize.record(bytes);
     }
 
-    public void recordDeliveryLatency(long durationMillis) {
+    public void recordDeliveryLatency(final long durationMillis) {
         deliveryLatency.record(Duration.ofMillis(durationMillis));
     }
 
-    public void recordHttpLatency(long durationMillis) {
+    public void recordHttpLatency(final long durationMillis) {
         httpLatency.record(Duration.ofMillis(durationMillis));
     }
 
@@ -111,8 +112,13 @@ public class OtlpSinkMetrics {
         pluginMetrics.counter("retriesCount").increment(1);
     }
 
-    public void incrementRejectedSpansCount(long count) {
+    public void incrementRejectedSpansCount(final long count) {
         pluginMetrics.counter("rejectedSpansCount").increment(count);
+    }
+
+    public void registerQueueGauges(final BlockingQueue<?> queue) {
+        pluginMetrics.gauge("queueSize", queue, BlockingQueue::size);
+        pluginMetrics.gauge("queueCapacity", queue, q -> q.remainingCapacity() + q.size());
     }
 
     /**
@@ -122,7 +128,7 @@ public class OtlpSinkMetrics {
      * @param statusCode The HTTP response code.
      */
     public void recordResponseCode(final int statusCode) {
-        String codeCategory = (statusCode / 100) + "xx";
+        final String codeCategory = (statusCode / 100) + "xx";
         pluginMetrics.counter("http_" + codeCategory + "_responses").increment();
     }
 }

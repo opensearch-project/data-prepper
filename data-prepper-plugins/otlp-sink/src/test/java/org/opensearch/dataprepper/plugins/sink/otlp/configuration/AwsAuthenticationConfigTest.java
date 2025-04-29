@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class AwsAuthenticationConfigurationTest {
+class AwsAuthenticationConfigTest {
 
     private final String expectedRoleArn = "arn:aws:iam::123456789012:role/MyRole";
     private final String expectedExternalId = "external-id-123";
@@ -28,7 +28,7 @@ class AwsAuthenticationConfigurationTest {
                 "sts_external_id: " + expectedExternalId
         );
 
-        AwsAuthenticationConfiguration config = mapper.readValue(yaml, AwsAuthenticationConfiguration.class);
+        AwsAuthenticationConfig config = mapper.readValue(yaml, AwsAuthenticationConfig.class);
 
         assertEquals(expectedRegion, config.getAwsRegion().toString());
         assertEquals(expectedRoleArn, config.getAwsStsRoleArn());
@@ -38,7 +38,7 @@ class AwsAuthenticationConfigurationTest {
     @Test
     void testGetRegion_whenAllIsNull_returnNull() throws JsonProcessingException {
         final String yaml = "{}";
-        AwsAuthenticationConfiguration config = mapper.readValue(yaml, AwsAuthenticationConfiguration.class);
+        AwsAuthenticationConfig config = mapper.readValue(yaml, AwsAuthenticationConfig.class);
 
         assertThat(config.getAwsRegion(), nullValue());
     }

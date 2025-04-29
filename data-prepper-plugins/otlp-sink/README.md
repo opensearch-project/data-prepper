@@ -1,97 +1,76 @@
-# X-Ray OTLP Sink
+# OTLP Sink Plugin
 
-The `otlp_sink` plugin sends span data to [AWS X-Ray](https://docs.aws.amazon.com/xray/) using the OTLP (OpenTelemetry Protocol) format.
+In the first release, the otlp sink plugin sends span data to AWS X-Ray using the OTLP (OpenTelemetry Protocol) format.
+Future releases will enhance the sink to send spans, metrics, and traces to any OTLP Protobuf endpoints.
+
+---
 
 ## Usage
-
-For information on usage, see the forthcoming documentation in the [Data Prepper Sink Plugins section](https://opensearch.org/docs/latest/data-prepper/pipelines/configuration/sinks/).
-
-A sample pipeline configuration will be added once the plugin is ready for testing.
-
-### Configuration Options
-
-#### aws (Required)
-Configuration options for AWS authentication and region settings.
-
-* `region` (Required): The AWS region where X-Ray service is located
-    * Must be a valid AWS region identifier (e.g., us-east-1, us-west-2)
-    * Cannot be empty
-
-* `sts_role_arn` (Required): AWS STS Role ARN for assuming role-based access
-    * Format: arn:aws:iam::{account}:role/{role-name}
-    * Length must be between 20 and 2048 characters
-
-* `sts_external_id` (Optional): External ID for additional security when assuming an IAM role
-    * Required only if the trust policy requires an external ID
-    * Length must be between 2 and 1224 characters
 
 ### Sample Pipeline Configuration
 
 ```yaml
-pipeline:
+otlp_pipeline:
+  workers: 2
+
   source:
     otel_trace_source:
-      ssl: true
-      
+      ssl: false
+      port: 21890
+
   buffer:
     bounded_blocking:
-      buffer_size: 10
-      batch_size: 5
-      
+      buffer_size: 1000000
+      batch_size: 125000
+
   sink:
     - otlp:
+        endpoint: "https://performance.us-west-2.xray.cloudwatch.aws.dev/v1/traces"
+        max_retries: 5          # Optional, default: 5
+        threshold:
+          max_events: 512       # Optional, default: 512
+          max_batch_size: 1mb   # Optional, default: 1mb
+          flush_timeout: 200ms  # Optional, default: 200ms
         aws:
-          region: us-west-2
-          sts_role_arn: arn:aws:iam::123456789012:role/XrayRole
+          sts_role_arn: arn:aws:iam::123456789012:role/MyRole     # Optional STS Role ARN
+          sts_external_id: external-id-value                      # Optional external ID for STS
 ```
-        
+
+---
+
+## Configuration Options
+
+| Property                   | Type     | Required | Default | Description                                                                           |
+|----------------------------|----------|----------|---------|---------------------------------------------------------------------------------------|
+| `endpoint`                 | `String` | Yes      | —       | OTLP gRPC or HTTP endpoint where spans will be sent.                                  |
+| `max_retries`              | `int`    | No       | `5`     | Maximum number of retry attempts on HTTP send failures.                               |
+| **threshold**              | `Object` | No       | —       | Controls batching behavior. See below for sub-properties.                             |
+| `threshold.max_events`     | `int`    | No       | `512`   | Maximum number of spans per batch.                                                    |
+| `threshold.max_batch_size` | `String` | No       | `1mb`   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`). |
+| `threshold.flush_timeout`  | `String` | No       | `200ms` | Time to wait (in milliseconds) before flushing a non-empty batch.                     |
+| **aws**                    | `Object` | No       | —       | AWS authentication settings. See below.                                               |
+| `aws.sts_role_arn`         | `String` | No       | —       | Amazon Resource Name of the IAM role to assume.                                       |
+| `aws.sts_external_id`      | `String` | No       | —       | Optional external ID for assuming IAM roles with STS.                                 |
+
+**Note:** `aws.region` will be derived from the provided AWS endpoint.
+
+---
+
 ## Developer Guide
 
 See the [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) guide for general information on contributions.
 
-The integration tests for this plugin do not run as part of the main Data Prepper build.
+The integration tests for this plugin do **not** run as part of the main Data Prepper build and will be added in future
+releases.
 
-#### Run unit tests locally
+### Run unit tests locally
 
 ```bash
 ./gradlew :data-prepper-plugins:otlp-sink:test
 ```
 
-#### Run integration tests locally
+### Run integration tests locally
 
-```
+```bash
 ./gradlew :data-prepper-plugins:otlp-sink:integrationTest
 ```
-
-#### Run a local pipeline that uses this sink
-
-1. Install `grpcurl` – Used to send OTLP span data to the running pipeline.
-2. Build the plugin and Data Prepper: 
-```
-./gradlew build`
-```
-3. Start the pipeline:
-```
-cd release/archives/linux/build/install/opensearch-data-prepper-2.11.0-SNAPSHOT-linux-x64
-
-bin/data-prepper \
-      /path/to/data-prepper-plugins/otlp-sink/src/test/resources/pipelines.yaml \
-      /path/to/data-prepper-plugins/otlp-sink/src/test/resources/data-prepper-config.yaml
-```
-4. Send test spans to the local pipeline:
-```
-cd /path/to/opentelemetry-proto
-
-grpcurl -plaintext \
-  -import-path . \
-  -proto opentelemetry/proto/collector/trace/v1/trace_service.proto \
-  -proto opentelemetry/proto/common/v1/common.proto \
-  -proto opentelemetry/proto/resource/v1/resource.proto \
-  -proto opentelemetry/proto/trace/v1/trace.proto \
-  -d @ \
-  localhost:21890 \
-  opentelemetry.proto.collector.trace.v1.TraceService/Export \
-  < /path/to/data-prepper-plugins/otlp-sink/src/test/resources/sample-trace.json
-```
-
-You should see log output from XRayOTLPSink that confirms the span data was received and parsed correctly.

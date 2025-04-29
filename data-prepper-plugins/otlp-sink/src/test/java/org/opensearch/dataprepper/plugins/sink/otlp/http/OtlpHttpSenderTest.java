@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
-import com.google.protobuf.UnknownFieldSet;
-import com.google.protobuf.UnknownFieldSet.Field;
 import io.opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import okhttp3.Call;
+import okhttp3.ConnectionPool;
+import okhttp3.Dispatcher;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -31,17 +31,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,7 +52,6 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender.NON_RETRYABLE_STATUS_CODES;
 
 class OtlpHttpSenderTest {
-
     private static final byte[] PAYLOAD = "test-otlp-payload".getBytes(StandardCharsets.UTF_8);
     private static final String ERROR_BODY = "{\"error\": \"Something went wrong\"}";
 
@@ -76,12 +78,14 @@ class OtlpHttpSenderTest {
         mockSinkMetrics = mock(OtlpSinkMetrics.class);
 
         mockGzipCompressor = mock(GzipCompressor.class);
-        when(mockGzipCompressor.apply(any())).thenAnswer(invocation -> {
-            byte[] input = invocation.getArgument(0);
-            return input == null ? Optional.empty() : Optional.of(input);
-        });
+        when(mockGzipCompressor.apply(any()))
+                .thenAnswer(invocation -> Optional.of((byte[]) invocation.getArgument(0)));
 
-        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockGzipCompressor, mockSigner, mockHttpClient, mockSleeper);
+        target = new OtlpHttpSender(
+                mockConfig, mockSinkMetrics,
+                mockGzipCompressor, mockSigner,
+                mockHttpClient, mockSleeper
+        );
     }
 
     @AfterEach
@@ -93,338 +97,289 @@ class OtlpHttpSenderTest {
 
     @Test
     void testSend_successfulResponse() throws IOException {
-        SdkHttpFullRequest mockSignedRequest = mock(SdkHttpFullRequest.class);
-        when(mockSignedRequest.getUri()).thenReturn(HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(mockSignedRequest.headers()).thenReturn(Map.of("Authorization", Collections.singletonList("signed-header")));
+        // Arrange
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(signed.getUri()).thenReturn(
+                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
+        when(signed.headers()).thenReturn(
+                Map.of("Authorization", Collections.singletonList("signed-header")));
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(mockSignedRequest);
-
-        Call mockCall = mock(Call.class);
-        Response mockResponse = new Response.Builder()
-                .request(new Request.Builder().url("https://xray.us-west-2.amazonaws.com/v1/traces").build())
+        final Call call = mock(Call.class);
+        final Response resp = new Response.Builder()
+                .request(new Request.Builder().url(signed.getUri().toString()).build())
                 .protocol(Protocol.HTTP_1_1)
                 .code(200)
                 .message("OK")
-                .body(ResponseBody.create("", MediaType.get("application/x-protobuf")))
+                .body(ResponseBody.create(
+                        new byte[0],
+                        MediaType.get("application/x-protobuf")))
                 .build();
 
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenReturn(mockResponse);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
+        when(call.execute()).thenReturn(resp);
 
+        // Act & Assert
         assertDoesNotThrow(() -> target.send(PAYLOAD));
     }
 
     @Test
     void testSend_doesNotRetryOnNonRetryable4xxResponses() throws IOException {
-        final SdkHttpFullRequest mockSignedRequest = mock(SdkHttpFullRequest.class);
-        when(mockSignedRequest.getUri()).thenReturn(HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(mockSignedRequest.headers()).thenReturn(Map.of());
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(mockSignedRequest);
+        // Arrange
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(signed.getUri()).thenReturn(
+                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
+        when(signed.headers()).thenReturn(Map.of());
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        final okhttp3.Request okHttpRequest = new Request.Builder()
-                .url("https://xray.us-west-2.amazonaws.com/v1/traces")
+        final Request okReq = new Request.Builder()
+                .url(signed.getUri().toString())
                 .build();
 
-        for (int statusCode : NON_RETRYABLE_STATUS_CODES) {
-            final String responseBodyText = "Non-retryable error from server";
-
-            final Response mockResponse = new Response.Builder()
-                    .request(okHttpRequest)
+        for (final int status : NON_RETRYABLE_STATUS_CODES) {
+            final Response resp = new Response.Builder()
+                    .request(okReq)
                     .protocol(Protocol.HTTP_1_1)
-                    .code(statusCode)
+                    .code(status)
                     .message("Client Error")
-                    .body(ResponseBody.create(responseBodyText, MediaType.get("application/json")))
+                    .body(ResponseBody.create(
+                            ERROR_BODY.getBytes(StandardCharsets.UTF_8),
+                            MediaType.get("application/json")))
                     .build();
+            final Call call = mock(Call.class);
+            when(mockHttpClient.newCall(any())).thenReturn(call);
+            when(call.execute()).thenReturn(resp);
 
-            final Call mockCall = mock(Call.class);
-            when(mockCall.execute()).thenReturn(mockResponse);
-            when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-
-            assertDoesNotThrow(() -> target.send(PAYLOAD), "Should not throw on non-retryable status " + statusCode);
+            assertDoesNotThrow(() -> target.send(PAYLOAD));
             verify(mockHttpClient, times(1)).newCall(any());
-
-            reset(mockHttpClient); // reset between iterations
+            reset(mockHttpClient);
         }
     }
 
     @Test
     void testSend_retryOnFailure_thenSuccess() throws IOException {
-        SdkHttpFullRequest mockSignedRequest = mock(SdkHttpFullRequest.class);
-        when(mockSignedRequest.getUri()).thenReturn(HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(mockSignedRequest.headers()).thenReturn(Map.of());
+        // Arrange
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(signed.getUri()).thenReturn(
+                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
+        when(signed.headers()).thenReturn(Map.of());
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(mockSignedRequest);
-
-        Call mockCall1 = mock(Call.class);
-        Call mockCall2 = mock(Call.class);
-
-        when(mockHttpClient.newCall(any()))
-                .thenReturn(mockCall1)
-                .thenReturn(mockCall2);
-
-        when(mockCall1.execute()).thenThrow(new IOException("first attempt failed"));
-        Response successResponse = new Response.Builder()
-                .request(new Request.Builder().url("https://xray.us-west-2.amazonaws.com/v1/traces").build())
+        final Call first = mock(Call.class);
+        final Call second = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(first, second);
+        when(first.execute()).thenThrow(new IOException("first attempt failed"));
+        final Response success = new Response.Builder()
+                .request(new Request.Builder().url(signed.getUri().toString()).build())
                 .protocol(Protocol.HTTP_1_1)
                 .code(200)
                 .message("OK")
-                .body(ResponseBody.create("", MediaType.get("application/x-protobuf")))
+                .body(ResponseBody.create(
+                        new byte[0],
+                        MediaType.get("application/x-protobuf")))
                 .build();
-        when(mockCall2.execute()).thenReturn(successResponse);
+        when(second.execute()).thenReturn(success);
 
+        // Act & Assert
         assertDoesNotThrow(() -> target.send(PAYLOAD));
     }
 
     @Test
-    void testSend_doesNotThrowException_failsAfterAllRetries() throws IOException {
-        SdkHttpFullRequest mockSignedRequest = mock(SdkHttpFullRequest.class);
-        when(mockSignedRequest.getUri()).thenReturn(HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(mockSignedRequest.headers()).thenReturn(Map.of());
+    void testSend_throwsIOException_whenFailsAfterAllRetries() throws IOException {
+        // Arrange
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(signed.getUri()).thenReturn(
+                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
+        when(signed.headers()).thenReturn(Map.of());
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(mockSignedRequest);
+        final Call alwaysFail = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(alwaysFail);
+        when(alwaysFail.execute()).thenThrow(new IOException("always fail"));
 
-        Call mockCall = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenThrow(new IOException("always fail"));
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
+        // Act & Assert
+        final IOException ex = assertThrows(IOException.class, () -> target.send(PAYLOAD));
+        assertEquals("always fail", ex.getMessage());
     }
 
     @Test
-    void testSend_doesNotThrowsException_on500ResponseWithBody() throws IOException {
-        // Mock signed request
-        SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
+    void testSend_throwsIOException_on500ResponseWithBody() throws IOException {
+        final SdkHttpFullRequest signed = SdkHttpFullRequest.builder()
                 .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
-                .putHeader("Content-Type", "application/x-protobuf")
+                .uri(URI.create("https://example.com"))
+                .putHeader("Content-Type", "application/json")
                 .build();
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(sdkRequest);
+        final Request okReq = new Request.Builder()
+                .url(signed.getUri().toString()).build();
+        final Call call = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
 
-        // Build actual OkHttp request (we need this to inject into the mocked response)
-        okhttp3.Request okHttpRequest = new Request.Builder()
-                .url(sdkRequest.getUri().toString())
-                .build();
-
-        // Mock 500 response with body
-        Response mockResponse = new Response.Builder()
+        final Response resp500 = new Response.Builder()
+                .request(okReq)
+                .protocol(Protocol.HTTP_1_1)
                 .code(500)
                 .message("Internal Server Error")
-                .request(okHttpRequest)
-                .protocol(Protocol.HTTP_1_1)
-                .body(ResponseBody.create(ERROR_BODY, MediaType.get("application/json")))
+                .body(ResponseBody.create(
+                        ERROR_BODY.getBytes(StandardCharsets.UTF_8),
+                        MediaType.get("application/json")))
                 .build();
+        when(call.execute()).thenReturn(resp500);
 
-        var call = mock(okhttp3.Call.class);
-        when(mockHttpClient.newCall(any(Request.class))).thenReturn(call);
-        when(call.execute()).thenReturn(mockResponse);
-
-        // Run test
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
+        assertThrows(IOException.class, () -> target.send(PAYLOAD));
     }
 
     @Test
-    void testSend_doesNotThrowsException_onInterruptedExceptionDuringRetry() throws IOException {
-        final SdkHttpFullRequest signedRequest = mock(SdkHttpFullRequest.class);
+    void testSend_wrapsInterruptedExceptionDuringRetryAsIOException() throws IOException {
+        // Arrange: first attempt throws IOException, sleeper throws at retry
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(mockSigner.signRequest(any())).thenReturn(signed);
+        when(signed.getUri()).thenReturn(URI.create("https://example.com"));
+        when(signed.headers()).thenReturn(Map.of());
 
-        when(mockSigner.signRequest(any())).thenReturn(signedRequest);
-        when(signedRequest.getUri()).thenReturn(URI.create("https://example.com"));
-        when(signedRequest.headers()).thenReturn(Map.of());
+        final Call call = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
+        when(call.execute()).thenThrow(new IOException("boom"));
 
-        final Call mockCall = mock(Call.class);
-        when(mockCall.execute()).thenThrow(new IOException("boom"));
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
+        doThrow(new RuntimeException("sleep failed"))
+                .when(mockSleeper).accept(anyInt());
 
-        doThrow(new RuntimeException("")).when(mockSleeper).accept(anyInt());
+        target = new OtlpHttpSender(
+                mockConfig, mockSinkMetrics,
+                mockGzipCompressor, mockSigner,
+                mockHttpClient, mockSleeper
+        );
 
-        target = new OtlpHttpSender(mockConfig, mockSinkMetrics, mockGzipCompressor, mockSigner, mockHttpClient, mockSleeper);
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-        assertTrue(Thread.currentThread().isInterrupted());
+        // Act & Assert
+        final IOException ex = assertThrows(IOException.class, () -> target.send(PAYLOAD));
+        assertEquals("Sender failed to sleep before retrying.", ex.getMessage());
+        assertEquals("sleep failed", ex.getCause().getMessage());
     }
 
     @Test
     void testSend_partialSuccessResponse_logsWarning() throws IOException {
-        final ExportTraceServiceResponse responseProto = ExportTraceServiceResponse.newBuilder()
+        // Arrange
+        final ExportTraceServiceResponse proto = ExportTraceServiceResponse.newBuilder()
                 .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
                         .setRejectedSpans(5)
                         .setErrorMessage("Some spans were rejected due to invalid format")
                         .build())
                 .build();
+        final byte[] bytes = proto.toByteArray();
 
-        final byte[] responseBytes = responseProto.toByteArray();
-
-        final SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
+        final SdkHttpFullRequest signed = SdkHttpFullRequest.builder()
                 .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
                 .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
                 .putHeader("Content-Type", "application/x-protobuf")
                 .build();
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
 
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(sdkRequest);
-
-        final okhttp3.Request okHttpRequest = new Request.Builder()
-                .url(sdkRequest.getUri().toString())
+        final Request okReq = new Request.Builder()
+                .url(signed.getUri().toString())
                 .build();
-
-        final Response mockResponse = new Response.Builder()
-                .request(okHttpRequest)
+        final Call call = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
+        when(call.execute()).thenReturn(new Response.Builder()
+                .request(okReq)
                 .protocol(Protocol.HTTP_1_1)
                 .code(200)
                 .message("OK")
-                .body(ResponseBody.create(responseBytes, MediaType.get("application/x-protobuf")))
-                .build();
+                .body(ResponseBody.create(bytes, MediaType.get("application/x-protobuf")))
+                .build());
 
-        final Call mockCall = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenReturn(mockResponse);
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_partialSuccessEmpty_logsInfo() throws IOException {
-        final ExportTraceServiceResponse responseProto = ExportTraceServiceResponse.newBuilder()
-                .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
-                        .setRejectedSpans(0)
-                        .setErrorMessage("")  // Empty = no warning
-                        .build())
-                .build();
-
-        final byte[] responseBytes = responseProto.toByteArray();
-
-        final SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
-                .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
-                .putHeader("Content-Type", "application/x-protobuf")
-                .build();
-
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(sdkRequest);
-
-        final okhttp3.Request okHttpRequest = new Request.Builder()
-                .url(sdkRequest.getUri().toString())
-                .build();
-
-        final Response mockResponse = new Response.Builder()
-                .request(okHttpRequest)
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(responseBytes, MediaType.get("application/x-protobuf")))
-                .build();
-
-        final Call mockCall = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenReturn(mockResponse);
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_successResponseWithNonEmptyBodyNoPartialSuccess_logsInfo() throws IOException {
-        // Manually add an unknown field to make the serialized body non-empty
-        final UnknownFieldSet unknownFields = UnknownFieldSet.newBuilder()
-                .addField(123, Field.newBuilder().addVarint(42).build()) // dummy varint
-                .build();
-
-        final ExportTraceServiceResponse responseProto = ExportTraceServiceResponse.newBuilder()
-                .mergeUnknownFields(unknownFields)
-                .build();
-
-        final byte[] responseBytes = responseProto.toByteArray();
-        assertTrue(responseBytes.length > 0); // sanity check
-
-        final SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
-                .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
-                .putHeader("Content-Type", "application/x-protobuf")
-                .build();
-
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(sdkRequest);
-
-        final okhttp3.Request okHttpRequest = new Request.Builder()
-                .url(sdkRequest.getUri().toString())
-                .build();
-
-        final Response mockResponse = new Response.Builder()
-                .request(okHttpRequest)
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(responseBytes, MediaType.get("application/x-protobuf")))
-                .build();
-
-        final Call mockCall = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenReturn(mockResponse);
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_invalidProtoResponse_logsError() throws IOException {
-        // Build a response with invalid OTLP proto data (random bytes)
-        byte[] invalidProtoBytes = "this-is-not-valid-proto".getBytes(StandardCharsets.UTF_8);
-
-        // Mock the signed request
-        final SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
-                .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
-                .putHeader("Content-Type", "application/x-protobuf")
-                .build();
-
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(sdkRequest);
-
-        // Build OkHttp request to satisfy response builder
-        final okhttp3.Request okHttpRequest = new Request.Builder()
-                .url(sdkRequest.getUri().toString())
-                .build();
-
-        // Create mock response with invalid proto payload
-        final Response mockResponse = new Response.Builder()
-                .request(okHttpRequest)
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(invalidProtoBytes, MediaType.get("application/x-protobuf")))
-                .build();
-
-        final Call mockCall = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(mockCall);
-        when(mockCall.execute()).thenReturn(mockResponse);
-
-        // Should not throw, just logs error
+        // Act & Assert
         assertDoesNotThrow(() -> target.send(PAYLOAD));
     }
 
     @Test
     void testSend_skipsSend_whenGzipCompressionFails() {
-        when(mockGzipCompressor.apply(any())).thenReturn(Optional.empty());
+        // Arrange: compressor returns empty → send() should return silently
+        final Function<byte[], Optional<byte[]>> skipCompressor = p -> Optional.empty();
+        target = new OtlpHttpSender(
+                mockConfig, mockSinkMetrics,
+                skipCompressor, mockSigner,
+                mockHttpClient, mockSleeper
+        );
 
+        // Act & Assert: no exception, nothing signed or sent
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
+        verify(mockSigner, never()).signRequest(any());
+        verify(mockHttpClient, never()).newCall(any());
+    }
+
+    @Test
+    void testHandleSuccessfulResponseParseErrorIncrementsError() throws IOException {
+        // arrange: build a sender with a pass-through compressor lambda
+        target = new OtlpHttpSender(
+                mockConfig,
+                mockSinkMetrics,
+                payload -> Optional.of(payload),
+                mockSigner,
+                mockHttpClient,
+                mockSleeper
+        );
+
+        // stub: signer
+        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
+        when(signed.getUri()).thenReturn(URI.create("https://example.com"));
+        when(signed.headers()).thenReturn(Map.of());
+        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
+
+        // stub: http client returns 200 OK but with invalid protobuf bytes
+        final Call call = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
+        final byte[] bad = "not-a-proto".getBytes(StandardCharsets.UTF_8);
+        final Response resp = new Response.Builder()
+                .request(new Request.Builder().url(signed.getUri().toString()).build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(ResponseBody.create(bad, MediaType.get("application/x-protobuf")))
+                .build();
+        when(call.execute()).thenReturn(resp);
+
+        // act
         assertDoesNotThrow(() -> target.send(PAYLOAD));
 
-        verify(mockSigner, times(0)).signRequest(any());
-        verify(mockHttpClient, times(0)).newCall(any());
+        // assert: parse-failure should have incremented errors
+        verify(mockSinkMetrics).incrementErrorsCount();
+    }
+
+    @Test
+    void testCloseEvictsAndShutdownsOkHttpResources() {
+        // arrange: stub out connectionPool and dispatcher on our mockHttpClient
+        final ConnectionPool pool = mock(ConnectionPool.class);
+        final Dispatcher dispatcher = mock(Dispatcher.class);
+        final ExecutorService exec = mock(ExecutorService.class);
+        when(mockHttpClient.connectionPool()).thenReturn(pool);
+        when(mockHttpClient.dispatcher()).thenReturn(dispatcher);
+        when(dispatcher.executorService()).thenReturn(exec);
+
+        // act
+        target.close();
+
+        // assert
+        verify(pool).evictAll();
+        verify(exec).shutdown();
     }
 
     @Test
     void testDefaultConstructorInitializesDefaults() {
         target = new OtlpHttpSender(mockConfig, mockSinkMetrics);
-
-        // Reflection to assert internal fields (not great, but useful for unit validation)
-        assertNotNull(getPrivateField(target, "signer"));
-        assertNotNull(getPrivateField(target, "httpClient"));
-        assertNotNull(getPrivateField(target, "sleeper"));
+        assertNotNull(getField(target, "signer"));
+        assertNotNull(getField(target, "httpClient"));
+        assertNotNull(getField(target, "sleeper"));
     }
 
-    private Object getPrivateField(Object instance, String fieldName) {
+    private Object getField(final Object obj, final String name) {
         try {
-            var field = instance.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            return field.get(instance);
+            final var f = obj.getClass().getDeclaredField(name);
+            f.setAccessible(true);
+            return f.get(obj);
         } catch (Exception e) {
-            fail("Could not access field: " + fieldName);
+            fail("Could not access " + name);
             return null;
         }
     }
-
 }

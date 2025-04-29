@@ -2,14 +2,8 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import org.apache.commons.codec.DecoderException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,187 +11,101 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
+import org.opensearch.dataprepper.plugins.sink.otlp.buffer.OtlpSinkBuffer;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
-import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import software.amazon.awssdk.regions.Region;
 
-import java.io.UnsupportedEncodingException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.lang.reflect.Field;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OtlpSinkTest {
-
-    private OtlpSinkConfig mockConfig;
-    private OTelProtoStandardCodec.OTelProtoEncoder mockEncoder;
-    private OtlpHttpSender mockSender;
-    private PluginMetrics mockPluginMetrics;
-    private PluginSetting mockPluginSetting;
     private OtlpSink target;
+    private OtlpSinkBuffer mockBuffer;
+    private OtlpSinkConfig mockConfig;
+    private PluginMetrics mockMetrics;
+    private PluginSetting mockSetting;
 
     @BeforeEach
-    void setUp() {
-        System.setProperty("aws.accessKeyId", "dummy");
-        System.setProperty("aws.secretAccessKey", "dummy");
+    void setUp() throws Exception {
+        System.setProperty("aws.region", Region.US_WEST_2.id());
 
+        // Arrange: stub out config, metrics, setting
         mockConfig = mock(OtlpSinkConfig.class);
-        when(mockConfig.getAwsRegion()).thenReturn(Region.US_WEST_2);
-        when(mockConfig.getBatchSize()).thenReturn(100);
-        when(mockConfig.getMaxRetries()).thenReturn(3);
+        mockMetrics = mock(PluginMetrics.class);
+        mockSetting = mock(PluginSetting.class);
+        when(mockSetting.getPipelineName()).thenReturn("pipeline");
+        when(mockSetting.getName()).thenReturn("otlp");
 
-        mockEncoder = mock(OTelProtoStandardCodec.OTelProtoEncoder.class);
-        mockSender = mock(OtlpHttpSender.class);
+        // Create the real sink
+        target = new OtlpSink(mockConfig, mockMetrics, mockSetting);
 
-        mockPluginMetrics = mock(PluginMetrics.class);
-        mockPluginMetrics = mock(PluginMetrics.class);
-        when(mockPluginMetrics.counter(anyString())).thenReturn(mock(Counter.class));
-        when(mockPluginMetrics.summary(anyString())).thenReturn(mock(DistributionSummary.class));
-        when(mockPluginMetrics.timer(anyString())).thenReturn(mock(Timer.class));
-
-        mockPluginSetting = mock(PluginSetting.class);
-        when(mockPluginSetting.getPipelineName()).thenReturn("otlp_pipeline");
-        when(mockPluginSetting.getName()).thenReturn("otlp");
-
-        target = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting, mockEncoder, mockSender);
+        // Replace its private buffer with a mock
+        mockBuffer = mock(OtlpSinkBuffer.class);
+        final Field bufferField = OtlpSink.class.getDeclaredField("buffer");
+        bufferField.setAccessible(true);
+        bufferField.set(target, mockBuffer);
     }
 
     @AfterEach
-    void cleanUp() {
-        System.clearProperty("aws.accessKeyId");
-        System.clearProperty("aws.secretAccessKey");
+    void tearDown() {
         System.clearProperty("aws.region");
     }
 
     @Test
-    void testOutput_shouldSendAllBatches() throws Exception {
-        final int recordCount = 250;
-        final List<Record<Span>> records = new ArrayList<>();
-        for (int i = 0; i < recordCount; i++) {
-            Record<Span> mockRecord = mock(Record.class);
-            Span span = mock(Span.class);
-            ResourceSpans resourceSpans = ResourceSpans.getDefaultInstance();
-            when(mockEncoder.convertToResourceSpans(span)).thenReturn(resourceSpans);
-            when(mockRecord.getData()).thenReturn(span);
-            records.add(mockRecord);
-        }
+    void testInitialize_startsBuffer() {
+        // Act
+        target.initialize();
 
-        target.output(records);
-
-        // 250 total / 100 batch size = 3 calls to httpSender
-        verify(mockSender, times(3)).send(any(byte[].class));
-        verify(mockEncoder, times(recordCount)).convertToResourceSpans(any());
+        // Assert
+        verify(mockBuffer).start();
     }
 
     @Test
-    void testOutput_shouldSendPartialBatchWhenSomeSpansSucceed() throws Exception {
-        // Good span
-        Span goodSpan = mock(Span.class);
-        when(goodSpan.getSpanId()).thenReturn("good-span");
-        Record<Span> goodRecord = mock(Record.class);
-        when(goodRecord.getData()).thenReturn(goodSpan);
+    void testOutput_addsEveryRecordToBuffer() {
+        // Arrange
+        @SuppressWarnings("unchecked") final Record<Span> r1 = mock(Record.class);
+        @SuppressWarnings("unchecked") final Record<Span> r2 = mock(Record.class);
 
-        // Bad span (encoder throws)
-        Span badSpan = mock(Span.class);
-        when(badSpan.getSpanId()).thenReturn("bad-span");
-        Record<Span> badRecord = mock(Record.class);
-        when(badRecord.getData()).thenReturn(badSpan);
+        // Act
+        target.output(List.of(r1, r2));
 
-        // Good span gets encoded properly
-        ResourceSpans goodResourceSpans = ResourceSpans.getDefaultInstance();
-        when(mockEncoder.convertToResourceSpans(goodSpan)).thenReturn(goodResourceSpans);
-
-        // Bad span causes exception during encode
-        when(mockEncoder.convertToResourceSpans(badSpan)).thenThrow(new RuntimeException("bad span"));
-
-        target.output(List.of(badRecord, goodRecord));
-
-        // Encoder is called on both
-        verify(mockEncoder).convertToResourceSpans(badSpan);
-        verify(mockEncoder).convertToResourceSpans(goodSpan);
-
-        // Sender should still be called with only the good span
-        verify(mockSender, times(1)).send(any(byte[].class));
+        // Assert
+        verify(mockBuffer).add(r1);
+        verify(mockBuffer).add(r2);
+        verifyNoMoreInteractions(mockBuffer);
     }
 
     @Test
-    void testOutput_shouldNotSendEmptyBatch() throws DecoderException, UnsupportedEncodingException {
-        // Given: a span that fails encoding
-        final Span span = mock(Span.class);
-        when(span.getSpanId()).thenReturn("bad-span");
-        final Record<Span> record = mock(Record.class);
-        when(record.getData()).thenReturn(span);
+    void testIsReady_delegatesToBuffer() {
+        // true case
+        when(mockBuffer.isRunning()).thenReturn(true);
+        assertTrue(target.isReady());
 
-        // Simulate encoding failure (e.g., due to missing fields)
-        when(mockEncoder.convertToResourceSpans(span)).thenReturn(null);
-
-        // When: the output method is called with that bad span
-        target.output(List.of(record));
-
-        // Then: it should not send anything to the OTLP endpoint
-        verify(mockSender, never()).send(any());
-    }
-
-
-    @Test
-    void testUpdateLatencyMetrics_runsWithoutException_givenValidSpanStartTime() {
-        Span mockSpan = mock(Span.class);
-        String startTime = Instant.now().minusSeconds(5).toString();
-        when(mockSpan.getStartTime()).thenReturn(startTime);
-
-        Record<Span> mockRecord = mock(Record.class);
-        when(mockRecord.getData()).thenReturn(mockSpan);
-
-        Collection<Record<Span>> records = List.of(mockRecord);
-
-        target.updateLatencyMetrics(records);
-
-        // verify that no error counter incremented
-        verify(mockPluginMetrics.counter("errorsCount"), never()).increment();
+        // false case
+        when(mockBuffer.isRunning()).thenReturn(false);
+        assertFalse(target.isReady());
     }
 
     @Test
-    void testUpdateLatencyMetrics_shouldHandleInvalidStartTime() {
-        final Span badSpan = mock(Span.class);
-        when(badSpan.getStartTime()).thenReturn("invalid-timestamp");
-
-        final Record<Span> badRecord = mock(Record.class);
-        when(badRecord.getData()).thenReturn(badSpan);
-
-        final List<Record<Span>> records = List.of(badRecord);
-
-        target.updateLatencyMetrics(records);
-
-        // Ensure it attempted to parse and failed gracefully
-        verify(mockPluginMetrics.summary("deliveryLatency"), never()).record(anyDouble());
-        verify(mockPluginMetrics.counter("errorsCount")).increment(1);
-    }
-
-    @Test
-    void testConstructor_withOnlyConfig_shouldInitializeWithoutException() {
-        OtlpSink sink = new OtlpSink(mockConfig, mockPluginMetrics, mockPluginSetting);
-
-        sink.initialize();
-        sink.shutdown();
-    }
-
-    @Test
-    void testIsReady_returnsTrue() {
-        assert target.isReady();
-    }
-
-    @Test
-    void testShutdown_doesNotThrow() {
+    void testShutdown_stopsBuffer() {
+        // Act
         target.shutdown();
+
+        // Assert
+        verify(mockBuffer).stop();
+    }
+
+    @Test
+    void testConstructor_doesNotThrow() {
+        // Just ensure the three-arg constructor still works
+        assertDoesNotThrow(() -> new OtlpSink(mockConfig, mockMetrics, mockSetting));
     }
 }

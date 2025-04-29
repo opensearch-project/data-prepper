@@ -59,11 +59,11 @@ class SigV4Signer {
 
     }
 
-    private Region resolveRegion(final Region region) {
+    private static Region resolveRegion(final Region region) {
         return region != null ? region : DefaultAwsRegionProviderChain.builder().build().getRegion();
     }
 
-    private AwsCredentialsProvider initCredentialsProvider(
+    private static AwsCredentialsProvider initCredentialsProvider(
             @Nonnull final Region region,
             final String stsRoleArn,
             final String stsExternalId,
