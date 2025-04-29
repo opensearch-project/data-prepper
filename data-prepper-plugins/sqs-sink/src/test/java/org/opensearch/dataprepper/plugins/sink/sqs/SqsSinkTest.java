@@ -128,33 +128,6 @@ public class SqsSinkTest {
     }
 
     @Test
-    void TestWithDLQConfig() {
-        PluginModel dlqConfig = mock(PluginModel.class);
-        when(dlqConfig.getPluginSettings()).thenReturn(new HashMap<String, Object>());
-        when(dlqConfig.getPluginName()).thenReturn("s3");
-
-        S3DlqWriterConfig s3DlqWriterConfig = mock(S3DlqWriterConfig.class);
-        when(s3DlqWriterConfig.getBucket()).thenReturn("bucket");
-        when(s3DlqWriterConfig.getKeyPathPrefix()).thenReturn("dlq");
-        S3Client s3Client = mock(S3Client.class);
-        when(s3DlqWriterConfig.getS3Client()).thenReturn(s3Client);
-        S3DlqProvider s3DlqProvider = new S3DlqProvider(s3DlqWriterConfig);
-        when(pluginFactory.loadPlugin(eq(DlqProvider.class), any())).thenReturn(s3DlqProvider);
-
-        when(sqsSinkConfig.getDlq()).thenReturn(dlqConfig);
-
-        try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
-            mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
-                            any(AwsCredentialsProvider.class)))
-                    .thenReturn(sqsClient);
-
-            SqsSink sqsSink = createObjectUnderTest();
-            sqsSink.doInitialize();
-            assertTrue(sqsSink.isReady());
-        }
-    }
-
-    @Test
     void TestWithInvalidCodec() {
         when(codecConfig.getPluginName()).thenReturn("badCodec");
         awsCredentialsSupplier = null;

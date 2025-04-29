@@ -25,6 +25,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -70,8 +71,6 @@ public class SqsSinkServiceTest {
     @Mock
     private PluginFactory pluginFactory;
     @Mock
-    private PluginSetting codecPluginSettings;
-    @Mock
     private SendMessageBatchResponse flushResponse;
     @Mock
     private EventHandle eventHandle;
@@ -109,7 +108,6 @@ public class SqsSinkServiceTest {
     void setup() {
         sinkContext = mock(SinkContext.class);
         pluginFactory = mock(PluginFactory.class);
-        codecPluginSettings = mock(PluginSetting.class);
         when(sinkContext.getExcludeKeys()).thenReturn(null);
         when(sinkContext.getIncludeKeys()).thenReturn(null);
         when(sinkContext.getTagsTargetKey()).thenReturn(null);
@@ -300,6 +298,22 @@ public class SqsSinkServiceTest {
         assertThat(eventsSuccessCount.get(), equalTo(numRecords));
         assertThat(requestsSuccessCount.get(), equalTo(numRecords/10));
         verify(eventHandle, times(numRecords)).release(true);
+    }
+
+    @Test
+    void TestFiFoQWithInvalidDeDupIdExpression() {
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(false);
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+".fifo");
+        when (sqsSinkConfig.getDeDuplicationId()).thenReturn(UUID.randomUUID().toString()+"${/id - }");
+        assertThrows(IllegalArgumentException.class, ()-> createObjectUnderTest());
+    }
+
+    @Test
+    void TestFiFoQWithInvalidGroupIdExpression() {
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(false);
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+".fifo");
+        when (sqsSinkConfig.getGroupId()).thenReturn(UUID.randomUUID().toString()+"${/id - }");
+        assertThrows(IllegalArgumentException.class, ()-> createObjectUnderTest());
     }
 
     @ParameterizedTest
