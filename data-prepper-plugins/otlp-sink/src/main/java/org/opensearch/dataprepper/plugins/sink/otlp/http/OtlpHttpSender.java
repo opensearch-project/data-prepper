@@ -202,7 +202,7 @@ public class OtlpHttpSender implements AutoCloseable {
                 final long rejectedSpans = partial.getRejectedSpans();
                 final String errorMessage = partial.getErrorMessage();
                 if (rejectedSpans > 0 || !errorMessage.isEmpty()) {
-                    LOG.error("OTLP Partial Success: rejectedSpans={}, message={}", rejectedSpans, errorMessage);
+                    LOG.warn("OTLP Partial Success: rejectedSpans={}, message={}", rejectedSpans, errorMessage);
                     sinkMetrics.incrementRejectedSpansCount(rejectedSpans);
                     sinkMetrics.incrementErrorsCount();
                 }

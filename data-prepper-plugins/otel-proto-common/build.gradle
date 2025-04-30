@@ -12,8 +12,6 @@ test {
 }
 
 dependencies {
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
     implementation project(':data-prepper-api')
     implementation libs.opentelemetry.proto
     implementation libs.protobuf.util
