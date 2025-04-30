@@ -22,6 +22,8 @@ import java.lang.reflect.Field;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -122,7 +124,9 @@ class OtlpSinkBufferTest {
         TimeUnit.MILLISECONDS.sleep(50);
 
         // final‐flush should happen exactly once
-        verify(sender).send(any(byte[].class));
+        await().atMost(1, SECONDS).untilAsserted(() ->
+                verify(sender).send(any(byte[].class))
+        );
         verify(metrics).incrementRecordsOut(1);
     }
 
@@ -242,7 +246,9 @@ class OtlpSinkBufferTest {
         buffer.stop();
 
         // should still send at least one batch for the good span
-        verify(sender, atLeastOnce()).send(any(byte[].class));
+        await().atMost(1, SECONDS).untilAsserted(() ->
+                verify(sender).send(any(byte[].class))
+        );
         // one rejected from the encode exception
         verify(metrics).incrementRejectedSpansCount(1);
         // error count for the encode exception (+ maybe one on interrupt)
@@ -270,5 +276,31 @@ class OtlpSinkBufferTest {
 
         assertNotNull(snd, "default sender should not be null");
         assertInstanceOf(OtlpHttpSender.class, snd);
+    }
+
+    @Test
+    void testWorkerThreadFlushesByTimeoutOnly() throws Exception {
+        when(config.getMaxEvents()).thenReturn(100); // high enough not to flush by count
+        when(config.getMaxBatchSize()).thenReturn(Long.MAX_VALUE); // don't flush by size
+        when(config.getFlushTimeoutMillis()).thenReturn(50L); // very short flush window
+
+        buffer.stop();
+        buffer = new OtlpSinkBuffer(config, metrics, encoder, sender);
+        buffer.start();
+
+        final Record<Span> rec = mock(Record.class);
+        when(rec.getData()).thenReturn(mock(Span.class));
+        when(encoder.convertToResourceSpans(any(Span.class))).thenReturn(ResourceSpans.getDefaultInstance());
+
+        buffer.add(rec);
+
+        // wait long enough to trigger timeout-based flush
+        TimeUnit.MILLISECONDS.sleep(100);
+        buffer.stop();
+
+        await().atMost(1, SECONDS).untilAsserted(() ->
+                verify(sender).send(any(byte[].class))
+        );
+        verify(metrics, atLeastOnce()).incrementRecordsOut(1);
     }
 }
