@@ -100,7 +100,8 @@ public class Office365CrawlerClient implements CrawlerClient {
                         event.getMetadata().setAttribute(CONTENT_TYPE, contentType);
                         return new Record<>(event);
                     } catch (Exception e) {
-                        // TODO: Handle failed retrievals here so we don't drop records
+                        // TODO: Handle failed retrievals here so we don't drop record.
+                        //  Ideally at this point, we want to fail the entire batch so it'll be retried.
                         log.error("Error processing audit log entry for ID: {}", id, e);
                         return null;
                     }
@@ -112,6 +113,7 @@ public class Office365CrawlerClient implements CrawlerClient {
             int timeoutMillis = (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis();
 
             if (configuration.isAcknowledgments()) {
+                // TODO: Change this logic in another PR to manager buffer better.
                 records.forEach(record -> acknowledgementSet.add(record.getData()));
                 buffer.writeAll(records, timeoutMillis);
                 acknowledgementSet.complete();

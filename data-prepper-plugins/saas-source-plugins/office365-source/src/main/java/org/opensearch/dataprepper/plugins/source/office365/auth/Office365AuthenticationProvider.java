@@ -11,6 +11,7 @@ package org.opensearch.dataprepper.plugins.source.office365.auth;
 
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.office365.Office365SourceConfig;
+import org.opensearch.dataprepper.plugins.source.office365.RetryHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -74,7 +75,12 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
         HttpEntity<String> entity = new HttpEntity<>(payload, headers);
         String tokenEndpoint = String.format(TOKEN_URL, tenantId);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(tokenEndpoint, entity, Map.class);
+        ResponseEntity<Map> response = RetryHandler.executeWithRetry(
+                () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
+                () -> {
+                } // No credential renewal for authentication endpoint
+        );
+
         Map<String, Object> tokenResponse = response.getBody();
 
         this.accessToken = (String) tokenResponse.get("access_token");

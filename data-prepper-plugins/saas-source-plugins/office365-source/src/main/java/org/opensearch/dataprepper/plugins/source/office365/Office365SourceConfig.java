@@ -41,10 +41,6 @@ public class Office365SourceConfig implements CrawlerSourceConfig {
     @JsonProperty("authentication")
     @Valid
     private AuthenticationConfiguration authenticationConfiguration;
-
-    @JsonProperty("batch_size")
-    private int batchSize = DEFAULT_BATCH_SIZE;
-
     /**
      * Flag to enable/disable acknowledgments for processed records.
      * When enabled, ensures records are processed at least once.

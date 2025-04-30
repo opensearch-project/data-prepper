@@ -62,23 +62,21 @@ public class Office365Source extends CrawlerSourcePlugin {
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
-        if (isRunning.compareAndSet(false, true)) {
-            LOG.info("Starting Office365 Source Plugin...");
-            try {
-                office365AuthProvider.initCredentials();
-                super.start(buffer);
-            } catch (Exception e) {
-                LOG.error("Error starting Office365 Source Plugin", e);
-                isRunning.set(false);
-                throw new RuntimeException("Failed to start Office365 Source Plugin", e);
-            }
-        } else {
-            LOG.warn("Attempt to start Office365 Source Plugin when it's already running");
+        LOG.info("Starting Office365 Source Plugin...");
+        try {
+            // TODO: Add source config validation logic here like JIRA
+            office365AuthProvider.initCredentials();
+            super.start(buffer);
+        } catch (Exception e) {
+            LOG.error("Error starting Office365 Source Plugin", e);
+            isRunning.set(false);
+            throw new RuntimeException("Failed to start Office365 Source Plugin", e);
         }
     }
 
     @Override
     public void stop() {
         LOG.info("Stopping Office365 Source Plugin");
+        super.stop();
     }
 }

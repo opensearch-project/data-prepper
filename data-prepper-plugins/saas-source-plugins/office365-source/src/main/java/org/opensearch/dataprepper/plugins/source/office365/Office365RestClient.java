@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.office365.utils.Constants.CONTENT_TYPES;
 import static org.opensearch.dataprepper.plugins.source.office365.utils.Constants.MANAGEMENT_API_BASE_URL;
 
@@ -70,55 +71,68 @@ public class Office365RestClient {
      * Starts and verifies subscriptions for Office 365 audit logs.
      */
     public void startSubscriptions() {
+        log.info("Starting Office 365 subscriptions for audit logs");
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(authConfig.getAccessToken());
             headers.setContentType(MediaType.APPLICATION_JSON);
 
+            // TODO: Only start the subscriptions only if the call commented
+            //  out below doesn't return all the audit log types
             // Check current subscriptions
-            final String SUBSCRIPTION_LIST_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/list";
-            String listUrl = String.format(SUBSCRIPTION_LIST_URL, authConfig.getTenantId());
-
-            ResponseEntity<String> listResponse = restTemplate.exchange(
-                    listUrl,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
-                    String.class
-            );
-            log.debug("Current subscriptions: {}", listResponse.getBody());
+//            final String SUBSCRIPTION_LIST_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/list";
+//            String listUrl = String.format(SUBSCRIPTION_LIST_URL, authConfig.getTenantId());
+//
+//            ResponseEntity<String> listResponse = restTemplate.exchange(
+//                    listUrl,
+//                    HttpMethod.GET,
+//                    new HttpEntity<>(headers),
+//                    String.class
+//            );
+//            log.debug("Current subscriptions: {}", listResponse.getBody());
 
             // Start subscriptions for each content type
             headers.setContentLength(0);
+
             for (String contentType : CONTENT_TYPES) {
                 final String SUBSCRIPTION_START_URL = MANAGEMENT_API_BASE_URL + "%s/activity/feed/subscriptions/start?contentType=%s";
                 String url = String.format(SUBSCRIPTION_START_URL,
                         authConfig.getTenantId(),
                         contentType);
 
-                try {
-                    ResponseEntity<String> response = restTemplate.exchange(
-                            url,
-                            HttpMethod.POST,
-                            new HttpEntity<>(headers),
-                            String.class
-                    );
-                    log.debug("Started subscription for {}: {}", contentType, response.getBody());
-                } catch (HttpClientErrorException e) {
-                    if (e.getResponseBodyAsString().contains("AF20024")) {
-                        log.debug("Subscription for {} is already enabled", contentType);
-                    } else {
+                RetryHandler.executeWithRetry(() -> {
+                    try {
+                        ResponseEntity<String> response = restTemplate.exchange(
+                                url,
+                                HttpMethod.POST,
+                                new HttpEntity<>(headers),
+                                String.class
+                        );
+                        log.debug("Started subscription for {}: {}", contentType, response.getBody());
+                        return response;
+                    } catch (HttpClientErrorException e) {
+                        if (e.getResponseBodyAsString().contains("AF20024")) {
+                            log.debug("Subscription for {} is already enabled", contentType);
+                            return null;
+                        }
                         throw e;
                     }
-                }
+                }, authConfig::renewCredentials);
             }
         } catch (Exception e) {
-            log.error("Error in subscription process", e);
+            log.error(NOISY, "Failed to initialize subscriptions", e);
             throw new RuntimeException("Failed to initialize subscriptions: " + e.getMessage(), e);
         }
     }
 
     /**
      * Searches for audit logs of a specific content type within a time range.
+     * Implements retry with exponential backoff for recoverable errors.
+     *
+     * @param contentType the type of content to search for
+     * @param startTime  the start time of the search range
+     * @param endTime    the end time of the search range
+     * @return List of audit log entries
      */
     public List<Map<String, Object>> searchAuditLogs(final String contentType,
                                                      final Instant startTime,
@@ -137,15 +151,18 @@ public class Office365RestClient {
 
         return searchCallLatencyTimer.record(() -> {
             try {
-                ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                        url,
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers),
-                        new ParameterizedTypeReference<>() {}
+                return RetryHandler.executeWithRetry(() ->
+                                restTemplate.exchange(
+                                        url,
+                                        HttpMethod.GET,
+                                        new HttpEntity<>(headers),
+                                        new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                                        }
+                                ).getBody(),
+                        authConfig::renewCredentials
                 );
-                return response.getBody();
             } catch (Exception e) {
-                log.error("Error while fetching audit logs for content type {}", contentType, e);
+                log.error(NOISY, "Error while fetching audit logs for content type {}", contentType, e);
                 searchRequestsFailedCounter.increment();
                 throw new RuntimeException("Failed to fetch audit logs", e);
             }
@@ -154,6 +171,10 @@ public class Office365RestClient {
 
     /**
      * Retrieves a specific audit log entry by its content ID.
+     * Implements retry with exponential backoff for recoverable errors.
+     *
+     * @param contentId the ID of the audit log entry to retrieve
+     * @return the audit log entry as a string
      */
     public String getAuditLog(final String contentId) {
         auditLogsRequestedCounter.increment();
@@ -169,16 +190,19 @@ public class Office365RestClient {
 
         return auditLogFetchLatencyTimer.record(() -> {
             try {
-                ResponseEntity<String> response = restTemplate.exchange(
-                        url,
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers),
-                        String.class
+                String response = RetryHandler.executeWithRetry(() ->
+                                restTemplate.exchange(
+                                        url,
+                                        HttpMethod.GET,
+                                        new HttpEntity<>(headers),
+                                        String.class
+                                ).getBody(),
+                        authConfig::renewCredentials
                 );
                 auditLogRequestsSuccessCounter.increment();
-                return response.getBody();
+                return response;
             } catch (Exception e) {
-                log.error("Error while fetching audit log with ID {}", contentId, e);
+                log.error(NOISY, "Error while fetching audit log with ID {}", contentId, e);
                 auditLogRequestsFailedCounter.increment();
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
