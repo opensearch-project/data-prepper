@@ -49,7 +49,6 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender.NON_RETRYABLE_STATUS_CODES;
 
 class OtlpHttpSenderTest {
     private static final byte[] PAYLOAD = "test-otlp-payload".getBytes(StandardCharsets.UTF_8);
@@ -135,24 +134,22 @@ class OtlpHttpSenderTest {
                 .url(signed.getUri().toString())
                 .build();
 
-        for (final int status : NON_RETRYABLE_STATUS_CODES) {
-            final Response resp = new Response.Builder()
-                    .request(okReq)
-                    .protocol(Protocol.HTTP_1_1)
-                    .code(status)
-                    .message("Client Error")
-                    .body(ResponseBody.create(
-                            ERROR_BODY.getBytes(StandardCharsets.UTF_8),
-                            MediaType.get("application/json")))
-                    .build();
-            final Call call = mock(Call.class);
-            when(mockHttpClient.newCall(any())).thenReturn(call);
-            when(call.execute()).thenReturn(resp);
+        final Response resp = new Response.Builder()
+                .request(okReq)
+                .protocol(Protocol.HTTP_1_1)
+                .code(400)
+                .message("Client Error")
+                .body(ResponseBody.create(
+                        ERROR_BODY.getBytes(StandardCharsets.UTF_8),
+                        MediaType.get("application/json")))
+                .build();
+        final Call call = mock(Call.class);
+        when(mockHttpClient.newCall(any())).thenReturn(call);
+        when(call.execute()).thenReturn(resp);
 
-            assertDoesNotThrow(() -> target.send(PAYLOAD));
-            verify(mockHttpClient, times(1)).newCall(any());
-            reset(mockHttpClient);
-        }
+        assertDoesNotThrow(() -> target.send(PAYLOAD));
+        verify(mockHttpClient, times(1)).newCall(any());
+        reset(mockHttpClient);
     }
 
     @Test
@@ -202,7 +199,7 @@ class OtlpHttpSenderTest {
     }
 
     @Test
-    void testSend_throwsIOException_on500ResponseWithBody() throws IOException {
+    void testSend_throwsIOException_on502ResponseWithBody() throws IOException {
         final SdkHttpFullRequest signed = SdkHttpFullRequest.builder()
                 .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
                 .uri(URI.create("https://example.com"))
@@ -218,8 +215,8 @@ class OtlpHttpSenderTest {
         final Response resp500 = new Response.Builder()
                 .request(okReq)
                 .protocol(Protocol.HTTP_1_1)
-                .code(500)
-                .message("Internal Server Error")
+                .code(502)
+                .message("Bad Gateway")
                 .body(ResponseBody.create(
                         ERROR_BODY.getBytes(StandardCharsets.UTF_8),
                         MediaType.get("application/json")))

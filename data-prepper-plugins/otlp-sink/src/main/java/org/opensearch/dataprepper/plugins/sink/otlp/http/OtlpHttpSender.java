@@ -33,8 +33,7 @@ import java.util.function.Function;
  * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using OkHttp.
  */
 public class OtlpHttpSender implements AutoCloseable {
-    @VisibleForTesting
-    static final Set<Integer> NON_RETRYABLE_STATUS_CODES = Set.of(400, 401, 403, 422);
+    private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 502, 503, 504);
 
     private static final int BASE_RETRY_DELAY_MS = 100;
     private static final Logger LOG = LoggerFactory.getLogger(OtlpHttpSender.class);
@@ -165,11 +164,12 @@ public class OtlpHttpSender implements AutoCloseable {
     }
 
     /**
-     * Handles the response from the OTLP endpoint.
-     * Logs the response status and body, and throws an exception for retryable errors.
+     * Handles the OTLP export response.
+     * Retries on 429, 502, 503, and 504 per OTEL spec. Logs other errors without retry.
+     * See: https://opentelemetry.io/docs/specs/otlp/exporter/#retrying-on-failure
      *
-     * @param response The HTTP response from the OTLP endpoint.
-     * @throws IOException If the response status is not successful and retryable.
+     * @param response The HTTP response
+     * @throws IOException For retryable errors
      */
     private void handleResponse(@Nonnull final Response response) throws IOException {
         final int status = response.code();
@@ -185,12 +185,11 @@ public class OtlpHttpSender implements AutoCloseable {
         }
 
         final String responseBody = responseBytes != null ? new String(responseBytes, StandardCharsets.UTF_8) : "<no body>";
-        if (NON_RETRYABLE_STATUS_CODES.contains(status)) {
-            LOG.error("Non-retryable error. Status: {}, Response: {}", status, responseBody);
-            return;
+        if (RETRYABLE_STATUS_CODES.contains(status)) {
+            throw new IOException(String.format("Retryable error. Status: %d, Response: %s", status, responseBody));
         }
 
-        throw new IOException(String.format("Failed to send OTLP data. Status: %d, Response: %s", status, responseBody));
+        LOG.error("Non-retryable error. Status: {}, Response: {}", status, responseBody);
     }
 
     private void handleSuccessfulResponse(final byte[] responseBytes) {
