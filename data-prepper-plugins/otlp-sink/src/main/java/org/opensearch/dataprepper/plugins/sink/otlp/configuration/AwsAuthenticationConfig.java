@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import software.amazon.awssdk.regions.Region;
 
 /**
  * Configuration class for AWS authentication settings.
@@ -17,13 +16,6 @@ import software.amazon.awssdk.regions.Region;
 @Getter
 @NoArgsConstructor
 class AwsAuthenticationConfig {
-    /**
-     * AWS region.
-     * Must be a valid AWS region identifier (e.g., us-east-1, us-west-2).
-     */
-    @JsonProperty("region")
-    @Size(min = 1, message = "Region cannot be empty string")
-    private String awsRegion;
 
     /**
      * AWS STS Role ARN for assuming role-based access.
@@ -42,14 +34,4 @@ class AwsAuthenticationConfig {
     @JsonProperty("sts_external_id")
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
-
-    /**
-     * Gets the AWS Region object corresponding to the configured region string.
-     *
-     * @return Region object if awsRegion is set, otherwise returns null.
-     * Note: Default region fallback is handled externally by the caller.
-     */
-    Region getAwsRegion() {
-        return awsRegion != null ? Region.of(awsRegion) : null;
-    }
 }

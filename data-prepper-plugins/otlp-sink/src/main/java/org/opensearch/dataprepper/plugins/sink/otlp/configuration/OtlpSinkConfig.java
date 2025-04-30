@@ -12,6 +12,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Configuration class for the OTLP sink plugin.
  * This class defines the configuration options available when setting up
@@ -65,12 +70,30 @@ public class OtlpSinkConfig {
     @Valid
     private AwsAuthenticationConfig awsAuthenticationConfig;
 
+    /**
+     * Get AWS region from the provided endpoint.
+     *
+     * @return the AWS region
+     */
     public Region getAwsRegion() {
-        if (awsAuthenticationConfig == null) {
-            return null;
-        }
+        try {
+            final String host = URI.create(this.endpoint).getHost();
+            if (host == null) {
+                throw new IllegalArgumentException();
+            }
 
-        return awsAuthenticationConfig.getAwsRegion();
+            final Set<String> knownRegions = Region.regions().stream()
+                    .map(Region::id)
+                    .collect(Collectors.toSet());
+
+            return Arrays.stream(host.split("\\."))
+                    .filter(knownRegions::contains)
+                    .map(Region::of)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("No valid AWS region found in endpoint: " + endpoint));
+        } catch (final Exception e) {
+            throw new IllegalArgumentException("Failed to parse AWS region from endpoint: " + endpoint, e);
+        }
     }
 
     public String getStsRoleArn() {

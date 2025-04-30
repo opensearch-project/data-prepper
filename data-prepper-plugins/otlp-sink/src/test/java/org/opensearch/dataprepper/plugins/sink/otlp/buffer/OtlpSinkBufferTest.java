@@ -44,12 +44,11 @@ class OtlpSinkBufferTest {
 
     @BeforeEach
     void setUp() {
-        System.setProperty("aws.region", Region.US_WEST_2.id());
-
         config = mock(OtlpSinkConfig.class);
         when(config.getMaxEvents()).thenReturn(2);
         when(config.getMaxBatchSize()).thenReturn(1_000_000L);
         when(config.getFlushTimeoutMillis()).thenReturn(10L);
+        when(config.getAwsRegion()).thenReturn(Region.of("us-west-2"));
 
         metrics = mock(OtlpSinkMetrics.class);
         encoder = mock(OTelProtoStandardCodec.OTelProtoEncoder.class);
@@ -61,7 +60,6 @@ class OtlpSinkBufferTest {
 
     @AfterEach
     void tearDown() {
-        System.clearProperty("aws.region");
         buffer.stop();
     }
     
@@ -182,7 +180,7 @@ class OtlpSinkBufferTest {
 
         final Field queueField = OtlpSinkBuffer.class.getDeclaredField("queue");
         queueField.setAccessible(true);
-        @SuppressWarnings("unchecked") final BlockingQueue<?> queueInstance = (BlockingQueue<?>) queueField.get(buffer);
+        final BlockingQueue<?> queueInstance = (BlockingQueue<?>) queueField.get(buffer);
         assertEquals(2000, queueInstance.remainingCapacity());
     }
 
@@ -193,7 +191,7 @@ class OtlpSinkBufferTest {
 
         final Field queueField = OtlpSinkBuffer.class.getDeclaredField("queue");
         queueField.setAccessible(true);
-        @SuppressWarnings("unchecked") final BlockingQueue<?> queueInstance = (BlockingQueue<?>) queueField.get(buffer);
+        final BlockingQueue<?> queueInstance = (BlockingQueue<?>) queueField.get(buffer);
         assertEquals(300 * 10, queueInstance.remainingCapacity());
     }
 

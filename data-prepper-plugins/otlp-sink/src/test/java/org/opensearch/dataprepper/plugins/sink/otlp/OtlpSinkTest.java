@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -35,11 +34,12 @@ class OtlpSinkTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        System.setProperty("aws.region", Region.US_WEST_2.id());
-
         // Arrange: stub out config, metrics, setting
         mockConfig = mock(OtlpSinkConfig.class);
+        when(mockConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
+
         mockMetrics = mock(PluginMetrics.class);
+
         mockSetting = mock(PluginSetting.class);
         when(mockSetting.getPipelineName()).thenReturn("pipeline");
         when(mockSetting.getName()).thenReturn("otlp");
@@ -52,11 +52,6 @@ class OtlpSinkTest {
         final Field bufferField = OtlpSink.class.getDeclaredField("buffer");
         bufferField.setAccessible(true);
         bufferField.set(target, mockBuffer);
-    }
-
-    @AfterEach
-    void tearDown() {
-        System.clearProperty("aws.region");
     }
 
     @Test

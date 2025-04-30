@@ -92,7 +92,6 @@ class OtlpHttpSenderTest {
     void cleanUp() {
         System.clearProperty("aws.accessKeyId");
         System.clearProperty("aws.secretAccessKey");
-        System.clearProperty("aws.region");
     }
 
     @Test
@@ -314,7 +313,7 @@ class OtlpHttpSenderTest {
         target = new OtlpHttpSender(
                 mockConfig,
                 mockSinkMetrics,
-                payload -> Optional.of(payload),
+                Optional::of,
                 mockSigner,
                 mockHttpClient,
                 mockSleeper

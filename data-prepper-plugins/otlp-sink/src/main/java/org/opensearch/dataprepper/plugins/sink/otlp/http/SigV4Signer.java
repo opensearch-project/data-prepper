@@ -15,7 +15,6 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
@@ -51,16 +50,11 @@ class SigV4Signer {
      */
     @VisibleForTesting
     SigV4Signer(@Nonnull final OtlpSinkConfig config, final StsClient stsClient) {
-        this.region = resolveRegion(config.getAwsRegion());
+        this.region = config.getAwsRegion();
         this.credentialsProvider = initCredentialsProvider(region, config.getStsRoleArn(), config.getStsExternalId(), stsClient);
         this.endpointUri = config.getEndpoint() != null
                 ? URI.create(config.getEndpoint())
                 : URI.create(String.format("https://xray.%s.amazonaws.com%s", region.id(), OTLP_PATH));
-
-    }
-
-    private static Region resolveRegion(final Region region) {
-        return region != null ? region : DefaultAwsRegionProviderChain.builder().build().getRegion();
     }
 
     private static AwsCredentialsProvider initCredentialsProvider(
