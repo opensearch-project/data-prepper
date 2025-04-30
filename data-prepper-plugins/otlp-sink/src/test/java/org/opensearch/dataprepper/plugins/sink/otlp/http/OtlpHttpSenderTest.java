@@ -195,7 +195,7 @@ class OtlpHttpSenderTest {
 
         // Act & Assert
         final IOException ex = assertThrows(IOException.class, () -> target.send(PAYLOAD));
-        assertEquals("always fail", ex.getMessage());
+        assertEquals("Max retries reached", ex.getMessage());
     }
 
     @Test
@@ -373,7 +373,7 @@ class OtlpHttpSenderTest {
             final var f = obj.getClass().getDeclaredField(name);
             f.setAccessible(true);
             return f.get(obj);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             fail("Could not access " + name);
             return null;
         }

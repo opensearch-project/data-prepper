@@ -34,7 +34,6 @@ import java.util.function.Function;
  */
 public class OtlpHttpSender implements AutoCloseable {
     private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 502, 503, 504);
-
     private static final int BASE_RETRY_DELAY_MS = 100;
     private static final Logger LOG = LoggerFactory.getLogger(OtlpHttpSender.class);
     private static final MediaType PROTOBUF = MediaType.get("application/x-protobuf");
@@ -150,14 +149,12 @@ public class OtlpHttpSender implements AutoCloseable {
                     final int delay = retryDelaysMs.get(retryIndex) + jitter;
                     try {
                         sleeper.accept(delay);
-
-                        LOG.info("Retrying after failure in attempt {}. Sleeping {}ms.", attempt + 1, delay, ioException);
                         sinkMetrics.incrementRetriesCount();
                     } catch (final RuntimeException runtimeException) {
                         throw new IOException("Sender failed to sleep before retrying.", runtimeException);
                     }
                 } else {
-                    throw ioException;
+                    throw new IOException("Max retries reached", ioException);
                 }
             }
         }
@@ -166,7 +163,7 @@ public class OtlpHttpSender implements AutoCloseable {
     /**
      * Handles the OTLP export response.
      * Retries on 429, 502, 503, and 504 per OTEL spec. Logs other errors without retry.
-     * See: https://opentelemetry.io/docs/specs/otlp/exporter/#retrying-on-failure
+     * See: <a href="https://opentelemetry.io/docs/specs/otlp/#otlphttp-response">OTLP/HTTP Response</a>
      *
      * @param response The HTTP response
      * @throws IOException For retryable errors
@@ -194,7 +191,6 @@ public class OtlpHttpSender implements AutoCloseable {
 
     private void handleSuccessfulResponse(final byte[] responseBytes) {
         if (responseBytes == null || responseBytes.length == 0) {
-            LOG.info("OTLP export successful. No response body.");
             return;
         }
 

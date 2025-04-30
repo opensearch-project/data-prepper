@@ -16,8 +16,7 @@ class ThreadSleeper implements Consumer<Integer> {
 
     /**
      * Sleeps for the specified duration in milliseconds.
-     * If the thread is interrupted while sleeping, the interrupted status is cleared
-     * and a {@link RuntimeException} is thrown to signal the failure.
+     * Wraps and rethrows {@link InterruptedException} as a runtime exception.
      *
      * @param millis the number of milliseconds to sleep
      */
@@ -27,7 +26,7 @@ class ThreadSleeper implements Consumer<Integer> {
             Thread.sleep(millis);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            throw new RuntimeException("Sleep interrupted", e);
         }
     }
 }

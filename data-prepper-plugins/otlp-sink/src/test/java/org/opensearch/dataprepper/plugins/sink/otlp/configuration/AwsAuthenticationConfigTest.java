@@ -23,7 +23,7 @@ class AwsAuthenticationConfigTest {
                 "sts_external_id: " + expectedExternalId
         );
 
-        AwsAuthenticationConfig config = mapper.readValue(yaml, AwsAuthenticationConfig.class);
+        final AwsAuthenticationConfig config = mapper.readValue(yaml, AwsAuthenticationConfig.class);
 
         assertEquals(expectedRoleArn, config.getAwsStsRoleArn());
         assertEquals(expectedExternalId, config.getAwsStsExternalId());

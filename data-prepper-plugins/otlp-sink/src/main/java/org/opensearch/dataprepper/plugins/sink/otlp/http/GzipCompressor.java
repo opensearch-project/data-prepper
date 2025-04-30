@@ -34,7 +34,6 @@ class GzipCompressor implements Function<byte[], Optional<byte[]>> {
 
     /**
      * Compresses the provided payload using GZIP compression.
-     * Logs an error if compression fails.
      *
      * @param payload The payload to be compressed.
      * @return Optional containing the compressed payload, or empty if compression failed.
