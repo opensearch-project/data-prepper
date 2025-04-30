@@ -182,6 +182,7 @@ literal
     | Integer
     | Boolean
     | String
+    | RawString
     | Null
     ;
 
