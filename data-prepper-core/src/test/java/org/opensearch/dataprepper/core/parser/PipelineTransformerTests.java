@@ -67,6 +67,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -602,5 +603,40 @@ class PipelineTransformerTests {
         }
 
         return bufferMap;
+    }
+
+    @Test
+    void parseConfiguration_with_zero_buffer_and_single_worker_thread_creates_pipeline_successfully() {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_ZERO_BUFFER_SINGLE_THREAD_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
+
+        assertThat(pipelineMap.size(), equalTo(1));
+        assertThat(pipelineMap, hasKey("simple-pipeline"));
+        assertThat(pipelineMap.isEmpty(), equalTo(false));
+
+        verifyDataPrepperConfigurationAccesses();
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidZeroBufferConfigFiles")
+    void parseConfiguration_with_invalid_zero_buffer_configurations_results_in_pipeline_creation_failure(String configFile) {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(configFile);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
+
+        assertThat(pipelineMap.isEmpty(), equalTo(true));
+
+        verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    private static Stream<Arguments> provideInvalidZeroBufferConfigFiles() {
+        return Stream.of(
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_MULTIPLE_THREADS_CONFIG_FILE),
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_WITH_SINGLE_THREAD_PROCESSOR_CONFIG_FILE),
+                Arguments.of(TestDataProvider.INVALID_ZERO_BUFFER_MULTIPLE_THREADS_NO_SINGLE_THREAD_PROCESSORS_CONFIG_FILE)
+        );
     }
 }
