@@ -155,15 +155,6 @@ class OtlpSinkMetricsTest {
     }
 
     @Test
-    void testRecordDeliveryLatency_delegatesToTimer() throws Exception {
-        injectField("deliveryLatency", timerMock);
-
-        sinkMetrics.recordDeliveryLatency(50L);
-
-        verify(timerMock).record(Duration.ofMillis(50L));
-    }
-
-    @Test
     void testRecordHttpLatency_delegatesToTimer() throws Exception {
         injectField("httpLatency", timerMock);
 

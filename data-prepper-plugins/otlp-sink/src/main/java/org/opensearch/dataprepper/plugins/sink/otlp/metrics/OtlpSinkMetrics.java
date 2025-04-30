@@ -26,7 +26,6 @@ public class OtlpSinkMetrics {
 
     private final PluginMetrics pluginMetrics;
     private final Timer httpLatency;
-    private final Timer deliveryLatency;
     private final DistributionSummary payloadSize;
     private final DistributionSummary payloadGzipSize;
 
@@ -43,7 +42,6 @@ public class OtlpSinkMetrics {
         final String pluginName = pluginSetting.getName();
 
         httpLatency = buildLatencyTimer(pipelineName, pluginName, "httpLatency");
-        deliveryLatency = buildLatencyTimer(pipelineName, pluginName, "deliveryLatency");
 
         payloadSize = buildDistributionSummary(pipelineName, pluginName, "payloadSize");
         payloadGzipSize = buildDistributionSummary(pipelineName, pluginName, "payloadGzipSize");
@@ -98,10 +96,6 @@ public class OtlpSinkMetrics {
 
     public void incrementPayloadGzipSize(final long bytes) {
         payloadGzipSize.record(bytes);
-    }
-
-    public void recordDeliveryLatency(final long durationMillis) {
-        deliveryLatency.record(Duration.ofMillis(durationMillis));
     }
 
     public void recordHttpLatency(final long durationMillis) {
