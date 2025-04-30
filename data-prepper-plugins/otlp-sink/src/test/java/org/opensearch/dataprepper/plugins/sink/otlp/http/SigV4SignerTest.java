@@ -94,7 +94,7 @@ class SigV4SignerTest {
         when(mockXrayConfig.getStsRoleArn()).thenReturn("arn:aws:iam::123456789012:role/test-role");
 
         // Use mocked static builder to simulate StsClient.builder()
-        try (MockedStatic<StsClient> mockedStsClientStatic = mockStatic(StsClient.class)) {
+        try (final MockedStatic<StsClient> mockedStsClientStatic = mockStatic(StsClient.class)) {
             final StsClient mockStsClient = mock(StsClient.class);
 
             // Setup fake STS response
@@ -118,7 +118,7 @@ class SigV4SignerTest {
 
             // run
             target = new SigV4Signer(mockXrayConfig, null);
-            SdkHttpFullRequest signedRequest = target.signRequest(PAYLOAD);
+            final SdkHttpFullRequest signedRequest = target.signRequest(PAYLOAD);
 
             // assert
             assertNotNull(signedRequest);
@@ -160,7 +160,7 @@ class SigV4SignerTest {
         assertEquals("application/x-protobuf", signedRequest.firstMatchingHeader("Content-Type").orElse(null));
         assertTrue(signedRequest.getUri().toString().contains("https://xray.us-west-2.amazonaws.com/v1/traces"));
 
-        ArgumentMatcher<AssumeRoleRequest> matcher = request ->
+        final ArgumentMatcher<AssumeRoleRequest> matcher = request ->
                 expectedRoleArn.equals(request.roleArn()) &&
                         expectedExternalId.equals(request.externalId());
 

@@ -36,8 +36,7 @@ class SigV4Signer {
     private final URI endpointUri;
 
     /**
-     * Constructs a SigV4 signer helper based on the AWS authentication configuration.
-     * Supports optional STS role assumption.
+     * Constructs a SigV4 signer helper.
      *
      * @param config Configuration for region and optional STS role
      */
