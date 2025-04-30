@@ -19,8 +19,10 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OtlpSinkConfigTest {
 
@@ -38,7 +40,6 @@ class OtlpSinkConfigTest {
     private static final long DEFAULT_BATCH_BYTES = ByteCount.parse("1mb").getBytes();
     private static final long DEFAULT_FLUSH_TIMEOUT = 200L;
 
-    private static final String EXPECTED_REGION = "us-west-2";
     private static final String EXPECTED_ROLE_ARN = "arn:aws:iam::123456789012:role/OtlpRole";
     private static final String EXPECTED_EXTERNAL_ID = "my-ext-id";
 
@@ -85,7 +86,6 @@ class OtlpSinkConfigTest {
         assertEquals(DEFAULT_BATCH_BYTES, config.getMaxBatchSize());
         assertEquals(DEFAULT_FLUSH_TIMEOUT, config.getFlushTimeoutMillis());
 
-        assertThat(config.getAwsRegion(), nullValue());
         assertThat(config.getStsRoleArn(), nullValue());
         assertThat(config.getStsExternalId(), nullValue());
     }
@@ -116,7 +116,6 @@ class OtlpSinkConfigTest {
                 "endpoint:      \"" + EXPECTED_ENDPOINT + "\"",
                 "max_retries:   " + DEFAULT_MAX_RETRIES,
                 "aws:",
-                "  region:          \"" + EXPECTED_REGION + "\"",
                 "  sts_role_arn:    \"" + EXPECTED_ROLE_ARN + "\"",
                 "  sts_external_id: \"" + EXPECTED_EXTERNAL_ID + "\""
         );
@@ -126,7 +125,6 @@ class OtlpSinkConfigTest {
         assertEquals(EXPECTED_ENDPOINT, config.getEndpoint());
         assertEquals(DEFAULT_MAX_RETRIES, config.getMaxRetries());
 
-        assertEquals(Region.of(EXPECTED_REGION), config.getAwsRegion());
         assertEquals(EXPECTED_ROLE_ARN, config.getStsRoleArn());
         assertEquals(EXPECTED_EXTERNAL_ID, config.getStsExternalId());
     }
@@ -143,8 +141,48 @@ class OtlpSinkConfigTest {
         assertEquals(EXPECTED_ENDPOINT, config.getEndpoint());
         assertEquals(DEFAULT_MAX_RETRIES, config.getMaxRetries());
 
-        assertThat(config.getAwsRegion(), nullValue());
         assertThat(config.getStsRoleArn(), nullValue());
         assertThat(config.getStsExternalId(), nullValue());
+    }
+
+    @Test
+    void testAwsRegion_parsedFromStandardXrayEndpoint() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"https://xray.us-east-1.amazonaws.com\"",
+                "max_retries: 5"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertEquals("https://xray.us-east-1.amazonaws.com", config.getEndpoint());
+        assertEquals(5, config.getMaxRetries());
+
+        assertThat(config.getAwsRegion(), equalTo(Region.US_EAST_1));
+    }
+
+    @Test
+    void testAwsRegion_invalidEndpoint_throwsException() {
+        final String yaml = String.join("\n",
+                "endpoint: \"https://example.invalid-endpoint\"",
+                "max_retries: 5"
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+            config.getAwsRegion();  // triggers parsing
+        });
+    }
+
+    @Test
+    void testAwsRegion_throwsException_onInvalidEndpoint() {
+        final String yaml = String.join("\n",
+                "endpoint: \"invalid-endpoint\"",
+                "max_retries: 5"
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+            config.getAwsRegion();  // must trigger parsing logic
+        });
     }
 }

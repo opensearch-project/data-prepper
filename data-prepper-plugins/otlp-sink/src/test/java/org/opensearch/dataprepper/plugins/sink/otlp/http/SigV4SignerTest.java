@@ -12,7 +12,6 @@ import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -35,6 +34,7 @@ import static org.mockito.Mockito.when;
 class SigV4SignerTest {
 
     private static final byte[] PAYLOAD = "test-payload".getBytes(StandardCharsets.UTF_8);
+    public static final Region REGION = Region.of("us-west-2");
     private OtlpSinkConfig mockXrayConfig;
     private SigV4Signer target;
 
@@ -50,15 +50,13 @@ class SigV4SignerTest {
     void cleanUp() {
         System.clearProperty("aws.accessKeyId");
         System.clearProperty("aws.secretAccessKey");
-        System.clearProperty("aws.region");
     }
 
     @Test
     void testSignRequest_withInputEndpoint_whenEndpointIsSet() {
         // setup
         final String endpoint = "https://performance.us-west-2.xray.cloudwatch.aws.dev/v1/traces";
-        System.setProperty("aws.region", Region.US_WEST_2.toString());
-        when(mockXrayConfig.getAwsRegion()).thenReturn(null);
+        when(mockXrayConfig.getAwsRegion()).thenReturn(REGION);
         when(mockXrayConfig.getEndpoint()).thenReturn(endpoint);
         target = new SigV4Signer(mockXrayConfig);
 
@@ -71,26 +69,6 @@ class SigV4SignerTest {
         assertTrue(signedRequest.headers().containsKey("Authorization"));
         assertEquals("application/x-protobuf", signedRequest.firstMatchingHeader("Content-Type").orElse(null));
         assertTrue(signedRequest.getUri().toString().contains(endpoint));
-    }
-
-    @Test
-    void testSignRequest_withFallbackRegion_whenRegionNotSet() {
-        // setup
-        System.setProperty("aws.region", Region.US_WEST_2.toString());
-        when(mockXrayConfig.getAwsRegion()).thenReturn(null);
-        target = new SigV4Signer(mockXrayConfig);
-
-        // run
-        final SdkHttpFullRequest signedRequest = target.signRequest(PAYLOAD);
-
-        // assert
-        assertNotNull(signedRequest);
-        assertEquals("POST", signedRequest.method().name());
-        assertTrue(signedRequest.headers().containsKey("Authorization"));
-        assertEquals("application/x-protobuf", signedRequest.firstMatchingHeader("Content-Type").orElse(null));
-
-        final String expectedRegion = DefaultAwsRegionProviderChain.builder().build().getRegion().id();
-        assertTrue(signedRequest.getUri().toString().contains(String.format("https://xray.%s.amazonaws.com/v1/traces", expectedRegion)));
     }
 
     @Test
