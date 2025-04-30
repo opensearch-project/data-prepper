@@ -135,24 +135,21 @@ public class OtlpSinkBuffer {
         long batchSize = 0;
         long lastFlush = System.currentTimeMillis();
 
-        while (running || !queue.isEmpty()) {
+        while (true) {
             try {
                 final long now = System.currentTimeMillis();
                 final Record<Span> record = queue.poll(100, TimeUnit.MILLISECONDS);
 
                 if (record != null) {
-                    final ResourceSpans resourceSpans;
                     try {
-                        resourceSpans = encoder.convertToResourceSpans(record.getData());
+                        final ResourceSpans resourceSpans = encoder.convertToResourceSpans(record.getData());
+                        batch.add(resourceSpans);
+                        batchSize += resourceSpans.getSerializedSize();
                     } catch (final Exception e) {
                         LOG.error("Failed to encode span, skipping", e);
                         sinkMetrics.incrementRejectedSpansCount(1);
                         sinkMetrics.incrementErrorsCount();
-                        continue;
                     }
-
-                    batch.add(resourceSpans);
-                    batchSize += resourceSpans.getSerializedSize();
                 }
 
                 final boolean flushBySize = batch.size() >= maxEvents || batchSize >= maxBatchBytes;
@@ -160,19 +157,25 @@ public class OtlpSinkBuffer {
 
                 if (flushBySize || flushByTime) {
                     send(batch);
-
                     batchSize = 0;
                     lastFlush = now;
                 }
 
+                if (!running && queue.isEmpty()) {
+                    break;
+                }
+
             } catch (final InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOG.error("Interrupted while polling span", e);
-                sinkMetrics.incrementErrorsCount();
+                if (running) {
+                    LOG.debug("Worker interrupted while polling, continuing...");
+                    sinkMetrics.incrementErrorsCount();
+                }
+                // Clear interrupt flag to allow queue.poll() again
+                // Don't break; allow draining
             }
         }
 
-        // Final flush on shutdown
+        // Final flush
         if (!batch.isEmpty()) {
             send(batch);
         }
