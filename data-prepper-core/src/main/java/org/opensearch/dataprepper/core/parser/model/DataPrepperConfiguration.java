@@ -54,6 +54,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private EventConfiguration eventConfiguration;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
+    private List<String> disabledMetrics = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
@@ -88,6 +89,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             final Map<String, String> metricTags,
             @JsonProperty("metric_tag_filters")
             final List<MetricTagFilter> metricTagFilters,
+            @JsonProperty("disabled_metrics")
+            final List<String> disabledMetrics,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processor_shutdown_timeout")
             @JsonAlias("processorShutdownTimeout")
@@ -120,6 +123,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
         setMetricTagFilters(metricTagFilters);
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
+        this.disabledMetrics = disabledMetrics;
 
         this.processorShutdownTimeout = processorShutdownTimeout != null ? processorShutdownTimeout : DEFAULT_SHUTDOWN_DURATION;
         if (this.processorShutdownTimeout.isNegative()) {
@@ -166,6 +170,11 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     public List<MetricTagFilter> getMetricTagFilters() {
         return metricTagFilters;
     }
+
+    public List<String> getDisabledMetrics() {
+        return disabledMetrics != null ? disabledMetrics : Collections.emptyList();
+    }
+
 
     private void setSsl(final Boolean ssl) {
         if (ssl != null) {
