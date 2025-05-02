@@ -1,0 +1,929 @@
+{
+  "mapping_options": {
+    "authentication": {
+      "direct_mappings": [
+        {
+          "source": "CreationTime",
+          "destination": "time",
+          "type": "timestamp"
+        },
+        {
+          "source": "Id",
+          "destination": "metadata.uid",
+          "type": "string"
+        },
+        {
+          "source": "Operation",
+          "destination": "api.operation",
+          "type": "string"
+        },
+        {
+          "source": "OrganizationId",
+          "destination": "cloud.account.uid",
+          "type": "string"
+        },
+        {
+          "source": "UserId",
+          "destination": "actor.user.name",
+          "type": "string"
+        },
+        {
+          "source": "UserKey",
+          "destination": "actor.user.uid",
+          "type": "string"
+        },
+        {
+          "source": "ClientIP",
+          "destination": "src_endpoint.ip",
+          "type": "string"
+        },
+        {
+          "source": "Workload",
+          "destination": "api.service.name",
+          "type": "string"
+        },
+        {
+          "source": "UserType",
+          "destination": "actor.user.type_id",
+          "type": "integer"
+        },
+        {
+          "source": "ApplicationId",
+          "destination": "service.uid",
+          "type": "string"
+        },
+        {
+          "source": "DeviceProperties[?(@.Name=='OS')].Value",
+          "destination": "unmapped.os",
+          "type": "string"
+        },
+        {
+          "source": "DeviceProperties[?(@.Name=='BrowserType')].Value",
+          "destination": "unmapped.browser_type",
+          "type": "string"
+        },
+        {
+          "source": "DeviceProperties[?(@.Name=='SessionId')].Value",
+          "destination": "session.uid",
+          "type": "string"
+        },
+        {
+          "source": "ExtendedProperties[?(@.Name=='UserAgent')].Value",
+          "destination": "http_request.user_agent",
+          "type": "string"
+        },
+        {
+          "source": "AzureActiveDirectoryEventType",
+          "destination": "unmapped.azure_ad_event_type",
+          "type": "integer"
+        },
+        {
+          "source": "ExtendedProperties[?(@.Name=='ResultStatusDetail')].Value",
+          "destination": "status_detail",
+          "type": "string"
+        },
+        {
+          "source": "ExtendedProperties[?(@.Name=='RequestType')].Value",
+          "destination": "unmapped.request_type",
+          "type": "string"
+        },
+        {
+          "source": "ActorContextId",
+          "destination": "unmapped.actor_context_id",
+          "type": "string"
+        },
+        {
+          "source": "ActorIpAddress",
+          "destination": "unmapped.actor_ip_address",
+          "type": "string"
+        },
+        {
+          "source": "InterSystemsId",
+          "destination": "unmapped.inter_systems_id",
+          "type": "string"
+        },
+        {
+          "source": "IntraSystemId",
+          "destination": "unmapped.intra_system_id",
+          "type": "string"
+        },
+        {
+          "source": "Target[].ID",
+          "destination": "unmapped.target_ids",
+          "type": "string"
+        },
+        {
+          "source": "TargetContextId",
+          "destination": "unmapped.target_context_id",
+          "type": "string"
+        },
+        {
+          "source": "ErrorNumber",
+          "destination": "unmapped.error_number",
+          "type": "string"
+        }
+      ],
+      "transformations": [
+        {
+          "transformation": "literal",
+          "target": "class_name",
+          "value": "Authentication",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "class_uid",
+          "value": 3002,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_name",
+          "value": "Identity & Access Management",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_uid",
+          "value": 3,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.name",
+          "value": "Office 365",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.vendor_name",
+          "value": "Microsoft",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "severity_id",
+          "value": 1,
+          "type": "integer"
+        },
+        {
+          "transformation": "variable",
+          "target": "metadata.version",
+          "value": "SCHEMA_VERSION",
+          "type": "string"
+        },
+        {
+          "transformation": "conditional",
+          "if": {
+            "condition": {
+              "logic": "OR",
+              "clauses": [
+                {
+                  "lhs": {
+                    "type": "field",
+                    "value": "Operation"
+                  },
+                  "operation": "EQUALS",
+                  "rhs": {
+                    "type": "pattern",
+                    "value": "(UserLoggedIn|MailboxLogin)"
+                  }
+                }
+              ]
+            },
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Logon",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 1,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 300201,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Authentication: Logon",
+                "type": "string"
+              }
+            ]
+          },
+          "else": {
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Other",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 99,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 300299,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Authentication: Other",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "transformation": "enum",
+          "source": "ResultStatus",
+          "target": "status_id",
+          "type": "integer",
+          "default": 0,
+          "cases": [
+            {
+              "from": "Success",
+              "to": 1
+            },
+            {
+              "from": "Succeeded",
+              "to": 1
+            },
+            {
+              "from": "Failure",
+              "to": 2
+            }
+          ]
+        }
+      ]
+    },
+    "exchange_activity": {
+      "direct_mappings": [
+        {
+          "source": "CreationTime",
+          "destination": "time",
+          "type": "timestamp"
+        },
+        {
+          "source": "Id",
+          "destination": "metadata.uid",
+          "type": "string"
+        },
+        {
+          "source": "Operation",
+          "destination": "api.operation",
+          "type": "string"
+        },
+        {
+          "source": "OrganizationId",
+          "destination": "cloud.account.uid",
+          "type": "string"
+        },
+        {
+          "source": "OrganizationName",
+          "destination": "cloud.organization.name",
+          "type": "string"
+        },
+        {
+          "source": "UserId",
+          "destination": "actor.user.name",
+          "type": "string"
+        },
+        {
+          "source": "UserKey",
+          "destination": "actor.user.uid",
+          "type": "string"
+        },
+        {
+          "source": "UserType",
+          "destination": "actor.user.type_id",
+          "type": "integer"
+        },
+        {
+          "source": "ClientIP",
+          "destination": "src_endpoint.ip",
+          "type": "string"
+        },
+        {
+          "source": "OriginatingServer",
+          "destination": "src_endpoint.hostname",
+          "type": "string"
+        },
+        {
+          "source": "Workload",
+          "destination": "api.service.name",
+          "type": "string"
+        },
+        {
+          "source": "Item.InternetMessageId",
+          "destination": "message_trace_uid",
+          "type": "string"
+        },
+        {
+          "source": "Item.ParentFolder.Path",
+          "destination": "email.folder",
+          "type": "string"
+        },
+        {
+          "source": "Item.SizeInBytes",
+          "destination": "email.size",
+          "type": "integer"
+        },
+        {
+          "source": "ClientInfoString",
+          "destination": "http_request.user_agent",
+          "type": "string"
+        },
+        {
+          "source": "SessionId",
+          "destination": "session.uid",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.AADSessionId",
+          "destination": "unmapped.aad_session_id",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.APIId",
+          "destination": "unmapped.api_id",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.ClientAppId",
+          "destination": "unmapped.app_access_client_app_id",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.IssuedAtTime",
+          "destination": "unmapped.app_access_issued_time",
+          "type": "timestamp"
+        },
+        {
+          "source": "AppAccessContext.UniqueTokenId",
+          "destination": "unmapped.app_access_token_id",
+          "type": "string"
+        },
+        {
+          "source": "ExternalAccess",
+          "destination": "unmapped.external_access",
+          "type": "boolean"
+        },
+        {
+          "source": "InternalLogonType",
+          "destination": "unmapped.internal_logon_type",
+          "type": "integer"
+        },
+        {
+          "source": "LogonType",
+          "destination": "unmapped.logon_type",
+          "type": "integer"
+        },
+        {
+          "source": "LogonUserSid",
+          "destination": "unmapped.logon_user_sid",
+          "type": "string"
+        },
+        {
+          "source": "MailboxGuid",
+          "destination": "unmapped.mailbox_guid",
+          "type": "string"
+        },
+        {
+          "source": "MailboxOwnerSid",
+          "destination": "unmapped.mailbox_owner_sid",
+          "type": "string"
+        },
+        {
+          "source": "MailboxOwnerUPN",
+          "destination": "unmapped.mailbox_owner_upn",
+          "type": "string"
+        },
+        {
+          "source": "TokenObjectId",
+          "destination": "unmapped.token_object_id",
+          "type": "string"
+        },
+        {
+          "source": "TokenTenantId",
+          "destination": "unmapped.token_tenant_id",
+          "type": "string"
+        },
+        {
+          "source": "AppId",
+          "destination": "unmapped.app_id",
+          "type": "string"
+        },
+        {
+          "source": "Item.Id",
+          "destination": "unmapped.item_id",
+          "type": "string"
+        },
+        {
+          "source": "Item.ImmutableId",
+          "destination": "unmapped.item_immutable_id",
+          "type": "string"
+        },
+        {
+          "source": "Item.IsRecord",
+          "destination": "unmapped.item_is_record",
+          "type": "boolean"
+        }
+      ],
+      "transformations": [
+        {
+          "transformation": "literal",
+          "target": "class_name",
+          "value": "Email Activity",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "class_uid",
+          "value": 4009,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_name",
+          "value": "Network Activity",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_uid",
+          "value": 4,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.name",
+          "value": "Office 365",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.vendor_name",
+          "value": "Microsoft",
+          "type": "string"
+        },
+        {
+          "transformation": "variable",
+          "target": "metadata.version",
+          "value": "SCHEMA_VERSION",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "direction_id",
+          "value": 0,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "severity_id",
+          "value": 0,
+          "type": "integer"
+        },
+        {
+          "transformation": "conditional",
+          "if": {
+            "condition": {
+              "logic": "OR",
+              "clauses": [
+                {
+                  "lhs": {
+                    "type": "field",
+                    "value": "Operation"
+                  },
+                  "operation": "EQUALS",
+                  "rhs": {
+                    "type": "pattern",
+                    "value": "Create"
+                  }
+                }
+              ]
+            },
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 1,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Send",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 400901,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Email Activity: Send",
+                "type": "string"
+              }
+            ]
+          },
+          "else": {
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 99,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Other",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 400999,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Email Activity: Other",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "transformation": "enum",
+          "source": "ResultStatus",
+          "target": "status_id",
+          "type": "integer",
+          "default": 0,
+          "cases": [
+            {
+              "from": "Success",
+              "to": 1
+            },
+            {
+              "from": "Succeeded",
+              "to": 1
+            },
+            {
+              "from": "Failure",
+              "to": 2
+            }
+          ]
+        }
+      ]
+    },
+    "sharepoint_activity": {
+      "direct_mappings": [
+        {
+          "source": "CreationTime",
+          "destination": "time",
+          "type": "timestamp"
+        },
+        {
+          "source": "Id",
+          "destination": "metadata.uid",
+          "type": "string"
+        },
+        {
+          "source": "OrganizationId",
+          "destination": "cloud.account.uid",
+          "type": "string"
+        },
+        {
+          "source": "UserId",
+          "destination": "actor.user.name",
+          "type": "string"
+        },
+        {
+          "source": "UserKey",
+          "destination": "actor.user.uid",
+          "type": "string"
+        },
+        {
+          "source": "UserType",
+          "destination": "actor.user.type_id",
+          "type": "integer"
+        },
+        {
+          "source": "ClientIP",
+          "destination": "src_endpoint.ip",
+          "type": "string"
+        },
+        {
+          "source": "DeviceDisplayName",
+          "destination": "src_endpoint.name",
+          "type": "string"
+        },
+        {
+          "source": "Platform",
+          "destination": "unmapped.platform",
+          "type": "string"
+        },
+        {
+          "source": "UserAgent",
+          "destination": "http_request.user_agent",
+          "type": "string"
+        },
+        {
+          "source": "ObjectId",
+          "destination": "web_resources[].url_string",
+          "type": "string"
+        },
+        {
+          "source": "Site",
+          "destination": "web_resources[].uid",
+          "type": "string"
+        },
+        {
+          "source": "GeoLocation",
+          "destination": "unmapped.geo_location",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.AADSessionId",
+          "destination": "unmapped.aad_session_id",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.ClientAppName",
+          "destination": "unmapped.client_app_name",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.CorrelationId",
+          "destination": "unmapped.correlation_id",
+          "type": "string"
+        },
+        {
+          "source": "AppAccessContext.UniqueTokenId",
+          "destination": "unmapped.unique_token_id",
+          "type": "string"
+        },
+        {
+          "source": "AuthenticationType",
+          "destination": "unmapped.authentication_type",
+          "type": "string"
+        },
+        {
+          "source": "BrowserName",
+          "destination": "unmapped.browser_name",
+          "type": "string"
+        },
+        {
+          "source": "BrowserVersion",
+          "destination": "unmapped.browser_version",
+          "type": "string"
+        },
+        {
+          "source": "EventSource",
+          "destination": "unmapped.event_source",
+          "type": "string"
+        },
+        {
+          "source": "IsManagedDevice",
+          "destination": "unmapped.is_managed_device",
+          "type": "boolean"
+        },
+        {
+          "source": "ItemType",
+          "destination": "unmapped.item_type",
+          "type": "string"
+        },
+        {
+          "source": "WebId",
+          "destination": "unmapped.web_id",
+          "type": "string"
+        },
+        {
+          "source": "ApplicationDisplayName",
+          "destination": "unmapped.application_display_name",
+          "type": "string"
+        }
+      ],
+      "transformations": [
+        {
+          "transformation": "literal",
+          "target": "class_name",
+          "value": "Web Resources Activity",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "class_uid",
+          "value": 6001,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_name",
+          "value": "Application Activity",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "category_uid",
+          "value": 6,
+          "type": "integer"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.name",
+          "value": "Office 365",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "metadata.product.vendor_name",
+          "value": "Microsoft",
+          "type": "string"
+        },
+        {
+          "transformation": "variable",
+          "target": "metadata.version",
+          "value": "SCHEMA_VERSION",
+          "type": "string"
+        },
+        {
+          "transformation": "literal",
+          "target": "severity_id",
+          "value": 1,
+          "type": "integer"
+        },
+        {
+          "transformation": "conditional",
+          "if": {
+            "condition": {
+              "logic": "OR",
+              "clauses": [
+                {
+                  "lhs": {
+                    "type": "field",
+                    "value": "Operation"
+                  },
+                  "operation": "EQUALS",
+                  "rhs": {
+                    "type": "pattern",
+                    "value": "PageViewed"
+                  }
+                }
+              ]
+            },
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 2,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Read",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 600102,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Web Resources Activity: Read",
+                "type": "string"
+              }
+            ]
+          },
+          "else": {
+            "operations": [
+              {
+                "operation": "literal",
+                "target": "activity_id",
+                "value": 99,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "activity_name",
+                "value": "Other",
+                "type": "string"
+              },
+              {
+                "operation": "literal",
+                "target": "type_uid",
+                "value": 600199,
+                "type": "integer"
+              },
+              {
+                "operation": "literal",
+                "target": "type_name",
+                "value": "Web Resources Activity: Other",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "mapping_selector": {
+    "cases": [
+      {
+        "condition": {
+          "clauses": [
+            {
+              "lhs": {
+                "type": "field",
+                "value": "Operation"
+              },
+              "operation": "EQUALS",
+              "rhs": {
+                "type": "pattern",
+                "value": "(UserLoggedIn|MailboxLogin)"
+              }
+            },
+            {
+              "lhs": {
+                "type": "field",
+                "value": "Workload"
+              },
+              "operation": "EQUALS",
+              "rhs": {
+                "type": "string",
+                "value": "AzureActiveDirectory"
+              }
+            }
+          ]
+        },
+        "selection": "authentication"
+      },
+      {
+        "condition": {
+          "clauses": [
+            {
+              "lhs": {
+                "type": "field",
+                "value": "Workload"
+              },
+              "operation": "EQUALS",
+              "rhs": {
+                "type": "string",
+                "value": "Exchange"
+              }
+            }
+          ]
+        },
+        "selection": "exchange_activity"
+      },
+      {
+        "condition": {
+          "clauses": [
+            {
+              "lhs": {
+                "type": "field",
+                "value": "Workload"
+              },
+              "operation": "EQUALS",
+              "rhs": {
+                "type": "string",
+                "value": "SharePoint"
+              }
+            }
+          ]
+        },
+        "selection": "sharepoint_activity"
+      }
+    ],
+    "default_selection": "authentication"
+  },
+  "sourceType": "OFFICE365",
+  "ocsf_schema_name": "union-office365",
+  "input_file_type": "JSON",
+  "asl_version": "1.0",
+  "ocsf_schema_version": "1.0.0-rc.2"
+}
