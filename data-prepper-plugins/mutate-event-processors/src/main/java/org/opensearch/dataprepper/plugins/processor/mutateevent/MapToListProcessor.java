@@ -36,6 +36,7 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
     private final MapToListProcessorConfig config;
     private final ExpressionEvaluator expressionEvaluator;
     private final Set<String> excludeKeySet = new HashSet<>();
+    private final List<MapToListProcessorConfig.Entry> configEntries;
 
     @DataPrepperPluginConstructor
     public MapToListProcessor(final PluginMetrics pluginMetrics, final MapToListProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
@@ -50,6 +51,31 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                     String.format("map_to_list_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                             config.getMapToListWhen()));
         }
+
+        if (config.getSource() != null || config.getMapToListWhen() != null) {
+            MapToListProcessorConfig.Entry entry = new MapToListProcessorConfig.Entry(
+                    config.getSource(),
+                    config.getTarget(),
+                    config.getKeyName(),
+                    config.getValueName(),
+                    config.getRemoveProcessedFields(),
+                    config.getConvertFieldToList(),
+                    config.getExcludeKeys(),
+                    config.getTagsOnFailure(),
+                    config.getMapToListWhen()
+            );
+            configEntries = List.of(entry);
+        } else {
+            configEntries = config.getEntries();
+        }
+
+        for (MapToListProcessorConfig.Entry configEntry : configEntries) {
+            if (configEntry.getMapToListWhen() != null && !expressionEvaluator.isValidExpressionStatement(configEntry.getMapToListWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("map_to_list_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
+                                configEntry.getMapToListWhen()));
+            }
+        }
     }
 
     @Override
@@ -57,73 +83,75 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            try {
-
-                if (config.getMapToListWhen() != null && !expressionEvaluator.evaluateConditional(config.getMapToListWhen(), recordEvent)) {
-                    continue;
-                }
-
+            for (MapToListProcessorConfig.Entry configEntry : configEntries) {
                 try {
-                    final Map<String, Object> sourceMap = getSourceMap(recordEvent);
 
-                    if (config.getConvertFieldToList()) {
-                        final List<List<Object>> targetNestedList = new ArrayList<>();
-
-                        for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                            if (!excludeKeySet.contains(entry.getKey())) {
-                                targetNestedList.add(Arrays.asList(entry.getKey(), entry.getValue()));
-                            }
-                        }
-                        removeProcessedFields(sourceMap, recordEvent);
-                        recordEvent.put(config.getTarget(), targetNestedList);
-                    } else {
-                        final List<Map<String, Object>> targetList = new ArrayList<>();
-                        for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
-                            if (!excludeKeySet.contains(entry.getKey())) {
-                                final Map<String, Object> listItem = new HashMap<>();
-                                listItem.put(config.getKeyName(), entry.getKey());
-                                listItem.put(config.getValueName(), entry.getValue());
-                                targetList.add(listItem);
-                            }
-                        }
-                        removeProcessedFields(sourceMap, recordEvent);
-                        recordEvent.put(config.getTarget(), targetList);
+                    if (configEntry.getMapToListWhen() != null && !expressionEvaluator.evaluateConditional(configEntry.getMapToListWhen(), recordEvent)) {
+                        continue;
                     }
-                } catch (Exception e) {
+
+                    try {
+                        final Map<String, Object> sourceMap = getSourceMap(recordEvent, configEntry.getSource());
+
+                        if (configEntry.getConvertFieldToList()) {
+                            final List<List<Object>> targetNestedList = new ArrayList<>();
+
+                            for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                                if (!excludeKeySet.contains(entry.getKey())) {
+                                    targetNestedList.add(Arrays.asList(entry.getKey(), entry.getValue()));
+                                }
+                            }
+                            removeProcessedFields(sourceMap, recordEvent, configEntry);
+                            recordEvent.put(configEntry.getTarget(), targetNestedList);
+                        } else {
+                            final List<Map<String, Object>> targetList = new ArrayList<>();
+                            for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
+                                if (!excludeKeySet.contains(entry.getKey())) {
+                                    final Map<String, Object> listItem = new HashMap<>();
+                                    listItem.put(configEntry.getKeyName(), entry.getKey());
+                                    listItem.put(configEntry.getValueName(), entry.getValue());
+                                    targetList.add(listItem);
+                                }
+                            }
+                            removeProcessedFields(sourceMap, recordEvent, configEntry);
+                            recordEvent.put(configEntry.getTarget(), targetList);
+                        }
+                    } catch (Exception e) {
+                        LOG.atError()
+                                .addMarker(EVENT)
+                                .addMarker(NOISY)
+                                .setMessage("Fail to perform Map to List operation")
+                                .setCause(e)
+                                .log();
+                        recordEvent.getMetadata().addTags(configEntry.getTagsOnFailure());
+                    }
+                } catch (final Exception e) {
                     LOG.atError()
                             .addMarker(EVENT)
                             .addMarker(NOISY)
-                            .setMessage("Fail to perform Map to List operation")
+                            .setMessage("There was an exception while processing Event [{}]")
+                            .addArgument(recordEvent)
                             .setCause(e)
                             .log();
-                    recordEvent.getMetadata().addTags(config.getTagsOnFailure());
+                    recordEvent.getMetadata().addTags(configEntry.getTagsOnFailure());
                 }
-            } catch (final Exception e) {
-                LOG.atError()
-                        .addMarker(EVENT)
-                        .addMarker(NOISY)
-                        .setMessage("There was an exception while processing Event [{}]")
-                        .addArgument(recordEvent)
-                        .setCause(e)
-                        .log();
-                recordEvent.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
         return records;
     }
 
-    private Map<String, Object> getSourceMap(Event recordEvent) throws JsonProcessingException {
+    private Map<String, Object> getSourceMap(Event recordEvent, String source) throws JsonProcessingException {
         final Map<String, Object> sourceMap;
-        sourceMap = recordEvent.get(config.getSource(), Map.class);
+        sourceMap = recordEvent.get(source, Map.class);
         return sourceMap;
     }
 
-    private void removeProcessedFields(Map<String, Object> sourceMap, Event recordEvent) {
-        if (!config.getRemoveProcessedFields()) {
+    private void removeProcessedFields(Map<String, Object> sourceMap, Event recordEvent, MapToListProcessorConfig.Entry configEntry) {
+        if (!configEntry.getRemoveProcessedFields()) {
             return;
         }
 
-        if (Objects.equals(config.getSource(), "")) {
+        if (Objects.equals(configEntry.getSource(), "")) {
             // Source is root
             for (final Map.Entry<String, Object> entry : sourceMap.entrySet()) {
                 if (excludeKeySet.contains(entry.getKey())) {
@@ -138,7 +166,7 @@ public class MapToListProcessor extends AbstractProcessor<Record<Event>, Record<
                     modifiedSourceMap.put(entry.getKey(), entry.getValue());
                 }
             }
-            recordEvent.put(config.getSource(), modifiedSourceMap);
+            recordEvent.put(configEntry.getSource(), modifiedSourceMap);
         }
     }
 
