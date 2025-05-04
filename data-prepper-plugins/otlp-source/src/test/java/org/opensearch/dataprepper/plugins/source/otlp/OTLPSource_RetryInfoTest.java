@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.oteltelemetry;
+package org.opensearch.dataprepper.plugins.source.otlp;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -55,7 +55,7 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 
 @ExtendWith(MockitoExtension.class)
-public class OTelTelemetrySource_RetryInfoTest {
+public class OTLPSource_RetryInfoTest {
   private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21893/";
   private static final String TEST_PIPELINE_NAME = "test_pipeline";
   private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(100),
@@ -68,25 +68,25 @@ public class OTelTelemetrySource_RetryInfoTest {
   private GrpcBasicAuthenticationProvider authenticationProvider;
 
   @Mock(lenient = true)
-  private OTelTelemetrySourceConfig oTelTelemetrySourceConfig;
+  private OTLPSourceConfig otlpSourceConfig;
 
   @Mock
   private Buffer<Record<Object>> buffer;
 
-  private OTelTelemetrySource SOURCE;
+  private OTLPSource SOURCE;
 
   @BeforeEach
   void beforeEach() throws Exception {
     lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
     Mockito.lenient().doThrow(SizeOverflowException.class).when(buffer).writeAll(any(), anyInt());
 
-    when(oTelTelemetrySourceConfig.getPort()).thenReturn(21893);
-    when(oTelTelemetrySourceConfig.isSsl()).thenReturn(false);
-    when(oTelTelemetrySourceConfig.getRequestTimeoutInMillis()).thenReturn(1000);
-    when(oTelTelemetrySourceConfig.getMaxConnectionCount()).thenReturn(10);
-    when(oTelTelemetrySourceConfig.getThreadCount()).thenReturn(5);
-    when(oTelTelemetrySourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-    when(oTelTelemetrySourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+    when(otlpSourceConfig.getPort()).thenReturn(21893);
+    when(otlpSourceConfig.isSsl()).thenReturn(false);
+    when(otlpSourceConfig.getRequestTimeoutInMillis()).thenReturn(1000);
+    when(otlpSourceConfig.getMaxConnectionCount()).thenReturn(10);
+    when(otlpSourceConfig.getThreadCount()).thenReturn(5);
+    when(otlpSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+    when(otlpSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(authenticationProvider);
@@ -101,11 +101,11 @@ public class OTelTelemetrySource_RetryInfoTest {
   }
 
   private void configureObjectUnderTest() {
-    PluginMetrics pluginMetrics = PluginMetrics.fromNames("otel_telemetry", "pipeline");
+    PluginMetrics pluginMetrics = PluginMetrics.fromNames("otlp-source", "pipeline");
     PipelineDescription pipelineDescription = mock(PipelineDescription.class);
     lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
 
-    SOURCE = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+    SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
   }
 
   @Test
