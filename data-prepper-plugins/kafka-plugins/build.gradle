@@ -29,6 +29,7 @@ dependencies {
     implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:encryption-plugin')
     // bump io.confluent:* dependencies correspondingly when bumping org.apache.kafka.*
     // https://docs.confluent.io/platform/current/release-notes/index.html
     implementation 'org.apache.kafka:kafka-clients:3.6.1'

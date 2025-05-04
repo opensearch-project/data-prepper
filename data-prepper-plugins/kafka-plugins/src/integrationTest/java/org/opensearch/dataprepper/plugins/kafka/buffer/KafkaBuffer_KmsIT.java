@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.TestProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +78,9 @@ public class KafkaBuffer_KmsIT {
 
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
+
+    @Mock
+    private EncryptionSupplier encryptionSupplier;
 
     private Random random;
 
@@ -132,7 +136,7 @@ public class KafkaBuffer_KmsIT {
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, awsCredentialsSupplier, null, encryptionSupplier);
     }
 
     @Nested

@@ -98,6 +98,11 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @JsonProperty("fetch_min_bytes")
     private String fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
+    @Override
+    public String getEncryptionId() {
+        return null;
+    }
+
 
     @Override
     public String getEncryptionKey() {

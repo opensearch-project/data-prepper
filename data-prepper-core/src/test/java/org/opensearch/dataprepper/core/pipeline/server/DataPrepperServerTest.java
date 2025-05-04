@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionHttpHandler;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +53,9 @@ public class DataPrepperServerTest {
     private GetPipelinesHandler getPipelinesHandler;
 
     @Mock
+    private EncryptionHttpHandler encryptionHttpHandler;
+
+    @Mock
     private PrometheusMeterRegistry prometheusMeterRegistry;
 
     @Mock
@@ -71,7 +75,7 @@ public class DataPrepperServerTest {
 
     @Test
     public void testDataPrepperServerConstructor() {
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, authenticator);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, authenticator, null);
         assertThat(dataPrepperServer, is(notNullValue()));
     }
 
@@ -79,7 +83,7 @@ public class DataPrepperServerTest {
     public void testGivenValidServerWhenStartThenShouldCallServerStart() {
         mockServerStart();
 
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, authenticator);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, authenticator, null);
         dataPrepperServer.start();
 
         verifyServerStart();
@@ -89,10 +93,24 @@ public class DataPrepperServerTest {
     }
 
     @Test
+    public void testServerStartWithEncryptionHttpHandler() {
+        mockServerStart();
+
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, authenticator, encryptionHttpHandler);
+        dataPrepperServer.start();
+
+        verifyServerStart();
+        verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
+        verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
+        verify(server).createContext(eq("/encryption/rotate"), any(EncryptionHttpHandler.class));
+        verify(context, times(6)).setAuthenticator(eq(authenticator));
+    }
+
+    @Test
     public void testGivenValidServerWhenStartThenShouldCallServerStart_NullPrometheus() {
         mockServerStart();
 
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, authenticator);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, authenticator, null);
         dataPrepperServer.start();
 
         verifyServerStart();
@@ -103,7 +121,7 @@ public class DataPrepperServerTest {
     public void testGivenValidServerWhenStartThenShouldCallServerStart_NullAuthenticator() {
         mockServerStart();
 
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, null);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(prometheusMeterRegistry, null, null);
         dataPrepperServer.start();
 
         verifyServerStart();
@@ -115,7 +133,7 @@ public class DataPrepperServerTest {
     public void testGivenValidServerWhenStartThenShouldCallServerStart_NullPrometheusAndAuthenticator() {
         mockServerStart();
 
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, null);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, null, null);
         dataPrepperServer.start();
 
         verifyServerStart();
@@ -126,7 +144,7 @@ public class DataPrepperServerTest {
     public void testGivenValidServerWhenStopThenShouldCallServerStopWithNoDelay() {
         mockServerStart();
 
-        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, null);
+        final DataPrepperServer dataPrepperServer = createObjectUnderTest(null, null, null);
         dataPrepperServer.start();
         dataPrepperServer.stop();
 
@@ -161,7 +179,10 @@ public class DataPrepperServerTest {
         verify(socketAddress).getPort();
     }
 
-    private DataPrepperServer createObjectUnderTest(final PrometheusMeterRegistry prometheusMeterRegistry, final Authenticator authenticator) {
-        return new DataPrepperServer(httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, prometheusMeterRegistry, authenticator);
+    private DataPrepperServer createObjectUnderTest(final PrometheusMeterRegistry prometheusMeterRegistry,
+                                                    final Authenticator authenticator,
+                                                    final EncryptionHttpHandler encryptionHttpHandler) {
+        return new DataPrepperServer(
+                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, encryptionHttpHandler, prometheusMeterRegistry, authenticator);
     }
 }

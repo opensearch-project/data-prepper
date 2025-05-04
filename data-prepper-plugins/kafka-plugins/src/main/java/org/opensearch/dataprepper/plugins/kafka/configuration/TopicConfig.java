@@ -19,6 +19,8 @@ public interface TopicConfig {
 
     MessageFormat getSerdeFormat();
 
+    String getEncryptionId();
+
     String getEncryptionKey();
 
     KmsConfig getKmsConfig();
