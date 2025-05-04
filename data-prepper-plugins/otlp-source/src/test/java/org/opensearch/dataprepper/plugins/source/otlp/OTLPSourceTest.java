@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.source.oteltelemetry;
+package org.opensearch.dataprepper.plugins.source.otlp;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,7 +59,7 @@ import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.source.oteltelemetry.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.source.otlp.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -146,12 +146,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.oteltelemetry.OTelTelemetrySourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.oteltelemetry.OTelTelemetrySourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.oteltelemetry.OTelTelemetrySourceConfig.SSL;
+import static org.opensearch.dataprepper.plugins.source.otlp.OTLPSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otlp.OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otlp.OTLPSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
-class OTelTelemetrySourceTest {
+class OTLPSourceTest {
   private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21893/";
   private static final String USERNAME = "test_user";
   private static final String PASSWORD = "test_password";
@@ -219,7 +219,7 @@ class OTelTelemetrySourceTest {
   private GrpcBasicAuthenticationProvider authenticationProvider;
 
   @Mock(lenient = true)
-  private OTelTelemetrySourceConfig oTelTelemetrySourceConfig;
+  private OTLPSourceConfig otlpSourceConfig;
 
   @Mock
   private BlockingBuffer<Record<Object>> buffer;
@@ -231,7 +231,7 @@ class OTelTelemetrySourceTest {
   private PluginSetting testPluginSetting;
   private PluginMetrics pluginMetrics;
   private PipelineDescription pipelineDescription;
-  private OTelTelemetrySource SOURCE;
+  private OTLPSource SOURCE;
 
   @BeforeEach
   public void beforeEach() {
@@ -253,13 +253,13 @@ class OTelTelemetrySourceTest {
 
     lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
 
-    when(oTelTelemetrySourceConfig.getPort()).thenReturn(DEFAULT_PORT);
-    when(oTelTelemetrySourceConfig.isSsl()).thenReturn(false);
-    when(oTelTelemetrySourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
-    when(oTelTelemetrySourceConfig.getMaxConnectionCount()).thenReturn(10);
-    when(oTelTelemetrySourceConfig.getThreadCount()).thenReturn(5);
-    when(oTelTelemetrySourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-    when(oTelTelemetrySourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
+    when(otlpSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+    when(otlpSourceConfig.isSsl()).thenReturn(false);
+    when(otlpSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+    when(otlpSourceConfig.getMaxConnectionCount()).thenReturn(10);
+    when(otlpSourceConfig.getThreadCount()).thenReturn(5);
+    when(otlpSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
+    when(otlpSourceConfig.getRetryInfo()).thenReturn(TEST_RETRY_INFO);
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(authenticationProvider);
@@ -275,10 +275,10 @@ class OTelTelemetrySourceTest {
 
   private void configureObjectUnderTest() {
     MetricsTestUtil.initMetrics();
-    pluginMetrics = PluginMetrics.fromNames("otel_telemetry", "pipeline");
+    pluginMetrics = PluginMetrics.fromNames("otlp-source", "pipeline");
     pipelineDescription = mock(PipelineDescription.class);
     when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-    SOURCE = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics, pluginFactory,
+    SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory,
         pipelineDescription);
   }
 
@@ -347,12 +347,12 @@ class OTelTelemetrySourceTest {
     settingsMap.put("useAcmCertForSSL", false);
     settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
     settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
-    pluginSetting = new PluginSetting("otel_telemetry", settingsMap);
+    pluginSetting = new PluginSetting("otlp-source", settingsMap);
     pluginSetting.setPipelineName("pipeline");
 
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
-    SOURCE = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics, pluginFactory,
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(),
+        OTLPSourceConfig.class);
+    SOURCE = new OTLPSource(otlpSourceConfig, pluginMetrics, pluginFactory,
         pipelineDescription);
 
     SOURCE.start(buffer);
@@ -467,7 +467,7 @@ class OTelTelemetrySourceTest {
 
   @Test
   void testHttpFullJsonWithUnframedRequests() throws InvalidProtocolBufferException {
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -516,8 +516,8 @@ class OTelTelemetrySourceTest {
 
   @Test
   void testHttpCompressionWithUnframedRequests() throws IOException {
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -569,10 +569,10 @@ class OTelTelemetrySourceTest {
 
   @Test
   void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
+    when(otlpSourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
+    when(otlpSourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -632,14 +632,14 @@ class OTelTelemetrySourceTest {
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(grpcAuthenticationProvider);
-    when(oTelTelemetrySourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+    when(otlpSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
         Map.of(
             "username", USERNAME,
             "password", PASSWORD)));
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
+    when(otlpSourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
+    when(otlpSourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
 
     configureObjectUnderTest();
     SOURCE.start(buffer);
@@ -698,14 +698,14 @@ class OTelTelemetrySourceTest {
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(grpcAuthenticationProvider);
-    when(oTelTelemetrySourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+    when(otlpSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
         Map.of(
             "username", USERNAME,
             "password", PASSWORD)));
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
+    when(otlpSourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
+    when(otlpSourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
 
     configureObjectUnderTest();
     SOURCE.start(buffer);
@@ -753,14 +753,14 @@ class OTelTelemetrySourceTest {
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(grpcAuthenticationProvider);
-    when(oTelTelemetrySourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+    when(otlpSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
         Map.of(
             "username", USERNAME,
             "password", PASSWORD)));
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
+    when(otlpSourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
+    when(otlpSourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -817,7 +817,7 @@ class OTelTelemetrySourceTest {
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(grpcAuthenticationProvider);
-    when(oTelTelemetrySourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+    when(otlpSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
         Map.of(
             "username", USERNAME,
             "password", PASSWORD)));
@@ -848,9 +848,9 @@ class OTelTelemetrySourceTest {
 
   @Test
   void testHttpWithoutSslFailsWhenSslIsEnabled() throws InvalidProtocolBufferException {
-    when(oTelTelemetrySourceConfig.isSsl()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-    when(oTelTelemetrySourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+    when(otlpSourceConfig.isSsl()).thenReturn(true);
+    when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
+    when(otlpSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -902,9 +902,9 @@ class OTelTelemetrySourceTest {
 
   @Test
   void testGrpcFailsIfSslIsEnabledAndNoTls() {
-    when(oTelTelemetrySourceConfig.isSsl()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-    when(oTelTelemetrySourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+    when(otlpSourceConfig.isSsl()).thenReturn(true);
+    when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
+    when(otlpSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -954,9 +954,9 @@ class OTelTelemetrySourceTest {
 
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -997,9 +997,9 @@ class OTelTelemetrySourceTest {
 
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -1048,9 +1048,9 @@ class OTelTelemetrySourceTest {
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
 
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -1095,9 +1095,9 @@ class OTelTelemetrySourceTest {
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
 
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -1140,9 +1140,9 @@ class OTelTelemetrySourceTest {
 
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -1187,9 +1187,9 @@ class OTelTelemetrySourceTest {
 
       testPluginSetting = new PluginSetting(null, settingsMap);
       testPluginSetting.setPipelineName("pipeline");
-      oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-          OTelTelemetrySourceConfig.class);
-      final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig,
+      otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+          OTLPSourceConfig.class);
+      final OTLPSource source = new OTLPSource(otlpSourceConfig,
           pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
       source.start(buffer);
       source.stop();
@@ -1219,9 +1219,9 @@ class OTelTelemetrySourceTest {
     testPluginSetting = new PluginSetting(null, settingsMap);
     testPluginSetting.setPipelineName("pipeline");
 
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, certificateProviderFactory, pipelineDescription);
 
     source.start(buffer);
@@ -1261,9 +1261,9 @@ class OTelTelemetrySourceTest {
     testPluginSetting = new PluginSetting(null, settingsMap);
     testPluginSetting.setPipelineName("pipeline");
 
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, certificateProviderFactory, pipelineDescription);
 
     source.start(buffer);
@@ -1309,12 +1309,12 @@ class OTelTelemetrySourceTest {
 
     testPluginSetting = new PluginSetting(null, settingsMap);
     testPluginSetting.setPipelineName("pipeline");
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
 
     when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, certificateProviderFactory, pipelineDescription);
 
     try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -1339,12 +1339,12 @@ class OTelTelemetrySourceTest {
 
     testPluginSetting = new PluginSetting(null, settingsMap);
     testPluginSetting.setPipelineName("pipeline");
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
 
     when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, certificateProviderFactory, pipelineDescription);
 
     try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -1372,9 +1372,9 @@ class OTelTelemetrySourceTest {
     Map<String, Object> settingsMap = Map.of("retry_info", TEST_RETRY_INFO, SSL, false);
     testPluginSetting = new PluginSetting(null, settingsMap);
     testPluginSetting.setPipelineName("pipeline");
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     // Expect RuntimeException because when port is already in use, BindException is
     // thrown which is not RuntimeException
@@ -1385,9 +1385,9 @@ class OTelTelemetrySourceTest {
   void testStartWithEmptyBuffer() {
     testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
     testPluginSetting.setPipelineName("pipeline");
-    oTelTelemetrySourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
-        OTelTelemetrySourceConfig.class);
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    otlpSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(),
+        OTLPSourceConfig.class);
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     assertThrows(IllegalStateException.class, () -> source.start(null));
   }
@@ -1395,7 +1395,7 @@ class OTelTelemetrySourceTest {
   @Test
   void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
     // Prepare
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
       armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -1411,7 +1411,7 @@ class OTelTelemetrySourceTest {
   @Test
   void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
     // Prepare
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
       armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -1427,7 +1427,7 @@ class OTelTelemetrySourceTest {
   @Test
   void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
     // Prepare
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
       armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -1442,7 +1442,7 @@ class OTelTelemetrySourceTest {
   @Test
   void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
     // Prepare
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
       armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -1460,7 +1460,7 @@ class OTelTelemetrySourceTest {
   @Test
   void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
     // Prepare
-    final OTelTelemetrySource source = new OTelTelemetrySource(oTelTelemetrySourceConfig, pluginMetrics,
+    final OTLPSource source = new OTLPSource(otlpSourceConfig, pluginMetrics,
         pluginFactory, pipelineDescription);
     try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
       armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -1511,8 +1511,8 @@ class OTelTelemetrySourceTest {
 
     when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
         .thenReturn(grpcAuthenticationProvider);
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
         Map.of(
             "username", USERNAME,
             "password", PASSWORD)));
@@ -1551,10 +1551,10 @@ class OTelTelemetrySourceTest {
 
   @Test
   void gRPC_request_with_custom_path_throws_when_written_to_default_path() {
-    when(oTelTelemetrySourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getTracesPath()).thenReturn(TRACES_TEST_PATH);
+    when(otlpSourceConfig.getMetricsPath()).thenReturn(METRICS_TEST_PATH);
+    when(otlpSourceConfig.getLogsPath()).thenReturn(LOGS_TEST_PATH);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
 
     configureObjectUnderTest();
     SOURCE.start(buffer);
@@ -1619,8 +1619,8 @@ class OTelTelemetrySourceTest {
 
   @Test
   void request_that_exceeds_maxRequestLength_returns_413() throws InvalidProtocolBufferException {
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
-    when(oTelTelemetrySourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(4));
     configureObjectUnderTest();
     SOURCE.start(buffer);
 
@@ -1667,14 +1667,14 @@ class OTelTelemetrySourceTest {
   @Test
   void testServerConnectionsMetric() throws InvalidProtocolBufferException {
     // Prepare
-    when(oTelTelemetrySourceConfig.enableUnframedRequests()).thenReturn(true);
+    when(otlpSourceConfig.enableUnframedRequests()).thenReturn(true);
     SOURCE.start(buffer);
 
     final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
-        .add("pipeline").add("otel_telemetry").toString();
+        .add("pipeline").add("otlp-source").toString();
     List<Measurement> serverConnectionsMeasurements = MetricsTestUtil.getMeasurementList(
         new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-            .add(OTelTelemetrySource.SERVER_CONNECTIONS).toString());
+            .add(OTLPSource.SERVER_CONNECTIONS).toString());
 
     // Verify connections metric value is 0
     Measurement serverConnectionsMeasurement = MetricsTestUtil
