@@ -1,23 +1,44 @@
 # OTLP Source
 
-This is a source which follows the [OTLP Protocol](https://github.com/open-telemetry/oteps/blob/master/text/0035-opentelemetry-protocol.md) and supports three endpoints for logs, metrics, and traces. It supports both `OTLP/grpc` and `OTLP/HTTP`.
+This is a source which follows the [OTLP Protocol](https://opentelemetry.io/docs/specs/otlp/) and supports three endpoints for logs, metrics, and traces. It supports both `OTLP/grpc` and `OTLP/HTTP`.
 
 ## Usages
 
-Example `.yaml` configuration:
+### Routing telemetry signal based on event type
+
+Each of the telemetry signals may be sent to different processors or sinks based on specific needs. The routing to downstream pipelines is based on meta-data routing.
 
 ```yaml
-source:
-  otlp:
+otel-telemetry-pipeline:
+  source:
+    otlp:
+      ssl: false
+  route:
+    - logs: 'getMetadata("eventType") == "LOG"'
+    - traces: 'getMetadata("eventType") == "TRACE"'
+    - metrics: 'getMetadata("eventType") == "METRIC"'
+  sink:
+    - pipeline:
+        name: "logs-pipeline"
+        routes:
+          - "logs"
+    - pipeline:
+        name: "traces-pipeline"
+        routes:
+          - "traces"
+    - pipeline:
+        name: "metrics-pipeline"
+        routes:
+          - "metrics"
 ```
 
 ## Configurations
 
-- port(Optional) => An `int` represents the port OTel telemetry source is running on. Default is `21893`.
+- port(Optional) => An `int` represents the port OTLP source is running on. Default is `21893`.
 - logs_path(Optional) => A `String` which represents the path for sending unframed HTTP requests for logs. It should start with `/` and length should be at least 1. Default is `/opentelemetry.proto.collector.logs.v1.LogsService/Export`.
 - metrics_path(Optional) => A `String` which represents the path for sending unframed HTTP requests for metrics. It should start with `/` and length should be at least 1. Default is `/opentelemetry.proto.collector.metrics.v1.MetricsService/Export`.
 - traces_path(Optional) => A `String` which represents the path for sending unframed HTTP requests for traces. It should start with `/` and length should be at least 1. Default is `/opentelemetry.proto.collector.trace.v1.TraceService/Export`.
-- request_timeout(Optional) => An `int` represents request timeout in millis. Default is `10_000`.
+- request_timeout(Optional) => An `int` represents request timeout in millis. Default is `10000`.
 - health_check_service(Optional) => A boolean enables a gRPC health check service under `grpc.health.v1.Health/Check`. Default is `false`.
 - proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is `false`.
 - unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. When `health_check_service` is true and `unframed_requests` is true, enables HTTP health check service under `/health`.
@@ -53,15 +74,15 @@ source:
 ### Counter
 
 - `requestTimeouts`: measures total number of requests that time out.
-- `requestsReceived`: measures total number of requests received by OTel telemetry source.
-- `successRequests`: measures total number of requests successfully processed by OTel telemetry source plugin.
-- `badRequests`: measures total number of requests with invalid format processed by OTel telemetry source plugin.
+- `requestsReceived`: measures total number of requests received by OTLP source.
+- `successRequests`: measures total number of requests successfully processed by OTLP source plugin.
+- `badRequests`: measures total number of requests with invalid format processed by OTLP source plugin.
 - `requestsTooLarge`: measures total number of requests that exceed the maximum allowed size.
-- `internalServerError`: measures total number of requests processed by OTel telemetry source with custom exception type.
+- `internalServerError`: measures total number of requests processed by OTLP source with custom exception type.
 
 ### Timer
 
-- `requestProcessDuration`: measures latency of requests processed by OTel telemetry source plugin in seconds.
+- `requestProcessDuration`: measures latency of requests processed by OTLP source plugin in seconds.
 
 ### Distribution Summary
 
