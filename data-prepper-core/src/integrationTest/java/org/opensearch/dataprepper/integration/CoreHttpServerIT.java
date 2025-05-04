@@ -23,13 +23,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class CoreHttpServerIT {
     private static final Logger log = LoggerFactory.getLogger(CoreHttpServerIT.class);
-    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = "minimal-pipeline.yaml";
+    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper/";
+    private static final String DATA_PREPPER_CONFIG_FILE = BASE_PATH + "configuration/data-prepper-config.yaml";
+    private static final String PIPELINE_BASE_PATH = BASE_PATH + "pipeline/";
+    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = PIPELINE_BASE_PATH + "minimal-pipeline.yaml";
     private DataPrepperTestRunner dataPrepperTestRunner;
 
     @BeforeEach
     void setUp() {
         dataPrepperTestRunner = DataPrepperTestRunner.builder()
                 .withPipelinesDirectoryOrFile(PIPELINE_CONFIGURATION_UNDER_TEST)
+                .withDataPrepperConfigFile(DATA_PREPPER_CONFIG_FILE)
                 .build();
 
         dataPrepperTestRunner.start();

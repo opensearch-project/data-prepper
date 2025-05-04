@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
-import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySinkAccessor;
+import org.opensearch.dataprepper.plugins.test.framework.InMemorySourceAccessor;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 
 import java.util.Collections;
@@ -31,7 +31,10 @@ import static org.hamcrest.Matchers.empty;
 
 public class Connected_SingleIT {
     private static final String IN_MEMORY_IDENTIFIER = "Connected_SingleIT";
-    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = "connected/single-connection.yaml";
+    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper/";
+    private static final String DATA_PREPPER_CONFIG_FILE = BASE_PATH + "configuration/data-prepper-config.yaml";
+    private static final String PIPELINE_BASE_PATH = BASE_PATH + "pipeline/connected/";
+    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = PIPELINE_BASE_PATH + "single-connection.yaml";
     private DataPrepperTestRunner dataPrepperTestRunner;
     private InMemorySourceAccessor inMemorySourceAccessor;
     private InMemorySinkAccessor inMemorySinkAccessor;
@@ -40,6 +43,7 @@ public class Connected_SingleIT {
     void setUp() {
         dataPrepperTestRunner = DataPrepperTestRunner.builder()
                 .withPipelinesDirectoryOrFile(PIPELINE_CONFIGURATION_UNDER_TEST)
+                .withDataPrepperConfigFile(DATA_PREPPER_CONFIG_FILE)
                 .build();
 
         dataPrepperTestRunner.start();

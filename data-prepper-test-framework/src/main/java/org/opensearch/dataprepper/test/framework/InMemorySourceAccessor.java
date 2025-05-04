@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins;
+package org.opensearch.dataprepper.plugins.test.framework;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
@@ -53,37 +53,6 @@ public class InMemorySourceAccessor {
         return ackReceived.get();
     }
 
-    public void submit(final String testingKey, int numRecords) {
-        if (eventFactory == null) {
-            return;
-        }
-        List<Record<Event>> records = new ArrayList<>();
-        for (int i = 0; i < numRecords; i++) {
-            Map<String, Object> eventMap = Map.of("message", UUID.randomUUID().toString());
-            EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withData(eventMap);
-            Event event = eventBuilder.build();
-            records.add(new Record<>(event));
-        }
-        submit(testingKey, records);
-    }
-
-    public void submitWithStatus(final String testingKey, int numRecords) {
-        if (eventFactory == null) {
-            return;
-        }
-        List<Record<Event>> records = new ArrayList<>();
-        for (int i = 0; i < numRecords; i++) {
-            final int max = 600;
-            final int min = 100;
-            int status = (int)(Math.random() * (max - min + 1) + min);
-            Map<String, Object> eventMap = Map.of("message", UUID.randomUUID().toString(), "status", status);
-            EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withData(eventMap);
-            Event event = eventBuilder.build();
-            records.add(new Record<>(event));
-        }
-        submit(testingKey, records);
-    }
-
     /**
      * Submits records to the in_memory source. These will be available to the source
      * for reading.
@@ -92,6 +61,9 @@ public class InMemorySourceAccessor {
      * @param newRecords New records to add.
      */
     public void submit(final String testingKey, final List<Record<Event>> newRecords) {
+        if (eventFactory == null) {
+            return;
+        }
         lock.lock();
         try {
             recordsMap.computeIfAbsent(testingKey, i -> new ArrayList<>())
