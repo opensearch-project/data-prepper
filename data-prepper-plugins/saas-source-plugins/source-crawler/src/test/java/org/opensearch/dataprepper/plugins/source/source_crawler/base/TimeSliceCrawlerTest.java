@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,9 +45,6 @@ public class TimeSliceCrawlerTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private Timer crawlingTimer;
-
-    @Mock
     private Counter partitionsCreatedCounter;
 
     @Mock
@@ -62,7 +58,6 @@ public class TimeSliceCrawlerTest {
 
     @BeforeEach
     void setUp() {
-        when(pluginMetrics.timer(anyString())).thenReturn(crawlingTimer);
         when(pluginMetrics.counter(anyString())).thenReturn(partitionsCreatedCounter);
 
         crawler = new TimeSliceCrawler(client, pluginMetrics);

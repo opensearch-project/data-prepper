@@ -1,7 +1,6 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -17,26 +16,23 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
+/**
+ * A crawler implementation that processes data in specific time slices.
+ * This class provides functionality to crawl and collect data within defined time intervals,
+ * helping to manage resource utilization and rate limiting.
+ */
 @Named
 public class TimeSliceCrawler implements Crawler {
     private static final Logger log = LoggerFactory.getLogger(TimeSliceCrawler.class);
     private static final String TIME_SLICE_WORKER_PARTITIONS_CREATED = "TimeSliceWorkerPartitionsCreated";
-    private final Timer crawlingTimer;
     private final CrawlerClient client;
     private final Counter partitionsCreatedCounter;
     private static final String LAST_UPDATED_KEY = "last_updated|";
 
-    /**
-     * A crawler implementation that processes data in specific time slices.
-     * This class provides functionality to crawl and collect data within defined time intervals,
-     * helping to manage resource utilization and rate limiting.
-     */
     public TimeSliceCrawler(CrawlerClient client, PluginMetrics pluginMetrics) {
         this.client = client;
-        this.crawlingTimer = pluginMetrics.timer("crawlingTime");
         this.partitionsCreatedCounter = pluginMetrics.counter(TIME_SLICE_WORKER_PARTITIONS_CREATED);
     }
 
@@ -45,12 +41,11 @@ public class TimeSliceCrawler implements Crawler {
      */
     @Override
     public Instant crawl(LeaderPartition leaderPartition, EnhancedSourceCoordinator coordinator) {
-        long startTime = System.currentTimeMillis();
         Instant latestModifiedTime =  Instant.now();
+        double startCount = partitionsCreatedCounter.count();
         createPartitionForCrawling(leaderPartition, coordinator, latestModifiedTime);
-        long crawlTimeMillis = System.currentTimeMillis() - startTime;
-        log.debug("Crawling completed in {} ms", crawlTimeMillis);
-        crawlingTimer.record(crawlTimeMillis, TimeUnit.MILLISECONDS);
+        double partitionsInThisCrawl = partitionsCreatedCounter.count() - startCount;
+        log.info("Total partitions created in this crawl: {}", partitionsInThisCrawl);
         return latestModifiedTime;
     }
 
@@ -102,7 +97,6 @@ public class TimeSliceCrawler implements Crawler {
         for(int i = remainingDays; i > 0; i--) {
             Instant startDate = todayUtc.minus(Duration.ofDays(i));
             createWorkerPartition(startDate, startDate.plus(Duration.ofDays(1)), coordinator);
-            updateLeaderProgressState(leaderPartition, i-1, leaderProgressState.getLastPollTime(), coordinator);
         }
         // Create a final partition from today's midnight to now
         createWorkerPartition(todayUtc, latestModifiedTime, coordinator);
