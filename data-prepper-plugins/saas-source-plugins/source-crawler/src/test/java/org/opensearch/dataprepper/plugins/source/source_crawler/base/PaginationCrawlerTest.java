@@ -13,8 +13,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.LeaderProgressState;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.TestItemInfo;
 
@@ -46,7 +46,7 @@ public class PaginationCrawlerTest {
     @Mock
     private CrawlerClient client;
     @Mock
-    private SaasWorkerProgressState state;
+    private AtlassianWorkerProgressState state;
     @Mock
     private LeaderPartition leaderPartition;
     private Crawler crawler;
@@ -56,7 +56,7 @@ public class PaginationCrawlerTest {
     @BeforeEach
     public void setup() {
         crawler = new PaginationCrawler(client, pluginMetrics);
-        when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
+        when(leaderPartition.getProgressState()).thenReturn(Optional.of(new AtlassianLeaderProgressState(lastPollTime)));
     }
 
     @Test
@@ -76,7 +76,7 @@ public class PaginationCrawlerTest {
     void testCrawlWithEmptyList() {
         Instant lastPollTime = Instant.ofEpochMilli(0);
         when(client.listItems(lastPollTime)).thenReturn(Collections.emptyIterator());
-        when(leaderPartition.getProgressState()).thenReturn(Optional.of(new LeaderProgressState(lastPollTime)));
+        when(leaderPartition.getProgressState()).thenReturn(Optional.of(new AtlassianLeaderProgressState(lastPollTime)));
         crawler.crawl(leaderPartition, coordinator);
         verify(coordinator, never()).createPartition(any(SaasSourcePartition.class));
     }
