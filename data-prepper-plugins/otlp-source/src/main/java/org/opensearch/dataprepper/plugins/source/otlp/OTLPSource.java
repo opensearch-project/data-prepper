@@ -5,19 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source.otlp;
 
-import com.linecorp.armeria.common.grpc.GrpcExceptionHandlerFunction;
 import com.linecorp.armeria.server.Server;
 
-import io.grpc.ServerInterceptor;
-import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsGrpcService;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsGrpcService;
@@ -37,7 +32,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
