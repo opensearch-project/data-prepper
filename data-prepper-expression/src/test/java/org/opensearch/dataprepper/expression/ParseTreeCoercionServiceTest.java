@@ -228,12 +228,12 @@ class ParseTreeCoercionServiceTest {
 
     @ParameterizedTest
     @MethodSource("provideSupportedJsonPointerValues")
-    void testCoerceTerminalNodeRawStringTypeSupportedValues(final Object testValue) {
+    void testCoerceTerminalNodeTripleQuoteStringTypeSupportedValues(final Object testValue) {
         final String testKey = "/testKey";
-        final String testRawStringKey = "r\"/testKey\"";
-        when(token.getType()).thenReturn(DataPrepperExpressionParser.RawString);
+        final String testTruipleQuoteStringKey = "\"\"\"/testKey\"\"\"";
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.String);
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testRawStringKey);
+        when(terminalNode.getText()).thenReturn(testTruipleQuoteStringKey);
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, null);
         assertThat(result, equalTo(testKey));
     }

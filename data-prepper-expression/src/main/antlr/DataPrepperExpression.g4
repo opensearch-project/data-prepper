@@ -182,7 +182,6 @@ literal
     | Integer
     | Boolean
     | String
-    | RawString
     | Null
     ;
 
@@ -270,12 +269,9 @@ VariableNameCharacter
     | [0-9-]
     ;
 
-RawString
-    : [r] DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
-    ;
-
 String
     : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
+    | DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE StringCharacters? DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE
     ;
 
 fragment
