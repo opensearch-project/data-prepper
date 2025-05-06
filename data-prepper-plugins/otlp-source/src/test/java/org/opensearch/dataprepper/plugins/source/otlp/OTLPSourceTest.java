@@ -59,9 +59,8 @@ import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.otlp.certificate.CertificateProviderFactory;
-import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSource;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.protobuf.ByteString;

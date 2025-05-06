@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class OTLPSourceConfig {
@@ -276,7 +277,4 @@ public class OTLPSourceConfig {
     return retryInfo;
   }
 
-  public void setRetryInfo(RetryInfoConfig retryInfo) {
-    this.retryInfo = retryInfo;
-  }
 }
