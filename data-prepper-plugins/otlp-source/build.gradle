@@ -15,6 +15,7 @@ dependencies {
     implementation project(':data-prepper-plugins:otel-logs-source')
     implementation project(':data-prepper-plugins:otel-metrics-source')
     implementation project(':data-prepper-plugins:otel-trace-source')
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.commons.codec
     implementation project(':data-prepper-plugins:armeria-common')
     implementation libs.opentelemetry.proto

@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 import java.time.Duration;
 import java.util.HashMap;
