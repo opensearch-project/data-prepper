@@ -46,7 +46,7 @@ public class AddressValidationTest {
 
     @Test
     void testGetInetAddressWithUnknownHost() {
-        String testUrl = "https://www.thisurldoesntexist1384276t5917278481073.com";
+        String testUrl = "https://www.thisurldoesntexist1384276t5917278481073.invalid";
         assertThrows(BadRequestException.class, () -> AddressValidation.getInetAddress(testUrl));
     }
 

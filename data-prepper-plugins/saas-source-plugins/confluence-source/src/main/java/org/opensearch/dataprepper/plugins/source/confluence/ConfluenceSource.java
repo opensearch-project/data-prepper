@@ -25,11 +25,13 @@ import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAu
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.time.Instant;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.PLUGIN_NAME;
 
 
@@ -68,6 +70,11 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
         ConfluenceConfigHelper.validateConfig(confluenceSourceConfig);
         jiraOauthConfig.initCredentials();
         super.start(buffer);
+    }
+
+    @Override
+    protected LeaderProgressState createLeaderProgressState() {
+        return new AtlassianLeaderProgressState(Instant.EPOCH);
     }
 
     @Override

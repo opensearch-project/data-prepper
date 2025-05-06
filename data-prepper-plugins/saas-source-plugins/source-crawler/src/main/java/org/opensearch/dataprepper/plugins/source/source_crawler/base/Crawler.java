@@ -6,16 +6,15 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 
 import java.time.Instant;
 
-public interface Crawler {
+public interface Crawler<T extends SaasWorkerProgressState> {
 
     Instant crawl(LeaderPartition leaderPartition,
                   EnhancedSourceCoordinator coordinator);
 
-    void executePartition(SaasWorkerProgressState state,
+    void executePartition(T state,
                           Buffer<Record<Event>> buffer,
                           AcknowledgementSet acknowledgementSet);
 

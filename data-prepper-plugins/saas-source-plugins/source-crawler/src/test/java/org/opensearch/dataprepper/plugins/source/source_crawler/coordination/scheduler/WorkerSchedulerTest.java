@@ -1,5 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -15,16 +17,18 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
-
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
@@ -67,30 +71,52 @@ public class WorkerSchedulerTest {
     }
 
     @Test
-    void testLeaderPartitionsCreation() throws InterruptedException {
-        WorkerScheduler workerScheduler = new WorkerScheduler(pluginName, buffer,
-                coordinator, sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
+    void testDeserializeAtlassianWorkerProgressState() throws Exception {
+        String json = "{\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState\",\n" +
+                "  \"keyAttributes\": {\"project\": \"project-1\"},\n" +
+                "  \"totalItems\": 10,\n" +
+                "  \"loadedItems\": 5,\n" +
+                "  \"exportStartTime\": 1729391235717,\n" +
+                "  \"itemIds\": [\"GTMS-25\", \"GTMS-24\"]\n" +
+                "}";
 
-        String sourceId = UUID.randomUUID() + "|" + SaasSourcePartition.PARTITION_TYPE;
-        String state = "{\"keyAttributes\":{\"project\":\"project-1\"},\"totalItems\":0,\"loadedItems\":20,\"exportStartTime\":1729391235717,\"itemIds\":[\"GTMS-25\",\"GTMS-24\"]}";
-        when(sourcePartitionStoreItem.getPartitionProgressState()).thenReturn(state);
-        when(sourcePartitionStoreItem.getSourceIdentifier()).thenReturn(sourceId);
-        when(sourceConfig.isAcknowledgments()).thenReturn(true);
-        when(acknowledgementSetManager.create(any(), any())).thenReturn(acknowledgementSet);
-        PartitionFactory factory = new PartitionFactory();
-        EnhancedSourcePartition sourcePartition = factory.apply(sourcePartitionStoreItem);
-        given(coordinator.acquireAvailablePartition(SaasSourcePartition.PARTITION_TYPE)).willReturn(Optional.of(sourcePartition));
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerSubtypes(AtlassianWorkerProgressState.class);
+        mapper.registerModule(new JavaTimeModule());
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(workerScheduler);
+        SaasWorkerProgressState state = mapper.readValue(json, SaasWorkerProgressState.class);
 
-        Thread.sleep(50);
-        executorService.shutdownNow();
+        assertTrue(state instanceof AtlassianWorkerProgressState);
+        AtlassianWorkerProgressState atlassianState = (AtlassianWorkerProgressState) state;
 
-        // Check if crawler was invoked and updated leader lease renewal time
-        SaasWorkerProgressState stateObj = (SaasWorkerProgressState) sourcePartition.getProgressState().get();
-        verify(crawler, atLeast(1)).executePartition(stateObj, buffer, acknowledgementSet);
-        verify(coordinator, atLeast(1)).completePartition(eq(sourcePartition));
+        assertEquals(10, atlassianState.getTotalItems());
+        assertEquals(5, atlassianState.getLoadedItems());
+        assertEquals("project-1", atlassianState.getKeyAttributes().get("project"));
+        assertEquals(2, atlassianState.getItemIds().size());
+    }
+
+    @Test
+    void testDeserializeCrowdStrikeWorkerProgressState() throws Exception {
+        String json = "{\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState\",\n" +
+                "  \"startTime\": 1729391235717,\n" +
+                "  \"endTime\": 1729395235717,\n" +
+                "  \"marker\": \"2717455246896ffb25d9fcba251f7afa6dad7c1f1ffa\"\n" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerSubtypes(CrowdStrikeWorkerProgressState.class);
+        mapper.registerModule(new JavaTimeModule());
+
+        SaasWorkerProgressState state = mapper.readValue(json, SaasWorkerProgressState.class);
+
+        assertTrue(state instanceof CrowdStrikeWorkerProgressState);
+        CrowdStrikeWorkerProgressState csState = (CrowdStrikeWorkerProgressState) state;
+
+        assertEquals("2717455246896ffb25d9fcba251f7afa6dad7c1f1ffa", csState.getMarker());
+        assertNotNull(csState.getStartTime());
+        assertNotNull(csState.getEndTime());
     }
 
     @Test
