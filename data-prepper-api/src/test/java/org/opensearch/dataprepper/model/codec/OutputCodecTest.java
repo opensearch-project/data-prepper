@@ -1,8 +1,17 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.model.codec;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -20,11 +29,16 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+@ExtendWith(MockitoExtension.class)
 public class OutputCodecTest {
     @Test
     void isCompressionInternal_returns_false() {
@@ -84,5 +98,62 @@ public class OutputCodecTest {
         jsonObject.put(UUID.randomUUID().toString(), Arrays.asList(UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(), UUID.randomUUID().toString()));
         return jsonObject;
+    }
+
+    @Nested
+    class DefaultWriter {
+        @Mock
+        private OutputStream outputStream;
+        @Mock
+        private Event event;
+        @Mock
+        private OutputCodecContext outputCodecContext;
+
+        @Test
+        void createWriter_returns_new_instance() throws IOException {
+            final OutputCodec objectUnderTest = mock(OutputCodec.class);
+
+            doCallRealMethod().when(objectUnderTest).createWriter(outputStream, event, outputCodecContext);
+
+            assertThat(objectUnderTest.createWriter(outputStream, event, outputCodecContext),
+                    not(sameInstance(objectUnderTest.createWriter(outputStream, event, outputCodecContext))));
+        }
+
+        @Test
+        void createWriter_calls_start() throws IOException {
+            final OutputCodec objectUnderTest = mock(OutputCodec.class);
+
+            doCallRealMethod().when(objectUnderTest).createWriter(outputStream, event, outputCodecContext);
+
+            objectUnderTest.createWriter(outputStream, event, outputCodecContext);
+
+            verify(objectUnderTest).start(outputStream, event, outputCodecContext);
+        }
+
+        @Test
+        void writer_writeEvent_calls_writeEvent_on_OutputCodec() throws IOException {
+            final OutputCodec objectUnderTest = mock(OutputCodec.class);
+
+            doCallRealMethod().when(objectUnderTest).createWriter(outputStream, event, outputCodecContext);
+
+            OutputCodec.Writer writer = objectUnderTest.createWriter(outputStream, event, outputCodecContext);
+
+            writer.writeEvent(event);
+
+            verify(objectUnderTest).writeEvent(event, outputStream);
+        }
+
+        @Test
+        void writer_complete_calls_complete_on_OutputCodec() throws IOException {
+            final OutputCodec objectUnderTest = mock(OutputCodec.class);
+
+            doCallRealMethod().when(objectUnderTest).createWriter(outputStream, event, outputCodecContext);
+
+            OutputCodec.Writer writer = objectUnderTest.createWriter(outputStream, event, outputCodecContext);
+
+            writer.complete();
+
+            verify(objectUnderTest).complete(outputStream);
+        }
     }
 }

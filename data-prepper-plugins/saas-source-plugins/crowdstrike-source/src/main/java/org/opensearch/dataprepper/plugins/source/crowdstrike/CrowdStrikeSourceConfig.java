@@ -27,6 +27,6 @@ public class CrowdStrikeSourceConfig implements CrawlerSourceConfig {
     @Min(1)
     @Max(50)
     @Valid
-    private int numWorkers = DEFAULT_NUMBER_OF_WORKERS;
+    private int numberOfWorkers = DEFAULT_NUMBER_OF_WORKERS;
 
 }

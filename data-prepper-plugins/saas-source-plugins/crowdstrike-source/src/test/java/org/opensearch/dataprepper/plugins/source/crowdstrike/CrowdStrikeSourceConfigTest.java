@@ -26,7 +26,7 @@ public class CrowdStrikeSourceConfigTest {
 
     @Test
     void testDefaultValues() {
-        assertEquals(DEFAULT_WORKERS, config.getNumWorkers());
+        assertEquals(DEFAULT_WORKERS, config.getNumberOfWorkers());
         assertFalse(config.isAcknowledgments());
     }
 
@@ -45,7 +45,7 @@ public class CrowdStrikeSourceConfigTest {
 
         assertNotNull(loadedConfig.getAuthenticationConfig());
         assertTrue(loadedConfig.isAcknowledgments());
-        assertEquals(10, loadedConfig.getNumWorkers());
+        assertEquals(10, loadedConfig.getNumberOfWorkers());
     }
 
 }
