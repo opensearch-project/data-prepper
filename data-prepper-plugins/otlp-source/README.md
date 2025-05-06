@@ -60,6 +60,34 @@ source:
       max_delay: 5s # defaults to 2s
 ```
 
+### Authentication Configurations
+
+By default, the otlp input is unauthenticated.
+
+The following is an example of how to run the server with HTTP Basic authentication:
+
+```yaml
+source:
+  otlp:
+    authentication:
+      http_basic:
+        username: my-user
+        password: my_s3cr3t
+```
+
+You can also explicitly disable authentication with:
+
+```yaml
+source:
+  otlp:
+    authentication:
+      unauthenticated:
+```
+
+This plugin uses pluggable authentication for GRPC servers. To provide custom authentication,
+create a plugin which implements [`GrpcAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/GrpcAuthenticationProvider.java)
+
+
 ### SSL
 
 - ssl(Optional) => A boolean enables TLS/SSL. Default is `true`.
