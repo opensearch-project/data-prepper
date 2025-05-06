@@ -68,10 +68,7 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.JsonPointer:
                 return resolveJsonPointerValue(nodeStringValue, event);
             case DataPrepperExpressionParser.String:
-                final String nodeStringValueWithQuotesStripped = nodeStringValue != null
-                        ? nodeStringValue.replaceAll("^\"{1,3}|\"{1,3}$", "")
-                        : null;
-                return nodeStringValueWithQuotesStripped;
+                return nodeStringValue.replaceAll("^\"{1,3}|\"{1,3}$", "");
             case DataPrepperExpressionParser.Integer:
                 Long longValue = Long.valueOf(nodeStringValue);
                 if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE) {
