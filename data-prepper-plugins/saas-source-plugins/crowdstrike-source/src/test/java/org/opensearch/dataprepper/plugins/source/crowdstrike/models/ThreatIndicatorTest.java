@@ -2,13 +2,16 @@ package org.opensearch.dataprepper.plugins.source.crowdstrike.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class ThreatIndicatorTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
 
     @Test
     void testDeserializeFullJson() throws Exception {
@@ -26,8 +29,8 @@ public class ThreatIndicatorTest {
         assertEquals("ioc-12345", indicator.getId());
         assertEquals("domain", indicator.getType());
         assertEquals("malicious.com", indicator.getIndicator());
-        assertEquals(1680000L, indicator.getPublishedDate());
-        assertEquals(1680100L, indicator.getLastUpdated());
+        assertEquals(Instant.ofEpochSecond(1680000L), indicator.getPublishedDate());
+        assertEquals(Instant.ofEpochSecond(1680100L), indicator.getLastUpdated());
         assertEquals("high", indicator.getMaliciousConfidence());
     }
 
@@ -46,7 +49,7 @@ public class ThreatIndicatorTest {
         assertEquals("ioc-999", indicator.getId());
         assertEquals("ip_address", indicator.getType());
         assertEquals("1.2.3.4", indicator.getIndicator());
-        assertEquals(1670000L, indicator.getPublishedDate());
+        assertEquals(Instant.ofEpochSecond(1670000), indicator.getPublishedDate());
     }
 
     @Test
@@ -62,8 +65,8 @@ public class ThreatIndicatorTest {
         assertEquals("ioc-000", indicator.getId());
         assertEquals("url", indicator.getType());
         assertEquals("http://bad.com", indicator.getIndicator());
-        assertEquals(0L, indicator.getPublishedDate());
-        assertEquals(0L, indicator.getLastUpdated());
+        assertNull(indicator.getPublishedDate());
+        assertNull(indicator.getLastUpdated());
         assertNull(indicator.getMaliciousConfidence());
     }
 }

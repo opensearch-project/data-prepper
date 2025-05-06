@@ -15,6 +15,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'javax.inject:javax.inject:1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 
     implementation 'org.projectlombok:lombok:1.18.30'

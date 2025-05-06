@@ -13,12 +13,14 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.crowdstrike.rest.CrowdStrikeAuthClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.TimeSliceCrawler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.time.Instant;
 import static org.opensearch.dataprepper.plugins.source.crowdstrike.utils.Constants.PLUGIN_NAME;
 
 
@@ -45,7 +47,7 @@ public class CrowdStrikeSource extends CrawlerSourcePlugin {
                              final PluginFactory pluginFactory,
                              final AcknowledgementSetManager acknowledgementSetManager,
                              final CrowdStrikeAuthClient authClient,
-                             Crawler crawler, PluginExecutorServiceProvider executorServiceProvider) {
+                             TimeSliceCrawler crawler, PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating CrowdStrike Source Plugin");
         this.sourceConfig = sourceConfig;
@@ -56,8 +58,14 @@ public class CrowdStrikeSource extends CrawlerSourcePlugin {
     public void start(Buffer<Record<Event>> buffer) {
         log.info("Starting CrowdStrike Source Plugin...");
         authClient.initCredentials();
-        // super.start(buffer);
+        super.start(buffer);
     }
+
+    @Override
+    protected LeaderProgressState createLeaderProgressState() {
+        return new CrowdStrikeLeaderProgressState(Instant.now(), sourceConfig.getLookBackDays());
+    }
+
 
     @Override
     public void stop() {
