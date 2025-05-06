@@ -33,6 +33,8 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
@@ -41,14 +43,12 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfi
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -57,12 +57,10 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -126,6 +124,8 @@ public class KafkaCustomConsumerTest {
     private double overflowCount;
     private boolean paused;
     private boolean resumed;
+    private final String jsonOtelTraceFile = "src/test/resources/otel-trace.json";
+    private final String jsonOtelTraceWithErrorFile = "src/test/resources/otel-trace-with-error.json";
 
     @BeforeEach
     public void setUp() throws JsonProcessingException {
@@ -452,6 +452,94 @@ public class KafkaCustomConsumerTest {
     }
 
     @Test
+    public void testJsonOtelTraceConsumeRecords() throws InterruptedException, Exception {
+        String topic = topicConfig.getName();
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON_OTEL_TRACE);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        consumerRecords = createJsonOtelRecords(topic);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("json_otel_trace", false);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(9, bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            assertEquals(topicPartition.partition(), testPartition);
+            assertEquals(topicPartition.topic(), topic);
+            assertEquals(101L, offsetAndMetadata.offset());
+        });
+        assertEquals(1L, consumer.getNumRecordsCommitted());
+
+        for (Record<Event> record: bufferedRecords) {
+            assertEquals(JacksonSpan.class, record.getData().getClass());
+            Span span = (Span) record.getData();
+            if (span.getSpanId().equals("96f03f6cb92f7b90")) {
+                assertEquals("099ce04f04acea26f8191b2a900d92e1", span.getTraceId());
+                assertEquals("frontend", span.getServiceName());
+                assertEquals(8081, span.getAttributes().get("net.peer.port"));
+                assertEquals(325722026, span.getDurationInNanos());
+                assertEquals("4ce150ecd279e8c6", span.getParentSpanId());
+            } else if (span.getSpanId().equals("4ce150ecd279e8c6")) {
+                assertEquals("099ce04f04acea26f8191b2a900d92e1", span.getTraceId());
+                assertEquals("frontend", span.getServiceName());
+                assertEquals("10.208.39.111", span.getAttributes().get("net.host.name"));
+                assertEquals(697214900, span.getDurationInNanos());
+                assertEquals("", span.getParentSpanId());
+                assertEquals(697214900, span.getTraceGroupFields().getDurationInNanos());
+            }
+
+        }
+    }
+
+    @Test
+    public void testJsonOtelTraceConsumeRecordsWithErorr() throws InterruptedException, Exception {
+        String topic = topicConfig.getName();
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON_OTEL_TRACE);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        consumerRecords = createJsonOtelRecordsWithErrors(topic);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("json_otel_trace", false);
+
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
+        consumer.consumeRecords();
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(2, bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            assertEquals(topicPartition.partition(), testPartition);
+            assertEquals(topicPartition.topic(), topic);
+            assertEquals(101L, offsetAndMetadata.offset());
+        });
+        assertEquals(1L, consumer.getNumRecordsCommitted());
+
+        for (Record<Event> record: bufferedRecords) {
+            assertEquals(JacksonSpan.class, record.getData().getClass());
+            Span span = (Span) record.getData();
+            if (span.getSpanId().equals("707a81c4bcfadcb9")) {
+                assertEquals("20e7534679d00831a0687c03ceb2f650", span.getTraceId());
+                assertEquals("my-service", span.getServiceName());
+                assertEquals(2, span.getAttributes().get("status.code"));
+                assertEquals("ValueError: Error!", span.getAttributes().get("status.message"));
+                assertEquals(1173593, span.getDurationInNanos());
+                assertEquals("df1b295f6e239e4d", span.getParentSpanId());
+            } else if (span.getSpanId().equals("df1b295f6e239e4d")) {
+                assertEquals("20e7534679d00831a0687c03ceb2f650", span.getTraceId());
+                assertEquals("my-service", span.getServiceName());
+                assertEquals("main", span.getTraceGroup());
+                assertEquals(0, span.getAttributes().get("status.code"));
+                assertNull(span.getAttributes().get("status.message"));
+                assertEquals(1257276, span.getDurationInNanos());
+                assertEquals("", span.getParentSpanId());
+                assertEquals(1257276, span.getTraceGroupFields().getDurationInNanos());
+            }
+        }
+    }
+
+    @Test
     public void testJsonDeserializationErrorWithAcknowledgements() throws Exception {
         String topic = topicConfig.getName();
         final ObjectMapper mapper = new ObjectMapper();
@@ -603,6 +691,22 @@ public class KafkaCustomConsumerTest {
         ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1, mapper.convertValue(testMap1, JsonNode.class));
         ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 101L, testKey2, mapper.convertValue(testMap2, JsonNode.class));
         records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
+        return new ConsumerRecords(records);
+    }
+
+    private ConsumerRecords createJsonOtelRecords(String topic) throws Exception {
+        String content = Files.readString(Path.of(jsonOtelTraceFile), StandardCharsets.UTF_8);
+        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, 100L, testKey1, content);
+        records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1));
+        return new ConsumerRecords(records);
+    }
+
+    private ConsumerRecords createJsonOtelRecordsWithErrors(String topic) throws Exception {
+        String content = Files.readString(Path.of(jsonOtelTraceWithErrorFile), StandardCharsets.UTF_8);
+        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, 100L, testKey1, content);
+        records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1));
         return new ConsumerRecords(records);
     }
 }
