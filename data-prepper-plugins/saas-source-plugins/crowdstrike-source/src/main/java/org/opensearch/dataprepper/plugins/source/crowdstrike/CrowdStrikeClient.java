@@ -35,8 +35,8 @@ public class CrowdStrikeClient implements CrawlerClient<CrowdStrikeWorkerProgres
     private final int bufferWriteTimeoutInSeconds = 10;
 
 
-    public CrowdStrikeClient(CrowdStrikeService crowdStrikeService,
-                             CrowdStrikeSourceConfig sourceConfig) {
+    public CrowdStrikeClient(final CrowdStrikeService crowdStrikeService,
+                             final CrowdStrikeSourceConfig sourceConfig) {
         log.info("Creating CrowdStrike Crawler");
         this.crowdStrikeService = crowdStrikeService;
         this.configuration = sourceConfig;
