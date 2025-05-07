@@ -248,6 +248,7 @@ class DefaultPluginFactoryTest {
 
                 final DefinedPlugin<?> actualDefinedPlugin = definedPluginArgumentCaptor.getValue();
                 assertThat(actualDefinedPlugin.getPluginClass(), equalTo(expectedPluginClass));
+                assertThat(actualDefinedPlugin.getPluginTypeName(), equalTo("sink"));
                 assertThat(actualDefinedPlugin.getPluginName(), equalTo(pluginName));
             }
         }
@@ -357,6 +358,7 @@ class DefaultPluginFactoryTest {
 
                 final DefinedPlugin<?> actualDefinedPlugin = definedPluginArgumentCaptor.getValue();
                 assertThat(actualDefinedPlugin.getPluginClass(), equalTo(expectedPluginClass));
+                assertThat(actualDefinedPlugin.getPluginTypeName(), equalTo("sink"));
                 assertThat(actualDefinedPlugin.getPluginName(), equalTo(pluginName));
             }
         }
