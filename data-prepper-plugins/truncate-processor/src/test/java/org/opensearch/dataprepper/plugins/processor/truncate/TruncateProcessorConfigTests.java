@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.truncate;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -42,7 +43,7 @@ class TruncateProcessorConfigTests {
         assertThat(entry.getLength(), equalTo(null));
         assertThat(entry.getTruncateWhen(), equalTo(null));
     }
-    
+
     @Test
     void testValidConfiguration_withStartAt() throws NoSuchFieldException, IllegalAccessException {
         TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
@@ -56,7 +57,7 @@ class TruncateProcessorConfigTests {
         setField(TruncateProcessorConfig.class, truncateProcessorConfig, "entries", List.of(entry));
         assertTrue(entry.isValidConfig());
     }
-    
+
     @Test
     void testValidConfiguration_withLength() throws NoSuchFieldException, IllegalAccessException {
         TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
@@ -91,25 +92,38 @@ class TruncateProcessorConfigTests {
         assertTrue(entry.isValidConfig());
     }
 
-    @Test
-    void testInvalidConfiguration_StartAt_Length_BothNull() throws NoSuchFieldException, IllegalAccessException { 
-        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
-        String source = RandomStringUtils.randomAlphabetic(10);
-        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", List.of(source));
-        assertFalse(entry.isValidConfig());
-    }
+    @Nested
+    class InvalidConfigurationWithValidSourceKeys {
+        private TruncateProcessorConfig.Entry entryUnderTest;
+        private int validLength;
+        private int validStartAt;
 
-    @Test
-    void testInvalidConfiguration_StartAt_Length_Negative() throws NoSuchFieldException, IllegalAccessException { 
-        TruncateProcessorConfig.Entry entry = new TruncateProcessorConfig.Entry();
-        String source = RandomStringUtils.randomAlphabetic(10);
-        int length = random.nextInt(100);
-        int startAt = random.nextInt(100);
-        setField(TruncateProcessorConfig.Entry.class, entry, "sourceKeys", List.of(source));
-        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", -startAt);
-        assertFalse(entry.isValidConfig());
-        setField(TruncateProcessorConfig.Entry.class, entry, "startAt", startAt);
-        setField(TruncateProcessorConfig.Entry.class, entry, "length", -length);
-        assertFalse(entry.isValidConfig());
+        @BeforeEach
+        void setUp() throws NoSuchFieldException, IllegalAccessException {
+            entryUnderTest = new TruncateProcessorConfig.Entry();
+            String source = RandomStringUtils.randomAlphabetic(10);
+            setField(TruncateProcessorConfig.Entry.class, entryUnderTest, "sourceKeys", List.of(source));
+
+            validLength = random.nextInt(100) + 1;
+            validStartAt = random.nextInt(100) + 1;
+        }
+
+        @Test
+        void testInvalidConfiguration_StartAt_Length_BothNull() {
+            assertFalse(entryUnderTest.isValidConfig());
+        }
+
+        @Test
+        void testInvalidConfiguration_StartAt_Negative() throws NoSuchFieldException, IllegalAccessException {
+            setField(TruncateProcessorConfig.Entry.class, entryUnderTest, "startAt", -validStartAt);
+            assertFalse(entryUnderTest.isValidConfig());
+        }
+
+        @Test
+        void testInvalidConfiguration_Length_Negative() throws NoSuchFieldException, IllegalAccessException {
+            setField(TruncateProcessorConfig.Entry.class, entryUnderTest, "startAt", validStartAt);
+            setField(TruncateProcessorConfig.Entry.class, entryUnderTest, "length", -validLength);
+            assertFalse(entryUnderTest.isValidConfig());
+        }
     }
 }
