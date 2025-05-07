@@ -24,8 +24,8 @@ public class ExperimentalConfiguration {
     @JsonProperty("enable_all")
     private boolean enableAll = false;
 
-    @JsonProperty("enabled")
-    private Map<String, Set<String>> enabled;
+    @JsonProperty("enabled_plugins")
+    private Map<String, Set<String>> enabledPlugins;
 
     public static ExperimentalConfiguration defaultConfiguration() {
         return new ExperimentalConfiguration();
@@ -46,7 +46,7 @@ public class ExperimentalConfiguration {
      * @return A map of plugin types to list of allowed plugins by name.
      * @since 2.12
      */
-    public Map<String, Set<String>> getEnabled() {
-        return enabled != null ? enabled : Collections.emptyMap();
+    public Map<String, Set<String>> getEnabledPlugins() {
+        return enabledPlugins != null ? enabledPlugins : Collections.emptyMap();
     }
 }

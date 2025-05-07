@@ -106,7 +106,7 @@ class ExperimentalPluginValidatorTest {
             final String pluginTypeName = UUID.randomUUID().toString();
             when(definedPlugin.getPluginName()).thenReturn(pluginName);
             when(definedPlugin.getPluginTypeName()).thenReturn(pluginTypeName);
-            experimentalConfiguration.getEnabled().put(pluginTypeName, Set.of(UUID.randomUUID().toString()));
+            experimentalConfiguration.getEnabledPlugins().put(pluginTypeName, Set.of(UUID.randomUUID().toString()));
 
             final ExperimentalPluginValidator objectUnderTest = createObjectUnderTest();
 
@@ -123,7 +123,7 @@ class ExperimentalPluginValidatorTest {
             final String pluginTypeName = UUID.randomUUID().toString();
             when(definedPlugin.getPluginName()).thenReturn(pluginName);
             when(definedPlugin.getPluginTypeName()).thenReturn(pluginTypeName);
-            when(experimentalConfiguration.getEnabled()).thenReturn(Map.of(pluginTypeName, Set.of(UUID.randomUUID().toString(), pluginName)));
+            when(experimentalConfiguration.getEnabledPlugins()).thenReturn(Map.of(pluginTypeName, Set.of(UUID.randomUUID().toString(), pluginName)));
 
             createObjectUnderTest().accept(definedPlugin);
         }

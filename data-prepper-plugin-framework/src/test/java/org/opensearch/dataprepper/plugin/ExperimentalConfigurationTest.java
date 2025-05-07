@@ -26,10 +26,10 @@ class ExperimentalConfigurationTest {
     }
 
     @Test
-    void defaultConfiguration_should_return_config_with_empty_enabled_mp() {
+    void defaultConfiguration_should_return_config_with_empty_enabledPlugins_map() {
         final ExperimentalConfiguration objectUnderTest = ExperimentalConfiguration.defaultConfiguration();
         assertThat(objectUnderTest, notNullValue());
-        assertThat(objectUnderTest.getEnabled(), notNullValue());
-        assertThat(objectUnderTest.getEnabled(), is(anEmptyMap()));
+        assertThat(objectUnderTest.getEnabledPlugins(), notNullValue());
+        assertThat(objectUnderTest.getEnabledPlugins(), is(anEmptyMap()));
     }
 }

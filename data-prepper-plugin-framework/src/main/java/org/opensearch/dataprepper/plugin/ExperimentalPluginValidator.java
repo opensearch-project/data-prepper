@@ -41,7 +41,7 @@ class ExperimentalPluginValidator implements Consumer<DefinedPlugin<?>> {
             return false;
 
         final Set<String> enabledPluginsForType =
-                experimentalConfiguration.getEnabled()
+                experimentalConfiguration.getEnabledPlugins()
                         .getOrDefault(definedPlugin.getPluginTypeName(), Collections.emptySet());
         return !enabledPluginsForType.contains(definedPlugin.getPluginName());
     }
