@@ -454,11 +454,11 @@ public class KafkaCustomConsumerTest {
     @Test
     public void testJsonOtelTraceConsumeRecords() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
-        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON_OTEL_TRACE);
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.OTEL_TRACE_JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonOtelRecords(topic);
         when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("json_otel_trace", false);
+        consumer = createObjectUnderTest("otel_trace_json", false);
 
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
         consumer.consumeRecords();
@@ -497,11 +497,11 @@ public class KafkaCustomConsumerTest {
     @Test
     public void testJsonOtelTraceConsumeRecordsWithErorr() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
-        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON_OTEL_TRACE);
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.OTEL_TRACE_JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonOtelRecordsWithErrors(topic);
         when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("json_otel_trace", false);
+        consumer = createObjectUnderTest("otel_trace_json", false);
 
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
         consumer.consumeRecords();
