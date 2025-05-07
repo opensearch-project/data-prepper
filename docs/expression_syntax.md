@@ -184,6 +184,13 @@ Currently, the following functions are supported
    - takes one String literal as argument. This is the key to lookup in the event's metadata. If the key contains "/", then recursive lookup into the metadata attributes is done.
    - returns the value corresponding to the argument (key) passed. Value can be of any type.
    For example, if metadata contains {"key1": "value2", "key2": 10}, then `getMetadata("key1")` returns "value2", and `getMetadata("key2")` return 10.
+ * `getEventType()`
+   - Takes no arguments.
+   - Returns the event type of the given event as a String.
+   - Throws an error if any arguments are provided.
+   - Event types is useful from routing requests based on type examples: `LOG`, `TRACE` and `METRIC`.
+   For example, if the event has an event type `"LOG"`, `getEventType()` will return `"LOG"`.
+   Example usage in an expression: `getEventType() == "LOG"`.
  * `contains()`
    - takes two String arguments. Both should be either string literals or Json Pointers with String values.
    - returns true if the second argument is a substring of the first argument. Otherwise, return false.
