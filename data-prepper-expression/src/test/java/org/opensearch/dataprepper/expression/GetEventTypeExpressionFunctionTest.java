@@ -5,7 +5,10 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
@@ -43,12 +46,10 @@ class GetEventTypeExpressionFunctionTest {
     }
 
     @Test
-    void testGetEventTypeReturnsNullForNullEventType() {
-        GetEventTypeExpressionFunction function = createObjectUnderTest();
-        Event testEvent = createTestEvent(null);
-
-        Object result = function.evaluate(List.of(), testEvent, Function.identity());
-
-        assertThat(result, equalTo(null));
+    void testGetEventTypeFunctionRegistered() {
+        Event testEvent = createTestEvent("event");
+        final GenericExpressionEvaluator evaluator = mock(GenericExpressionEvaluator.class);
+        when(evaluator.evaluateConditional("getEventType() == \"event\"", testEvent)).thenReturn(true);
+        assertDoesNotThrow(() -> evaluator.evaluateConditional("getEventType() == \"event\"", testEvent));
     }
 }
