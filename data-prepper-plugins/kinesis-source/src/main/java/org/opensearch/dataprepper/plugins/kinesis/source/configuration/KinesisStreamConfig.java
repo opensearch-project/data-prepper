@@ -14,9 +14,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import software.amazon.awssdk.arns.Arn;
 import software.amazon.kinesis.common.InitialPositionInStream;
 
 import java.time.Duration;
+import java.util.Objects;
 
 @Getter
 public class KinesisStreamConfig {
@@ -34,7 +36,7 @@ public class KinesisStreamConfig {
 
     @JsonProperty("consumer_arn")
     @Valid
-    private String consumerarn;
+    private String consumerArn;
 
     @JsonProperty("initial_position")
     private InitialPositionInStreamConfig initialPosition = InitialPositionInStreamConfig.LATEST;
@@ -49,5 +51,27 @@ public class KinesisStreamConfig {
     @Getter
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;
+
+    public String getArn() {
+        if (Objects.nonNull(this.arn) && !this.arn.isEmpty()) {
+            try {
+                Arn.fromString(this.arn);
+            } catch (final Exception e) {
+                throw new IllegalArgumentException("Invalid ARN format for stream arn");
+            }
+        }
+        return this.arn;
+    }
+
+    public String getConsumerArn() {
+        if (Objects.nonNull(this.consumerArn) && !this.consumerArn.isEmpty()) {
+            try {
+                Arn.fromString(this.consumerArn);
+            } catch (final Exception e) {
+                throw new IllegalArgumentException("Invalid ARN format for consumer arn");
+            }
+        }
+        return this.consumerArn;
+    }
 
 }

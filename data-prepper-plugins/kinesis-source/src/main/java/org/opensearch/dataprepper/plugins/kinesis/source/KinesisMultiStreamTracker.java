@@ -53,8 +53,8 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
         }
 
         // If stream arn and consumer arn is present, create a stream config based on the configured values
-        if (Objects.nonNull(kinesisStreamConfig.getArn()) && Objects.nonNull(kinesisStreamConfig.getConsumerarn())) {
-            return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), kinesisStreamConfig.getConsumerarn());
+        if (Objects.nonNull(kinesisStreamConfig.getArn()) && Objects.nonNull(kinesisStreamConfig.getConsumerArn())) {
+            return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), kinesisStreamConfig.getConsumerArn());
         }
 
         // If stream arn is provided, lookup consumer arn based on the consumer name which is the data prepper application name

@@ -149,7 +149,7 @@ public class KinesisMultiStreamTrackerTest {
         KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
         final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
         when(streamConfig.getArn()).thenReturn(streamArnString);
-        when(streamConfig.getConsumerarn()).thenReturn("arn:aws:kinesis:region:account:stream/streamName/consumer/consumerName");
+        when(streamConfig.getConsumerArn()).thenReturn("arn:aws:kinesis:region:account:stream/streamName/consumer/consumerName");
         when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
 
@@ -162,7 +162,7 @@ public class KinesisMultiStreamTrackerTest {
         assertEquals(1, configs.size());
         StreamConfig resultConfig = configs.get(0);
         assertEquals(expectedIdentifier, resultConfig.streamIdentifier());
-        assertEquals(streamConfig.getConsumerarn(), resultConfig.consumerArn());
+        assertEquals(streamConfig.getConsumerArn(), resultConfig.consumerArn());
     }
 
     @Test

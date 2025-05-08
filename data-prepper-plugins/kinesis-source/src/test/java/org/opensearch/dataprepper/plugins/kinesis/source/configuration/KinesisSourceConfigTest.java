@@ -97,6 +97,8 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
+            assertNull(kinesisStreamConfig.getArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
@@ -163,6 +165,8 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
+            assertNull(kinesisStreamConfig.getArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.TRIM_HORIZON);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), expectedCheckpointIntervals.get(kinesisStreamConfig.getName()));
             assertEquals(kinesisStreamConfig.getCompression(), CompressionOption.GZIP);
@@ -192,6 +196,8 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(kinesisStreamConfig.getArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
@@ -220,8 +226,10 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(kinesisStreamConfig.getArn());
+            assertNotNull(kinesisStreamConfig.getConsumerArn());
             String streamArn = kinesisStreamConfig.getArn();
-            assertTrue(kinesisStreamConfig.getConsumerarn().contains(streamArn+"/consumer/consumer-1:1"));
+            assertTrue(kinesisStreamConfig.getConsumerArn().contains(streamArn+"/consumer/consumer-1:1"));
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
