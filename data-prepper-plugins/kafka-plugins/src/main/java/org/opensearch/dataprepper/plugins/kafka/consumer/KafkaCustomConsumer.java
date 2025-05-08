@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfi
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceInputCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.glue.model.AccessDeniedException;
@@ -100,6 +101,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
+    private final OTelTraceInputCodec oTelTraceInputCodec;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -133,6 +135,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.partitionCommitTrackerMap = new HashMap<>();
         this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());
         this.schema = MessageFormat.getByMessageFormatByName(schemaType);
+        oTelTraceInputCodec = new OTelTraceInputCodec();
         Duration bufferTimeout = Duration.ofSeconds(1);
         this.bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         this.lastCommitTime = System.currentTimeMillis();
@@ -553,6 +556,13 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                         Record<Event> record = new Record<>(event);
                         processRecord(acknowledgementSet, record);
                     }
+                } else if (schema == MessageFormat.OTEL_TRACE_JSON) {
+                    if (consumerRecord.value() == null) {
+                        continue;
+                    }
+
+                    oTelTraceInputCodec.parse(new ByteArrayInputStream(consumerRecord.value().toString().getBytes()),
+                            (record) -> processRecord(acknowledgementSet, record));
                 } else {
                     Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                     if (record != null) {
