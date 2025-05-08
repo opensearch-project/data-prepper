@@ -1,3 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
 package org.opensearch.dataprepper.plugins.processor.ocsf;
 
 import org.json.JSONArray;
@@ -18,12 +27,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.*;
 
+/**
+ * Maps source data to OCSF format according to a provided schema.
+ * Supports direct field mappings and transformations (literal, enum, conditional, variable).
+ */
 public class OcsfSchemaMapper {
     private static final Logger LOG = LoggerFactory.getLogger(OcsfSchemaMapper.class);
     private static final String DEFAULT_SCHEMA_VERSION = "1.0.0-rc.2";
     private final JSONObject schema;
 
+    /**
+     * Creates mapper using the provided schema file.
+     * @param schemaPath Path to the JSON schema file
+     * @throws InvalidPluginConfigurationException if schema is invalid
+     */
     public OcsfSchemaMapper(String schemaPath) {
         try {
             String content = new String(Files.readAllBytes(Paths.get(schemaPath)));
@@ -35,14 +54,21 @@ public class OcsfSchemaMapper {
     }
 
     private void validateSchema() {
-        if (!schema.has("mapping_options")) {
-            throw new InvalidPluginConfigurationException("Schema must contain 'mapping_options' section");
+        if (!schema.has(MAPPING_OPTIONS)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Schema must contain '%s' section", MAPPING_OPTIONS));
         }
-        if (!schema.has("mapping_selector")) {
-            throw new InvalidPluginConfigurationException("Schema must contain 'mapping_selector' section");
+        if (!schema.has(MAPPING_SELECTOR)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Schema must contain '%s' section", MAPPING_SELECTOR));
         }
     }
 
+    /**
+     * Maps source data to OCSF format by applying mappings and transformations.
+     * @param sourceData The source data to transform
+     * @return Map containing OCSF-formatted data
+     */
     public Map<String, Object> mapToOcsf(Map<String, Object> sourceData) {
         try {
             String mappingType = selectMapping(sourceData);
@@ -53,8 +79,8 @@ public class OcsfSchemaMapper {
 
             Map<String, Object> ocsfData = new HashMap<>();
 
-            applyDirectMappings(sourceData, mappingOptions.getJSONArray("direct_mappings"), ocsfData);
-            applyTransformations(sourceData, mappingOptions.getJSONArray("transformations"), ocsfData);
+            applyDirectMappings(sourceData, mappingOptions.getJSONArray(DIRECT_MAPPINGS), ocsfData);
+            applyTransformations(sourceData, mappingOptions.getJSONArray(TRANSFORMATIONS), ocsfData);
 
             return ocsfData;
         } catch (Exception e) {
@@ -64,12 +90,12 @@ public class OcsfSchemaMapper {
     }
 
     private String selectMapping(Map<String, Object> sourceData) throws JSONException {
-        JSONObject selector = schema.getJSONObject("mapping_selector");
-        JSONArray cases = selector.getJSONArray("cases");
+        JSONObject selector = schema.getJSONObject(MAPPING_SELECTOR);
+        JSONArray cases = selector.getJSONArray(CASES);
 
         for (int i = 0; i < cases.length(); i++) {
             JSONObject caseObj = cases.getJSONObject(i);
-            if (evaluateComplexCondition(caseObj.getJSONObject("condition"), sourceData)) {
+            if (evaluateComplexCondition(caseObj.getJSONObject(CONDITION), sourceData)) {
                 return caseObj.getString("selection");
             }
         }
@@ -77,14 +103,18 @@ public class OcsfSchemaMapper {
         return selector.getString("default_selection");
     }
 
+    /**
+     * Applies direct field mappings from source to OCSF format.
+     * Handles both simple field mappings and array-based mappings.
+     */
     private void applyDirectMappings(Map<String, Object> sourceData,
                                      JSONArray directMappings,
                                      Map<String, Object> ocsfData) throws JSONException {
         for (int i = 0; i < directMappings.length(); i++) {
             JSONObject mapping = directMappings.getJSONObject(i);
-            String source = mapping.getString("source");
-            String destination = mapping.getString("destination");
-            String type = mapping.getString("type");
+            String source = mapping.getString(SOURCE);
+            String destination = mapping.getString(DESTINATION);
+            String type = mapping.getString(TYPE);
 
             if (source.contains("[?(@.Name==")) {
                 handleArrayMapping(sourceData, source, destination, type, mapping, ocsfData);
@@ -116,7 +146,6 @@ public class OcsfSchemaMapper {
             }
         } catch (Exception e) {
             LOG.error("Failed to handle array mapping for path: {} - {}", sourcePath, e.getMessage());
-            LOG.debug("Full stack trace:", e);
         }
     }
 
@@ -190,12 +219,19 @@ public class OcsfSchemaMapper {
         }
     }
 
+    /**
+     * Applies transformations to the data. Supported transformations:
+     * - literal: Sets a fixed value
+     * - enum: Applies transformations by mapping source values to predefined OCSF values
+     * - conditional: Applies transformations based on conditions
+     * - variable: Sets values from predefined variables
+     */
     private void applyTransformations(Map<String, Object> sourceData,
                                       JSONArray transformations,
                                       Map<String, Object> ocsfData) throws JSONException {
         for (int i = 0; i < transformations.length(); i++) {
             JSONObject transform = transformations.getJSONObject(i);
-            String transformationType = transform.getString("transformation");
+            String transformationType = transform.getString(TRANSFORMATION);
 
             switch (transformationType) {
                 case "literal":
@@ -218,8 +254,8 @@ public class OcsfSchemaMapper {
 
     private void applyLiteralTransformation(JSONObject transform, Map<String, Object> ocsfData) throws JSONException {
         String target = transform.getString("target");
-        Object value = transform.get("value");
-        String type = transform.getString("type");
+        Object value = transform.get(VALUE);
+        String type = transform.getString(TYPE);
 
         Object convertedValue = convertValue(value, type, transform);
         if (convertedValue != null) {
@@ -228,14 +264,14 @@ public class OcsfSchemaMapper {
     }
 
     private void applyEnumTransformation(JSONObject transform, Map<String, Object> sourceData, Map<String, Object> ocsfData) throws JSONException {
-        String source = transform.getString("source");
+        String source = transform.getString(SOURCE);
         String target = transform.getString("target");
-        String type = transform.getString("type");
+        String type = transform.getString(TYPE);
         boolean ignoreCase = transform.optBoolean("ignoreCase", false);
 
         Object sourceValue = getNestedValue(sourceData, source);
         if (sourceValue != null) {
-            JSONArray cases = transform.getJSONArray("cases");
+            JSONArray cases = transform.getJSONArray(CASES);
 
             for (int i = 0; i < cases.length(); i++) {
                 JSONObject caseObj = cases.getJSONObject(i);
@@ -251,8 +287,8 @@ public class OcsfSchemaMapper {
                 }
             }
 
-            if (transform.has("default")) {
-                Object defaultValue = convertValue(transform.get("default"), type, transform);
+            if (transform.has(DEFAULT)) {
+                Object defaultValue = convertValue(transform.get(DEFAULT), type, transform);
                 if (defaultValue != null) {
                     setNestedValue(ocsfData, target, defaultValue);
                 }
@@ -265,34 +301,34 @@ public class OcsfSchemaMapper {
                                                 Map<String, Object> ocsfData) throws JSONException {
         JSONObject ifClause = transform.getJSONObject("if");
 
-        if (evaluateComplexCondition(ifClause.getJSONObject("condition"), sourceData)) {
-            applyOperations(ifClause.getJSONArray("operations"), sourceData, ocsfData);
+        if (evaluateComplexCondition(ifClause.getJSONObject(CONDITION), sourceData)) {
+            applyOperations(ifClause.getJSONArray(OPERATIONS), sourceData, ocsfData);
         } else if (transform.has("elseIf")) {
             JSONArray elseIfClauses = transform.getJSONArray("elseIf");
             boolean matched = false;
 
             for (int i = 0; i < elseIfClauses.length() && !matched; i++) {
                 JSONObject elseIfClause = elseIfClauses.getJSONObject(i);
-                if (evaluateComplexCondition(elseIfClause.getJSONObject("condition"), sourceData)) {
-                    applyOperations(elseIfClause.getJSONArray("operations"), sourceData, ocsfData);
+                if (evaluateComplexCondition(elseIfClause.getJSONObject(CONDITION), sourceData)) {
+                    applyOperations(elseIfClause.getJSONArray(OPERATIONS), sourceData, ocsfData);
                     matched = true;
                 }
             }
 
             if (!matched && transform.has("else")) {
-                applyOperations(transform.getJSONObject("else").getJSONArray("operations"),
+                applyOperations(transform.getJSONObject("else").getJSONArray(OPERATIONS),
                         sourceData, ocsfData);
             }
         } else if (transform.has("else")) {
-            applyOperations(transform.getJSONObject("else").getJSONArray("operations"),
+            applyOperations(transform.getJSONObject("else").getJSONArray(OPERATIONS),
                     sourceData, ocsfData);
         }
     }
 
     private void applyVariableTransformation(JSONObject transform, Map<String, Object> ocsfData) throws JSONException {
         String target = transform.getString("target");
-        String variableName = transform.getString("value");
-        String type = transform.getString("type");
+        String variableName = transform.getString(VALUE);
+        String type = transform.getString(TYPE);
 
         String variableValue = getVariableValue(variableName);
         if (variableValue != null) {
@@ -330,11 +366,11 @@ public class OcsfSchemaMapper {
     }
 
     private boolean evaluateClause(JSONObject clause, Map<String, Object> sourceData) throws JSONException {
-        JSONObject lhs = clause.getJSONObject("lhs");
-        String operation = clause.getString("operation");
+        JSONObject lhs = clause.getJSONObject(LHS);
+        String operation = clause.getString(OPERATION);
         boolean ignoreCase = clause.optBoolean("ignoreCase", false);
 
-        String fieldName = lhs.getString("value");
+        String fieldName = lhs.getString(VALUE);
         Object fieldValue = getNestedValue(sourceData, fieldName);
 
         if (fieldValue == null) {
@@ -343,7 +379,7 @@ public class OcsfSchemaMapper {
 
         switch (operation) {
             case "EQUALS":
-                String pattern = clause.getJSONObject("rhs").getString("value");
+                String pattern = clause.getJSONObject(RHS).getString(VALUE);
                 String fieldStr = String.valueOf(fieldValue);
                 return ignoreCase ?
                         fieldStr.equalsIgnoreCase(pattern) :
@@ -351,7 +387,7 @@ public class OcsfSchemaMapper {
             case "EXISTS":
                 return true;
             case "CONTAINS":
-                String searchPattern = clause.getJSONObject("rhs").getString("value");
+                String searchPattern = clause.getJSONObject(RHS).getString(VALUE);
                 return String.valueOf(fieldValue).contains(searchPattern);
             default:
                 LOG.warn("Unsupported operation: {}", operation);
@@ -359,6 +395,10 @@ public class OcsfSchemaMapper {
         }
     }
 
+    /**
+     * Converts values to specified types (string, integer, long, boolean, double, timestamp).
+     * @throws IllegalArgumentException if conversion fails
+     */
     private Object convertValue(Object value, String type, JSONObject config) {
         if (value == null) {
             return null;
@@ -420,13 +460,13 @@ public class OcsfSchemaMapper {
                                  Map<String, Object> ocsfData) throws JSONException {
         for (int i = 0; i < operations.length(); i++) {
             JSONObject operation = operations.getJSONObject(i);
-            String operationType = operation.getString("operation");
+            String operationType = operation.getString(OPERATION);
 
             switch (operationType) {
                 case "mapping":
-                    String source = operation.getString("source");
-                    String destination = operation.getString("destination");
-                    String type = operation.getString("type");
+                    String source = operation.getString(SOURCE);
+                    String destination = operation.getString(DESTINATION);
+                    String type = operation.getString(TYPE);
 
                     Object sourceValue = getNestedValue(sourceData, source);
                     if (sourceValue != null) {
