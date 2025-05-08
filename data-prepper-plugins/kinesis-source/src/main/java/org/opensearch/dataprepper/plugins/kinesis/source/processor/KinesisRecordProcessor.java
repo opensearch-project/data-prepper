@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.kinesis.source.converter.KinesisRecord
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisStreamNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.arns.Arn;
 import software.amazon.kinesis.common.StreamIdentifier;
 import software.amazon.kinesis.exceptions.InvalidStateException;
 import software.amazon.kinesis.exceptions.ShutdownException;
@@ -43,6 +44,7 @@ import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber;
 import java.time.Duration;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -112,7 +114,18 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     }
 
     private KinesisStreamConfig getStreamConfig(final KinesisSourceConfig kinesisSourceConfig) {
-        final Optional<KinesisStreamConfig> kinesisStreamConfig = kinesisSourceConfig.getStreams().stream().filter(streamConfig -> streamConfig.getName().equals(streamIdentifier.streamName())).findAny();
+        final Optional<KinesisStreamConfig> kinesisStreamConfig = kinesisSourceConfig.getStreams().stream().filter(streamConfig -> {
+            if (streamIdentifier.streamArnOptional().isPresent()) {
+                Arn streamIdentifierArn = streamIdentifier.streamArnOptional().get();
+                Arn streamConfigArn = Arn.fromString(streamConfig.getArn());
+                return streamIdentifierArn.equals(streamConfigArn);
+            }
+            if (Objects.nonNull(streamConfig.getArn())) {
+                String streamName = Arn.fromString(streamConfig.getArn()).resource().resource();
+                return streamName.equals(streamIdentifier.streamName());
+            }
+            return streamConfig.getName().equals(streamIdentifier.streamName());
+        }).findAny();
         if (kinesisStreamConfig.isEmpty()) {
             throw new KinesisStreamNotFoundException(String.format("Kinesis stream not found for %s", streamIdentifier.streamName()));
         }

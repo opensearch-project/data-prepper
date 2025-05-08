@@ -1,0 +1,14 @@
+source:
+  kinesis:
+    streams:
+      - stream_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-1"
+        consumer_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-1/consumer/consumer-1:1"
+      - stream_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-2"
+        consumer_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-2/consumer/consumer-1:1"
+      - stream_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-3"
+        consumer_arn: "arn:aws:kinesis:us-east-1:123456789012:stream/stream-3/consumer/consumer-1:1"
+    codec:
+      ndjson:
+    aws:
+      sts_role_arn: "arn:aws:iam::123456789012:role/OSI-PipelineRole"
+      region: "us-east-1"
