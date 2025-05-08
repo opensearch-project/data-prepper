@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
+import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
 import software.amazon.kinesis.common.InitialPositionInStreamExtended;
@@ -19,8 +20,9 @@ import software.amazon.kinesis.processor.FormerStreamsLeasesDeletionStrategy;
 import software.amazon.kinesis.processor.MultiStreamTracker;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class KinesisMultiStreamTracker implements MultiStreamTracker {
     private final KinesisSourceConfig sourceConfig;
@@ -34,19 +36,47 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
     }
 
     @Override
-    public List<StreamConfig> streamConfigList()  {
-        List<StreamConfig> streamConfigList = new ArrayList<>();
-        for (KinesisStreamConfig kinesisStreamConfig : sourceConfig.getStreams()) {
-            StreamConfig streamConfig = getStreamConfig(kinesisStreamConfig);
-            streamConfigList.add(streamConfig);
-        }
-        return streamConfigList;
+    public List<StreamConfig> streamConfigList() {
+        return sourceConfig.getStreams().stream()
+                .map(this::createStreamConfig)
+                .collect(Collectors.toList());
     }
 
-    private StreamConfig getStreamConfig(KinesisStreamConfig kinesisStreamConfig) {
-        StreamIdentifier sourceStreamIdentifier = kinesisClientAPIHandler.getStreamIdentifier(kinesisStreamConfig.getName());
-        return new StreamConfig(sourceStreamIdentifier,
-                InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()));
+    private StreamConfig createStreamConfig(KinesisStreamConfig kinesisStreamConfig) {
+        StreamIdentifier streamIdentifier = getStreamIdentifier(kinesisStreamConfig);
+
+        // if the consumer strategy is polling, skip look up for consumer
+        if (sourceConfig.getConsumerStrategy() == ConsumerStrategy.POLLING) {
+            return new StreamConfig(streamIdentifier,
+                    InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition())
+            );
+        }
+
+        // If stream arn and consumer arn is present, create a stream config based on the configured values
+        if (Objects.nonNull(kinesisStreamConfig.getArn()) && Objects.nonNull(kinesisStreamConfig.getConsumerarn())) {
+            return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), kinesisStreamConfig.getConsumerarn());
+        }
+
+        // If stream arn is provided, lookup consumer arn based on the consumer name which is the data prepper application name
+        if (Objects.nonNull(kinesisStreamConfig.getArn())) {
+            String consumerArn = kinesisClientAPIHandler.getConsumerArnForStream(kinesisStreamConfig.getArn(), this.applicationName);
+            return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), consumerArn);
+        }
+        // Default case
+        return new StreamConfig(streamIdentifier,
+                InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition())
+        );
+    }
+
+    private StreamIdentifier getStreamIdentifier(KinesisStreamConfig kinesisStreamConfig) {
+
+        if (Objects.nonNull(kinesisStreamConfig.getArn())) {
+            return kinesisClientAPIHandler.getStreamIdentifierFromStreamArn(kinesisStreamConfig.getArn());
+        } else if (Objects.nonNull(kinesisStreamConfig.getName())) {
+            return kinesisClientAPIHandler.getStreamIdentifier(kinesisStreamConfig.getName());
+        } else {
+            throw new IllegalArgumentException("Either ARN or name must be specified for Kinesis stream configuration");
+        }
     }
 
     /**
