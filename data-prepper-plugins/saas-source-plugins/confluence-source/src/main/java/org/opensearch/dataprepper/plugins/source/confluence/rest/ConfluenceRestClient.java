@@ -83,8 +83,10 @@ public class ConfluenceRestClient extends AtlassianRestClient {
     /**
      * Method to get all Contents in a paginated fashion.
      *
-     * @param cql     input parameter.
-     * @param startAt the start at
+     * @param cql             input parameter.
+     * @param startAt         the start at
+     *                        {@link ConfluenceSearchResults} confluence search results
+     * @param paginationLinks the pagination links
      * @return InputStream input stream
      */
     public ConfluenceSearchResults getAllContent(StringBuilder cql, int startAt,

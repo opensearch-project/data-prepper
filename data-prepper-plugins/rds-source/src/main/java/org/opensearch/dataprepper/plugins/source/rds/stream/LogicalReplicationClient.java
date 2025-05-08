@@ -84,7 +84,7 @@ public class LogicalReplicationClient implements ReplicationLogClient {
                         stream.setFlushedLSN(lsn);
                         stream.setAppliedLSN(lsn);
                     } catch (Exception e) {
-                        LOG.error("Exception while processing Postgres replication stream. ", e);
+                        LOG.error("Exception while processing Postgres replication stream. ");
                         closeStream();
                         throw e;
                     }

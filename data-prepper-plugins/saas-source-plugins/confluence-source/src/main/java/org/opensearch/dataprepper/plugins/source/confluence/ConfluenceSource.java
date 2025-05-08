@@ -24,12 +24,14 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.time.Instant;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constants.PLUGIN_NAME;
 
 
@@ -47,7 +49,6 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
     private static final Logger log = LoggerFactory.getLogger(ConfluenceSource.class);
     private final ConfluenceSourceConfig confluenceSourceConfig;
     private final AtlassianAuthConfig jiraOauthConfig;
-    private final ConfluenceService service;
 
     @DataPrepperPluginConstructor
     public ConfluenceSource(final PluginMetrics pluginMetrics,
@@ -55,14 +56,12 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
                             final AtlassianAuthConfig jiraOauthConfig,
                             final PluginFactory pluginFactory,
                             final AcknowledgementSetManager acknowledgementSetManager,
-                            Crawler crawler,
-                            PluginExecutorServiceProvider executorServiceProvider,
-                            final ConfluenceService service) {
+                            final PaginationCrawler crawler,
+                            PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, confluenceSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Confluence Source Plugin");
         this.confluenceSourceConfig = confluenceSourceConfig;
         this.jiraOauthConfig = jiraOauthConfig;
-        this.service = service;
     }
 
     @Override
@@ -70,8 +69,12 @@ public class ConfluenceSource extends CrawlerSourcePlugin {
         log.info("Starting Confluence Source Plugin... ");
         ConfluenceConfigHelper.validateConfig(confluenceSourceConfig);
         jiraOauthConfig.initCredentials();
-        super.setServerMetadata(service.getConfluenceServerMetadata());
         super.start(buffer);
+    }
+
+    @Override
+    protected LeaderProgressState createLeaderProgressState() {
+        return new AtlassianLeaderProgressState(Instant.EPOCH);
     }
 
     @Override

@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.codec;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.opensearch.dataprepper.model.event.Event;
@@ -30,10 +31,15 @@ public class JsonDecoder implements ByteDecoder {
     private Collection<String> includeKeys;
     private Collection<String> includeKeysMetadata;
 
-    public JsonDecoder(String keyName, Collection<String> includeKeys, Collection<String> includeKeysMetadata) {
+    public JsonDecoder(String keyName, Collection<String> includeKeys, Collection<String> includeKeysMetadata, Integer maxEventLength) {
         this.keyName = keyName;
         this.includeKeys = includeKeys;
         this.includeKeysMetadata = includeKeysMetadata;
+        if (maxEventLength != null) {
+        jsonFactory.setStreamReadConstraints(StreamReadConstraints.builder()
+                .maxStringLength(maxEventLength)
+                .build());
+        }
     }
 
     public JsonDecoder() {
@@ -66,7 +72,7 @@ public class JsonDecoder implements ByteDecoder {
             }
 
             if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
-                if (keyName != null && !nodeName.equals(keyName)) {
+                if (keyName != null && !keyName.equals(nodeName)) {
                     continue;
                 }
                 parseRecordsArray(jsonParser, timeReceived, eventConsumer, includeKeysMap, includeMetadataKeysMap);

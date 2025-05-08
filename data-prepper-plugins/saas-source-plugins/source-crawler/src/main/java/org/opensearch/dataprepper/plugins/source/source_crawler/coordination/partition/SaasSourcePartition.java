@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.pa
 
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 
 import java.util.Optional;
 

@@ -448,7 +448,7 @@ public class S3ScanObjectWorkerIT {
     }
 
     @Test
-    public void processS3Object_test_multiple_dataselections_on_multiple_buckets() throws Exception {
+    public void processS3Object_test_multiple_dataselections_on_same_bucket() throws Exception {
         String keyPrefix = "s3source/s3-scan/dataMetadataTest/" + Instant.now().toEpochMilli();
         final String bucketOptionYaml = "name: " + bucket + "\n" +
                 "filter:\n" +

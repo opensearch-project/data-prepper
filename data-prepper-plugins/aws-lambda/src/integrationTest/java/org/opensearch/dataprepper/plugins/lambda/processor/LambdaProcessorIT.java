@@ -40,6 +40,7 @@ import org.mockito.quality.Strictness;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
@@ -120,9 +121,13 @@ public class LambdaProcessorIT {
     private Counter batchExceedingThresholdCounter;
     @Mock
     private Timer testTimer;
+    @Mock
+    CircuitBreaker circuitBreaker;
 
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
-        return new LambdaProcessor(pluginFactory, pluginSetting, processorConfig, awsCredentialsSupplier, expressionEvaluator);
+        return new LambdaProcessor(pluginFactory, pluginSetting,
+                processorConfig, awsCredentialsSupplier, expressionEvaluator,
+                circuitBreaker);
     }
 
     @BeforeEach
@@ -508,7 +513,8 @@ public class LambdaProcessorIT {
                     pluginSetting,
                     lambdaProcessorConfig,
                     awsCredentialsSupplier,
-                    expressionEvaluator
+                    expressionEvaluator,
+                    circuitBreaker
             );
 
             // Create multiple parallel tasks to call doExecute(...)
@@ -650,7 +656,6 @@ public class LambdaProcessorIT {
         assertEquals(3, results.size());
         verify(numberOfRequestsSuccessCounter, times(2)).increment();
         verify(numberOfRequestsFailedCounter, times(1)).increment();
-        verify(batchExceedingThresholdCounter, times(1)).increment();
     }
 
     @Test

@@ -14,6 +14,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -38,11 +39,12 @@ import software.amazon.awssdk.services.lambda.LambdaAsyncClient;
 import software.amazon.awssdk.services.lambda.model.InvokeResponse;
 import software.amazon.awssdk.services.lambda.model.LambdaException;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -63,7 +65,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
     public static final String LAMBDA_RESPONSE_RECORDS_COUNTER = "lambdaResponseRecordsCounter";
     public static final String RECORDS_EXCEEDING_THRESHOLD = "recordsExceedingThreshold";
-    private static final String NO_RETURN_RESPONSE = "null";
+    public static final String CIRCUIT_BREAKER_TRIPS = "circuitBreakerTrips";
+    private static final byte[] NO_RETURN_RESPONSE = "null".getBytes(StandardCharsets.UTF_8);
     private static final String EXCEEDING_PAYLOAD_LIMIT_EXCEPTION = "Status Code: 413";
 
     private static final Logger LOG = LoggerFactory.getLogger(LambdaProcessor.class);
@@ -85,18 +88,22 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final DistributionSummary responsePayloadMetric;
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
+    private final CircuitBreaker circuitBreaker;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
                            final LambdaProcessorConfig lambdaProcessorConfig,
                            final AwsCredentialsSupplier awsCredentialsSupplier,
-                           final ExpressionEvaluator expressionEvaluator) {
+                           final ExpressionEvaluator expressionEvaluator,
+                           final CircuitBreaker circuitBreaker) {
         super(
                 PluginMetrics.fromPluginSetting(pluginSetting, pluginSetting.getName() + "_processor"));
 
         this.expressionEvaluator = expressionEvaluator;
         this.pluginFactory = pluginFactory;
         this.lambdaProcessorConfig = lambdaProcessorConfig;
+        //Mostly used with HeapCircuitBreaker
+        this.circuitBreaker = circuitBreaker;
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(
                 NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(
@@ -167,6 +174,8 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         try {
+            // Check if circuit breaker is open - if so, wait until it closes
+            checkCircuitBreaker();
             bufferToFutureMap = LambdaCommonHandler.sendRecords(
                     recordsToLambda, lambdaProcessorConfig, lambdaAsyncClient,
                     new OutputCodecContext());
@@ -216,6 +225,36 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
         return resultRecords;
     }
 
+    private void checkCircuitBreaker() {
+        if (circuitBreaker!=null && circuitBreaker.isOpen()) {
+            LOG.warn("Circuit breaker is open. Will wait up to {} retries with {}ms interval before proceeding.",
+                    lambdaProcessorConfig.getCircuitBreakerRetries(),
+                    lambdaProcessorConfig.getCircuitBreakerWaitInterval());
+
+            // Wait until the circuit breaker is closed
+            int retries = 0;
+            while (circuitBreaker.isOpen() && retries < lambdaProcessorConfig.getCircuitBreakerRetries()) {
+                try {
+                    LOG.warn(NOISY, "Circuit breaker is open," +
+                                "Retry count: {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
+                    // Sleep for a short time before checking again
+                    Thread.sleep(lambdaProcessorConfig.getCircuitBreakerWaitInterval());
+                    retries++;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.warn("Interrupted while waiting for circuit breaker to close", e);
+                    break;
+                }
+            }
+            if (circuitBreaker.isOpen()) {
+                LOG.warn("Proceeding with Lambda invocation after {} retries, even though circuit breaker is still open. " +
+                        "This may lead to increased memory pressure.", retries);
+            } else {
+                LOG.info("Circuit breaker closed after {} retries. Resuming Lambda invocation.", retries);
+            }
+        }
+    }
+
     /*
      * Assumption: Lambda always returns json array.
      * 1. If response has an array, we assume that we split the individual events.
@@ -230,9 +269,9 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         SdkBytes payload = lambdaResponse.payload();
         // Considering "null" payload as empty response from lambda and not parsing it.
-        if (!(NO_RETURN_RESPONSE.equals(payload.asUtf8String()))) {
+        if (!(Arrays.equals(NO_RETURN_RESPONSE, payload.asByteArrayUnsafe()))) {
             //Convert using response codec
-            InputStream inputStream = new ByteArrayInputStream(payload.asByteArray());
+            InputStream inputStream = payload.asInputStream();
             responseCodec.parse(inputStream, record -> {
                 Event event = record.getData();
                 parsedEvents.add(event);

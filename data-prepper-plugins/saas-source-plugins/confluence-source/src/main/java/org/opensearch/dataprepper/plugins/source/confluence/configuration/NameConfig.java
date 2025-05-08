@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 @Getter
 public class NameConfig {
 
-    Pattern projectKeysRegex = Pattern.compile("^[A-Z0-9]+$");
+    public static final Pattern VALID_SPACE_KEY_REGEX = Pattern.compile("^[A-Za-z0-9]+$");
 
     @JsonProperty("include")
     @Size(max = 100, message = "Space name type filter should not be more than 100")
@@ -40,7 +40,7 @@ public class NameConfig {
 
     boolean checkGivenListForRegex(List<String> list) {
         for (String value : list) {
-            if (value != null && !projectKeysRegex.matcher(value).matches()) {
+            if (value == null || !VALID_SPACE_KEY_REGEX.matcher(value).matches()) {
                 return false;
             }
         }

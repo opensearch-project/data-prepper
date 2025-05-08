@@ -100,8 +100,8 @@ public class CrawlerSourcePluginTest {
         saasSourcePlugin.setEnhancedSourceCoordinator(sourceCoordinator);
         saasSourcePlugin.start(buffer);
         verify(executorService, times(1)).submit(any(LeaderScheduler.class));
-        verify(executorService, times(CrawlerSourceConfig.DEFAULT_NUMBER_OF_WORKERS))
-                .submit(any(Thread.class));
+        int numberOfWorkerThreads = sourceConfig.getNumberOfWorkers();
+        verify(executorService, times(numberOfWorkerThreads)).submit(any(Thread.class));
     }
 
     @Test
@@ -133,6 +133,11 @@ public class CrawlerSourcePluginTest {
                                        final Crawler crawler,
                                        final PluginExecutorServiceProvider executorServiceProvider) {
             super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
+        }
+
+        @Override
+        protected LeaderProgressState createLeaderProgressState() {
+            return null;
         }
     }
 

@@ -20,7 +20,7 @@ public class ConfluenceNextLinkValidator {
             "start", Pattern.compile("^\\d+$"),
             "startAt", Pattern.compile("^\\d+$"),
             "maxResults", Pattern.compile("^\\d+$"),
-            "cql", Pattern.compile("^[\\w\\s=\"()><%\\-.:]+$")
+            "cql", Pattern.compile("^[\\w\\s=\"()><%\\-.:,]+$")
     );
 
     public static String validateAndSanitizeURL(String urlString) throws MalformedURLException {

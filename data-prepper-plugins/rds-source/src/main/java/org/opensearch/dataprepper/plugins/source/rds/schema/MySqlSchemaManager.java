@@ -36,7 +36,9 @@ public class MySqlSchemaManager implements SchemaManager {
     static final String[] TABLE_TYPES = new String[]{"TABLE"};
     static final String COLUMN_NAME = "COLUMN_NAME";
     static final String TABLE_NAME = "TABLE_NAME";
+    static final String MYSQL_VERSION_8_4 = "8.4";
     static final String BINLOG_STATUS_QUERY = "SHOW MASTER STATUS";
+    static final String NEW_BINLOG_STATUS_QUERY = "SHOW BINARY LOG STATUS";
     static final String BINLOG_FILE = "File";
     static final String BINLOG_POSITION = "Position";
     static final int NUM_OF_RETRIES = 3;
@@ -153,8 +155,12 @@ public class MySqlSchemaManager implements SchemaManager {
         int retry = 0;
         while (retry <= NUM_OF_RETRIES) {
             try (final Connection connection = connectionManager.getConnection()) {
+                final String mySqlVersion = connection.getMetaData().getDatabaseProductVersion();
+                LOG.info("MySQL version: {}", mySqlVersion);
                 final Statement statement = connection.createStatement();
-                final ResultSet rs = statement.executeQuery(BINLOG_STATUS_QUERY);
+                final ResultSet rs = VersionUtil.compareVersions(mySqlVersion, MYSQL_VERSION_8_4) >= 0 ?
+                        statement.executeQuery(NEW_BINLOG_STATUS_QUERY) :
+                        statement.executeQuery(BINLOG_STATUS_QUERY);
                 if (rs.next()) {
                     return Optional.of(new BinlogCoordinate(rs.getString(BINLOG_FILE), rs.getLong(BINLOG_POSITION)));
                 }

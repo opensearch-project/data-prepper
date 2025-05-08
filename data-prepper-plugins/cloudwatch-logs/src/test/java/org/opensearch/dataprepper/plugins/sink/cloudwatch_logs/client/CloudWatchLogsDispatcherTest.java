@@ -27,6 +27,7 @@ class CloudWatchLogsDispatcherTest {
     private  CloudWatchLogsClient mockCloudWatchLogsClient;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
     private Executor mockExecutor;
+    private static final int RETRY_COUNT = 5;
     private static final String LOG_GROUP = "testGroup";
     private static final String LOG_STREAM = "testStream";
     private static final String TEST_STRING = "testMessage";
@@ -48,7 +49,7 @@ class CloudWatchLogsDispatcherTest {
         return returnCollection;
     }
 
-    Collection<EventHandle> getSampleEventHandles() {
+    List<EventHandle> getSampleEventHandles() {
         final ArrayList<EventHandle> eventHandles = new ArrayList<>();
 
         for (int i = 0; i < ThresholdConfig.DEFAULT_BATCH_SIZE; i++) {
@@ -66,8 +67,7 @@ class CloudWatchLogsDispatcherTest {
                 .executor(mockExecutor)
                 .logGroup(LOG_GROUP)
                 .logStream(LOG_STREAM)
-                .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
-                .backOffTimeBase(ThresholdConfig.DEFAULT_BACKOFF_TIME)
+                .retryCount(RETRY_COUNT)
                 .build();
     }
 

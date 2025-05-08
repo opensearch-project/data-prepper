@@ -20,9 +20,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.sch
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
@@ -36,7 +34,6 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
 
     private static final Logger log = LoggerFactory.getLogger(CrawlerSourcePlugin.class);
     private EnhancedSourceCoordinator coordinator;
-    private Optional<SourceServerMetadata> serverMetadata = Optional.empty();
     private final PluginMetrics pluginMetrics;
     private final PluginFactory pluginFactory;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -44,8 +41,6 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final String sourcePluginName;
-    private final int batchSize;
-
 
     public CrawlerSourcePlugin(final String sourcePluginName,
                                final PluginMetrics pluginMetrics,
@@ -60,33 +55,25 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.crawler = crawler;
-        this.batchSize = sourceConfig.getBatchSize();
-
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.executorService = executorServiceProvider.get();
     }
 
-    public void setServerMetadata(SourceServerMetadata serverMetadata) {
-        this.serverMetadata = Optional.of(serverMetadata);
-    }
-
+    // Abstract method to be implemented by each subclass to provide its specific LeaderProgressState instance
+    protected abstract LeaderProgressState createLeaderProgressState();
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
         log.info("Starting {} Source Plugin", sourcePluginName);
-        Duration timezoneOffset = Duration.ofSeconds(0);
-
-        boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
+        LeaderPartition leaderPartition = new LeaderPartition(createLeaderProgressState());
+        boolean isPartitionCreated = coordinator.createPartition(leaderPartition);
         log.debug("Leader partition creation status: {}", isPartitionCreated);
-        if (serverMetadata.isPresent()) {
-            timezoneOffset = serverMetadata.get().getPollingTimezoneOffset();
-        }
 
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize, timezoneOffset);
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler);
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
-        for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
+        for (int i = 0; i < sourceConfig.getNumberOfWorkers(); i++) {
             WorkerScheduler workerScheduler = new WorkerScheduler(sourcePluginName, buffer, coordinator,
                     sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
             this.executorService.submit(new Thread(workerScheduler));

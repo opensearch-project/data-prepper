@@ -76,6 +76,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -218,13 +219,24 @@ public class OTelProtoStandardCodecTest {
             assertThat(spans.size(), is(equalTo(3)));
 
             for (final Span span : spans) {
-                assertThat(span.getTraceGroup(), nullValue());
-                assertThat(span.getTraceGroupFields(), nullValue());
+                if (span.getParentSpanId().isEmpty()) {
+                    assertThat(span.getTraceGroup(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getEndTime(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getDurationInNanos(), notNullValue());
+                    assertThat(span.getTraceGroupFields().getStatusCode(), notNullValue());
+                } else {
+                    assertThat(span.getTraceGroup(), nullValue());
+                    assertThat(span.getTraceGroupFields().getEndTime(), nullValue());
+                    assertThat(span.getTraceGroupFields().getDurationInNanos(), nullValue());
+                    assertThat(span.getTraceGroupFields().getStatusCode(), nullValue());
+                }
                 Map<String, Object> resource = span.getResource();
                 assertThat(resource.containsKey(OTelProtoStandardCodec.ATTRIBUTES_KEY), is(true));
+                assertThat((String)resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
                 Map<String, Object> attributes = (Map<String, Object>)resource.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
                 assertThat(attributes.containsKey("service.name"), is(true));
                 Map<String, Object> scope = span.getScope();
+                //assertThat((String)span.get(OTelProtoStandardCodec.SCHEMA_URL_KEY, String.class), equalTo("spansSchemaUrl"));
                 assertThat(scope.containsKey(OTelProtoStandardCodec.NAME_KEY), is(true));
             }
         }
@@ -320,7 +332,7 @@ public class OTelProtoStandardCodecTest {
                     .setStringValue("EaglesService").build()).build();
 
             final Map<String, Object> resourceAttributes = decoderUnderTest.getResourceAttributes(Resource.newBuilder()
-                    .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
+                    .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build(), "resourceSchemaUrl");
             final Map<String, Object> actual = (Map<String, Object>)resourceAttributes.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
             assertThat(actual.get(spanAttribute2.getKey()), equalTo(spanAttribute2.getValue().getStringValue()));
             assertThat(actual.containsKey(spanAttribute1.getKey()), is(true));
@@ -350,7 +362,7 @@ public class OTelProtoStandardCodecTest {
                     .setArrayValue(arrayValue)).build();
 
             final Map<String, Object> resource = decoderUnderTest.getResourceAttributes(Resource.newBuilder()
-                    .addAllAttributes(Collections.singletonList(spanAttribute1)).build());
+                    .addAllAttributes(Collections.singletonList(spanAttribute1)).build(), "resourceSchemaUrl");
             final Map<String, Object> actual = (Map<String, Object>)resource.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
             assertThat(actual.containsKey(spanAttribute1.getKey()), is(true));
             final List<Object> actualValue = (List<Object>)actual.get(spanAttribute1.getKey());
@@ -425,16 +437,16 @@ public class OTelProtoStandardCodecTest {
         }
 
         private void validateLog(OpenTelemetryLog logRecord) {
-            assertThat(logRecord.getServiceName(), is("service"));
             assertThat(logRecord.getTime(), is("2020-05-24T14:00:00Z"));
             assertThat(logRecord.getObservedTime(), is("2020-05-24T14:00:02Z"));
             assertThat(logRecord.getBody(), is("Log value"));
             assertThat(logRecord.getDroppedAttributesCount(), is(3));
-            assertThat(logRecord.getSchemaUrl(), is("schemaurl"));
+            assertThat(logRecord.getSchemaUrl(), is("logsSchemaUrl"));
             assertThat(logRecord.getSeverityNumber(), is(5));
             assertThat(logRecord.getSeverityText(), is("Severity value"));
             assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));
             assertThat(logRecord.getSpanId(), is("2cc83ac90ebc469c"));
+            assertThat((String)logRecord.get(OTelProtoStandardCodec.SCHEMA_URL_KEY, String.class), equalTo("logsSchemaUrl"));
             Map<String, Object> scope = logRecord.getScope();
             Map<String, Object> scopeAttributes = (Map<String, Object>)scope.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
             assertThat(scopeAttributes.get("my.scope.attribute"), is("log scope attribute"));
@@ -445,7 +457,10 @@ public class OTelProtoStandardCodecTest {
             assertThat(attributes.get("statement.params"), is("us-east-1"));
             Map<String, Object> resource = logRecord.getResource();
             Map<String, Object> resourceAttributes = (Map<String, Object>)resource.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
+            assertThat((String)resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
             assertThat(resourceAttributes.get("service.name"), is("service"));
+            assertThat(resource.get(OTelProtoStandardCodec.DROPPED_ATTRIBUTES_COUNT_KEY), equalTo(0));
+            assertThat(resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
         }
 
         @Test
@@ -489,12 +504,19 @@ public class OTelProtoStandardCodecTest {
             assertThat(metric.getUnit(), equalTo("1"));
             assertThat(metric.getName(), equalTo("counter-int"));
             JacksonGauge gauge = (JacksonGauge)metric;
+            assertThat((String)gauge.get(OTelProtoStandardCodec.SCHEMA_URL_KEY, String.class), equalTo("metricsSchemaUrl"));
+            Map<String, Object> resource = gauge.getResource();
+            assertThat((String)resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
             assertThat(gauge.getValue(), equalTo(123.0));
             Map<String, Object> scope = gauge.getScope();
             Map<String, Object> scopeAttributes = (Map<String, Object>)scope.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
             assertThat(scopeAttributes.get("my.scope.attribute"), is("gauge scope attribute"));
             assertThat(scope.get(OTelProtoStandardCodec.NAME_KEY), is("my.library"));
             assertThat(scope.get(OTelProtoStandardCodec.VERSION_KEY), is("1.0.0"));
+            Map<String, Object> metadata = gauge.getMetricMetadata();
+            assertThat(metadata.get("metadataKey1"), equalTo("metadataValue1"));
+            assertThat(metadata.get("metadataKey2"), equalTo(200L));
+            assertThat(metadata.get("metadataKey3"), equalTo("metadataValue3"));
         }
 
         private void validateSumMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -505,12 +527,19 @@ public class OTelProtoStandardCodecTest {
             assertThat(metric.getUnit(), equalTo("1"));
             assertThat(metric.getName(), equalTo("sum-int"));
             JacksonSum sum = (JacksonSum)metric;
+            assertThat((String)sum.get(OTelProtoStandardCodec.SCHEMA_URL_KEY, String.class), equalTo("metricsSchemaUrl"));
+            Map<String, Object> resource = sum.getResource();
+            assertThat((String)resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
             assertThat(sum.getValue(), equalTo(456.0));
             Map<String, Object> scope = sum.getScope();
             Map<String, Object> scopeAttributes = (Map<String, Object>)scope.get(OTelProtoStandardCodec.ATTRIBUTES_KEY);
             assertThat(scopeAttributes.get("my.scope.attribute"), is("sum scope attribute"));
             assertThat(scope.get(OTelProtoStandardCodec.NAME_KEY), is("my.library"));
             assertThat(scope.get(OTelProtoStandardCodec.VERSION_KEY), is("1.0.0"));
+            Map<String, Object> metadata = sum.getMetricMetadata();
+            assertThat(metadata.get("metadataKey1"), equalTo("metadataValue1"));
+            assertThat(metadata.get("metadataKey2"), equalTo(200L));
+            assertThat(metadata.get("metadataKey3"), equalTo("metadataValue3"));
         }
 
         private void validateHistogramMetricRequest(Collection<Record<? extends Metric>> metrics) {
@@ -521,8 +550,13 @@ public class OTelProtoStandardCodecTest {
             assertThat(metric.getUnit(), equalTo("1"));
             assertThat(metric.getName(), equalTo("histogram-int"));
             JacksonHistogram histogram = (JacksonHistogram)metric;
+            assertThat((String)histogram.get(OTelProtoStandardCodec.SCHEMA_URL_KEY, String.class), equalTo("metricsSchemaUrl"));
+            Map<String, Object> resource = histogram.getResource();
+            assertThat((String)resource.get(OTelProtoStandardCodec.SCHEMA_URL_KEY), equalTo("resourceSchemaUrl"));
             assertThat(histogram.getSum(), equalTo(100.0));
             assertThat(histogram.getCount(), equalTo(30L));
+            assertThat(histogram.getMin(), equalTo(40.0));
+            assertThat(histogram.getMax(), equalTo(60.0));
             assertThat(histogram.getExemplars(), equalTo(Collections.emptyList()));
             assertThat(histogram.getExplicitBoundsList(), equalTo(List.of(1.0, 2.0, 3.0, 4.0)));
             assertThat(histogram.getExplicitBoundsCount(), equalTo(4));
@@ -534,6 +568,10 @@ public class OTelProtoStandardCodecTest {
             assertThat(scopeAttributes.get("my.scope.attribute"), is("histogram scope attribute"));
             assertThat(scope.get(OTelProtoStandardCodec.NAME_KEY), is("my.library"));
             assertThat(scope.get(OTelProtoStandardCodec.VERSION_KEY), is("1.0.0"));
+            Map<String, Object> metadata = histogram.getMetricMetadata();
+            assertThat(metadata.get("metadataKey1"), equalTo("metadataValue1"));
+            assertThat(metadata.get("metadataKey2"), equalTo(200L));
+            assertThat(metadata.get("metadataKey3"), equalTo("metadataValue3"));
         }
 
         private void validateHistogramMetricRequestNoExplicitBounds(Collection<Record<? extends Metric>> metrics) {
@@ -557,6 +595,10 @@ public class OTelProtoStandardCodecTest {
             assertThat(scopeAttributes.get("my.scope.attribute"), is("histogram scope attribute"));
             assertThat(scope.get(OTelProtoStandardCodec.NAME_KEY), is("my.library"));
             assertThat(scope.get(OTelProtoStandardCodec.VERSION_KEY), is("1.0.0"));
+            Map<String, Object> metadata = histogram.getMetricMetadata();
+            assertThat(metadata.get("metadataKey1"), equalTo("metadataValue1"));
+            assertThat(metadata.get("metadataKey2"), equalTo(200L));
+            assertThat(metadata.get("metadataKey3"), equalTo("metadataValue3"));
         }
 
 
@@ -882,9 +924,9 @@ public class OTelProtoStandardCodecTest {
     public void testTimeCodec() {
         final long testNanos = System.nanoTime();
         final String timeISO8601 = OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos);
-        final long nanoCodecResult = OTelProtoCommonUtils.timeISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
+        final long nanoCodecResult = OTelProtoCommonUtils.convertISO8601ToNanos(OTelProtoCommonUtils.convertUnixNanosToISO8601(testNanos));
         assertThat(nanoCodecResult, equalTo(testNanos));
-        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.timeISO8601ToNanos(timeISO8601));
+        final String stringCodecResult = OTelProtoCommonUtils.convertUnixNanosToISO8601(OTelProtoCommonUtils.convertISO8601ToNanos(timeISO8601));
         assertThat(stringCodecResult, equalTo(timeISO8601));
     }
 

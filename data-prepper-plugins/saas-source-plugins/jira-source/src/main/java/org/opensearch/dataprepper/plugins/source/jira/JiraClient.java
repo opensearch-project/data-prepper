@@ -23,7 +23,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,16 +47,15 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PRO
  * This class represents a Jira client.
  */
 @Named
-public class JiraClient implements CrawlerClient {
+public class JiraClient implements CrawlerClient<AtlassianWorkerProgressState> {
 
     private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
+    private ObjectMapper objectMapper = new ObjectMapper();
     private final JiraService service;
     private final JiraIterator jiraIterator;
     private final ExecutorService executorService;
     private final CrawlerSourceConfig configuration;
     private final int bufferWriteTimeoutInSeconds = 10;
-    private ObjectMapper objectMapper = new ObjectMapper();
-    private Instant lastPollTime;
 
     public JiraClient(JiraService service,
                       JiraIterator jiraIterator,
@@ -69,15 +68,9 @@ public class JiraClient implements CrawlerClient {
     }
 
     @Override
-    public Iterator<ItemInfo> listItems() {
+    public Iterator<ItemInfo> listItems(Instant lastPollTime) {
         jiraIterator.initialize(lastPollTime);
         return jiraIterator;
-    }
-
-    @Override
-    public void setLastPollTime(Instant lastPollTime) {
-        log.trace("Setting the lastPollTime: {}", lastPollTime);
-        this.lastPollTime = lastPollTime;
     }
 
     @VisibleForTesting
@@ -86,7 +79,7 @@ public class JiraClient implements CrawlerClient {
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state,
+    public void executePartition(AtlassianWorkerProgressState state,
                                  Buffer<Record<Event>> buffer,
                                  AcknowledgementSet acknowledgementSet) {
         log.trace("Executing the partition: {} with {} ticket(s)",
@@ -127,7 +120,8 @@ public class JiraClient implements CrawlerClient {
                         .withEventType(eventType)
                         .withData(t)
                         .build())
-                .map(event -> new Record<>(event))
+                .map(Record::new)
+                .peek(record -> record.getData().getMetadata().setAttribute(PROJECT, project.toLowerCase()))
                 .collect(Collectors.toList());
 
         try {

@@ -11,9 +11,10 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.SinkStopWatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsSinkUtils;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
+import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -32,26 +33,25 @@ import java.util.concurrent.locks.ReentrantLock;
  * </ol>
  */
 public class CloudWatchLogsService {
-    private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
     private final CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
     private final Buffer buffer;
     private final CloudWatchLogsLimits cloudWatchLogsLimits;
-    private List<EventHandle> bufferedEventHandles;
     private final SinkStopWatch sinkStopWatch;
     private final ReentrantLock processLock;
+    private final DlqPushHandler dlqPushHandler;
     public CloudWatchLogsService(final Buffer buffer,
                                  final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher) {
+                                 final CloudWatchLogsDispatcher cloudWatchLogsDispatcher,
+                                 final DlqPushHandler dlqPushHandler) {
 
         this.buffer = buffer;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
-
-        bufferedEventHandles = new ArrayList<>();
 
         processLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();
 
         this.cloudWatchLogsDispatcher = cloudWatchLogsDispatcher;
+        this.dlqPushHandler = dlqPushHandler;
     }
 
     /**
@@ -59,65 +59,65 @@ public class CloudWatchLogsService {
      * @param logs Collection of Record events.
      */
     public void processLogEvents(final Collection<Record<Event>> logs) {
-            sinkStopWatch.startIfNotRunning();
-            if (logs.isEmpty() && buffer.getEventCount() > 0) {
-                processLock.lock();
-                try {
-                    if (cloudWatchLogsLimits.isGreaterThanLimitReached(sinkStopWatch.getElapsedTimeInSeconds(),
-                            buffer.getBufferSize(), buffer.getEventCount())) {
-                        stageLogEvents();
-                    }
-                } finally {
-                    processLock.unlock();
+        sinkStopWatch.startIfNotRunning();
+        if (logs.isEmpty() && buffer.getEventCount() > 0) {
+            processLock.lock();
+            try {
+                if (cloudWatchLogsLimits.isTimeLimitReached(sinkStopWatch.getElapsedTimeInSeconds())) {
+                    stageLogEvents();
                 }
-                return;
+            } finally {
+                processLock.unlock();
+            }
+            return;
+        }
+
+        final List<DlqObject> dlqObjects = new ArrayList<>();
+        for (Record<Event> log : logs) {
+            String logString = log.getData().toJsonString();
+            int logLength = logString.length();
+
+            if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
+                final String failureMessage = String.format("Event blocked due to Max Size restriction! Event Size : %s", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
+                DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, log.getData().getEventHandle(), logString, failureMessage, dlqPushHandler);
+                if (dlqObject != null) {
+                    dlqObjects.add(dlqObject);
+                }
+                continue;
             }
 
-            for (Record<Event> log : logs) {
-                String logString = log.getData().toJsonString();
-                int logLength = logString.length();
+            long time = sinkStopWatch.getElapsedTimeInSeconds();
 
-                if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
-                    LOG.warn("Event blocked due to Max Size restriction! {Event Size: {} bytes}", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
-                    continue;
+            processLock.lock();
+            try {
+                int bufferSize = buffer.getBufferSize();
+                int bufferEventCount = buffer.getEventCount();
+                if (cloudWatchLogsLimits.maxRequestSizeLimitExceeds(logLength + bufferSize, bufferEventCount+1)) {
+                    stageLogEvents();
+                }
+                addToBuffer(log.getData().getEventHandle(), logString);
+                bufferEventCount = buffer.getEventCount();
+                if (cloudWatchLogsLimits.isMaxEventCountLimitReached(bufferEventCount)) {
+                    stageLogEvents();
                 }
 
-                long time = sinkStopWatch.getElapsedTimeInSeconds();
-
-                processLock.lock();
-                try {
-                    int bufferSize = buffer.getBufferSize();
-                    int bufferEventCount = buffer.getEventCount();
-                    int newBufferEventCount = bufferEventCount + 1;
-                    int newBufferSizeCount = bufferSize + logLength;
-
-                    if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, newBufferSizeCount, newBufferEventCount) && (bufferEventCount > 0))) {
-                        stageLogEvents();
-                        addToBuffer(log, logString);
-                    } else if (cloudWatchLogsLimits.isEqualToLimitReached(newBufferSizeCount, newBufferEventCount)) {
-                        addToBuffer(log, logString);
-                        stageLogEvents();
-                    } else {
-                        addToBuffer(log, logString);
-                    }
-                } finally {
-                    processLock.unlock();
-                }
+            } finally {
+                processLock.unlock();
             }
+        }
+        CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
     }
 
     private void stageLogEvents() {
         sinkStopWatch.stopAndReset();
 
         List<InputLogEvent> inputLogEvents = cloudWatchLogsDispatcher.prepareInputLogEvents(buffer.getBufferedData());
-        cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, bufferedEventHandles);
+        cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles());
 
         buffer.resetBuffer();
-        bufferedEventHandles = new ArrayList<>();
     }
 
-    private void addToBuffer(final Record<Event> log, final String logString) {
-        bufferedEventHandles.add(log.getData().getEventHandle());
-        buffer.writeEvent(logString.getBytes(StandardCharsets.UTF_8));
+    private void addToBuffer(final EventHandle logEventHandle, final String logString) {
+        buffer.writeEvent(logEventHandle, logString.getBytes(StandardCharsets.UTF_8));
     }
 }

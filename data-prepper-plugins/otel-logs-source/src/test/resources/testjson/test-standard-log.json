@@ -16,7 +16,6 @@
   },
   "flags": 0,
   "severityNumber": 2,
-  "serviceName": "testServiceName",
   "body": "Test body",
   "schemaUrl": "testSchemaUrl",
   "spanId": "746573745370616e4964",

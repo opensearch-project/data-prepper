@@ -27,10 +27,10 @@ public class ConfluenceContentTypeTest {
 
     @Test
     void testTypeValues() {
-        assertEquals("SPACE", ConfluenceContentType.SPACE.getType());
-        assertEquals("PAGE", ConfluenceContentType.PAGE.getType());
-        assertEquals("COMMENT", ConfluenceContentType.COMMENT.getType());
-        assertEquals("ATTACHMENT", ConfluenceContentType.ATTACHMENT.getType());
-        assertEquals("BLOGPOST", ConfluenceContentType.BLOGPOST.getType());
+        assertEquals("space", ConfluenceContentType.SPACE.getType());
+        assertEquals("page", ConfluenceContentType.PAGE.getType());
+        assertEquals("comment", ConfluenceContentType.COMMENT.getType());
+        assertEquals("attachment", ConfluenceContentType.ATTACHMENT.getType());
+        assertEquals("blogpost", ConfluenceContentType.BLOGPOST.getType());
     }
 }

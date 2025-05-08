@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 public class DataFileLoader implements Runnable {
@@ -152,14 +153,28 @@ public class DataFileLoader implements Runnable {
                     eventCount.getAndIncrement();
                     bytesProcessedSummary.record(bytes);
                 } catch (Exception e) {
-                    LOG.error(SENSITIVE, "Failed to process record from object s3://{}/{}", bucket, objectKey, e);
+                    LOG.atError()
+                            .addMarker(SENSITIVE)
+                            .addMarker(NOISY)
+                            .setMessage("Failed to process record from object s3://{}/{}")
+                            .addArgument(bucket)
+                            .addArgument(objectKey)
+                            .setCause(e)
+                            .log();
                     throw new RuntimeException(e);
                 }
             });
 
             LOG.info(SENSITIVE, "Completed loading object s3://{}/{} to buffer", bucket, objectKey);
         } catch (Exception e) {
-            LOG.error(SENSITIVE, "Failed to load object s3://{}/{} to buffer", bucket, objectKey, e);
+            LOG.atError()
+                    .addMarker(SENSITIVE)
+                    .addMarker(NOISY)
+                    .setMessage("Failed to load object s3://{}/{} to buffer")
+                    .addArgument(bucket)
+                    .addArgument(objectKey)
+                    .setCause(e)
+                    .log();
             throw new RuntimeException(e);
         }
 
@@ -171,7 +186,7 @@ public class DataFileLoader implements Runnable {
             }
             exportRecordSuccessCounter.increment(eventCount.get());
         } catch (Exception e) {
-            LOG.error("Failed to write events to buffer", e);
+            LOG.error(NOISY, "Failed to write events to buffer", e);
             exportRecordErrorCounter.increment(eventCount.get());
         }
     }
