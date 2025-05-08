@@ -42,7 +42,7 @@ class OcsfProcessorTest {
     void setUp() {
         lenient().when(pluginMetrics.counter(anyString())).thenReturn(successCounter);
         lenient().when(pluginMetrics.timer(anyString())).thenReturn(processingTimer);
-        when(pluginMetrics.counter("records_failed")).thenReturn(failureCounter);
+        when(pluginMetrics.counter("recordsFailed")).thenReturn(failureCounter);
 
         OcsfProcessorConfig config = new OcsfProcessorConfig() {
             @Override
