@@ -10,12 +10,14 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresConnectionManager;
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import org.postgresql.PGConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -33,11 +35,13 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.LogicalReplicationClient.AUTHENTICATION_FAILED;
 
 @ExtendWith(MockitoExtension.class)
 class LogicalReplicationClientTest {
@@ -47,6 +51,18 @@ class LogicalReplicationClientTest {
 
     @Mock
     private LogicalReplicationEventProcessor eventProcessor;
+
+    @Mock
+    private RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
+
+    @Mock
+    private Counter streamApiInvocations;
+
+    @Mock
+    private Counter stream4xxErrors;
+
+    @Mock
+    private Counter stream5xxErrors;
 
     private String publicationName;
     private String replicationSlotName;
@@ -58,6 +74,9 @@ class LogicalReplicationClientTest {
         replicationSlotName = UUID.randomUUID().toString();
         logicalReplicationClient = createObjectUnderTest();
         logicalReplicationClient.setEventProcessor(eventProcessor);
+        lenient().when(rdsSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
+        lenient().when(rdsSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
     }
 
     @Test
@@ -88,18 +107,25 @@ class LogicalReplicationClientTest {
 
         verify(stream).setAppliedLSN(lsn);
         verify(stream).setFlushedLSN(lsn);
+        verify(streamApiInvocations).increment();
     }
 
     @Test
-    void test_connect_exception_should_throw() throws SQLException {
-        when(connectionManager.getConnection()).thenThrow(RuntimeException.class);
-
-        final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> logicalReplicationClient.connect());
+    void test_connect_auth_exception_should_throw() throws SQLException {
+        when(connectionManager.getConnection()).thenThrow(new RuntimeException(AUTHENTICATION_FAILED));
 
         assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+    }
 
-        executorService.shutdownNow();
+    @Test
+    void test_connect_unknown_exception_should_throw() throws SQLException {
+        when(connectionManager.getConnection()).thenThrow(RuntimeException.class);
+
+        assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+        verify(streamApiInvocations).increment();
+        verify(stream5xxErrors).increment();
     }
 
     @Test
@@ -195,6 +221,6 @@ class LogicalReplicationClientTest {
     }
 
     private LogicalReplicationClient createObjectUnderTest() {
-         return new LogicalReplicationClient(connectionManager, replicationSlotName, publicationName);
+         return new LogicalReplicationClient(connectionManager, replicationSlotName, publicationName, rdsSourceAggregateMetrics);
     }
 }
