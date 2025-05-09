@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +28,7 @@ public class JoinExpressionFunction implements  ExpressionFunction {
     @Override
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.isEmpty() || args.size() > 2) {
-            throw new IllegalArgumentException(FUNCTION_NAME + "() takes one or two arguments");
+            throw new ExpressionArgumentsException(FUNCTION_NAME + "() takes one or two arguments");
         }
 
         final List<String> argStrings;
@@ -36,7 +37,7 @@ public class JoinExpressionFunction implements  ExpressionFunction {
                     .map(arg -> ((String)arg).trim())
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new IllegalArgumentException(
+            throw new ExpressionArgumentsException(
                     "Arguments in " + FUNCTION_NAME + "() function should be of Json Pointer type or String type");
         }
 

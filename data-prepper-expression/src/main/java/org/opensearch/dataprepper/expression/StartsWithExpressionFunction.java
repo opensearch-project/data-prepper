@@ -1,6 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 
 import javax.inject.Named;
 import java.util.List;
@@ -23,14 +29,14 @@ public class StartsWithExpressionFunction implements ExpressionFunction {
             final Function<Object, Object> convertLiteralType) {
 
         if (args.size() != NUMBER_OF_ARGS) {
-            throw new RuntimeException("startsWith() takes exactly two arguments");
+            throw new ExpressionArgumentsException("startsWith() takes exactly two arguments");
         }
 
         String[] strArgs = new String[NUMBER_OF_ARGS];
         for (int i = 0; i < NUMBER_OF_ARGS; i++) {
             Object arg = args.get(i);
             if (!(arg instanceof String)) {
-                throw new RuntimeException(String.format("startsWith() takes only string type arguments. \"%s\" is not of type string", arg));
+                throw new ExpressionArgumentsException(String.format("startsWith() takes only string type arguments. \"%s\" is not of type string", arg));
             }
             String stringOrKey = (String) arg;
             if (stringOrKey.charAt(0) == '"') {
@@ -41,11 +47,11 @@ public class StartsWithExpressionFunction implements ExpressionFunction {
                     return false;
                 }
                 if (!(obj instanceof String)) {
-                    throw new RuntimeException(String.format("startsWith() only operates on string types. The value at \"%s\" is \"%s\" which is not a string type.", stringOrKey, obj));
+                    throw new ExpressionArgumentsException(String.format("startsWith() only operates on string types. The value at \"%s\" is \"%s\" which is not a string type.", stringOrKey, obj));
                 }
                 strArgs[i] = (String)obj;
             } else {
-                throw new RuntimeException(String.format("Arguments to startsWith() must be a literal string or a Json Pointer. \"%s\" is not string literal or json pointer", stringOrKey));
+                throw new ExpressionArgumentsException(String.format("Arguments to startsWith() must be a literal string or a Json Pointer. \"%s\" is not string literal or json pointer", stringOrKey));
             }
         }
         return strArgs[0].startsWith(strArgs[1]);

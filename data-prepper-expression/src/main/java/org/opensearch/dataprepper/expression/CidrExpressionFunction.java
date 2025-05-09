@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.expression;
 import inet.ipaddr.IPAddress;
 import inet.ipaddr.IPAddressString;
 import org.opensearch.dataprepper.model.event.Event;
-
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 import javax.inject.Named;
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +27,7 @@ public class CidrExpressionFunction implements ExpressionFunction {
     @Override
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() <= 1) {
-            throw new IllegalArgumentException(FUNCTION_NAME + "() takes at least two arguments");
+            throw new ExpressionArgumentsException(FUNCTION_NAME + "() takes at least two arguments");
         }
 
         final List<String> argStrings;
@@ -36,7 +36,7 @@ public class CidrExpressionFunction implements ExpressionFunction {
                     .map(arg -> ((String)arg).trim())
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new IllegalArgumentException(
+            throw new ExpressionArgumentsException(
                     "Arguments in " + FUNCTION_NAME + "() function should be of Json Pointer type or String type");
         }
 

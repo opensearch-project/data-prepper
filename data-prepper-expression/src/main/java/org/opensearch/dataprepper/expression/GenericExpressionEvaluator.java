@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -44,7 +45,11 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
         }
         try {
             return evaluator.evaluate(parseTree, context);
-        } catch (final Exception exception) {
+        }
+        catch (ExpressionArgumentsException exception) {
+            throw exception;
+        }
+        catch (final Exception exception) {
             throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
         }
     }

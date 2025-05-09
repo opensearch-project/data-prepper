@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.expression;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 
 import java.util.Collections;
 import java.util.List;
@@ -100,6 +101,19 @@ public class ExpressionEvaluatorTest {
     public void testDefaultEvaluateConditionalThrows() {
         expressionEvaluator = new TestExpressionEvaluator();
         assertThrows(ClassCastException.class, () -> expressionEvaluator.evaluateConditional("/status", event("{\"status\":200}")));
+    }
+
+    @Test
+    public void testThrowIllegalArgumentException(){
+        expressionEvaluator = new TestExpressionEvaluator(){
+            @Override
+            public Object evaluate(final String statement, final Event event){
+                throw new ExpressionArgumentsException("Illegal Argument encountered");
+            }
+        };
+        assertThrows(ExpressionArgumentsException.class, () ->
+            expressionEvaluator.evaluateConditional("/status", event("{\"status\":200}"))
+        );
     }
 
     private static Event event(final String data) {
