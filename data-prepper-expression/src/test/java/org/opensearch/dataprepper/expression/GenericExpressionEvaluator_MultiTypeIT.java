@@ -138,7 +138,7 @@ class GenericExpressionEvaluator_MultiTypeIT {
     @MethodSource("invalidSyntaxExpressions")
     void testInvalidSyntaxExpression(String expression, Event event) {
         GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
-        assertThrows(IllegalArgumentException.class, () -> evaluator.evaluate(expression, event));
+        assertThrows(ExpressionArgumentsException.class, () -> evaluator.evaluate(expression, event));
     }
 
 

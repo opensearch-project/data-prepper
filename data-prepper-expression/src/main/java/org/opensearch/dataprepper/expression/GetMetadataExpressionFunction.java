@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 import java.util.List;
 import javax.inject.Named;
 import java.util.function.Function;
@@ -18,18 +19,18 @@ public class GetMetadataExpressionFunction implements ExpressionFunction {
 
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() != 1) {
-            throw new IllegalArgumentException("getMetadata() takes only one argument");
+            throw new ExpressionArgumentsException("getMetadata() takes only one argument");
         }
         Object arg = args.get(0);
         if (!(arg instanceof String)) {
-            throw new IllegalArgumentException("getMetadata() takes only String type arguments");
+            throw new ExpressionArgumentsException("getMetadata() takes only String type arguments");
         }
         String argStr = ((String)arg).trim();
         if (argStr.length() == 0) {
             return null;
         }
         if (argStr.charAt(0) != '\"' || argStr.length() < 2) {
-            throw new IllegalArgumentException("Literal string expected as argument to getMetadata()");
+            throw new ExpressionArgumentsException("Literal string expected as argument to getMetadata()");
         }
         argStr = argStr.substring(1, argStr.length()-1).trim();
         if (argStr.isEmpty()) {

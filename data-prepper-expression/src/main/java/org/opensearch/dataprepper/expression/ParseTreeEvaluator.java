@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.slf4j.Logger;
@@ -36,8 +37,8 @@ class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
             final ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operatorProvider, coercionService, event);
             walker.walk(listener, parseTree);
             return listener.getResult();
-        } catch (IllegalArgumentException iae) {
-            throw iae;
+        } catch (ExpressionArgumentsException exception) {
+            throw exception;
         } catch (final Exception e) {
             LOG.error(e.getMessage());
             throw new ExpressionEvaluationException(e.getMessage(), e);

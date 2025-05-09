@@ -81,18 +81,18 @@ public class StartsWithExpressionFunctionTest {
     }
 
     @Test
-    void startsWith_without_2_arguments_throws_IllegalArgumentException() {
+    void startsWith_without_2_arguments_throws_ExpressionArgumentsException() {
         final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, mock(Function.class)));
+        assertThrows(ExpressionArgumentsException.class, () -> startsWithExpressionFunction.evaluate(List.of("abcd"), testEvent, mock(Function.class)));
     }
 
     @ParameterizedTest
     @MethodSource("invalidStartsWithProvider")
-    void invalid_startsWith_arguments_throws_IllegalArgumentException(final String firstArg, final Object secondArg, final Object value) {
+    void invalid_startsWith_arguments_throws_ExpressionArgumentsException(final String firstArg, final Object secondArg, final Object value) {
         final ExpressionFunction startsWithExpressionFunction = createObjectUnderTest();
         final String testKey = "test_key";
 
-        assertThrows(IllegalArgumentException.class, () -> startsWithExpressionFunction.evaluate(List.of(firstArg, secondArg), createTestEvent(Map.of(testKey, value)), mock(Function.class)));
+        assertThrows(ExpressionArgumentsException.class, () -> startsWithExpressionFunction.evaluate(List.of(firstArg, secondArg), createTestEvent(Map.of(testKey, value)), mock(Function.class)));
     }
 
     private static Stream<Arguments> validStartsWithProvider() {

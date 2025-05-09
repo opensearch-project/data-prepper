@@ -68,7 +68,7 @@ public class SubListExpressionFunctionTest {
     @Test
     void testSubListWithNonStringJsonPointerThrowsException() {
         testEvent = createTestEvent(Map.of("myList", List.of(1, 2, 3)));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of(123, 0, 1), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() first argument must be a JSON pointer String"));
     }
@@ -76,7 +76,7 @@ public class SubListExpressionFunctionTest {
     @Test
     void testSubListWithEmptyJsonPointerThrowsException() {
         testEvent = createTestEvent(Map.of("myList", List.of("a", "b", "c")));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("", 0, 1), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() JSON pointer cannot be empty"));
     }
@@ -84,7 +84,7 @@ public class SubListExpressionFunctionTest {
     @Test
     void testSubListWithInvalidJsonPointerFormatThrowsException() {
         testEvent = createTestEvent(Map.of("myList", List.of("a", "b", "c")));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("myList", 0, 1), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() expects the first argument to be a JSON pointer (starting with '/')"));
     }
@@ -92,7 +92,7 @@ public class SubListExpressionFunctionTest {
     @Test
     void testSubListWithNonListEventValueThrowsException() {
         testEvent = createTestEvent(Map.of("myList", "not a list"));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/myList", 0, 1), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("/myList is not a List type"));
     }
@@ -100,7 +100,7 @@ public class SubListExpressionFunctionTest {
     @Test
     void testSubListWithInvalidNumberOfArgumentsThrowsException() {
         testEvent = createTestEvent(Map.of("myList", List.of(1, 2, 3)));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/myList", 0), testEvent, testFunction));
     }
 
@@ -108,7 +108,7 @@ public class SubListExpressionFunctionTest {
     void testSubListWithInvalidIndexParsingThrowsException() {
         List<Integer> sampleList = List.of(10, 20, 30);
         testEvent = createTestEvent(Map.of("intList", sampleList));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/intList", "a", "1"), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() start and end index arguments must be integers"));
     }
@@ -117,7 +117,7 @@ public class SubListExpressionFunctionTest {
     void testSubListWithNegativeStartIndexThrowsException() {
         List<String> sampleList = List.of("x", "y", "z");
         testEvent = createTestEvent(Map.of("letters", sampleList));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/letters", -1, 2), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() start index out of bounds"));
     }
@@ -126,7 +126,7 @@ public class SubListExpressionFunctionTest {
     void testSubListWithStartIndexGreaterThanListSizeThrowsException() {
         List<String> sampleList = List.of("x", "y", "z");
         testEvent = createTestEvent(Map.of("letters", sampleList));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/letters", 4, 4), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() start index out of bounds"));
     }
@@ -135,7 +135,7 @@ public class SubListExpressionFunctionTest {
     void testSubListWithEndIndexLessThanStartIndexThrowsException() {
         List<String> sampleList = List.of("a", "b", "c", "d");
         testEvent = createTestEvent(Map.of("myList", sampleList));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/myList", 3, 1), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() end index out of bounds"));
     }
@@ -144,7 +144,7 @@ public class SubListExpressionFunctionTest {
     void testSubListWithEndIndexOutOfBoundsThrowsException() {
         List<String> sampleList = List.of("a", "b", "c");
         testEvent = createTestEvent(Map.of("myList", sampleList));
-        Exception exception = assertThrows(IllegalArgumentException.class,
+        Exception exception = assertThrows(ExpressionArgumentsException.class,
                 () -> subListExpressionFunction.evaluate(List.of("/myList", 1, 5), testEvent, testFunction));
         assertThat(exception.getMessage(), equalTo("subList() end index out of bounds"));
     }

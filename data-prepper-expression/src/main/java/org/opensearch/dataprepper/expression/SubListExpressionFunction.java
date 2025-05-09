@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.expression.ExpressionArgumentsException;
 import javax.inject.Named;
 import java.util.List;
 import java.util.function.Function;
@@ -23,20 +24,20 @@ public class SubListExpressionFunction implements ExpressionFunction {
     @Override
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() != NUMBER_OF_ARGS) {
-            throw new IllegalArgumentException("subList() takes exactly three arguments");
+            throw new ExpressionArgumentsException("subList() takes exactly three arguments");
         }
 
         // Validate and extract JSON pointer argument
         Object arg0 = args.get(0);
         if (!(arg0 instanceof String)) {
-            throw new IllegalArgumentException("subList() first argument must be a JSON pointer String");
+            throw new ExpressionArgumentsException("subList() first argument must be a JSON pointer String");
         }
         String jsonPointer = ((String) arg0).trim();
         if (jsonPointer.isEmpty()) {
-            throw new IllegalArgumentException("subList() JSON pointer cannot be empty");
+            throw new ExpressionArgumentsException("subList() JSON pointer cannot be empty");
         }
         if (jsonPointer.charAt(0) != '/') {
-            throw new IllegalArgumentException("subList() expects the first argument to be a JSON pointer (starting with '/')");
+            throw new ExpressionArgumentsException("subList() expects the first argument to be a JSON pointer (starting with '/')");
         }
 
         // Retrieve the list from the event
@@ -45,7 +46,7 @@ public class SubListExpressionFunction implements ExpressionFunction {
             return null;
         }
         if (!(listObject instanceof List)) {
-            throw new IllegalArgumentException(jsonPointer + " is not a List type");
+            throw new ExpressionArgumentsException(jsonPointer + " is not a List type");
         }
         List<?> list = (List<?>) listObject;
 
@@ -55,17 +56,17 @@ public class SubListExpressionFunction implements ExpressionFunction {
             startIndex = Integer.parseInt(args.get(1).toString());
             endIndex = Integer.parseInt(args.get(2).toString());
         } catch (Exception e) {
-            throw new IllegalArgumentException("subList() start and end index arguments must be integers", e);
+            throw new ExpressionArgumentsException("subList() start and end index arguments must be integers", e);
         }
 
         if (startIndex < 0 || startIndex > list.size()) {
-            throw new IllegalArgumentException("subList() start index out of bounds");
+            throw new ExpressionArgumentsException("subList() start index out of bounds");
         }
         if (endIndex == -1) {
             endIndex = list.size();
         }
         if (endIndex < startIndex || endIndex > list.size()) {
-            throw new IllegalArgumentException("subList() end index out of bounds");
+            throw new ExpressionArgumentsException("subList() end index out of bounds");
         }
 
         return list.subList(startIndex, endIndex);

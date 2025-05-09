@@ -112,14 +112,14 @@ class CidrExpressionFunctionTest {
     @Test
     void testTooFewArgumentsThrowsException() {
         testEvent = createTestEvent(Map.of("sourceIp", "192.0.2.3"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ExpressionArgumentsException.class,
                 () -> cidrExpressionFunction.evaluate(List.of("/sourceIp"), testEvent, testFunction));
     }
 
     @Test
     void testArgumentTypeNotSupportedThrowsException() {
         testEvent = createTestEvent(Map.of("sourceIp", "192.0.2.3"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ExpressionArgumentsException.class,
                 () -> cidrExpressionFunction.evaluate(List.of("/sourceIp", 123), testEvent, testFunction));
     }
 

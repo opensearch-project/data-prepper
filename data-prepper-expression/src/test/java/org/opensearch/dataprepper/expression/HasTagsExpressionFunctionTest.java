@@ -79,13 +79,13 @@ class HasTagsExpressionFunctionTest {
     @Test
     void testHasTagsWithZeroTags() {
         hasTagsExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> hasTagsExpressionFunction.evaluate(List.of(), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> hasTagsExpressionFunction.evaluate(List.of(), testEvent, testFunction));
     }
 
     @Test
     void testHasTagsWithMissingTag() {
         hasTagsExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> hasTagsExpressionFunction.evaluate(List.of(""), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> hasTagsExpressionFunction.evaluate(List.of(""), testEvent, testFunction));
     }
 
     @Test
@@ -97,13 +97,13 @@ class HasTagsExpressionFunctionTest {
     @Test
     void testHasTagsWithNonStringTags() {
         hasTagsExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> hasTagsExpressionFunction.evaluate(List.of(30), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> hasTagsExpressionFunction.evaluate(List.of(30), testEvent, testFunction));
     }
 
     @Test
     void testHasTagsWithStringTagsWithOutQuotes() {
         hasTagsExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> hasTagsExpressionFunction.evaluate(List.of("tag"), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> hasTagsExpressionFunction.evaluate(List.of("tag"), testEvent, testFunction));
     }
 
 }

@@ -77,10 +77,10 @@ class ContainsExpressionFunctionTest {
     @Test
     void testInvalidContains() {
         containsExpressionFunction = createObjectUnderTest();
-        assertThrows(IllegalArgumentException.class, () -> containsExpressionFunction.evaluate(List.of("abcd"), testEvent, testFunction));
-        assertThrows(IllegalArgumentException.class, () -> containsExpressionFunction.evaluate(List.of("\"abcd\"", 1234), testEvent, testFunction));
-        assertThrows(IllegalArgumentException.class, () -> containsExpressionFunction.evaluate(List.of("\"abcd\"", "/"+testKey3), testEvent, testFunction));
-        assertThrows(IllegalArgumentException.class, () -> containsExpressionFunction.evaluate(List.of("abcd", "/"+testKey3), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> containsExpressionFunction.evaluate(List.of("abcd"), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> containsExpressionFunction.evaluate(List.of("\"abcd\"", 1234), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> containsExpressionFunction.evaluate(List.of("\"abcd\"", "/"+testKey3), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> containsExpressionFunction.evaluate(List.of("abcd", "/"+testKey3), testEvent, testFunction));
     }
 
 }
