@@ -14,9 +14,9 @@ otel-telemetry-pipeline:
     otlp:
       ssl: false
   route:
-    - logs: 'getMetadata("eventType") == "LOG"'
-    - traces: 'getMetadata("eventType") == "TRACE"'
-    - metrics: 'getMetadata("eventType") == "METRIC"'
+    - logs: 'getEventType() == "LOG"'
+    - traces: 'getEventType() == "TRACE"'
+    - metrics: 'getEventType() == "METRIC"'
   sink:
     - pipeline:
         name: "logs-pipeline"
@@ -47,6 +47,15 @@ otel-telemetry-pipeline:
 - compression(Optional) => The compression type applied on the client request payload. Defaults to `none`. Supported values are:
   - `none`: no compression
   - `gzip`: apply GZip de-compression on the incoming request.
+- logs_output_format(Optional) => Specifies the decoded output format for logs. Supported values are:
+  - `otel`: OpenTelemetry format (default).
+  - `opensearch`: OpenSearch format.
+- metrics_output_format(Optional) => Specifies the decoded output format for metrics. Supported values are:
+  - `otel`: OpenTelemetry format (default).
+  - `opensearch`: OpenSearch format.
+- traces_output_format(Optional) => Specifies the decoded output format for traces. Supported values are:
+  - `otel`: OpenTelemetry format (default).
+  - `opensearch`: OpenSearch format.
 
 ### Retry Information
 

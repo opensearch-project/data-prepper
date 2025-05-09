@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 
 import java.time.Duration;
@@ -367,6 +368,30 @@ class OTLPSourceConfigTests {
     assertFalse(config.isLogsPathValid());
     assertFalse(config.isMetricsPathValid());
     assertFalse(config.isTracesPathValid());
+  }
+
+  @Test
+  void testDefaultOutputFormats() {
+    final OTLPSourceConfig config = new OTLPSourceConfig();
+
+    assertEquals(OTelOutputFormat.OTEL, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OTEL, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OTEL, config.getTracesOutputFormat());
+  }
+
+  @Test
+  void testCustomOutputFormats() {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put(OTLPSourceConfig.LOGS_OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+    settings.put(OTLPSourceConfig.METRICS_OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+    settings.put(OTLPSourceConfig.TRACES_OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+
+    final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTLPSourceConfig.class);
+
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
   }
 
   private PluginSetting completePluginSetting(final int requestTimeoutInMillis, final int port, final String path,
