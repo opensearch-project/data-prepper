@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
@@ -21,6 +22,9 @@ public class OTLPSourceConfig {
   static final String METRICS_PATH = "metrics_path";
   static final String TRACES_PATH = "traces_path";
   static final String SSL = "ssl";
+  static final String LOGS_OUTPUT_FORMAT = "logs_output_format";
+  static final String METRICS_OUTPUT_FORMAT = "metrics_output_format";
+  static final String TRACES_OUTPUT_FORMAT = "traces_output_format";
   static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
   static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
   static final String HEALTH_CHECK_SERVICE = "health_check_service";
@@ -77,6 +81,15 @@ public class OTLPSourceConfig {
 
   @JsonProperty(SSL)
   private boolean ssl = DEFAULT_SSL;
+
+  @JsonProperty(LOGS_OUTPUT_FORMAT)
+  private OTelOutputFormat logsOutputFormat = OTelOutputFormat.OTEL;
+ 
+  @JsonProperty(METRICS_OUTPUT_FORMAT)
+  private OTelOutputFormat metricsOutputFormat = OTelOutputFormat.OTEL;
+
+  @JsonProperty(TRACES_OUTPUT_FORMAT)
+  private OTelOutputFormat tracesOutputFormat = OTelOutputFormat.OTEL;
 
   @JsonProperty(USE_ACM_CERT_FOR_SSL)
   private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -179,6 +192,18 @@ public class OTLPSourceConfig {
 
   public int getRequestTimeoutInMillis() {
     return requestTimeoutInMillis;
+  }
+
+  public OTelOutputFormat getLogsOutputFormat() {
+    return logsOutputFormat;
+  }
+
+  public OTelOutputFormat getMetricsOutputFormat() {
+    return metricsOutputFormat;
+  }
+
+  public OTelOutputFormat getTracesOutputFormat() {
+    return tracesOutputFormat;
   }
 
   public int getPort() {

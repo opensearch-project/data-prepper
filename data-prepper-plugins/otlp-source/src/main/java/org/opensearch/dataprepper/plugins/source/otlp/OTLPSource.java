@@ -13,6 +13,8 @@ import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
 import org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsGrpcService;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsGrpcService;
@@ -87,17 +89,17 @@ public class OTLPSource implements Source<Record<Object>> {
 
       final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
-          new OTelProtoStandardCodec.OTelProtoDecoder(),
+          otlpSourceConfig.getLogsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
           buffer, pluginMetrics);
 
       final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
-          new OTelProtoStandardCodec.OTelProtoDecoder(),
+          otlpSourceConfig.getMetricsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
           metricBuffer, pluginMetrics);
 
       final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
-          new OTelProtoStandardCodec.OTelProtoDecoder(),
+          otlpSourceConfig.getTracesOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
           buffer, pluginMetrics);
 
       ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(otlpSourceConfig);
