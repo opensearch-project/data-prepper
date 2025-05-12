@@ -10,6 +10,7 @@
 
 package org.opensearch.dataprepper.plugins.kinesis.source;
 
+import org.opensearch.dataprepper.plugins.kinesis.source.apihandler.KinesisClientApiHandler;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
@@ -53,13 +54,13 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
         }
 
         // If stream arn and consumer arn is present, create a stream config based on the configured values
-        if (Objects.nonNull(kinesisStreamConfig.getArn()) && Objects.nonNull(kinesisStreamConfig.getConsumerArn())) {
+        if (Objects.nonNull(kinesisStreamConfig.getStreamArn()) && Objects.nonNull(kinesisStreamConfig.getConsumerArn())) {
             return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), kinesisStreamConfig.getConsumerArn());
         }
 
         // If stream arn is provided, lookup consumer arn based on the consumer name which is the data prepper application name
-        if (Objects.nonNull(kinesisStreamConfig.getArn())) {
-            String consumerArn = kinesisClientAPIHandler.getConsumerArnForStream(kinesisStreamConfig.getArn(), this.applicationName);
+        if (Objects.nonNull(kinesisStreamConfig.getStreamArn())) {
+            String consumerArn = kinesisClientAPIHandler.getConsumerArnForStream(kinesisStreamConfig.getStreamArn(), this.applicationName);
             return new StreamConfig(streamIdentifier, InitialPositionInStreamExtended.newInitialPosition(kinesisStreamConfig.getInitialPosition()), consumerArn);
         }
         // Default case
@@ -68,17 +69,16 @@ public class KinesisMultiStreamTracker implements MultiStreamTracker {
         );
     }
 
-    private StreamIdentifier getStreamIdentifier(KinesisStreamConfig kinesisStreamConfig) {
+    private StreamIdentifier getStreamIdentifier(final KinesisStreamConfig kinesisStreamConfig) {
+        final String streamArn = kinesisStreamConfig.getStreamArn();
+        final String streamName = kinesisStreamConfig.getName();
 
-        if (Objects.nonNull(kinesisStreamConfig.getArn())) {
-            return kinesisClientAPIHandler.getStreamIdentifierFromStreamArn(kinesisStreamConfig.getArn());
-        } else if (Objects.nonNull(kinesisStreamConfig.getName())) {
-            return kinesisClientAPIHandler.getStreamIdentifier(kinesisStreamConfig.getName());
-        } else {
+        if (Objects.isNull(streamArn) && Objects.isNull(streamName)) {
             throw new IllegalArgumentException("Either ARN or name must be specified for Kinesis stream configuration");
         }
-    }
 
+        return kinesisClientAPIHandler.getStreamIdentifier(streamArn != null ? streamArn : streamName);
+    }
     /**
      * Setting the deletion policy as autodetect and release shard lease with a wait time of 10 sec
      */

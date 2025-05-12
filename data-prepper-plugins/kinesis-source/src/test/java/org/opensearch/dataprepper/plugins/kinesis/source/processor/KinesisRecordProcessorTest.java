@@ -669,7 +669,7 @@ public class KinesisRecordProcessorTest {
         final String streamArn = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
         final String streamName = "streamName";
         StreamIdentifier streamIdentifier = mock(StreamIdentifier.class);
-        when(kinesisStreamConfig.getArn()).thenReturn(streamArn);
+        when(kinesisStreamConfig.getStreamArn()).thenReturn(streamArn);
         when(streamIdentifier.streamArnOptional()).thenReturn(Optional.of(Arn.fromString(streamArn)));
         when(streamIdentifier.streamName()).thenReturn(streamName);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
@@ -749,7 +749,7 @@ public class KinesisRecordProcessorTest {
         final String streamArn = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
         final String streamName = "streamName";
         StreamIdentifier streamIdentifier = mock(StreamIdentifier.class);
-        when(kinesisStreamConfig.getArn()).thenReturn(streamArn);
+        when(kinesisStreamConfig.getStreamArn()).thenReturn(streamArn);
         when(streamIdentifier.streamName()).thenReturn(streamName);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
         when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);

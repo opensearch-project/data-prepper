@@ -97,7 +97,7 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
-            assertNull(kinesisStreamConfig.getArn());
+            assertNull(kinesisStreamConfig.getStreamArn());
             assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
@@ -165,7 +165,7 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
-            assertNull(kinesisStreamConfig.getArn());
+            assertNull(kinesisStreamConfig.getStreamArn());
             assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.TRIM_HORIZON);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), expectedCheckpointIntervals.get(kinesisStreamConfig.getName()));
@@ -195,8 +195,8 @@ public class KinesisSourceConfigTest {
         assertEquals(streamConfigs.size(), 3);
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
-            assertTrue(kinesisStreamConfig.getArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
-            assertNotNull(kinesisStreamConfig.getArn());
+            assertTrue(kinesisStreamConfig.getStreamArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(kinesisStreamConfig.getStreamArn());
             assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
@@ -225,10 +225,10 @@ public class KinesisSourceConfigTest {
         assertEquals(streamConfigs.size(), 3);
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
-            assertTrue(kinesisStreamConfig.getArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
-            assertNotNull(kinesisStreamConfig.getArn());
+            String streamArn = kinesisStreamConfig.getStreamArn();
+            assertTrue(streamArn.contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(streamArn);
             assertNotNull(kinesisStreamConfig.getConsumerArn());
-            String streamArn = kinesisStreamConfig.getArn();
             assertTrue(kinesisStreamConfig.getConsumerArn().contains(streamArn+"/consumer/consumer-1:1"));
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);

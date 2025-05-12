@@ -32,7 +32,7 @@ public class KinesisStreamConfig {
 
     @JsonProperty("stream_arn")
     @Valid
-    private String arn;
+    private String streamArn;
 
     @JsonProperty("consumer_arn")
     @Valid
@@ -52,15 +52,15 @@ public class KinesisStreamConfig {
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;
 
-    public String getArn() {
-        if (Objects.nonNull(this.arn) && !this.arn.isEmpty()) {
+    public String getStreamArn() {
+        if (Objects.nonNull(this.streamArn) && !this.streamArn.isEmpty()) {
             try {
-                Arn.fromString(this.arn);
+                Arn.fromString(this.streamArn);
             } catch (final Exception e) {
                 throw new IllegalArgumentException("Invalid ARN format for stream arn");
             }
         }
-        return this.arn;
+        return this.streamArn;
     }
 
     public String getConsumerArn() {

@@ -117,11 +117,11 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
         final Optional<KinesisStreamConfig> kinesisStreamConfig = kinesisSourceConfig.getStreams().stream().filter(streamConfig -> {
             if (streamIdentifier.streamArnOptional().isPresent()) {
                 Arn streamIdentifierArn = streamIdentifier.streamArnOptional().get();
-                Arn streamConfigArn = Arn.fromString(streamConfig.getArn());
+                Arn streamConfigArn = Arn.fromString(streamConfig.getStreamArn());
                 return streamIdentifierArn.equals(streamConfigArn);
             }
-            if (Objects.nonNull(streamConfig.getArn())) {
-                String streamName = Arn.fromString(streamConfig.getArn()).resource().resource();
+            if (Objects.nonNull(streamConfig.getStreamArn())) {
+                String streamName = Arn.fromString(streamConfig.getStreamArn()).resource().resource();
                 return streamName.equals(streamIdentifier.streamName());
             }
             return streamConfig.getName().equals(streamIdentifier.streamName());

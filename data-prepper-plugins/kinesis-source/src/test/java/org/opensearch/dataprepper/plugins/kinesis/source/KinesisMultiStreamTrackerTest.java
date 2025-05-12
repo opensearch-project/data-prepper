@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.opensearch.dataprepper.plugins.kinesis.source.apihandler.KinesisClientApiHandler;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.ConsumerStrategy;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSourceConfig;
 import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisStreamConfig;
@@ -148,13 +149,13 @@ public class KinesisMultiStreamTrackerTest {
     void testStreamConfigWithStreamArnAndConsumerArn() {
         KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
         final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
-        when(streamConfig.getArn()).thenReturn(streamArnString);
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
         when(streamConfig.getConsumerArn()).thenReturn("arn:aws:kinesis:region:account:stream/streamName/consumer/consumerName");
         when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
 
         StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(Arn.fromString(streamArnString), 100L);
-        when(kinesisClientAPIHandler.getStreamIdentifierFromStreamArn(streamConfig.getArn()))
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
                 .thenReturn(expectedIdentifier);
 
         List<StreamConfig> configs = createObjectUnderTest().streamConfigList();
@@ -169,15 +170,15 @@ public class KinesisMultiStreamTrackerTest {
     void testStreamConfigWithStreamArnOnly() {
         KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
         final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
-        when(streamConfig.getArn()).thenReturn(streamArnString);
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
         when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
 
         StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(Arn.fromString(streamArnString), 100L);
-        when(kinesisClientAPIHandler.getStreamIdentifierFromStreamArn(streamConfig.getArn()))
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
                 .thenReturn(expectedIdentifier);
         final String expectedConsumerArn = UUID.randomUUID().toString();
-        when(kinesisClientAPIHandler.getConsumerArnForStream(streamConfig.getArn(), APPLICATION_NAME))
+        when(kinesisClientAPIHandler.getConsumerArnForStream(streamConfig.getStreamArn(), APPLICATION_NAME))
                 .thenReturn(expectedConsumerArn);
 
         List<StreamConfig> configs = createObjectUnderTest().streamConfigList();
@@ -192,7 +193,7 @@ public class KinesisMultiStreamTrackerTest {
     @Test
     void testStreamConfigWithNoArnOrName() {
         KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
-        when(streamConfig.getArn()).thenReturn(null);
+        when(streamConfig.getStreamArn()).thenReturn(null);
         when(streamConfig.getName()).thenReturn(null);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
 
@@ -208,13 +209,13 @@ public class KinesisMultiStreamTrackerTest {
     void testPollingStrategySkipsConsumerLookup() {
         KinesisStreamConfig streamConfig = mock(KinesisStreamConfig.class);
         final String streamArnString = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
-        when(streamConfig.getArn()).thenReturn(streamArnString);
+        when(streamConfig.getStreamArn()).thenReturn(streamArnString);
         when(streamConfig.getInitialPosition()).thenReturn(InitialPositionInStream.LATEST);
         when(kinesisSourceConfig.getStreams()).thenReturn(List.of(streamConfig));
         when(kinesisSourceConfig.getConsumerStrategy()).thenReturn(ConsumerStrategy.POLLING);
 
         StreamIdentifier expectedIdentifier = StreamIdentifier.multiStreamInstance(String.join(":", awsAccountId, "streamName", "100"));
-        when(kinesisClientAPIHandler.getStreamIdentifierFromStreamArn(streamConfig.getArn()))
+        when(kinesisClientAPIHandler.getStreamIdentifier(streamConfig.getStreamArn()))
                 .thenReturn(expectedIdentifier);
 
         List<StreamConfig> configs = createObjectUnderTest().streamConfigList();
