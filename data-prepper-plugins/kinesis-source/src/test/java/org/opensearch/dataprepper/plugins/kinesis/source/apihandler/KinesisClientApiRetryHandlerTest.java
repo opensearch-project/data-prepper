@@ -161,7 +161,7 @@ class KinesisClientApiRetryHandlerTest {
                 )
         );
 
-        assertEquals("Thread interrupted while waiting for retry", exception.getMessage());
+
         verify(backoff, times(1)).nextDelayMillis(0);
         verify(exceptionHandler, times(1)).handle(any(), eq(0));
         // Clear interrupted state

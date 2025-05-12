@@ -71,7 +71,6 @@ public class KinesisClientApiRetryHandler {
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             log.error("Thread interrupted while waiting for retry", e);
-            throw new KinesisRetriesExhaustedException("Thread interrupted while waiting for retry");
         }
     }
 
