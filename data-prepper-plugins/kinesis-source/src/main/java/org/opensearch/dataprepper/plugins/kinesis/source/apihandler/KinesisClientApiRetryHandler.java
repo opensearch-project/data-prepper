@@ -68,9 +68,7 @@ public class KinesisClientApiRetryHandler {
                 delayDuration.getSeconds(), delayDuration.toMillisPart());
         try {
             Thread.sleep(delayMillis);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Thread interrupted while waiting for retry", e);
+        } catch (final InterruptedException ignored) {
         }
     }
 

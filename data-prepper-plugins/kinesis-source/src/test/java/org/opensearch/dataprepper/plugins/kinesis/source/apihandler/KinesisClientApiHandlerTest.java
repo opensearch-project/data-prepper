@@ -19,9 +19,11 @@ import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisConsumerNotFoundException;
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisRetriesExhaustedException;
 import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamConsumerResponse;
 import software.amazon.awssdk.services.kinesis.model.DescribeStreamSummaryResponse;
+import software.amazon.awssdk.services.kinesis.model.KinesisException;
 import software.amazon.awssdk.services.kinesis.model.StreamDescriptionSummary;
 import software.amazon.kinesis.common.StreamIdentifier;
 
@@ -113,6 +115,42 @@ public class KinesisClientApiHandlerTest {
                     any(Supplier.class),
                     any(KinesisClientApiRetryHandler.ExceptionHandler.class)
             )).thenThrow(new KinesisRetriesExhaustedException("Test exception"));
+
+            assertThrows(KinesisRetriesExhaustedException.class,
+                    () -> createObjectUnderTest().getStreamIdentifier(streamName));
+        }
+
+        @Test
+        void whenKinesisClientApiRetryHandlerThrowsException_propagatesKinesisException() {
+            when(KinesisClientApiRetryHandler.executeWithRetry(
+                    anyString(),
+                    any(Supplier.class),
+                    any(KinesisClientApiRetryHandler.ExceptionHandler.class)
+            )).thenThrow(KinesisException.builder().build());
+
+            assertThrows(KinesisException.class,
+                    () -> createObjectUnderTest().getStreamIdentifier(streamName));
+        }
+
+        @Test
+        void whenKinesisClientApiRetryHandlerThrowsException_propagatesSdkClientException() {
+            when(KinesisClientApiRetryHandler.executeWithRetry(
+                    anyString(),
+                    any(Supplier.class),
+                    any(KinesisClientApiRetryHandler.ExceptionHandler.class)
+            )).thenThrow(SdkClientException.builder().build());
+
+            assertThrows(SdkClientException.class,
+                    () -> createObjectUnderTest().getStreamIdentifier(streamName));
+        }
+
+        @Test
+        void whenKinesisClientApiRetryHandlerThrowsException_propagatesKinesisRetriesExhaustedException() {
+            when(KinesisClientApiRetryHandler.executeWithRetry(
+                    anyString(),
+                    any(Supplier.class),
+                    any(KinesisClientApiRetryHandler.ExceptionHandler.class)
+            )).thenThrow(new KinesisRetriesExhaustedException("exception"));
 
             assertThrows(KinesisRetriesExhaustedException.class,
                     () -> createObjectUnderTest().getStreamIdentifier(streamName));

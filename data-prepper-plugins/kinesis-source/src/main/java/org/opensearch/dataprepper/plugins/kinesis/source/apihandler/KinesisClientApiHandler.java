@@ -111,11 +111,8 @@ public class KinesisClientApiHandler {
 
     private void handleStreamSummaryException(CompletionException ex, String streamName) {
         Throwable cause = ex.getCause();
-        if (cause instanceof KinesisException) {
-            log.error("Kinesis API error while describing stream summary for stream {}: {}",
-                    streamName, ex.getMessage());
-        } else if (cause instanceof com.amazonaws.SdkClientException) {
-            log.error("AWS SDK client error while describing stream summary for stream {}: {}",
+        if (cause instanceof KinesisException || cause instanceof com.amazonaws.SdkClientException) {
+            log.error("AWS error while describing stream summary for stream {}: {}",
                     streamName, ex.getMessage());
         } else {
             log.error("Unexpected error while describing stream summary for stream {}",
@@ -139,11 +136,8 @@ public class KinesisClientApiHandler {
 
     private void handleConsumerException(CompletionException ex, String streamArn, int attempt) {
         Throwable cause = ex.getCause();
-        if (cause instanceof KinesisException) {
-            log.error("Kinesis API error while describing stream consumer for stream {}: {}. Attempt {}.",
-                    streamArn, ex.getMessage(), attempt + 1);
-        } else if (cause instanceof com.amazonaws.SdkClientException) {
-            log.error("AWS SDK client error while describing stream consumer for stream {}: {}. Attempt {}.",
+        if (cause instanceof KinesisException || cause instanceof com.amazonaws.SdkClientException) {
+            log.error("AWS error while describing stream consumer for stream {}: {}. Attempt {}.",
                     streamArn, ex.getMessage(), attempt + 1);
         } else {
             log.error("Unexpected error while describing stream consumer for stream {}. Attempt {} of {}.",

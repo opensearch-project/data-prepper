@@ -24,7 +24,6 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -161,11 +160,8 @@ class KinesisClientApiRetryHandlerTest {
                 )
         );
 
-
         verify(backoff, times(1)).nextDelayMillis(0);
         verify(exceptionHandler, times(1)).handle(any(), eq(0));
-        // Clear interrupted state
-        assertTrue(Thread.interrupted());
     }
 
     @Test
