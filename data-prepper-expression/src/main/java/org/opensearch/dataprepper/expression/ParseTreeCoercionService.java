@@ -26,7 +26,7 @@ class ParseTreeCoercionService {
     @Inject
     public ParseTreeCoercionService(
             final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions,
-            ExpressionFunctionProvider expressionFunctionProvider) {
+            final ExpressionFunctionProvider expressionFunctionProvider) {
         this.literalTypeConversions = literalTypeConversions;
         convertLiteralType = (value) -> {
             if (literalTypeConversions.containsKey(value.getClass())) {

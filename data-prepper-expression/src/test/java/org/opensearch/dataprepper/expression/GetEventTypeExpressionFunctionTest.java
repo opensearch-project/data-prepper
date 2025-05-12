@@ -3,6 +3,9 @@ package org.opensearch.dataprepper.expression;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -27,14 +30,15 @@ class GetEventTypeExpressionFunctionTest {
                 .build();
     }
 
-    @Test
-    void testGetEventTypeReturnsCorrectType() {
+    @ParameterizedTest
+    @ValueSource(strings = {"LOG", "TRACE", "METRIC"})
+    void testGetEventTypeReturnsCorrectType(String eventType) {
         GetEventTypeExpressionFunction function = createObjectUnderTest();
-        Event testEvent = createTestEvent("LOG");
+        Event testEvent = createTestEvent(eventType);
 
         Object result = function.evaluate(List.of(), testEvent, Function.identity());
 
-        assertThat(result, equalTo("LOG"));
+        assertThat(result, equalTo(eventType));
     }
 
     @Test

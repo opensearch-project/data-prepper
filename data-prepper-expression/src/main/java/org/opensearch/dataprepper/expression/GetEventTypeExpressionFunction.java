@@ -19,7 +19,7 @@ public class GetEventTypeExpressionFunction implements ExpressionFunction {
     }
 
     @Override
-    public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
+    public Object evaluate(final List<Object> args, final Event event, final Function<Object, Object> convertLiteralType) {
         if (!args.isEmpty()) {
             throw new RuntimeException("getEventType() does not take any arguments");
         }
