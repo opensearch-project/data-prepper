@@ -14,6 +14,7 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -22,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @DataPrepperPlugin(name = "ocsf_transform", pluginType = Processor.class, pluginConfigurationType = OcsfProcessorConfig.class)
 public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -30,6 +32,11 @@ public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private static final String METRIC_RECORDS_TRANSFORMED = "recordsTransformed";
     private static final String METRIC_RECORDS_FAILED = "recordsFailed";
     private static final String METRIC_PROCESSING_TIME = "processingTime";
+    private static final String SCHEMA_PATH_FORMAT = "./data-prepper-plugins/ocsf-processor/src/main/resources/schemas/%s-ocsf-mapping.json";
+    private static final Set<String> SUPPORTED_SCHEMA_TYPES = Set.of(
+            "office365",
+            "crowdstrike"
+    );
 
     private final OcsfSchemaMapper schemaMapper;
     private final OcsfProcessorConfig config;
@@ -42,10 +49,24 @@ public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event
                          final OcsfProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
-        this.schemaMapper = new OcsfSchemaMapper(config.getSchemaMapping());
+        validateSchemaType(config.getSchemaType());
+        String schemaPath = getSchemaPath(config.getSchemaType());
+        this.schemaMapper = new OcsfSchemaMapper(schemaPath);
         this.successCounter = pluginMetrics.counter(METRIC_RECORDS_TRANSFORMED);
         this.failureCounter = pluginMetrics.counter(METRIC_RECORDS_FAILED);
         this.processingTimer = pluginMetrics.timer(METRIC_PROCESSING_TIME);
+    }
+
+    protected String getSchemaPath(String schemaType) {
+        return String.format(SCHEMA_PATH_FORMAT, schemaType);
+    }
+
+    private void validateSchemaType(String schemaType) {
+        if (!SUPPORTED_SCHEMA_TYPES.contains(schemaType)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Unsupported schema_type: %s. Supported types are: %s",
+                            schemaType, SUPPORTED_SCHEMA_TYPES));
+        }
     }
 
     @Override
