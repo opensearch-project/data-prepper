@@ -81,8 +81,8 @@ public class SearchAccessorStrategy {
 
         InfoResponse infoResponse = null;
 
-        PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher =
-                null;
+        PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher = null;
+        
         try {
             infoResponse = clientRefresher.get().info();
             pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
@@ -135,12 +135,33 @@ public class SearchAccessorStrategy {
             searchContextType = SearchContextType.SCROLL;
         }
 
-        if (Objects.isNull(elasticsearchClientRefresher)) {
-            return new OpenSearchAccessor(clientRefresher,
-                    searchContextType);
+        if (OPENSEARCH_DISTRIBUTION.equals(distribution)) {
+            LOG.debug("Using OpenSearchAccessor as the determined distribution is OpenSearch.");
+            return new OpenSearchAccessor(clientRefresher, searchContextType);
+        } else { 
+            LOG.debug("Using ElasticsearchAccessor as the determined distribution is Elasticsearch.");
+            PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> currentElasticsearchClientRefresher = elasticsearchClientRefresher;
+            if (Objects.isNull(currentElasticsearchClientRefresher)) {
+                LOG.info("Elasticsearch distribution determined, but no existing Elasticsearch client refresher found (e.g., OpenSearch client reported Elasticsearch, or distribution_version was set to elasticsearch). Creating a new Elasticsearch client refresher.");
+                try {
+                    currentElasticsearchClientRefresher = new ClientRefresher<>(openSearchSourcePluginMetrics,
+                            ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
+                            openSearchSourceConfiguration);
+                    final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
+                            finalNewElasticsearchClientRefresher = currentElasticsearchClientRefresher;
+                    pluginConfigObservable.addPluginConfigObserver(
+                            newConfig -> {
+                                if (finalNewElasticsearchClientRefresher != null) {
+                                    finalNewElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig);
+                                }
+                            });
+                } catch (final Exception e) {
+                    LOG.error("Failed to create Elasticsearch client for an Elasticsearch distribution when one was not pre-existing.", e);
+                    throw new RuntimeException("Failed to create Elasticsearch client for an Elasticsearch distribution: " + e.getMessage(), e);
+                }
+            }
+            return new ElasticsearchAccessor(currentElasticsearchClientRefresher, searchContextType);
         }
-
-        return new ElasticsearchAccessor(elasticsearchClientRefresher, searchContextType);
     }
 
     private SearchAccessor createSearchAccessorForServerlessCollection(final PluginComponentRefresher clientRefresher) {
@@ -189,14 +210,58 @@ public class SearchAccessorStrategy {
     private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch,
                                                                  final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher) {
         if (Objects.nonNull(infoResponseOpenSearch)) {
-            return Pair.of(infoResponseOpenSearch.version().distribution(), infoResponseOpenSearch.version().number());
+            final String distribution = infoResponseOpenSearch.version().distribution();
+            final String versionNumber = infoResponseOpenSearch.version().number();
+            if (Objects.nonNull(distribution) && Objects.nonNull(versionNumber)) {
+                LOG.info("Detected OpenSearch distribution '{}' version '{}' from API response.", distribution, versionNumber);
+                return Pair.of(distribution, versionNumber);
+            }
+            LOG.warn("Distribution or version number is null in OpenSearch API response. Proceeding to check Elasticsearch or default.");
         }
 
-        try {
-            final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClientRefresher.get().info();
-            return Pair.of(ELASTICSEARCH_DISTRIBUTION + "-" + infoResponseElasticsearch.version().buildFlavor(), infoResponseElasticsearch.version().number());
-        } catch (final Exception e) {
-            throw new RuntimeException("Unable to call info API using the elasticsearch client", e);
+        if (elasticsearchClientRefresher != null) {
+            try {
+                final ElasticsearchClient elasticsearchClient = elasticsearchClientRefresher.get();
+                if (elasticsearchClient == null) {
+                    LOG.info("ElasticsearchClient from refresher is null. Cannot attempt Elasticsearch .info() call. Proceeding to default.");
+                } else {
+                    final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClient.info();
+                    final String esBuildFlavor = infoResponseElasticsearch.version().buildFlavor();
+                    final String esVersionNumber = infoResponseElasticsearch.version().number();
+
+                    if (Objects.nonNull(esVersionNumber)) {
+                        String effectiveDistribution = ELASTICSEARCH_DISTRIBUTION;
+                        LOG.info("Detected Elasticsearch (flavor '{}') version '{}' from API response.",
+                                Objects.toString(esBuildFlavor, "unknown"), esVersionNumber);
+                        if (ELASTICSEARCH_OSS_BUILD_FLAVOR.equalsIgnoreCase(esBuildFlavor)) {
+                            effectiveDistribution = ELASTICSEARCH_DISTRIBUTION + "-" + ELASTICSEARCH_OSS_BUILD_FLAVOR;
+                        }
+                        return Pair.of(effectiveDistribution, esVersionNumber);
+                    }
+                    LOG.warn("Version number is null in Elasticsearch API response. Proceeding to default.");
+                }
+            } catch (final Exception e) {
+                LOG.warn("Failed to get cluster info using Elasticsearch client. Will proceed with default behavior.", e);
+            }
+        } else {
+            LOG.info("Elasticsearch client refresher is null, skipping Elasticsearch .info() call.");
+        }
+
+        if (openSearchSourceConfiguration.getDistributionVersion() == null) { 
+            LOG.warn("Failed to auto-detect cluster distribution from API response for both OpenSearch and (if attempted) Elasticsearch clients. " +
+                     "Defaulting to OpenSearch distribution. Consider setting 'distribution_version' in the configuration if this is not an OpenSearch cluster.");
+            return Pair.of(OPENSEARCH_DISTRIBUTION, OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
+        } else {
+            final String configuredDistributionName = openSearchSourceConfiguration.getDistributionVersion().name();
+            LOG.error("Failed to connect to the cluster and verify its distribution. The 'distribution_version' was configured as '{}', " +
+                      "but communication attempts with the cluster failed or the cluster did not respond as expected for this distribution type. " +
+                      "Please check the endpoint, network connectivity, and the specified 'distribution_version'.",
+                      configuredDistributionName);
+            throw new InvalidPluginConfigurationException(
+                String.format("Failed to connect to the cluster and verify its distribution. The 'distribution_version' was configured as '%s', " +
+                              "but communication attempts with the cluster failed or the cluster did not respond as expected for this distribution type. " +
+                              "Please check the endpoint, network connectivity, and the specified 'distribution_version'.",
+                              configuredDistributionName));
         }
     }
 

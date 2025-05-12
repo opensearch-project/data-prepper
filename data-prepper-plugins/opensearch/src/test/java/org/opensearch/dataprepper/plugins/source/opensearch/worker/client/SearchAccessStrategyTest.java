@@ -32,6 +32,7 @@ import java.io.IOException;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -54,6 +55,9 @@ public class SearchAccessStrategyTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private SearchConfiguration searchConfiguration;
 
     private SearchAccessorStrategy createObjectUnderTest() {
         return SearchAccessorStrategy.create(
@@ -296,5 +300,29 @@ public class SearchAccessStrategyTest {
 
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+    }
+
+    @Test
+    void getSearchAccessor_whenDistVersionNullAndAllClientInfoFails_usesDefaultOpenSearchParametersForSearchContext() throws IOException {
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(null);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+        when(searchConfiguration.getSearchContextType()).thenReturn(null); 
+
+        final OpenSearchClient mockOpenSearchClient = mock(OpenSearchClient.class);
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(mockOpenSearchClient);
+        when(mockOpenSearchClient.info()).thenThrow(new IOException("Simulated OpenSearch info failure"));
+
+        final ElasticsearchClient mockElasticsearchClient = mock(ElasticsearchClient.class);
+        when(openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration)).thenReturn(mockElasticsearchClient);
+        when(mockElasticsearchClient.info()).thenThrow(new IOException("Simulated Elasticsearch info failure"));
+
+        final SearchAccessorStrategy strategy = createObjectUnderTest();
+
+        final SearchAccessor searchAccessor = strategy.getSearchAccessor();
+
+        assertThat(searchAccessor, instanceOf(OpenSearchAccessor.class));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 }
