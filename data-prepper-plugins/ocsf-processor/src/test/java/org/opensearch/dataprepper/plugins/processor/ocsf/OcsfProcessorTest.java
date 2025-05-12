@@ -46,11 +46,17 @@ class OcsfProcessorTest {
 
         OcsfProcessorConfig config = new OcsfProcessorConfig() {
             @Override
-            public String getSchemaMapping() {
+            public String getSchemaType() {
+                return "office365";
+            }
+        };
+
+        ocsfProcessor = new OcsfProcessor(pluginMetrics, config) {
+            @Override
+            protected String getSchemaPath(String schemaType) {
                 return getClass().getClassLoader().getResource("schemas/test-mapping.json").getPath();
             }
         };
-        ocsfProcessor = new OcsfProcessor(pluginMetrics, config);
     }
 
     @Test

@@ -10,23 +10,22 @@
 package org.opensearch.dataprepper.plugins.processor.ocsf;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public class OcsfProcessorConfig {
     @NotNull
-    @JsonProperty("schema_mapping")
-    @JsonPropertyDescription("The path to the schema mapping file that defines how to transform events to OCSF format.")
-    private String schemaMapping;
+    @JsonProperty("schema_type")
+    @JsonPropertyDescription("The type of OCSF schema to use (e.g., 'office365')")
+    private String schemaType;
 
     @JsonProperty("tags_on_failure")
     @JsonPropertyDescription("A list of strings with which to tag events when the processor fails to transform the event to OCSF format. Defaults to '_ocsf_transform_failure'.")
     private List<String> tagsOnFailure = List.of("_ocsf_transform_failure");
 
-    public String getSchemaMapping() {
-        return schemaMapping;
+    public String getSchemaType() {
+        return schemaType;
     }
 
     public List<String> getTagsOnFailure() {
