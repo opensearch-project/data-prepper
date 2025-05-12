@@ -49,6 +49,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class KinesisRecordProcessor implements ShardRecordProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisRecordProcessor.class);
@@ -114,24 +115,34 @@ public class KinesisRecordProcessor implements ShardRecordProcessor {
     }
 
     private KinesisStreamConfig getStreamConfig(final KinesisSourceConfig kinesisSourceConfig) {
-        final Optional<KinesisStreamConfig> kinesisStreamConfig = kinesisSourceConfig.getStreams().stream().filter(streamConfig -> {
-            if (streamIdentifier.streamArnOptional().isPresent()) {
-                Arn streamIdentifierArn = streamIdentifier.streamArnOptional().get();
-                Arn streamConfigArn = Arn.fromString(streamConfig.getStreamArn());
-                return streamIdentifierArn.equals(streamConfigArn);
-            }
-            if (Objects.nonNull(streamConfig.getStreamArn())) {
-                String streamName = Arn.fromString(streamConfig.getStreamArn()).resource().resource();
-                return streamName.equals(streamIdentifier.streamName());
-            }
-            return streamConfig.getName().equals(streamIdentifier.streamName());
-        }).findAny();
-        if (kinesisStreamConfig.isEmpty()) {
-            throw new KinesisStreamNotFoundException(String.format("Kinesis stream not found for %s", streamIdentifier.streamName()));
-        }
-        return kinesisStreamConfig.get();
-    }
+        final List<KinesisStreamConfig> matchedStreamConfigs = kinesisSourceConfig.getStreams().stream()
+                .filter(streamConfig -> {
+                    if (streamIdentifier.streamArnOptional().isPresent()) {
+                        Arn streamIdentifierArn = streamIdentifier.streamArnOptional().get();
+                        Arn streamConfigArn = Arn.fromString(streamConfig.getStreamArn());
+                        return streamIdentifierArn.equals(streamConfigArn);
+                    }
+                    if (Objects.nonNull(streamConfig.getStreamArn())) {
+                        String streamName = Arn.fromString(streamConfig.getStreamArn()).resource().resource();
+                        return streamName.equals(streamIdentifier.streamName());
+                    }
+                    return streamConfig.getName().equals(streamIdentifier.streamName());
+                })
+                .collect(Collectors.toList());
 
+        if (matchedStreamConfigs.isEmpty()) {
+            throw new KinesisStreamNotFoundException(
+                    String.format("Kinesis stream not found for %s", streamIdentifier.streamName()));
+        }
+
+        if (matchedStreamConfigs.size() > 1) {
+            throw new IllegalStateException(
+                    String.format("Multiple stream configurations found for %s. Expected exactly one.",
+                            streamIdentifier.streamName()));
+        }
+
+        return matchedStreamConfigs.get(0);
+    }
     @Override
     public void initialize(InitializationInput initializationInput) {
         // Called once when the processor is initialized.
