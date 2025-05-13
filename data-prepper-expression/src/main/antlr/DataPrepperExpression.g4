@@ -271,6 +271,7 @@ VariableNameCharacter
 
 String
     : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
+    | DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE StringCharacters? DOUBLEQUOTE DOUBLEQUOTE DOUBLEQUOTE
     ;
 
 fragment
