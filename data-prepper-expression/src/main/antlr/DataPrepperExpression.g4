@@ -167,6 +167,7 @@ fragment
 FunctionArg
     : JsonPointer
     | String
+    | Integer
     ;
 
 variableIdentifier
@@ -187,7 +188,7 @@ literal
 
 Integer
     : ZERO
-    | NonZeroDigit Digit*
+    | '-'? NonZeroDigit Digit*
     ;
 
 Float
