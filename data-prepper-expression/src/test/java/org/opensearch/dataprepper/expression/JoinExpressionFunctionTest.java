@@ -68,21 +68,21 @@ class JoinExpressionFunctionTest {
     @Test
     void testNoArgumentThrowsException() {
         testEvent = createTestEvent(Map.of("key", "value"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ExpressionArgumentsException.class,
                 () -> joinExpressionFunction.evaluate(List.of(), testEvent, testFunction));
     }
 
     @Test
     void testTooManyArgumentsThrowsException() {
         testEvent = createTestEvent(Map.of("key", "value"));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(ExpressionArgumentsException.class,
                 () -> joinExpressionFunction.evaluate(List.of("/list", " ", false), testEvent, testFunction));
     }
 
     @Test
     void testArgumentTypeNotSupportedThrowsException() {
         testEvent = createTestEvent(Map.of("key", "value"));
-        Throwable exception = assertThrows(IllegalArgumentException.class,
+        Throwable exception = assertThrows(ExpressionArgumentsException.class,
                 () -> joinExpressionFunction.evaluate(List.of("/list", Map.of("key", "value")), testEvent, testFunction));
         assertThat(exception.getMessage(), containsStringIgnoringCase("should be of Json Pointer type or String type"));
     }

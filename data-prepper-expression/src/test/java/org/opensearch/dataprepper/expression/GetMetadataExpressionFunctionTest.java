@@ -61,29 +61,29 @@ class GetMetadataExpressionFunctionTest {
     void testGetMetadataWithMoreArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\"arg1\"", "\"arg2\""), testEvent, testFunction));
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2", "arg3/arg4"), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\"arg1\"", "\"arg2\""), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of("arg1", "arg2", "arg3/arg4"), testEvent, testFunction));
     }
 
     @Test
     void testGetMetadataWithNonStringArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
     }
 
     @Test
     void testGetMetadataWithNonLiteralStringArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("testString"), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of("testString"), testEvent, testFunction));
     }
 
     @Test
     void testGetMetadataWithInvalidArguments() {
         getMetadataExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of(), testEvent, testFunction));
-        assertThrows(RuntimeException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\""), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of(), testEvent, testFunction));
+        assertThrows(ExpressionArgumentsException.class, () -> getMetadataExpressionFunction.evaluate(List.of("\""), testEvent, testFunction));
     }
 
     @Test

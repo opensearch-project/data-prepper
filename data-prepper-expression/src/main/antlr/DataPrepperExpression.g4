@@ -165,7 +165,8 @@ FunctionArgs
 
 fragment
 FunctionArg
-    : JsonPointer
+    : (SUBTRACT)? Integer
+    | JsonPointer
     | String
     ;
 
