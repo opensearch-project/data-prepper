@@ -13,8 +13,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.oteltrace.RetryInfoConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
