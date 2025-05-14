@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.otel.codec;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
@@ -15,9 +16,10 @@ import java.util.function.Consumer;
 
 
 @DataPrepperPlugin(name = "otel_trace", pluginType = InputCodec.class, pluginConfigurationType = OTelTraceInputCodecConfig.class)
-public class OTelTraceInputCodec implements InputCodec {
+public class OTelTraceInputCodec extends OTelProtoOpensearchCodec.OTelProtoDecoder implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceInputCodec.class);
     private final OTelTraceInputCodecConfig codecConfig;
+    private final ObjectMapper jacksonMapper = new ObjectMapper();
 
     @DataPrepperPluginConstructor
     public OTelTraceInputCodec(final OTelTraceInputCodecConfig codecConfig) {

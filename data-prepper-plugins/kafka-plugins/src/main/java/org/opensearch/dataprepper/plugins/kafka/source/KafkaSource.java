@@ -123,8 +123,6 @@ public class KafkaSource implements Source<Record<Event>> {
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.pluginFactory = pluginFactory;
         this.updateConfig(kafkaClusterConfigSupplier);
-        LOG.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-        LOG.info("{}", pluginFactory == null);
     }
 
     @Override
@@ -194,8 +192,6 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private InputCodec getInputCodec(){
         final PluginModel codecConfiguration = sourceConfig.getCodec();
-        LOG.info("!!!!!!!!!!!!!!!!!!!!");
-        LOG.info(codecConfiguration.getPluginName());
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         return pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
     }
