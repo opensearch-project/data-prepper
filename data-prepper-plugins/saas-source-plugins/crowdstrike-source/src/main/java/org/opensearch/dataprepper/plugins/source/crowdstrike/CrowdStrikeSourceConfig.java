@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 public class CrowdStrikeSourceConfig implements CrawlerSourceConfig {
 
     private static final int DEFAULT_NUMBER_OF_WORKERS = 5;
+    private static final int DEFAULT_NUMBER_OF_LOOK_BACK_DAYS = 0;
 
     @JsonProperty("authentication")
     @Valid
@@ -28,5 +29,11 @@ public class CrowdStrikeSourceConfig implements CrawlerSourceConfig {
     @Max(50)
     @Valid
     private int numberOfWorkers = DEFAULT_NUMBER_OF_WORKERS;
+
+    @JsonProperty("look_back_days")
+    @Min(0)
+    @Max(90)
+    @Valid
+    private int lookBackDays = DEFAULT_NUMBER_OF_LOOK_BACK_DAYS;
 
 }

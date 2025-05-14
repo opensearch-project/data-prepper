@@ -6,17 +6,15 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
-
+import lombok.Data;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Getter
-@Setter
-public class SaasWorkerProgressState {
+@Data
+public class AtlassianWorkerProgressState implements SaasWorkerProgressState {
 
     @JsonProperty("totalItems")
     private int totalItems;

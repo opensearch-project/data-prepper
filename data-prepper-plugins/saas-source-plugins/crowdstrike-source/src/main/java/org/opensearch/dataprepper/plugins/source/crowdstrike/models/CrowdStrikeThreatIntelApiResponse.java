@@ -5,6 +5,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Represents the response returned from a CrowdStrike API call.
@@ -26,8 +27,8 @@ import java.util.Map;
     }
 
     // Convenience method to get the first value of a specific header
-    public String getFirstHeaderValue(String headerName) {
+    public Optional<String> getFirstHeaderValue(String headerName) {
         List<String> values = getHeader(headerName);
-        return CollectionUtils.isEmpty(values) ? null : values.get(0);
+        return CollectionUtils.isEmpty(values) ?  Optional.empty(): Optional.of(values.get(0));
     }
 }

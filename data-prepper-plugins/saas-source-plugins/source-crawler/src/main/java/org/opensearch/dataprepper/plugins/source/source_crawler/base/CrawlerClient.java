@@ -4,7 +4,6 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 
 import java.time.Instant;
@@ -14,7 +13,7 @@ import java.util.Iterator;
  * Interface for Crawler client. This interface can be implemented by different saas clients.
  * For example, Jira, Salesforce, ServiceNow, etc.
  */
-public interface CrawlerClient {
+public interface CrawlerClient<T extends SaasWorkerProgressState> {
 
 
     /**
@@ -34,5 +33,5 @@ public interface CrawlerClient {
      * @param buffer             pipeline buffer to write the results into
      * @param acknowledgementSet acknowledgement set to be used to track the completion of the partition
      */
-    void executePartition(SaasWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet);
+    void executePartition(T state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet);
 }

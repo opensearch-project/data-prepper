@@ -6,11 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -33,8 +31,8 @@ public class LeaderPartition extends EnhancedSourcePartition<LeaderProgressState
             .registerModule(new JavaTimeModule());
     private final LeaderProgressState state;
 
-    public LeaderPartition() {
-        this.state = new LeaderProgressState(Instant.ofEpochMilli(0));
+    public LeaderPartition(LeaderProgressState state) {
+        this.state = state;
     }
 
     public LeaderPartition(SourcePartitionStoreItem sourcePartitionStoreItem) {

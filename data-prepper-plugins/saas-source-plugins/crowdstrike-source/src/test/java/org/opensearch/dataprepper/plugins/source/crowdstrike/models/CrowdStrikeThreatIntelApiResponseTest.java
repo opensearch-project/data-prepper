@@ -2,13 +2,13 @@ package org.opensearch.dataprepper.plugins.source.crowdstrike.models;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CrowdStrikeThreatIntelApiResponseTest {
@@ -25,15 +25,15 @@ class CrowdStrikeThreatIntelApiResponseTest {
         indicator1.setId("ioc-001");
         indicator1.setType("domain");
         indicator1.setIndicator("malicious.com");
-        indicator1.setPublishedDate(1680000000L);
-        indicator1.setLastUpdated(1680001234L);
+        indicator1.setPublishedDate(Instant.ofEpochMilli(1680000000L));
+        indicator1.setLastUpdated(Instant.ofEpochMilli(1680001234L));
 
         ThreatIndicator indicator2 = new ThreatIndicator();
         indicator2.setId("ioc-002");
         indicator2.setType("ip_address");
         indicator2.setIndicator("1.2.3.4");
-        indicator2.setPublishedDate(1681111111L);
-        indicator2.setLastUpdated(1681112222L);
+        indicator2.setPublishedDate(Instant.ofEpochMilli(1681111111L));
+        indicator2.setLastUpdated(Instant.ofEpochMilli(1681112222L));
 
         // Set them into a CrowdStrikeIndicatorResult
         CrowdStrikeIndicatorResult result = new CrowdStrikeIndicatorResult();
@@ -76,8 +76,9 @@ class CrowdStrikeThreatIntelApiResponseTest {
         CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, headers);
         response.setHeaders(headers);
 
-        String first = response.getFirstHeaderValue("Content-Type");
-        assertEquals("application/json", first);
+        Optional<String> first = response.getFirstHeaderValue("Content-Type");
+        assertTrue(first.isPresent());
+        assertEquals(Optional.of("application/json"), first);
     }
 
     @Test
@@ -89,7 +90,7 @@ class CrowdStrikeThreatIntelApiResponseTest {
         CrowdStrikeThreatIntelApiResponse response = new CrowdStrikeThreatIntelApiResponse(mockResult, headers);
         response.setHeaders(headers);
 
-        assertNull(response.getFirstHeaderValue("X-Empty"));
+        assertEquals(Optional.empty(), response.getFirstHeaderValue("X-Empty"));
     }
 
 }

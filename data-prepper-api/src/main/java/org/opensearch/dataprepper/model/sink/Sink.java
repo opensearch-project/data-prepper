@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.sink;
 
+import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
@@ -13,6 +14,7 @@ import java.util.Collection;
  * Data Prepper sink interface. Sink may publish records to a disk, a file,
  * to OpenSearch, other pipelines, or other external systems.
  */
+@PluginComponentType("sink")
 public interface Sink<T extends Record<?>> {
 
     /**
