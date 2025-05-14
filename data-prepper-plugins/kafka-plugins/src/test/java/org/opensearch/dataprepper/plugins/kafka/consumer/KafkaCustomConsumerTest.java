@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -42,6 +43,8 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceInputCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceInputCodecConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -186,13 +189,19 @@ public class KafkaCustomConsumerTest {
 
     public KafkaCustomConsumer createObjectUnderTestWithMockBuffer(String schemaType) {
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, mockBuffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, null);
     }
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, null);
+    }
+
+    public KafkaCustomConsumer createObjectUnderTestWithCodec(String schemaType, boolean acknowledgementsEnabled, InputCodec inputCodec) {
+        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
+        return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, inputCodec);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() throws JsonProcessingException {
@@ -454,11 +463,11 @@ public class KafkaCustomConsumerTest {
     @Test
     public void testJsonOtelTraceConsumeRecords() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
-        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.OTEL_TRACE_JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonOtelRecords(topic);
         when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("otel_trace_json", false);
+        consumer = createObjectUnderTestWithCodec(
+                "otel_trace", false, new OTelTraceInputCodec(new OTelTraceInputCodecConfig()));
 
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
         consumer.consumeRecords();
@@ -473,16 +482,20 @@ public class KafkaCustomConsumerTest {
         });
         assertEquals(1L, consumer.getNumRecordsCommitted());
 
+        boolean found1 = false;
+        boolean found2 = false;
         for (Record<Event> record: bufferedRecords) {
             assertEquals(JacksonSpan.class, record.getData().getClass());
             Span span = (Span) record.getData();
             if (span.getSpanId().equals("96f03f6cb92f7b90")) {
+                found1 = true;
                 assertEquals("099ce04f04acea26f8191b2a900d92e1", span.getTraceId());
                 assertEquals("frontend", span.getServiceName());
                 assertEquals(8081, span.getAttributes().get("net.peer.port"));
                 assertEquals(325722026, span.getDurationInNanos());
                 assertEquals("4ce150ecd279e8c6", span.getParentSpanId());
             } else if (span.getSpanId().equals("4ce150ecd279e8c6")) {
+                found2 = true;
                 assertEquals("099ce04f04acea26f8191b2a900d92e1", span.getTraceId());
                 assertEquals("frontend", span.getServiceName());
                 assertEquals("10.208.39.111", span.getAttributes().get("net.host.name"));
@@ -490,18 +503,19 @@ public class KafkaCustomConsumerTest {
                 assertEquals("", span.getParentSpanId());
                 assertEquals(697214900, span.getTraceGroupFields().getDurationInNanos());
             }
-
         }
+        assertTrue(found1);
+        assertTrue(found2);
     }
 
     @Test
     public void testJsonOtelTraceConsumeRecordsWithErorr() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
-        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.OTEL_TRACE_JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonOtelRecordsWithErrors(topic);
         when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("otel_trace_json", false);
+        consumer = createObjectUnderTestWithCodec(
+                "json_otel_trace", false, new OTelTraceInputCodec(new OTelTraceInputCodecConfig()));
 
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
         consumer.consumeRecords();
@@ -516,10 +530,13 @@ public class KafkaCustomConsumerTest {
         });
         assertEquals(1L, consumer.getNumRecordsCommitted());
 
+        boolean found1 = false;
+        boolean found2 = false;
         for (Record<Event> record: bufferedRecords) {
             assertEquals(JacksonSpan.class, record.getData().getClass());
             Span span = (Span) record.getData();
             if (span.getSpanId().equals("707a81c4bcfadcb9")) {
+                found1 = true;
                 assertEquals("20e7534679d00831a0687c03ceb2f650", span.getTraceId());
                 assertEquals("my-service", span.getServiceName());
                 assertEquals(2, span.getAttributes().get("status.code"));
@@ -527,6 +544,7 @@ public class KafkaCustomConsumerTest {
                 assertEquals(1173593, span.getDurationInNanos());
                 assertEquals("df1b295f6e239e4d", span.getParentSpanId());
             } else if (span.getSpanId().equals("df1b295f6e239e4d")) {
+                found2 = true;
                 assertEquals("20e7534679d00831a0687c03ceb2f650", span.getTraceId());
                 assertEquals("my-service", span.getServiceName());
                 assertEquals("main", span.getTraceGroup());
@@ -537,6 +555,8 @@ public class KafkaCustomConsumerTest {
                 assertEquals(1257276, span.getTraceGroupFields().getDurationInNanos());
             }
         }
+        assertTrue(found1);
+        assertTrue(found2);
     }
 
     @Test

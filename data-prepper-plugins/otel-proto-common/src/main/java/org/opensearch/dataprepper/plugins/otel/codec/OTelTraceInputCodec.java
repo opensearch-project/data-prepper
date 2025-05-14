@@ -1,35 +1,38 @@
 package org.opensearch.dataprepper.plugins.otel.codec;
 
-import com.google.protobuf.util.JsonFormat;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.TracesData;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.time.Instant;
-import java.util.List;
 import java.util.function.Consumer;
 
 
+@DataPrepperPlugin(name = "otel_trace", pluginType = InputCodec.class, pluginConfigurationType = OTelTraceInputCodecConfig.class)
+public class OTelTraceInputCodec implements InputCodec {
+    private static final Logger LOG = LoggerFactory.getLogger(OTelTraceInputCodec.class);
+    private final OTelTraceInputCodecConfig codecConfig;
 
-public class OTelTraceInputCodec extends OTelProtoOpensearchCodec.OTelProtoDecoder implements InputCodec {
+    @DataPrepperPluginConstructor
+    public OTelTraceInputCodec(final OTelTraceInputCodecConfig codecConfig) {
+        LOG.info("OTelTraceInputCodec initialization");
+        this.codecConfig = codecConfig;
+    }
 
     @Override
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+        OTelLogsFormatOption format = codecConfig.getFormat();
 
-        TracesData.Builder builder = TracesData.newBuilder();
-        JsonFormat.parser().merge(new InputStreamReader(inputStream), builder);
-        TracesData build = builder.build();
-        List<ResourceSpans> resourceSpansList = build.getResourceSpansList();
-
-        Instant timeReceived = Instant.now();
-        resourceSpansList.stream()
-                .flatMap(rs -> parseResourceSpans(rs, timeReceived).stream())
-                .forEach(span -> eventConsumer.accept(new Record<>(span)));
+        if (format == OTelLogsFormatOption.JSON) {
+            OtelTraceJsonDecoder decoder = new OtelTraceJsonDecoder();
+            decoder.parse(inputStream, Instant.now(), eventConsumer);
+        }
     }
 }
 

@@ -25,9 +25,13 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
@@ -96,6 +100,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private final List<KafkaCustomConsumer> allTopicConsumers;
     private final PluginConfigObservable pluginConfigObservable;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
+    private final PluginFactory pluginFactory;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -104,7 +109,8 @@ public class KafkaSource implements Source<Record<Event>> {
                        final PipelineDescription pipelineDescription,
                        final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
                        final PluginConfigObservable pluginConfigObservable,
-                       final AwsCredentialsSupplier awsCredentialsSupplier) {
+                       final AwsCredentialsSupplier awsCredentialsSupplier,
+                       final PluginFactory pluginFactory) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -115,7 +121,10 @@ public class KafkaSource implements Source<Record<Event>> {
         this.allTopicConsumers = new ArrayList<>();
         this.pluginConfigObservable = pluginConfigObservable;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.pluginFactory = pluginFactory;
         this.updateConfig(kafkaClusterConfigSupplier);
+        LOG.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+        LOG.info("{}", pluginFactory == null);
     }
 
     @Override
@@ -163,7 +172,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
                         }
                         consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
-                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause());
+                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause(), getInputCodec());
                         allTopicConsumers.add(consumer);
 
                         executorService.submit(consumer);
@@ -181,6 +190,14 @@ public class KafkaSource implements Source<Record<Event>> {
         } finally {
             removeMdc();
         }
+    }
+
+    private InputCodec getInputCodec(){
+        final PluginModel codecConfiguration = sourceConfig.getCodec();
+        LOG.info("!!!!!!!!!!!!!!!!!!!!");
+        LOG.info(codecConfiguration.getPluginName());
+        final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+        return pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
     }
 
     KafkaConsumer<?, ?> createKafkaConsumer(final MessageFormat schema, final Properties consumerProperties) {
