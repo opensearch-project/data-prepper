@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.codec.JsonDecoder;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -48,6 +49,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private final PluginMetrics pluginMetrics;
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private ByteDecoder byteDecoder;
+    private final InputCodec codec;
 
     @DataPrepperPluginConstructor
     public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
@@ -75,6 +77,13 @@ public class HTTPSource implements Source<Record<Log>> {
         authenticationPluginSetting.setPipelineName(pipelineName);
         authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
         httpRequestExceptionHandler = new HttpRequestExceptionHandler(pluginMetrics);
+        final PluginModel codecConfiguration = sourceConfig.getCodec();
+        if (codecConfiguration == null) {
+            codec = null;
+        } else {
+            final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
+            codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
+        }
     }
 
     @Override
@@ -85,7 +94,7 @@ public class HTTPSource implements Source<Record<Log>> {
         if (server == null) {
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(sourceConfig);
             CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, PLUGIN_NAME, pipelineName);
-            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics);
+            final LogHTTPService logHTTPService = new LogHTTPService(serverConfiguration.getBufferTimeoutInMillis(), buffer, pluginMetrics, codec);
             server = createServer.createHTTPServer(buffer, certificateProviderFactory, authenticationProvider, httpRequestExceptionHandler, logHTTPService);
             pluginMetrics.gauge(SERVER_CONNECTIONS, server, Server::numConnections);
         }
