@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.http.BaseHttpServerConfig;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class HTTPSourceConfig extends BaseHttpServerConfig {
 
@@ -20,5 +22,12 @@ public class HTTPSourceConfig extends BaseHttpServerConfig {
     @Override
     public String getDefaultPath() {
         return DEFAULT_LOG_INGEST_URI;
+    }
+
+    @JsonProperty("codec")
+    private PluginModel codec;
+
+    public PluginModel getCodec() {
+        return codec;
     }
 }
