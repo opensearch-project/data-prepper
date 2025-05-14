@@ -25,7 +25,6 @@ import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelTraceDecoder;
 import org.opensearch.dataprepper.plugins.source.oteltrace.grpc.GrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.http.HttpService;
