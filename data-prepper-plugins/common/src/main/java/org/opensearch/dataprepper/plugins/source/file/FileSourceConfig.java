@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 
 import java.util.Objects;
 
@@ -35,6 +36,9 @@ public class FileSourceConfig {
     @JsonProperty("codec")
     private PluginModel codec;
 
+    @JsonProperty("compression")
+    private CompressionOption compression = CompressionOption.NONE;
+
     public String getFilePathToRead() {
         return filePathToRead;
     }
@@ -50,6 +54,10 @@ public class FileSourceConfig {
 
     public PluginModel getCodec() {
         return codec;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 
     void validate() {
