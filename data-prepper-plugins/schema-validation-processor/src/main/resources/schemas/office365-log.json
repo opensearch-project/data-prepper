@@ -1,0 +1,92 @@
+{
+  "CreationTime": "2025-05-12T03:05:48",
+  "Id": "0b678b5a-d5c9-4595-92fa-b4630bddad36",
+  "Operation": "Add service principal.",
+  "OrganizationId": "6125d1e8-7343-40c2-b1e2-2b8616bd2f3e",
+  "RecordType": 8,
+  "ResultStatus": "Success",
+  "UserKey": "Not Available",
+  "UserType": 4,
+  "Version": 1,
+  "Workload": "AzureActiveDirectory",
+  "ObjectId": "https://accounts.cp.microsoft.com;bf9fc203-c1ff-4fd4-878b-323642e462ec",
+  "UserId": "Certificate",
+  "AzureActiveDirectoryEventType": 1,
+  "ExtendedProperties": [{
+    "Name": "additionalDetails",
+    "Value": "{\"AppId\":\"bf9fc203-c1ff-4fd4-878b-323642e462ec\",\"AppOwnerOrganizationId\":\"f8cdef31-a31e-4b4a-93e4-5f571e91255a\"}"
+  }, {
+    "Name": "extendedAuditEventCategory",
+    "Value": "ServicePrincipal"
+  }],
+  "ModifiedProperties": [{
+    "Name": "AccountEnabled",
+    "NewValue": "[\r\n  true\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "AppPrincipalId",
+    "NewValue": "[\r\n  \"bf9fc203-c1ff-4fd4-878b-323642e462ec\"\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "DisplayName",
+    "NewValue": "[\r\n  \"Microsoft Commerce Accounts Service\"\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "ServicePrincipalName",
+    "NewValue": "[\r\n  \"https://accounts.cp.microsoft.com\",\r\n  \"bf9fc203-c1ff-4fd4-878b-323642e462ec\"\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "Credential",
+    "NewValue": "[\r\n  {\r\n    \"CredentialType\": 2,\r\n    \"KeyStoreId\": \"291154f0-a9f5-45bb-87be-9c8ee5b6d62c\",\r\n    \"KeyGroupId\": \"8bb9879a-d994-4573-a207-f05110946968\"\r\n  }\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "ServicePrincipalTag",
+    "NewValue": "[\r\n  \"disableRequestingTenantedPassthroughTokens\",\r\n  \"disableAcceptingTenantedPassthroughTokens\",\r\n  \"disableLegacyUserImpersonationClient\",\r\n  \"disableLegacyUserImpersonationResource\"\r\n]",
+    "OldValue": "[]"
+  }, {
+    "Name": "Included Updated Properties",
+    "NewValue": "AccountEnabled, AppPrincipalId, DisplayName, ServicePrincipalName, Credential, ServicePrincipalTag",
+    "OldValue": ""
+  }, {
+    "Name": "TargetId.ServicePrincipalNames",
+    "NewValue": "https://accounts.cp.microsoft.com;bf9fc203-c1ff-4fd4-878b-323642e462ec",
+    "OldValue": ""
+  }],
+  "Actor": [{
+    "ID": "Microsoft Azure AD Internal - Jit Provisioning",
+    "Type": 1
+  }, {
+    "ID": "Certificate",
+    "Type": 2
+  }, {
+    "ID": "Other",
+    "Type": 2
+  }],
+  "ActorContextId": "6125d1e8-7343-40c2-b1e2-2b8616bd2f3e",
+  "InterSystemsId": "e7c44d51-af21-428e-bb16-4719e8034ad3",
+  "IntraSystemId": "9d8e9587-c1d4-400f-a84e-131c98e9984c",
+  "SupportTicketId": "",
+  "Target": [{
+    "ID": "ServicePrincipal_ece9afb7-bcf9-4ce3-8555-b0cb7eff4967",
+    "Type": 2
+  }, {
+    "ID": "ece9afb7-bcf9-4ce3-8555-b0cb7eff4967",
+    "Type": 2
+  }, {
+    "ID": "ServicePrincipal",
+    "Type": 2
+  }, {
+    "ID": "Microsoft Commerce Accounts Service",
+    "Type": 1
+  }, {
+    "ID": "bf9fc203-c1ff-4fd4-878b-323642e462ec",
+    "Type": 2
+  }, {
+    "ID": "https://accounts.cp.microsoft.com;bf9fc203-c1ff-4fd4-878b-323642e462ec",
+    "Type": 4
+  }, {
+    "ID": "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
+    "Type": 2
+  }],
+  "TargetContextId": "6125d1e8-7343-40c2-b1e2-2b8616bd2f3e"
+}
