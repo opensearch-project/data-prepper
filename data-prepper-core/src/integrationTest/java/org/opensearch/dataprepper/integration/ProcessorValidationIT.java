@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -12,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.BaseEventsTrackingProcessor;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import org.opensearch.dataprepper.plugins.BasicEventsTrackingTestProcessor;
@@ -42,22 +44,30 @@ class ProcessorValidationIT {
     private static final int BATCH_SIZE = 5;
     private static final int TOTAL_EVENTS = 100;
     private static final int WAIT_TIMEOUT_SECONDS = 10;
-
-    private static final Map<String, List<Class<?>>> PIPELINE_TO_PROCESSORS_MAP = Map.of(
-            "single-thread-processor-pipeline", List.of(SingleThreadEventsTrackingTestProcessor.class),
-            "basic-processor-pipeline", List.of(BasicEventsTrackingTestProcessor.class),
-            "multi-processor-pipeline", List.of(SingleThreadEventsTrackingTestProcessor.class, BasicEventsTrackingTestProcessor.class)
-    );
+    private static BaseEventsTrackingProcessor singleThreadEventsTrackingProcessor;
+    private static BaseEventsTrackingProcessor basicEventsTrackingProcessor;
+    private static Map<String, List<BaseEventsTrackingProcessor>> PIPELINE_TO_PROCESSORS_MAP;
 
     private DataPrepperTestRunner testRunner;
     private InMemorySourceAccessor sourceAccessor;
     private InMemorySinkAccessor sinkAccessor;
     private String pipelineType;
 
+    @BeforeAll
+    static void setupProcessors() {
+        singleThreadEventsTrackingProcessor = new SingleThreadEventsTrackingTestProcessor();
+        basicEventsTrackingProcessor = new BasicEventsTrackingTestProcessor();
+        PIPELINE_TO_PROCESSORS_MAP = Map.of(
+            "single-thread-processor-pipeline", List.of(singleThreadEventsTrackingProcessor),
+            "basic-processor-pipeline", List.of(basicEventsTrackingProcessor),
+            "multi-processor-pipeline", List.of(singleThreadEventsTrackingProcessor, basicEventsTrackingProcessor)
+        );
+    }
+
     @BeforeEach
     void setUp() {
-        SingleThreadEventsTrackingTestProcessor.reset();
-        BasicEventsTrackingTestProcessor.reset();
+        singleThreadEventsTrackingProcessor.reset();
+        basicEventsTrackingProcessor.reset();
     }
 
     @AfterEach
@@ -132,20 +142,10 @@ class ProcessorValidationIT {
         assertThat(outputRecords.size(), equalTo(expectedTotalEvents));
 
         // Verify each processor in the pipeline processed events
-        List<Class<?>> processors = PIPELINE_TO_PROCESSORS_MAP.get(pipelineType);
-        for (Class<?> processorClass : processors) {
-            Map<String, AtomicInteger> processedEventsMap;
-            String processorName;
-
-            if (processorClass.equals(SingleThreadEventsTrackingTestProcessor.class)) {
-                processedEventsMap = SingleThreadEventsTrackingTestProcessor.getEventsMap();
-                processorName = SingleThreadEventsTrackingTestProcessor.getName();
-            } else if (processorClass.equals(BasicEventsTrackingTestProcessor.class)) {
-                processedEventsMap = BasicEventsTrackingTestProcessor.getEventsMap();
-                processorName = BasicEventsTrackingTestProcessor.getName();
-            } else {
-                throw new IllegalArgumentException("Unknown processor : " + processorClass.getName());
-            }
+        List<BaseEventsTrackingProcessor> processors = PIPELINE_TO_PROCESSORS_MAP.get(pipelineType);
+        for (BaseEventsTrackingProcessor processor : processors) {
+            String processorName = processor.getName();
+            Map<String, AtomicInteger> processedEventsMap = processor.getEventsMap();
 
             verifyEventProcessing(processedEventsMap, outputRecords, expectedTotalEvents, processorName);
         }
@@ -175,6 +175,7 @@ class ProcessorValidationIT {
                                        List<Record<Event>> outputRecords,
                                        int expectedTotalEvents,
                                        String processorType) {
+        assertThat("Output records list should not be empty", outputRecords.size(), greaterThanOrEqualTo(1));
         String countField = processorType + "_processed_count";
         for (Record<Event> record : outputRecords) {
             String id = record.getData().get("id", String.class);
@@ -197,19 +198,12 @@ class ProcessorValidationIT {
      * @param outputRecords List of output records from the pipeline
      * @param processors List of processors in the pipeline
      */
-    private void verifyWorkerThreads(List<Record<Event>> outputRecords, List<Class<?>> processors) {
+    private void verifyWorkerThreads(List<Record<Event>> outputRecords, List<BaseEventsTrackingProcessor> processors) {
         Set<String> threadNames = outputRecords.stream()
                 .map(Record::getData)
                 .flatMap(event -> processors.stream()
-                        .map(processorClass -> {
-                            String processorName;
-                            if (processorClass.equals(SingleThreadEventsTrackingTestProcessor.class)) {
-                                processorName = SingleThreadEventsTrackingTestProcessor.getName();
-                            } else if (processorClass.equals(BasicEventsTrackingTestProcessor.class)) {
-                                processorName = BasicEventsTrackingTestProcessor.getName();
-                            } else {
-                                throw new IllegalArgumentException("Unknown processor class: " + processorClass.getName());
-                            }
+                        .map(processor -> {
+                            String processorName = processor.getName();
                             return event.get(processorName + "_processed_by_thread", String.class);
                         })
                         .filter(threadName -> threadName != null))

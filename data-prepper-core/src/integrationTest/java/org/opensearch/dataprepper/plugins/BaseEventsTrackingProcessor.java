@@ -20,6 +20,7 @@ public abstract class BaseEventsTrackingProcessor implements Processor<Record<Ev
     private final String countPropertyName;
     private final String threadPropertyName;
     private final Map<String, AtomicInteger> eventsMap;
+    private final String processorName;
 
     /**
      * Constructor for the base events tracking processor.
@@ -30,7 +31,31 @@ public abstract class BaseEventsTrackingProcessor implements Processor<Record<Ev
     protected BaseEventsTrackingProcessor(String processorName, Map<String, AtomicInteger> eventsMap) {
         this.countPropertyName = processorName + "_processed_count";
         this.threadPropertyName = processorName + "_processed_by_thread";
+        this.processorName = processorName;
         this.eventsMap = eventsMap;
+    }
+
+    /**
+     * Gets the map of processed events.
+     * @return Map of event IDs to processing counts
+     */
+    public Map<String, AtomicInteger> getEventsMap() {
+        return eventsMap;
+    }
+
+    /**
+     * Gets the name of processor.
+     * @return The processor name
+     */
+    public String getName() {
+        return processorName;
+    }
+
+    /**
+     * Resets the processor's state by clearing the events map.
+     */
+    public void reset() {
+        eventsMap.clear();
     }
 
     /**

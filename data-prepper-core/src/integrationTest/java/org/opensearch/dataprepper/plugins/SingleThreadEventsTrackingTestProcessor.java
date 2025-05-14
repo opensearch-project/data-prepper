@@ -24,27 +24,4 @@ public class SingleThreadEventsTrackingTestProcessor extends BaseEventsTrackingP
     public SingleThreadEventsTrackingTestProcessor() {
         super(PLUGIN_NAME, PROCESSED_EVENTS_MAP);
     }
-
-    /**
-     * Gets the map of processed events.
-     * @return Map of event IDs to processing counts
-     */
-    public static Map<String, AtomicInteger> getEventsMap() {
-        return PROCESSED_EVENTS_MAP;
-    }
-
-    /**
-     * Gets the name of this processor.
-     * @return The processor name
-     */
-    public static String getName() {
-        return PLUGIN_NAME;
-    }
-
-    /**
-     * Resets the processor's state by clearing the events map.
-     */
-    public static void reset() {
-        PROCESSED_EVENTS_MAP.clear();
-    }
 }
