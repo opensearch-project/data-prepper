@@ -72,6 +72,7 @@ import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 
 import com.google.protobuf.ByteString;
@@ -110,6 +111,7 @@ class OTelTraceSource_GrpcRequestTest {
     private static final String TEST_PATH = "${pipelineName}/v1/traces";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final RetryInfoConfig TEST_RETRY_INFO = new RetryInfoConfig(Duration.ofMillis(50), Duration.ofMillis(2000));
+
 
     @Mock
     private ServerBuilder serverBuilder;

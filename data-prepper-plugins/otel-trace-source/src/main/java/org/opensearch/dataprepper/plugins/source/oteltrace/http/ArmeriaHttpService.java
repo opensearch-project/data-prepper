@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,7 @@ public class ArmeriaHttpService {
 
     public ArmeriaHttpService(Buffer<Record<Object>> buffer, final PluginMetrics pluginMetrics, final int bufferWriteTimeoutInMillis) {
         this.buffer = buffer;
-        this.oTelProtoDecoder = new OTelProtoCodec.OTelProtoDecoder();
+        this.oTelProtoDecoder = new OTelProtoOpensearchCodec.OTelProtoDecoder();
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);

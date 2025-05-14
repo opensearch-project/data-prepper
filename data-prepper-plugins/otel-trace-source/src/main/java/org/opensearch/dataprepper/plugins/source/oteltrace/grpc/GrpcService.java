@@ -14,11 +14,11 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoOpensearchCodec;
+import org.opensearch.dataprepper.plugins.server.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceGrpcService;
 import org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
-import org.opensearch.dataprepper.plugins.source.oteltrace.RetryInfoConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +60,7 @@ public class GrpcService {
 
         final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                 (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                new OTelProtoCodec.OTelProtoDecoder(),
+                new OTelProtoOpensearchCodec.OTelProtoDecoder(),
                 buffer,
                 pluginMetrics
         );
