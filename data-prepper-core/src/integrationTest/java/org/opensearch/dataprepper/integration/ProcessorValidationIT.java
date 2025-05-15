@@ -44,8 +44,6 @@ class ProcessorValidationIT {
     private static final int BATCH_SIZE = 5;
     private static final int TOTAL_EVENTS = 100;
     private static final int WAIT_TIMEOUT_SECONDS = 10;
-    private static BaseEventsTrackingProcessor singleThreadEventsTrackingProcessor;
-    private static BaseEventsTrackingProcessor basicEventsTrackingProcessor;
     private static Map<String, List<BaseEventsTrackingProcessor>> PIPELINE_TO_PROCESSORS_MAP;
 
     private DataPrepperTestRunner testRunner;
@@ -55,8 +53,8 @@ class ProcessorValidationIT {
 
     @BeforeAll
     static void setupProcessors() {
-        singleThreadEventsTrackingProcessor = new SingleThreadEventsTrackingTestProcessor();
-        basicEventsTrackingProcessor = new BasicEventsTrackingTestProcessor();
+        BaseEventsTrackingProcessor singleThreadEventsTrackingProcessor = new SingleThreadEventsTrackingTestProcessor();
+        BaseEventsTrackingProcessor basicEventsTrackingProcessor = new BasicEventsTrackingTestProcessor();
         PIPELINE_TO_PROCESSORS_MAP = Map.of(
             "single-thread-processor-pipeline", List.of(singleThreadEventsTrackingProcessor),
             "basic-processor-pipeline", List.of(basicEventsTrackingProcessor),
@@ -66,8 +64,8 @@ class ProcessorValidationIT {
 
     @BeforeEach
     void setUp() {
-        singleThreadEventsTrackingProcessor.reset();
-        basicEventsTrackingProcessor.reset();
+        PIPELINE_TO_PROCESSORS_MAP.values().forEach(processorsList ->
+                processorsList.forEach(BaseEventsTrackingProcessor::reset));
     }
 
     @AfterEach
