@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.dataprepper.plugins.source.source_crawler.coordination.scheduler.LeaderScheduler.DEFAULT_EXTEND_LEASE_MINUTES;
 
 @Named
-public class PaginationCrawler implements Crawler<AtlassianWorkerProgressState> {
+public class PaginationCrawler implements Crawler<PaginationCrawlerWorkerProgressState> {
     private static final Logger log = LoggerFactory.getLogger(PaginationCrawler.class);
     private static final int batchSize = 50;
     private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
@@ -89,7 +89,7 @@ public class PaginationCrawler implements Crawler<AtlassianWorkerProgressState> 
         return latestModifiedTime;
     }
 
-    public void executePartition(AtlassianWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
+    public void executePartition(PaginationCrawlerWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
         client.executePartition(state, buffer, acknowledgementSet);
     }
 
@@ -107,7 +107,7 @@ public class PaginationCrawler implements Crawler<AtlassianWorkerProgressState> 
         ItemInfo itemInfo = itemInfoList.get(0);
         String partitionKey = itemInfo.getPartitionKey();
         List<String> itemIds = itemInfoList.stream().map(ItemInfo::getId).collect(Collectors.toList());
-        AtlassianWorkerProgressState state = new AtlassianWorkerProgressState();
+        PaginationCrawlerWorkerProgressState state = new PaginationCrawlerWorkerProgressState();
         state.setKeyAttributes(itemInfo.getKeyAttributes());
         state.setItemIds(itemIds);
         state.setExportStartTime(Instant.now());

@@ -6,7 +6,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgr
 
 import java.time.Instant;
 @Data
-public class AtlassianLeaderProgressState implements LeaderProgressState {
+public class PaginationCrawlerLeaderProgressState implements LeaderProgressState {
 
     @JsonProperty("initialized")
     private boolean initialized = false;
@@ -14,7 +14,7 @@ public class AtlassianLeaderProgressState implements LeaderProgressState {
     @JsonProperty("last_poll_time")
     private Instant lastPollTime;
 
-    public AtlassianLeaderProgressState(@JsonProperty("last_poll_time") final Instant lastPollTime) {
+    public PaginationCrawlerLeaderProgressState(@JsonProperty("last_poll_time") final Instant lastPollTime) {
         this.lastPollTime = lastPollTime;
     }
 }
