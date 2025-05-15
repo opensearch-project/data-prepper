@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.opensearch.dataprepper.aws.api.AwsConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.net.URI;
@@ -63,12 +64,11 @@ public class OtlpSinkConfig {
 
     /**
      * AWS authentication configuration.
-     * This object contains the AWS region and STS role ARN (if applicable).
      * This field is kept private and its contents should be accessed via the generated getter methods.
      */
     @JsonProperty("aws")
     @Valid
-    private AwsAuthenticationConfig awsAuthenticationConfig;
+    private AwsConfig awsAuthenticationConfig;
 
     /**
      * Get AWS region from the provided endpoint.

@@ -5,377 +5,195 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
+import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
+import com.linecorp.armeria.common.ResponseHeaders;
 import io.opentelemetry.proto.collector.trace.v1.ExportTracePartialSuccess;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
-import okhttp3.Call;
-import okhttp3.ConnectionPool;
-import okhttp3.Dispatcher;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Protocol;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
-import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.regions.Region;
 
-import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OtlpHttpSenderTest {
-    private static final byte[] PAYLOAD = "test-otlp-payload".getBytes(StandardCharsets.UTF_8);
-    private static final String ERROR_BODY = "{\"error\": \"Something went wrong\"}";
 
-    private OtlpSinkConfig mockConfig;
-    private SigV4Signer mockSigner;
-    private OkHttpClient mockHttpClient;
-    private Consumer<Integer> mockSleeper;
-    private Function<byte[], Optional<byte[]>> mockGzipCompressor;
-    private OtlpSinkMetrics mockSinkMetrics;
-    private OtlpHttpSender target;
+    private static final byte[] PAYLOAD = "test-otlp".getBytes(StandardCharsets.UTF_8);
+    private static final int SPANS = 3;
+
+    private OtlpSinkMetrics metrics;
+    private SigV4Signer signer;
+    private WebClient webClient;
+    private Function<byte[], byte[]> gzipCompressor;
+    private OtlpHttpSender sender;
 
     @BeforeEach
-    void setUp() {
-        System.setProperty("aws.accessKeyId", "dummy");
-        System.setProperty("aws.secretAccessKey", "dummy");
+    void setup() {
+        metrics = mock(OtlpSinkMetrics.class);
+        signer = mock(SigV4Signer.class);
+        webClient = mock(WebClient.class);
+        gzipCompressor = mock(Function.class);
 
-        mockConfig = mock(OtlpSinkConfig.class);
-        when(mockConfig.getAwsRegion()).thenReturn(Region.US_WEST_2);
-        when(mockConfig.getMaxRetries()).thenReturn(3);
-
-        mockSigner = mock(SigV4Signer.class);
-        mockHttpClient = mock(OkHttpClient.class);
-        mockSleeper = mock(ThreadSleeper.class);
-        mockSinkMetrics = mock(OtlpSinkMetrics.class);
-
-        mockGzipCompressor = mock(GzipCompressor.class);
-        when(mockGzipCompressor.apply(any()))
-                .thenAnswer(invocation -> Optional.of((byte[]) invocation.getArgument(0)));
-
-        target = new OtlpHttpSender(
-                mockConfig, mockSinkMetrics,
-                mockGzipCompressor, mockSigner,
-                mockHttpClient, mockSleeper
-        );
-    }
-
-    @AfterEach
-    void cleanUp() {
-        System.clearProperty("aws.accessKeyId");
-        System.clearProperty("aws.secretAccessKey");
-    }
-
-    @Test
-    void testSend_successfulResponse() throws IOException {
-        // Arrange
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(signed.getUri()).thenReturn(
-                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(signed.headers()).thenReturn(
-                Map.of("Authorization", Collections.singletonList("signed-header")));
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
-
-        final Call call = mock(Call.class);
-        final Response resp = new Response.Builder()
-                .request(new Request.Builder().url(signed.getUri().toString()).build())
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(
-                        new byte[0],
-                        MediaType.get("application/x-protobuf")))
-                .build();
-
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-        when(call.execute()).thenReturn(resp);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_doesNotRetryOnNonRetryable4xxResponses() throws IOException {
-        // Arrange
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(signed.getUri()).thenReturn(
-                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(signed.headers()).thenReturn(Map.of());
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
-
-        final Request okReq = new Request.Builder()
-                .url(signed.getUri().toString())
-                .build();
-
-        final Response resp = new Response.Builder()
-                .request(okReq)
-                .protocol(Protocol.HTTP_1_1)
-                .code(400)
-                .message("Client Error")
-                .body(ResponseBody.create(
-                        ERROR_BODY.getBytes(StandardCharsets.UTF_8),
-                        MediaType.get("application/json")))
-                .build();
-        final Call call = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-        when(call.execute()).thenReturn(resp);
-
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-        verify(mockHttpClient, times(1)).newCall(any());
-        reset(mockHttpClient);
-    }
-
-    @Test
-    void testSend_retryOnFailure_thenSuccess() throws IOException {
-        // Arrange
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(signed.getUri()).thenReturn(
-                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(signed.headers()).thenReturn(Map.of());
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
-
-        final Call first = mock(Call.class);
-        final Call second = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(first, second);
-        when(first.execute()).thenThrow(new IOException("first attempt failed"));
-        final Response success = new Response.Builder()
-                .request(new Request.Builder().url(signed.getUri().toString()).build())
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(
-                        new byte[0],
-                        MediaType.get("application/x-protobuf")))
-                .build();
-        when(second.execute()).thenReturn(success);
-
-        // Act & Assert
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_throwsIOException_whenFailsAfterAllRetries() throws IOException {
-        // Arrange
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(signed.getUri()).thenReturn(
-                HttpUrl.get("https://xray.us-west-2.amazonaws.com/v1/traces").uri());
-        when(signed.headers()).thenReturn(Map.of());
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
-
-        final Call alwaysFail = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(alwaysFail);
-        when(alwaysFail.execute()).thenThrow(new IOException("always fail"));
-
-        // Act & Assert
-        final IOException ex = assertThrows(IOException.class, () -> target.send(PAYLOAD));
-        assertEquals("Max retries reached", ex.getMessage());
-    }
-
-    @Test
-    void testSend_throwsIOException_on502ResponseWithBody() throws IOException {
-        final SdkHttpFullRequest signed = SdkHttpFullRequest.builder()
-                .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://example.com"))
-                .putHeader("Content-Type", "application/json")
-                .build();
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
-
-        final Request okReq = new Request.Builder()
-                .url(signed.getUri().toString()).build();
-        final Call call = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-
-        final Response resp500 = new Response.Builder()
-                .request(okReq)
-                .protocol(Protocol.HTTP_1_1)
-                .code(502)
-                .message("Bad Gateway")
-                .body(ResponseBody.create(
-                        ERROR_BODY.getBytes(StandardCharsets.UTF_8),
-                        MediaType.get("application/json")))
-                .build();
-        when(call.execute()).thenReturn(resp500);
-
-        assertThrows(IOException.class, () -> target.send(PAYLOAD));
-    }
-
-    @Test
-    void testSend_wrapsInterruptedExceptionDuringRetryAsIOException() throws IOException {
-        // Arrange: first attempt throws IOException, sleeper throws at retry
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(mockSigner.signRequest(any())).thenReturn(signed);
-        when(signed.getUri()).thenReturn(URI.create("https://example.com"));
-        when(signed.headers()).thenReturn(Map.of());
-
-        final Call call = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-        when(call.execute()).thenThrow(new IOException("boom"));
-
-        doThrow(new RuntimeException("sleep failed"))
-                .when(mockSleeper).accept(anyInt());
-
-        target = new OtlpHttpSender(
-                mockConfig, mockSinkMetrics,
-                mockGzipCompressor, mockSigner,
-                mockHttpClient, mockSleeper
+        when(gzipCompressor.apply(any())).thenReturn(PAYLOAD);
+        when(signer.signRequest(any())).thenReturn(
+                software.amazon.awssdk.http.SdkHttpFullRequest.builder()
+                        .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
+                        .uri(URI.create("https://localhost/v1/traces"))
+                        .putHeader("Authorization", "sig")
+                        .build()
         );
 
-        // Act & Assert
-        final IOException ex = assertThrows(IOException.class, () -> target.send(PAYLOAD));
-        assertEquals("Sender failed to sleep before retrying.", ex.getMessage());
-        assertEquals("sleep failed", ex.getCause().getMessage());
+        sender = new OtlpHttpSender(metrics, gzipCompressor, signer, webClient);
     }
 
     @Test
-    void testSend_partialSuccessResponse_logsWarning() throws IOException {
-        // Arrange
+    void testSend_successfulResponse() {
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.empty())
+        );
+
+        sender.send(PAYLOAD, SPANS);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRecordsOut(SPANS);
+            verify(metrics).incrementPayloadSize(PAYLOAD.length);
+            verify(metrics).incrementPayloadGzipSize(PAYLOAD.length);
+            verify(metrics).recordHttpLatency(anyLong());
+        });
+    }
+
+    @Test
+    void testSend_partialSuccessResponse() {
         final ExportTraceServiceResponse proto = ExportTraceServiceResponse.newBuilder()
                 .setPartialSuccess(ExportTracePartialSuccess.newBuilder()
-                        .setRejectedSpans(5)
-                        .setErrorMessage("Some spans were rejected due to invalid format")
+                        .setRejectedSpans(2)
+                        .setErrorMessage("invalid span")
                         .build())
                 .build();
-        final byte[] bytes = proto.toByteArray();
 
-        final SdkHttpFullRequest signed = SdkHttpFullRequest.builder()
-                .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
-                .uri(URI.create("https://xray.us-west-2.amazonaws.com/v1/traces"))
-                .putHeader("Content-Type", "application/x-protobuf")
-                .build();
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.wrap(proto.toByteArray()))
+        );
+        sender.send(PAYLOAD, SPANS);
 
-        final Request okReq = new Request.Builder()
-                .url(signed.getUri().toString())
-                .build();
-        final Call call = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-        when(call.execute()).thenReturn(new Response.Builder()
-                .request(okReq)
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(bytes, MediaType.get("application/x-protobuf")))
-                .build());
-
-        // Act & Assert
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
+        await().untilAsserted(() -> {
+            verify(metrics).incrementRejectedSpansCount(2);
+            verify(metrics).incrementRecordsOut(SPANS - 2);
+        });
     }
 
     @Test
-    void testSend_skipsSend_whenGzipCompressionFails() {
-        // Arrange: compressor returns empty → send() should return silently
-        final Function<byte[], Optional<byte[]>> skipCompressor = p -> Optional.empty();
-        target = new OtlpHttpSender(
-                mockConfig, mockSinkMetrics,
-                skipCompressor, mockSigner,
-                mockHttpClient, mockSleeper
+    void testSend_parseErrorOnSuccessResponse() {
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(200), HttpData.ofUtf8("not-protobuf"))
         );
 
-        // Act & Assert: no exception, nothing signed or sent
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-        verify(mockSigner, never()).signRequest(any());
-        verify(mockHttpClient, never()).newCall(any());
+        sender.send(PAYLOAD, SPANS);
+
+        await().untilAsserted(() -> {
+            verify(metrics).incrementErrorsCount();
+            verify(metrics).incrementRecordsOut(SPANS);
+        });
     }
 
     @Test
-    void testHandleSuccessfulResponseParseErrorIncrementsError() throws IOException {
-        // arrange: build a sender with a pass-through compressor lambda
-        target = new OtlpHttpSender(
-                mockConfig,
-                mockSinkMetrics,
-                Optional::of,
-                mockSigner,
-                mockHttpClient,
-                mockSleeper
+    void testSend_nonSuccessStatus() {
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(
+                HttpResponse.of(ResponseHeaders.of(400), HttpData.ofUtf8("{\"error\":\"bad request\"}"))
         );
 
-        // stub: signer
-        final SdkHttpFullRequest signed = mock(SdkHttpFullRequest.class);
-        when(signed.getUri()).thenReturn(URI.create("https://example.com"));
-        when(signed.headers()).thenReturn(Map.of());
-        when(mockSigner.signRequest(PAYLOAD)).thenReturn(signed);
+        sender.send(PAYLOAD, SPANS);
 
-        // stub: http client returns 200 OK but with invalid protobuf bytes
-        final Call call = mock(Call.class);
-        when(mockHttpClient.newCall(any())).thenReturn(call);
-        final byte[] bad = "not-a-proto".getBytes(StandardCharsets.UTF_8);
-        final Response resp = new Response.Builder()
-                .request(new Request.Builder().url(signed.getUri().toString()).build())
-                .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(ResponseBody.create(bad, MediaType.get("application/x-protobuf")))
-                .build();
-        when(call.execute()).thenReturn(resp);
-
-        // act
-        assertDoesNotThrow(() -> target.send(PAYLOAD));
-
-        // assert: parse-failure should have incremented errors
-        verify(mockSinkMetrics).incrementErrorsCount();
+        await().untilAsserted(() -> {
+            verify(metrics).recordResponseCode(400);
+            verify(metrics).incrementRejectedSpansCount(SPANS);
+        });
     }
 
     @Test
-    void testCloseEvictsAndShutdownsOkHttpResources() {
-        // arrange: stub out connectionPool and dispatcher on our mockHttpClient
-        final ConnectionPool pool = mock(ConnectionPool.class);
-        final Dispatcher dispatcher = mock(Dispatcher.class);
-        final ExecutorService exec = mock(ExecutorService.class);
-        when(mockHttpClient.connectionPool()).thenReturn(pool);
-        when(mockHttpClient.dispatcher()).thenReturn(dispatcher);
-        when(dispatcher.executorService()).thenReturn(exec);
+    void testSend_skipsSendIfGzipFails() {
+        sender = new OtlpHttpSender(metrics, ignored -> new byte[0], signer, webClient);
+        sender.send(PAYLOAD, SPANS);
 
-        // act
-        target.close();
-
-        // assert
-        verify(pool).evictAll();
-        verify(exec).shutdown();
+        verify(metrics).incrementFailedSpansCount(SPANS);
+        verifyNoInteractions(webClient);
     }
 
     @Test
-    void testDefaultConstructorInitializesDefaults() {
-        target = new OtlpHttpSender(mockConfig, mockSinkMetrics);
-        assertNotNull(getField(target, "signer"));
-        assertNotNull(getField(target, "httpClient"));
-        assertNotNull(getField(target, "sleeper"));
+    void testSend_exceptionDuringSendIncrementsRejected() {
+        final HttpResponse failingResponse = HttpResponse.ofFailure(new RuntimeException("send failed"));
+        when(webClient.execute(any(HttpRequest.class))).thenReturn(failingResponse);
+
+        sender.send(PAYLOAD, SPANS);
+
+        await().untilAsserted(() -> verify(metrics).incrementRejectedSpansCount(SPANS));
     }
 
-    private Object getField(final Object obj, final String name) {
-        try {
-            final var f = obj.getClass().getDeclaredField(name);
-            f.setAccessible(true);
-            return f.get(obj);
-        } catch (final Exception e) {
-            fail("Could not access " + name);
-            return null;
-        }
+    @Test
+    void testConstructor_withDefaultConfig() {
+        final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
+
+        when(config.getMaxBatchSize()).thenReturn(1_000_000L);
+        when(config.getMaxRetries()).thenReturn(2);
+        when(config.getFlushTimeoutMillis()).thenReturn(5000L);
+        when(config.getAwsRegion()).thenReturn(software.amazon.awssdk.regions.Region.US_WEST_2);
+
+        final OtlpHttpSender defaultSender = new OtlpHttpSender(config, metrics);
+        assertNotNull(defaultSender);
+    }
+
+    @Test
+    void testConstructor_withMinimumThresholdConfig() {
+        final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
+
+        // Set all threshold values to minimum valid input
+        when(config.getMaxBatchSize()).thenReturn(0L);
+        when(config.getMaxRetries()).thenReturn(0);
+        when(config.getFlushTimeoutMillis()).thenReturn(1L);
+        when(config.getAwsRegion()).thenReturn(software.amazon.awssdk.regions.Region.US_WEST_2);
+
+        // Should not throw or crash
+        final OtlpHttpSender minimalSender = new OtlpHttpSender(config, metrics);
+        assertNotNull(minimalSender);
+    }
+
+    @Test
+    void testHandleSuccessfulResponse_withNullBody_incrementsRecordsOut() throws Exception {
+        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, int.class);
+        method.setAccessible(true);
+        method.invoke(sender, null, SPANS);
+
+        verify(metrics).incrementRecordsOut(SPANS);
+        verifyNoMoreInteractions(metrics);
+    }
+
+    @Test
+    void testHandleSuccessfulResponse_withoutPartialSuccess_incrementsRecordsOut() throws Exception {
+        // Create a response with no partial_success
+        final ExportTraceServiceResponse response = ExportTraceServiceResponse.newBuilder().build();
+        final byte[] responseBytes = response.toByteArray();
+
+        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleSuccessfulResponse", byte[].class, int.class);
+        method.setAccessible(true);
+        method.invoke(sender, responseBytes, SPANS);
+
+        verify(metrics).incrementRecordsOut(SPANS);
+        verifyNoMoreInteractions(metrics);
     }
 }

@@ -10,7 +10,8 @@ to any OTLP Protobuf-compatible endpoint.
 
 - Currently, supports only trace data (spans). Support for metrics and logs will be added in future releases.
 - No support for DQL-based loss-less delivery in this release.
-- Only AWS X-Ray-compatible OTLP endpoints are supported.
+- Only AWS X-Ray-compatible OTLP endpoints are currently supported (`https://xray.<region>.amazonaws.com/v1/traces`).
+- Only OTLP over HTTP is supported; gRPC is not yet supported.
 
 ---
 
@@ -52,7 +53,7 @@ otlp_pipeline:
 | `endpoint`                 | `String` | Yes      | —                     | AWS X-Ray OTLP endpoint where spans will be sent.                                                        |
 | `max_retries`              | `int`    | No       | `5`                   | Maximum number of retry attempts on HTTP send failures.                                                  |
 | **threshold**              | `Object` | No       | —                     | Controls batching behavior. See below for sub-properties.                                                |
-| `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of spans per batch. Minimum: 1.                                                           |
+| `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of spans per batch. Use `0` to disable count-based flushing. Must be ≥ 0.                 |
 | `threshold.max_batch_size` | `String` | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                    |   
 | `threshold.flush_timeout`  | `String` | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)               |
 | **aws**                    | `Object` | No       | —                     | AWS authentication settings. See below.                                                                  |
@@ -61,18 +62,11 @@ otlp_pipeline:
 
 **Additional Notes:**
 
-- Only AWS X-Ray-compatible OTLP endpoints are currently supported (`https://xray.<region>.amazonaws.com/v1/traces`).
 - `aws.region` is automatically derived from the endpoint.
-- When `max_retries` is exceeded:
-     - Retryable errors (429, 502, 503, 504): exception is logged, plugin error metric is incremented.
-     - Non-retryable errors (400, 403): error is logged immediately without retry.
-- Support for durable delivery (via DQL) will be added in a future release.
 
 ---
 
 ## Performance Benchmark
-
-The OTLP Sink plugin is optimized for high-throughput, low-latency trace delivery.
 
 ### Summary
 
@@ -126,12 +120,17 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
 
 ## Retry Behavior
 
-- The sink uses an exponential backoff strategy for retryable HTTP status codes (e.g., 429, 502, 503, 504).
+- The sink uses an exponential backoff with jitter strategy for retryable HTTP status codes (e.g., 429, 502, 503, 504).
 - Maximum number of attempts is controlled by `max_retries`. Once exceeded:
      - The span batch is dropped.
      - The plugin logs the exception and increments the error metric.
 - Non-retryable errors (e.g., 400, 403) are logged and counted immediately without retry.
-
+- Retry logic follows
+  the [OTLP/HTTP response specification](https://opentelemetry.io/docs/specs/otlp/#otlphttp-response).
+- `Retry-After` header is not used for dynamic backoff because:
+  - Armeria’s retry rule API only supports boolean conditions or fixed `Backoff` strategies.
+  - Supporting `Retry-After` would require a custom `Backoff` implementation, adding unnecessary complexity.
+  - The exponential backoff already handles common retry intervals effectively.
 ---
 
 ## Logging & Metrics
@@ -140,7 +139,7 @@ Future releases will support durable queueing via DQL for loss-less guarantees.
 * Metrics are emitted via Micrometer and include:
      * recordsIn, recordsOut
      * httpLatency, HTTP codes
-     * errorCount, rejectedSpansCount, retriesCount
+  * errorCount, rejectedSpansCount, failedSpansCount, retriesCount
      * queueSize, queueCapacity
      * payloadSize, payloadGzipSize
      * JVM stats if configured (e.g., heap usage, GC pauses)

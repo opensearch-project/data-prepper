@@ -3,15 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-plugins {
-    id 'java-library'
-    id 'jacoco'
-}
-
-jacoco {
-    toolVersion = "0.8.11"
-}
-
 sourceSets {
     integrationTest {
         java.srcDir file('src/integrationTest/java')
@@ -38,9 +29,6 @@ dependencies {
     // Hibernate
     implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 
-    // OkHttp
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-
     // OpenTelemetry Protobuf
     implementation libs.opentelemetry.proto
     implementation libs.protobuf.util
@@ -58,20 +46,14 @@ dependencies {
 
     // Data Prepper Projects
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(':data-prepper-plugins:otel-proto-common')
+
+    // Armeria
+    implementation libs.armeria.core
+
+    // Metrics
     implementation 'io.micrometer:micrometer-core'
-
-    // Unit Testing
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.1'
-    testImplementation 'org.slf4j:slf4j-simple:2.0.7'
-    testImplementation 'org.mockito:mockito-core:5.10.0'
-    testImplementation 'org.awaitility:awaitility:4.2.0'
-
-    // Integration Testing
-    integrationTestImplementation project(':data-prepper-test-common')
-    integrationTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
-    integrationTestRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
 }
 
 test {
@@ -90,14 +72,6 @@ tasks.register('integrationTest', Test) {
 
 check.dependsOn integrationTest
 
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
-
 jacocoTestCoverageVerification {
     violationRules {
         rule {
@@ -107,15 +81,8 @@ jacocoTestCoverageVerification {
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.95
+                minimum = 1.00
             }
         }
-    }
-}
-
-tasks.named('jacocoTestReport') {
-    doLast {
-        def reportPath = layout.buildDirectory.file("reports/jacoco/test/html/index.html").get().asFile.toURI()
-        println "\nView test coverage report here:\n   ${reportPath}\n"
     }
 }
