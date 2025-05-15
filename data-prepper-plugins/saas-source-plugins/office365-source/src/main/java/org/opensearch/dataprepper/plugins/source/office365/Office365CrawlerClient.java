@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 
 import static org.opensearch.dataprepper.plugins.source.office365.configuration.MetadataKeyAttributes.CONTENT_TYPE;
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Named
-public class Office365CrawlerClient implements CrawlerClient {
+public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWorkerProgressState> {
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
 
     private final Office365Service service;
@@ -72,7 +72,7 @@ public class Office365CrawlerClient implements CrawlerClient {
     }
 
     @Override
-    public void executePartition(final SaasWorkerProgressState state,
+    public void executePartition(final PaginationCrawlerWorkerProgressState state,
                                  final Buffer<Record<Event>> buffer,
                                  final AcknowledgementSet acknowledgementSet) {
         log.info("Executing partition: {} with {} log(s)", state.getKeyAttributes(), state.getItemIds().size());

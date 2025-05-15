@@ -28,7 +28,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.Instant;
@@ -74,7 +74,7 @@ public class JiraSource extends CrawlerSourcePlugin {
 
     @Override
     protected LeaderProgressState createLeaderProgressState() {
-        return new AtlassianLeaderProgressState(Instant.EPOCH);
+        return new PaginationCrawlerLeaderProgressState(Instant.EPOCH);
     }
 
     @Override
