@@ -20,13 +20,16 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.office365.auth.Office365AuthenticationProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.time.Instant;
 
 import static org.opensearch.dataprepper.plugins.source.office365.utils.Constants.PLUGIN_NAME;
 
@@ -51,7 +54,7 @@ public class Office365Source extends CrawlerSourcePlugin {
                            final Office365AuthenticationProvider office365AuthProvider,
                            final PluginFactory pluginFactory,
                            final AcknowledgementSetManager acknowledgementSetManager,
-                           final Crawler crawler,
+                           final PaginationCrawler crawler,
                            final PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, office365SourceConfig, pluginFactory,
                 acknowledgementSetManager, crawler, executorServiceProvider);
@@ -72,6 +75,11 @@ public class Office365Source extends CrawlerSourcePlugin {
             isRunning.set(false);
             throw new RuntimeException("Failed to start Office365 Source Plugin", e);
         }
+    }
+
+    @Override
+    protected LeaderProgressState createLeaderProgressState() {
+        return new PaginationCrawlerLeaderProgressState(Instant.EPOCH);
     }
 
     @Override
