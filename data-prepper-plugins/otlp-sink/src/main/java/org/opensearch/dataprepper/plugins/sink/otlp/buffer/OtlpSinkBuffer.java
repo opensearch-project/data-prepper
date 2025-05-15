@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 import com.google.common.annotations.VisibleForTesting;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import lombok.Getter;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -18,18 +19,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A lossless, back-pressure aware buffer for OTLP sink.
- * <p>
- * Spans submitted via {@link #add(Record)} are enqueued, batched by count, size or time,
- * encoded to ResourceSpans, and flushed asynchronously over HTTP.
+ * A back-pressure buffer for OTLP sink.
  */
 public class OtlpSinkBuffer {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpSinkBuffer.class);
@@ -45,36 +44,33 @@ public class OtlpSinkBuffer {
     private final long maxBatchBytes;
     private final long flushTimeoutMillis;
 
-    private final Thread workerThread;
+    private final ExecutorService executor;
+
+    @Getter
     private volatile boolean running = true;
 
     /**
-     * Creates a new OTLP sink buffer using default encoder and HTTP sender.
+     * Creates a new OTLP sink buffer.
      *
      * @param config      the OTLP sink configuration
      * @param sinkMetrics the metrics collector to use
      */
     public OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(config, sinkMetrics, null, null);
+        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(config, sinkMetrics));
     }
 
     /**
      * Visible for testing only: constructs an OTLP sink buffer with injected encoder and sender.
-     *
-     * @param config      the OTLP sink configuration
-     * @param sinkMetrics the metrics collector
-     * @param encoder     custom OTLP encoder (or null to use default)
-     * @param sender      custom HTTP sender (or null to use default)
      */
     @VisibleForTesting
     OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config,
                    @Nonnull final OtlpSinkMetrics sinkMetrics,
-                   final OTelProtoStandardCodec.OTelProtoEncoder encoder,
-                   final OtlpHttpSender sender) {
+                   @Nonnull final OTelProtoStandardCodec.OTelProtoEncoder encoder,
+                   @Nonnull final OtlpHttpSender sender) {
 
         this.sinkMetrics = sinkMetrics;
-        this.encoder = encoder != null ? encoder : new OTelProtoStandardCodec.OTelProtoEncoder();
-        this.sender = sender != null ? sender : new OtlpHttpSender(config, sinkMetrics);
+        this.encoder = encoder;
+        this.sender = sender;
 
         this.maxEvents = config.getMaxEvents();
         this.maxBatchBytes = config.getMaxBatchSize();
@@ -83,43 +79,60 @@ public class OtlpSinkBuffer {
         this.queue = new LinkedBlockingQueue<>(getQueueCapacity());
         sinkMetrics.registerQueueGauges(queue);
 
-        this.workerThread = new Thread(this::run, "otlp-sink-buffer-thread");
+        this.executor = Executors.newSingleThreadExecutor(r -> {
+            final Thread t = new Thread(() -> {
+                try {
+                    r.run();
+                } catch (final Throwable t1) {
+                    LOG.error("Worker thread crashed unexpectedly", t1);
+                    sinkMetrics.incrementErrorsCount();
+                    restartWorker();
+                }
+            }, "otlp-sink-buffer-thread");
+            t.setDaemon(false);
+            return t;
+        });
     }
 
     private int getQueueCapacity() {
         return Math.max(maxEvents * SAFETY_FACTOR, MIN_QUEUE_CAPACITY);
     }
 
-    public boolean isRunning() {
-        return running && workerThread.isAlive();
-    }
-
     public void start() {
         running = true;
-        workerThread.start();
+        executor.execute(this::run);
     }
 
     public void stop() {
         running = false;
-        workerThread.interrupt();
+        executor.shutdownNow();
+    }
+
+    @VisibleForTesting
+    void restartWorker() {
+        if (running && !executor.isShutdown()) {
+            LOG.info("Restarting OTLP sink buffer worker thread");
+            executor.execute(this::run);
+        }
     }
 
     /**
      * Enqueues a span record for later batching and sending.
      * <p>
      * This will block if the internal queue is full, guaranteeing
-     * lossless delivery. On interruption, the span is rejected and
+     * lossless delivery during normal operations.
+     * On interruption, the span is still rejected and
      * error metrics are incremented.
      *
      * @param record the span record to enqueue
      */
     public void add(final Record<Span> record) {
         try {
-            queue.put(record); // block until space available; guaranteeing lossless delivery
+            queue.put(record);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Interrupted while enqueuing span", e);
-            sinkMetrics.incrementRejectedSpansCount(1);
+            sinkMetrics.incrementFailedSpansCount(1);
             sinkMetrics.incrementErrorsCount();
         }
     }
@@ -147,12 +160,12 @@ public class OtlpSinkBuffer {
                         batchSize += resourceSpans.getSerializedSize();
                     } catch (final Exception e) {
                         LOG.error("Failed to encode span, skipping", e);
-                        sinkMetrics.incrementRejectedSpansCount(1);
+                        sinkMetrics.incrementFailedSpansCount(1);
                         sinkMetrics.incrementErrorsCount();
                     }
                 }
 
-                final boolean flushBySize = batch.size() >= maxEvents || batchSize >= maxBatchBytes;
+                final boolean flushBySize = (maxEvents > 0 && batch.size() >= maxEvents) || batchSize >= maxBatchBytes;
                 final boolean flushByTime = !batch.isEmpty() && (now - lastFlush >= flushTimeoutMillis);
 
                 if (flushBySize || flushByTime) {
@@ -170,8 +183,8 @@ public class OtlpSinkBuffer {
                     LOG.debug("Worker interrupted while polling, continuing...");
                     sinkMetrics.incrementErrorsCount();
                 }
-                // Clear interrupt flag to allow queue.poll() again
-                // Don't break; allow draining
+
+                // Continue to loop if still running
             }
         }
 
@@ -182,9 +195,7 @@ public class OtlpSinkBuffer {
     }
 
     /**
-     * Builds an ExportTraceServiceRequest from the given batch, sends it over HTTP,
-     * and updates metrics on success or failure.
-     * <p>
+     * Builds an ExportTraceServiceRequest from the given batch, sends it over HTTP.
      * The batch is cleared in all cases to prepare for the next batch.
      *
      * @param batch the list of ResourceSpans to send
@@ -195,15 +206,8 @@ public class OtlpSinkBuffer {
                 .build();
         final byte[] payload = request.toByteArray();
 
-        try {
-            sender.send(payload);
-            sinkMetrics.incrementRecordsOut(batch.size());
-        } catch (final IOException e) {
-            LOG.error("Failed to send payload.", e);
-            sinkMetrics.incrementRejectedSpansCount(batch.size());
-            sinkMetrics.incrementErrorsCount();
-        } finally {
-            batch.clear();
-        }
+        final int spans = batch.size();
+        sender.send(payload, spans);
+        batch.clear();
     }
 }

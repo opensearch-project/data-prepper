@@ -12,14 +12,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.zip.GZIPOutputStream;
 
 /**
  * Perform GZIP-compression on OTLP byte payloads.
  */
-class GzipCompressor implements Function<byte[], Optional<byte[]>> {
+class GzipCompressor implements Function<byte[], byte[]> {
     private static final Logger LOG = LoggerFactory.getLogger(GzipCompressor.class);
     private final OtlpSinkMetrics sinkMetrics;
 
@@ -39,14 +38,13 @@ class GzipCompressor implements Function<byte[], Optional<byte[]>> {
      * @return Optional containing the compressed payload, or empty if compression failed.
      */
     @Override
-    public Optional<byte[]> apply(final byte[] payload) {
+    public byte[] apply(final byte[] payload) {
         try {
-            return Optional.of(compressInternal(payload));
+            return compressInternal(payload);
         } catch (final IOException e) {
             LOG.error("Failed to compress payload", e);
-            sinkMetrics.incrementRejectedSpansCount(1);
             sinkMetrics.incrementErrorsCount();
-            return Optional.empty();
+            return new byte[0];
         }
     }
 

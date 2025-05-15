@@ -12,11 +12,11 @@ import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -36,12 +36,12 @@ class GzipCompressorTest {
     void apply_returnsCompressedPayload() throws IOException {
         byte[] input = "test-payload".getBytes();
         GzipCompressor gzipCompressor = new GzipCompressor(sinkMetrics);
-        Optional<byte[]> compressed = gzipCompressor.apply(input);
 
-        assertTrue(compressed.isPresent(), "Expected compressed payload to be present");
+        final byte[] compressed = gzipCompressor.apply(input);
 
         // Validate decompression gives original input
-        byte[] decompressed = decompress(compressed.get());
+        assertNotNull(compressed);
+        final byte[] decompressed = decompress(compressed);
         assertArrayEquals(input, decompressed);
     }
 
@@ -50,11 +50,10 @@ class GzipCompressorTest {
         GzipCompressor gzipCompressor = spy(new GzipCompressor(sinkMetrics));
         doThrow(new IOException("boom")).when(gzipCompressor).compressInternal(any());
 
-        Optional<byte[]> result = gzipCompressor.apply("payload".getBytes(StandardCharsets.UTF_8));
+        final byte[] result = gzipCompressor.apply("payload".getBytes(StandardCharsets.UTF_8));
 
-        assertTrue(result.isEmpty());
+        assertEquals(0, result.length);
         verify(sinkMetrics).incrementErrorsCount();
-        verify(sinkMetrics).incrementRejectedSpansCount(1);
     }
 
     private byte[] decompress(byte[] compressed) throws IOException {

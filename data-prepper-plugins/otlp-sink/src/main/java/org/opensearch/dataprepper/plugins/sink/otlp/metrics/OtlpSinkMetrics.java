@@ -102,17 +102,27 @@ public class OtlpSinkMetrics {
         httpLatency.record(Duration.ofMillis(durationMillis));
     }
 
-    public void incrementRetriesCount() {
-        pluginMetrics.counter("retriesCount").increment(1);
+    public void registerQueueGauges(final BlockingQueue<?> queue) {
+        pluginMetrics.gauge("queueSize", queue, BlockingQueue::size);
+        pluginMetrics.gauge("queueCapacity", queue, q -> q.remainingCapacity() + q.size());
     }
 
+    /**
+     * Increments the count of spans that were explicitly rejected by the OTLP endpoint.
+     *
+     * @param count The number of spans rejected.
+     */
     public void incrementRejectedSpansCount(final long count) {
         pluginMetrics.counter("rejectedSpansCount").increment(count);
     }
 
-    public void registerQueueGauges(final BlockingQueue<?> queue) {
-        pluginMetrics.gauge("queueSize", queue, BlockingQueue::size);
-        pluginMetrics.gauge("queueCapacity", queue, q -> q.remainingCapacity() + q.size());
+    /**
+     * Increments the count of spans that failed to be processed by the sink.
+     *
+     * @param count The number of spans failed.
+     */
+    public void incrementFailedSpansCount(final long count) {
+        pluginMetrics.counter("failedSpansCount").increment(count);
     }
 
     /**

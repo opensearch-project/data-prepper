@@ -22,8 +22,12 @@ import java.time.Duration;
 @Getter
 class ThresholdConfig {
 
+    /**
+     * Max number of spans per batch.
+     * Use 0 to disable event-count based flushing (unbounded).
+     */
     @JsonProperty("max_events")
-    @Min(value = 1, message = "max_events must be at least 1")
+    @Min(value = 0, message = "max_events must be 0 (unbounded) or greater")
     private int maxEvents = 512;
 
     @JsonProperty("max_batch_size")
