@@ -63,31 +63,41 @@ public class VariableExpander {
                         // which is not of a secrets expression that we would check (filter check above fails) but
                         // still expects an instance of PluginConfigVariable object returned
                         if (destinationType.equals(PluginConfigVariable.class)) {
-                            return destinationType.cast(new PluginConfigVariable() {
-                                @Override
-                                public Object getValue() {
-                                    return rawValue;
-                                }
-
-                                @Override
-                                public void setValue(Object updatedValue) {
-
-                                }
-
-                                @Override
-                                public void refresh() {
-
-                                }
-
-                                @Override
-                                public boolean isUpdatable() {
-                                    return false;
-                                }
-                            });
+                            return destinationType.cast(new ImmutablePluginConfigVariable(rawValue));
                         }
                         return objectMapper.convertValue(rawValue, destinationType);
                     });
         }
         return objectMapper.readValue(jsonParser, destinationType);
     }
+
+    private static class ImmutablePluginConfigVariable implements PluginConfigVariable {
+        private final Object rawValue;
+
+        private ImmutablePluginConfigVariable(final Object rawValue) {
+            this.rawValue = rawValue;
+        }
+
+        @Override
+        public Object getValue() {
+            return rawValue;
+        }
+
+        @Override
+        public void setValue(Object updatedValue) {
+            throw new UnsupportedOperationException("ImmutablePluginConfigVariable doesn't support this operation");
+        }
+
+        @Override
+        public void refresh() {
+            // No-op as this is immutable
+            throw new UnsupportedOperationException("ImmutablePluginConfigVariable doesn't support this operation");
+        }
+
+        @Override
+        public boolean isUpdatable() {
+            return false;
+        }
+    }
+
 }
