@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
@@ -94,6 +95,9 @@ class RdsServiceTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     @BeforeEach
     void setUp() {
@@ -206,6 +210,7 @@ class RdsServiceTest {
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics,
+                acknowledgementSetManager, pluginConfigObservable, pipelineDescription);
     }
 }
