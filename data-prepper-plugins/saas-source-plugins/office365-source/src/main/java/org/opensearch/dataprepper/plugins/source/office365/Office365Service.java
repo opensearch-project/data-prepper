@@ -69,13 +69,36 @@ public class Office365Service {
         Instant endTime = Instant.now();
         Instant startTime = timestamp;
 
-        if (Duration.between(startTime, endTime).toHours() > 24) {
-            startTime = endTime.minus(Duration.ofHours(24));
+        Instant sevenDaysAgo = endTime.minus(Duration.ofDays(7));
+        if (startTime.isBefore(sevenDaysAgo)) {
+            log.warn("Start time was more than 7 days ago, adjusting to 7-day limit");
+            startTime = sevenDaysAgo;
         }
 
-        for (String contentType : CONTENT_TYPES) {
-            List<Map<String, Object>> items = office365RestClient.searchAuditLogs(contentType, startTime, endTime);
-            addItemsToQueue(items, contentType, itemInfoQueue);
+        while (startTime.isBefore(endTime)) {
+            Instant windowEnd = startTime.plus(Duration.ofHours(24));
+            if (windowEnd.isAfter(endTime)) {
+                windowEnd = endTime;
+            }
+
+            for (String contentType : CONTENT_TYPES) {
+                String nextPageUri = null;
+
+                do {
+                    List<Map<String, Object>> items =
+                            office365RestClient.searchAuditLogs(contentType, startTime, windowEnd, nextPageUri);
+
+                    if (items == null || items.isEmpty()) {
+                        break;
+                    }
+
+                    addItemsToQueue(items, contentType, itemInfoQueue);
+                    nextPageUri = office365RestClient.getNextPageUri();
+
+                } while (nextPageUri != null);
+            }
+
+            startTime = windowEnd;
         }
     }
 

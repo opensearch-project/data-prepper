@@ -75,10 +75,9 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
     public void executePartition(final PaginationCrawlerWorkerProgressState state,
                                  final Buffer<Record<Event>> buffer,
                                  final AcknowledgementSet acknowledgementSet) {
-        log.info("Executing partition: {} with {} log(s)", state.getKeyAttributes(), state.getItemIds().size());
+        // TODO: Investigate JIRA's approach of using state.getExportStartTime() as eventTime
+        log.info("Starting to execute partition with {} log(s)", state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
-        Map<String, Object> keyAttributes = state.getKeyAttributes();
-        String contentType = (String) keyAttributes.get("type");
 
         List<Record<Event>> records = itemIds.stream()
                 .map(id -> {
@@ -92,6 +91,9 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
                         } else {
                             data = objectMapper.readValue(auditLog, new TypeReference<Map<String, Object>>() {});
                         }
+
+                        String contentType = (String) data.get("Workload");
+                        log.debug("Processing log with content type: {}", contentType);
 
                         Event event = JacksonEvent.builder()
                                 .withEventType(EventType.LOG.toString())

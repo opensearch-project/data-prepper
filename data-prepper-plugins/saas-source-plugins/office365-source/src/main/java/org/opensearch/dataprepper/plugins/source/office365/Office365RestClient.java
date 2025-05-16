@@ -55,6 +55,8 @@ public class Office365RestClient {
     private final Counter auditLogRequestsSuccessCounter;
     private final Counter searchRequestsFailedCounter;
 
+    private String nextPageUri;
+
     public Office365RestClient(final Office365AuthenticationProvider authConfig,
                                final PluginMetrics pluginMetrics) {
         // TODO: Abstract into a Office365PluginMetrics
@@ -136,29 +138,43 @@ public class Office365RestClient {
      */
     public List<Map<String, Object>> searchAuditLogs(final String contentType,
                                                      final Instant startTime,
-                                                     final Instant endTime) {
+                                                     final Instant endTime,
+                                                     String pageUri) {
         final String GET_AUDIT_LOGS_URL = MANAGEMENT_API_BASE_URL +
                 "%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s";
 
-        final String url = String.format(GET_AUDIT_LOGS_URL,
-                authConfig.getTenantId(),
-                contentType,
-                startTime.toString(),
-                endTime.toString());
+        final String url = pageUri != null ? pageUri :
+                String.format(GET_AUDIT_LOGS_URL,
+                        authConfig.getTenantId(),
+                        contentType,
+                        startTime.toString(),
+                        endTime.toString());
 
         final HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(authConfig.getAccessToken());
 
         return searchCallLatencyTimer.record(() -> {
             try {
-                return RetryHandler.executeWithRetry(() ->
-                                restTemplate.exchange(
-                                        url,
-                                        HttpMethod.GET,
-                                        new HttpEntity<>(headers),
-                                        new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                                        }
-                                ).getBody(),
+                return RetryHandler.executeWithRetry(
+                        () -> {
+                            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                                    url,
+                                    HttpMethod.GET,
+                                    new HttpEntity<>(headers),
+                                    new ParameterizedTypeReference<>() {}
+                            );
+
+                            // Extract NextPageUri from response headers
+                            List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
+                            nextPageUri = (nextPageHeaders != null && !nextPageHeaders.isEmpty()) ?
+                                    nextPageHeaders.get(0) : null;
+
+                            if (nextPageUri != null) {
+                                log.debug("Next page URI found: {}", nextPageUri);
+                            }
+
+                            return response.getBody();
+                        },
                         authConfig::renewCredentials
                 );
             } catch (Exception e) {
@@ -207,5 +223,9 @@ public class Office365RestClient {
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
         });
+    }
+
+    public String getNextPageUri() {
+        return nextPageUri;
     }
 }
