@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
@@ -175,6 +176,17 @@ class VariableExpanderTest {
         final Object actualResult = objectUnderTest.translate(jsonParser, PluginConfigVariable.class);
         assertNotNull(actualResult);
         assertThat(actualResult, equalTo(mockPluginConfigVariable));
+    }
+
+    @Test
+    void testTranslateJsonParserWithSPluginConfigVariableValue_when_non_secret_format_is_given() throws IOException {
+        final String testSecretReference = "not-in-aws-secrets-expression-format";
+        final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
+        jsonParser.nextToken();
+        objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
+        final Object actualResult = objectUnderTest.translate(jsonParser, PluginConfigVariable.class);
+        assertNotNull(actualResult);
+        assertInstanceOf(PluginConfigVariable.class, actualResult);
     }
 
     @Test

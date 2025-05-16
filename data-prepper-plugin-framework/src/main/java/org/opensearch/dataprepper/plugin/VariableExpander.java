@@ -57,7 +57,36 @@ public class VariableExpander {
 
                     })
                     .findFirst()
-                    .orElseGet(() -> objectMapper.convertValue(rawValue, destinationType));
+                    .orElseGet(() -> {
+                        // This change is to support any call
+                        // to validate the secret with a placeholder secret expression like "AWS_SECRET_EXPRESSION"
+                        // which is not of a secrets expression that we would check (filter check above fails) but
+                        // still expects an instance of PluginConfigVariable object returned
+                        if (destinationType.equals(PluginConfigVariable.class)) {
+                            return destinationType.cast(new PluginConfigVariable() {
+                                @Override
+                                public Object getValue() {
+                                    return rawValue;
+                                }
+
+                                @Override
+                                public void setValue(Object updatedValue) {
+
+                                }
+
+                                @Override
+                                public void refresh() {
+
+                                }
+
+                                @Override
+                                public boolean isUpdatable() {
+                                    return false;
+                                }
+                            });
+                        }
+                        return objectMapper.convertValue(rawValue, destinationType);
+                    });
         }
         return objectMapper.readValue(jsonParser, destinationType);
     }
