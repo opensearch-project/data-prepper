@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -182,7 +183,7 @@ class VariableExpanderTest {
 
     @Test
     void testTranslateJsonParserWithSPluginConfigVariableValue_when_non_secret_format_is_given() throws IOException {
-        final String testSecretReference = "not-in-aws-secrets-expression-format";
+        final String testSecretReference = UUID.randomUUID().toString();
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
         objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
