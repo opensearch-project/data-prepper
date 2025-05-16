@@ -15,6 +15,7 @@ import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.client.opensearch.core.bulk.OperationType;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
@@ -237,8 +238,14 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkResponseItem bulkItemResponse : response.items()) {
-            if (isItemInError(bulkItemResponse) && !NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
-                return true;
+            if (isItemInError(bulkItemResponse)) {
+                boolean isGenerallyRetryable = !NON_RETRY_STATUS.contains(bulkItemResponse.status());
+                boolean isDeleteNotFound = bulkItemResponse.status() == RestStatus.NOT_FOUND.getStatus() &&
+                        bulkItemResponse.operationType() == OperationType.Delete;
+
+                if (isGenerallyRetryable || isDeleteNotFound) {
+                    return true;
+                }
             }
         }
         return false;
@@ -339,10 +346,10 @@ public final class BulkRetryStrategy {
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
             final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response, final Exception previousException) {
         if (shouldSendAllForQuerying(previousException)) {
-                for (final BulkOperationWrapper bulkOperationWrapper : request.getOperations()) {
-                    existingDocumentQueryManager.addBulkOperation(bulkOperationWrapper);
-                }
-                return bulkRequestSupplier.get();
+            for (final BulkOperationWrapper bulkOperationWrapper : request.getOperations()) {
+                existingDocumentQueryManager.addBulkOperation(bulkOperationWrapper);
+            }
+            return bulkRequestSupplier.get();
         }
 
         if (response == null) {
@@ -354,7 +361,7 @@ public final class BulkRetryStrategy {
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 BulkOperationWrapper bulkOperation =
-                    (BulkOperationWrapper)request.getOperationAt(index);
+                        (BulkOperationWrapper)request.getOperationAt(index);
                 if (isItemInError(bulkItemResponse)) {
                     if (existingDocumentQueryManager != null && POTENTIAL_DUPLICATES_ERRORS.contains(bulkItemResponse.status())) {
                         existingDocumentQueryManager.addBulkOperation(bulkOperation);
@@ -362,7 +369,11 @@ public final class BulkRetryStrategy {
                         continue;
                     }
 
-                    if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
+                    boolean isGenerallyRetryable = !NON_RETRY_STATUS.contains(bulkItemResponse.status());
+                    boolean isDeleteNotFound = bulkItemResponse.status() == RestStatus.NOT_FOUND.getStatus() &&
+                            bulkItemResponse.operationType() == OperationType.Delete;
+
+                    if (isGenerallyRetryable || isDeleteNotFound) {
                         requestToReissue.addOperation(bulkOperation);
                     } else if (bulkItemResponse.error() != null && VERSION_CONFLICT_EXCEPTION_TYPE.equals(bulkItemResponse.error().type())) {
                         documentsVersionConflictErrors.increment();
