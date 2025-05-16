@@ -71,6 +71,10 @@ public class TestDataProvider {
     public static final String VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config_with_acm_ssl.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/valid_data_prepper_config_with_metric_filter.yml";
     public static final String INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/invalid_data_prepper_config_with_metric_filter.yml";
+    public static final String VALID_ZERO_BUFFER_SINGLE_THREAD_CONFIG_FILE = "src/test/resources/valid_zero_buffer_single_thread.yml";
+    public static final String INVALID_ZERO_BUFFER_MULTIPLE_THREADS_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_multiple_threads.yml";
+    public static final String INVALID_ZERO_BUFFER_WITH_SINGLE_THREAD_PROCESSOR_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_with_single_thread_processor.yml";
+    public static final String INVALID_ZERO_BUFFER_MULTIPLE_THREADS_NO_SINGLE_THREAD_PROCESSORS_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_multiple_threads_no_single_thread_processors.yml";
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
             "test-pipeline-2", "test-pipeline-3"));
 }
