@@ -71,13 +71,9 @@ public class SqsSink extends AbstractSink<Record<Event>> {
             codecPluginSettings = new PluginSetting("ndjson", Map.of());
         }
         
-        final OutputCodec outputCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         AwsConfig awsConfig = sqsSinkConfig.getAwsConfig();
-        if (awsConfig == null && awsCredentialsSupplier == null) {
-            throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
-        }
-        final AwsCredentialsProvider awsCredentialsProvider = awsConfig != null ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
-        Region region = awsConfig != null ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
+        final AwsCredentialsProvider awsCredentialsProvider = (awsConfig != null) ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig)) : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
+        Region region = (awsConfig != null) ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
         final SqsClient sqsClient = SqsClientFactory.createSqsClient(region, awsCredentialsProvider);
 
         DlqPushHandler dlqPushHandler = null;
@@ -89,6 +85,7 @@ public class SqsSink extends AbstractSink<Record<Event>> {
             String role = stsClient.getCallerIdentity().arn();
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, sqsSinkConfig.getDlq(), region.toString(), role, "sqsSink");
         }
+        final OutputCodec outputCodec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         sqsSinkService = new SqsSinkService(sqsSinkConfig, sqsClient, expressionEvaluator, outputCodec, sinkContext, dlqPushHandler, pluginMetrics);
     }
 
