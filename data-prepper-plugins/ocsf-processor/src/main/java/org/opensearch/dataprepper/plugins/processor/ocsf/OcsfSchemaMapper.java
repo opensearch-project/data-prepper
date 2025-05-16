@@ -27,7 +27,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.*;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.MAPPING_OPTIONS;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.MAPPING_SELECTOR;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.DIRECT_MAPPINGS;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.TRANSFORMATION;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.TRANSFORMATIONS;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.DESTINATION;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.CONDITION;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.CASES;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.DEFAULT;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.VALUE;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.SOURCE;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.TYPE;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.RHS;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.LHS;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.OPERATION;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.OPERATIONS;
+
 
 /**
  * Maps source data to OCSF format according to a provided schema.

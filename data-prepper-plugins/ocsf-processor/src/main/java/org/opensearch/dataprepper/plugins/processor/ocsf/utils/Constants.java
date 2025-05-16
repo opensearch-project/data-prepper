@@ -30,4 +30,12 @@ public final class Constants {
     public static final String DEFAULT = "default";
     public static final String LHS = "lhs";
     public static final String RHS = "rhs";
+
+    // Standard schema fields
+    public static final String OPERATION_SCHEMA_VALIDATON = "Operation";
+    public static final String WORKLOAD = "Workload";
+
+    // OCSF schema fields
+    public static final String SOFTWARE_TYPE = "SoftwareType";
+    public static final String COMPANY_NAME = "CompanyName";
 }

@@ -37,6 +37,7 @@ class OcsfProcessorTest {
     private Timer processingTimer;
 
     private OcsfProcessor ocsfProcessor;
+    private OcsfProcessor ocsfProcessor_crowdstrike;
 
     @BeforeEach
     void setUp() {
@@ -50,13 +51,21 @@ class OcsfProcessorTest {
                 return "office365";
             }
         };
+        OcsfProcessorConfig ocsf_schema_config = new OcsfProcessorConfig() {
+            @Override
+            public String getSchemaType() {
+                return "crowdstrike";
+            }
+        };
 
         ocsfProcessor = new OcsfProcessor(pluginMetrics, config) {
             @Override
-            protected String getSchemaPath(String schemaType) {
+            protected String getMappingSchemaPath(String schemaType) {
                 return getClass().getClassLoader().getResource("schemas/test-mapping.json").getPath();
             }
         };
+
+        ocsfProcessor_crowdstrike = new OcsfProcessor(pluginMetrics, ocsf_schema_config);
     }
 
     @Test
@@ -129,6 +138,9 @@ class OcsfProcessorTest {
     @Test
     void testHandleInvalidEvent() {
         Map<String, Object> sourceData = new HashMap<>();
+        sourceData.put("Operation", "UserLoggedIn");
+        sourceData.put("Workload", "AzureActiveDirectory");
+        sourceData.put("ResultStatus", "Success");
         sourceData.put("UserType", "a");  // Invalid integer
 
         Event event = JacksonEvent.builder()
@@ -143,5 +155,62 @@ class OcsfProcessorTest {
         verify(successCounter, never()).increment();
         assertEquals("a", processedRecords.iterator().next().getData()
                 .get("UserType", String.class));
+    }
+
+    @Test
+    void testSchemaValidationWithValidOcsfSchema() {
+        Map<String, Object> sourceData = new HashMap<>();
+        sourceData.put("SoftwareType", "test_software_type");
+        sourceData.put("CompanyName", "test_company_name");
+
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(sourceData)
+                .build();
+
+        Collection<Record<Event>> processedRecords = ocsfProcessor_crowdstrike.doExecute(
+                Collections.singletonList(new Record<>(event)));
+        Event processedEvent = processedRecords.iterator().next().getData();
+        assertEquals("test_software_type", processedEvent.get("SoftwareType", String.class));
+        assertEquals("test_company_name", processedEvent.get("CompanyName", String.class));
+        verify(successCounter, times(1)).increment();
+    }
+
+    @Test
+    void testSchemaValidationWithInvalidOcsfSchema() {
+        Map<String, Object> sourceData = new HashMap<>();
+        sourceData.put("SoftwareType", "test_software_type");
+
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(sourceData)
+                .build();
+
+        Collection<Record<Event>> processedRecords = ocsfProcessor_crowdstrike.doExecute(
+                Collections.singletonList(new Record<>(event)));
+
+        verify(failureCounter, times(1)).increment();
+        verify(successCounter, never()).increment();
+        assertEquals("test_software_type", processedRecords.iterator().next().getData()
+                .get("SoftwareType", String.class));
+    }
+
+    @Test
+    void testSchemaValidationWithInvalidStandardSchema() {
+        Map<String, Object> sourceData = new HashMap<>();
+        sourceData.put("Operation", "test_Operation");
+
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(sourceData)
+                .build();
+
+        Collection<Record<Event>> processedRecords = ocsfProcessor.doExecute(
+                Collections.singletonList(new Record<>(event)));
+
+        verify(failureCounter, times(1)).increment();
+        verify(successCounter, never()).increment();
+        assertEquals("test_Operation", processedRecords.iterator().next().getData()
+                .get("Operation", String.class));
     }
 }

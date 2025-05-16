@@ -25,6 +25,11 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.OPERATION_SCHEMA_VALIDATON;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.WORKLOAD;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.COMPANY_NAME;
+import static org.opensearch.dataprepper.plugins.processor.ocsf.utils.Constants.SOFTWARE_TYPE;
+
 @DataPrepperPlugin(name = "ocsf_transform", pluginType = Processor.class, pluginConfigurationType = OcsfProcessorConfig.class)
 public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(OcsfProcessor.class);
@@ -32,40 +37,81 @@ public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private static final String METRIC_RECORDS_TRANSFORMED = "recordsTransformed";
     private static final String METRIC_RECORDS_FAILED = "recordsFailed";
     private static final String METRIC_PROCESSING_TIME = "processingTime";
-    private static final String SCHEMA_PATH_FORMAT = "./data-prepper-plugins/ocsf-processor/src/main/resources/schemas/%s-ocsf-mapping.json";
+    private static final String MAPPING_SCHEMA_PATH_FORMAT = "./data-prepper-plugins/ocsf-processor/src/main/resources/schemas/%s-ocsf-mapping.json";
     private static final Set<String> SUPPORTED_SCHEMA_TYPES = Set.of(
             "office365",
             "crowdstrike"
     );
+    private static final Set<String> OCSF_TRANSFORMATION_REQUIRED_SCHEMA_TYPES = Set.of(
+            "office365"
+    );
 
-    private final OcsfSchemaMapper schemaMapper;
     private final OcsfProcessorConfig config;
     private final Counter successCounter;
     private final Counter failureCounter;
     private final Timer processingTimer;
+    private final String schemaType;
 
     @DataPrepperPluginConstructor
     public OcsfProcessor(final PluginMetrics pluginMetrics,
                          final OcsfProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
-        validateSchemaType(config.getSchemaType());
-        String schemaPath = getSchemaPath(config.getSchemaType());
-        this.schemaMapper = new OcsfSchemaMapper(schemaPath);
+        this.schemaType = config.getSchemaType();
         this.successCounter = pluginMetrics.counter(METRIC_RECORDS_TRANSFORMED);
         this.failureCounter = pluginMetrics.counter(METRIC_RECORDS_FAILED);
         this.processingTimer = pluginMetrics.timer(METRIC_PROCESSING_TIME);
     }
 
-    protected String getSchemaPath(String schemaType) {
-        return String.format(SCHEMA_PATH_FORMAT, schemaType);
+    protected String getMappingSchemaPath(String schemaType) {
+        return String.format(MAPPING_SCHEMA_PATH_FORMAT, schemaType);
     }
 
-    private void validateSchemaType(String schemaType) {
-        if (!SUPPORTED_SCHEMA_TYPES.contains(schemaType)) {
+    private boolean isOcsfTransformationRequired(String schemaType) {
+        return OCSF_TRANSFORMATION_REQUIRED_SCHEMA_TYPES.contains(schemaType);
+    }
+
+    private void validateSchemaType(Map<String, Object> sourceData) throws InvalidPluginConfigurationException {
+
+        try {
+            if (!SUPPORTED_SCHEMA_TYPES.contains(schemaType)) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("Unsupported schema_type: %s. Supported types are: %s",
+                                schemaType, SUPPORTED_SCHEMA_TYPES));
+            }
+
+            if (OCSF_TRANSFORMATION_REQUIRED_SCHEMA_TYPES.contains(schemaType)) {
+                validateStandardSchema(sourceData);
+            } else {
+                validateOcsfSchema(sourceData);
+            }
+        } catch (InvalidPluginConfigurationException e) {
+            LOG.warn("Failed to validate schema: {}", e.getMessage());
+            throw e;
+        }
+    }
+
+    private void validateOcsfSchema(Map<String, Object> sourceData) throws InvalidPluginConfigurationException {
+        if (!sourceData.containsKey(COMPANY_NAME)) {
             throw new InvalidPluginConfigurationException(
-                    String.format("Unsupported schema_type: %s. Supported types are: %s",
-                            schemaType, SUPPORTED_SCHEMA_TYPES));
+                    String.format("Schema must contain %s section.", COMPANY_NAME));
+        }
+
+        if (!sourceData.containsKey(SOFTWARE_TYPE)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Schema must contain %s section.", SOFTWARE_TYPE));
+        }
+    }
+
+    private void validateStandardSchema(Map<String, Object> sourceData) throws InvalidPluginConfigurationException {
+        if (!sourceData.containsKey(OPERATION_SCHEMA_VALIDATON)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Schema must contain %s section.", OPERATION_SCHEMA_VALIDATON));
+        }
+
+        if (!sourceData.containsKey(WORKLOAD)) {
+            throw new InvalidPluginConfigurationException(
+                    String.format("Schema must contain %s section.", WORKLOAD));
         }
     }
 
@@ -74,12 +120,19 @@ public class OcsfProcessor extends AbstractProcessor<Record<Event>, Record<Event
         Timer.Sample sample = Timer.start();
         try {
             for (Record<Event> record : records) {
+                Event event = record.getData();
+                Map<String, Object> sourceData = event.toMap();
+                Map<String, Object> outputData = sourceData;
                 try {
-                    Event event = record.getData();
-                    Map<String, Object> sourceData = event.toMap();
-                    Map<String, Object> ocsfData = schemaMapper.mapToOcsf(sourceData);
+                    validateSchemaType(sourceData);
+                    // Skip OCSF transformation for schema types that are already in OCSF format
+                    if (isOcsfTransformationRequired(schemaType)) {
+                        final String mappingSchemaPath = getMappingSchemaPath(schemaType);
+                        final OcsfSchemaMapper schemaMapper = new OcsfSchemaMapper(mappingSchemaPath);
+                        outputData = schemaMapper.mapToOcsf(sourceData);
+                    }
                     event.clear();
-                    ocsfData.forEach(event::put);
+                    outputData.forEach(event::put);
                     successCounter.increment();
                 } catch (Exception e) {
                     failureCounter.increment();
