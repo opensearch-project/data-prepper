@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.Stre
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import software.amazon.awssdk.services.rds.RdsClient;
 
 import java.util.List;
@@ -47,6 +48,9 @@ class ReplicationLogClientFactoryTest {
 
     @Mock
     private StreamPartition streamPartition;
+
+    @Mock
+    private RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
 
     private ReplicationLogClientFactory replicationLogClientFactory;
 
@@ -93,6 +97,6 @@ class ReplicationLogClientFactoryTest {
     }
 
     private ReplicationLogClientFactory createObjectUnderTest() {
-        return new ReplicationLogClientFactory(sourceConfig, rdsClient, dbMetadata);
+        return new ReplicationLogClientFactory(sourceConfig, rdsClient, dbMetadata, rdsSourceAggregateMetrics);
     }
 }

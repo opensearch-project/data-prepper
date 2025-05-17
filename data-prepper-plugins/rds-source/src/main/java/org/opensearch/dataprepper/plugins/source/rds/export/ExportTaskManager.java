@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.export;
 
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.rds.model.DescribeExportTasksRequest;
 import software.amazon.awssdk.services.rds.model.DescribeExportTasksResponse;
@@ -25,9 +27,11 @@ public class ExportTaskManager {
     private static final int EXPORT_TASK_ID_MAX_LENGTH = 60;
 
     private final RdsClient rdsClient;
+    private final RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
 
-    public ExportTaskManager(final RdsClient rdsClient) {
+    public ExportTaskManager(final RdsClient rdsClient, final RdsSourceAggregateMetrics rdsSourceAggregateMetrics) {
         this.rdsClient = rdsClient;
+        this.rdsSourceAggregateMetrics = rdsSourceAggregateMetrics;
     }
 
     public String startExportTask(String snapshotArn, String iamRoleArn, String bucket, String prefix, String kmsKeyId, Collection<String> includeTables) {
@@ -45,12 +49,17 @@ public class ExportTaskManager {
         }
 
         try {
+            rdsSourceAggregateMetrics.getExportApiInvocations().increment();
             StartExportTaskResponse response = rdsClient.startExportTask(requestBuilder.build());
             LOG.info("Export task submitted with id {} and status {}", exportTaskId, response.status());
             return exportTaskId;
-
+        } catch (SdkException e) {
+            rdsSourceAggregateMetrics.getExport4xxErrors().increment();
+            LOG.error("Failed to start an export task with error: {}", e.getMessage());
+            return null;
         } catch (Exception e) {
-            LOG.error("Failed to start an export task", e);
+            rdsSourceAggregateMetrics.getExport5xxErrors().increment();
+            LOG.error("Failed to start an export task with error: {}", e.getMessage());
             return null;
         }
     }

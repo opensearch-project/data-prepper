@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManagerFactory
 import org.opensearch.dataprepper.plugins.source.rds.stream.ReplicationLogClientFactory;
 import org.opensearch.dataprepper.plugins.source.rds.stream.StreamScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.utils.IdentifierShortener;
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.rds.RdsClient;
@@ -64,6 +65,7 @@ public class RdsService {
     private final RdsSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -84,6 +86,7 @@ public class RdsService {
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.rdsSourceAggregateMetrics = new RdsSourceAggregateMetrics();
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -114,7 +117,7 @@ public class RdsService {
 
         if (sourceConfig.isExportEnabled()) {
             final SnapshotManager snapshotManager = new SnapshotManager(rdsApiStrategy);
-            final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient);
+            final ExportTaskManager exportTaskManager = new ExportTaskManager(rdsClient, rdsSourceAggregateMetrics);
             exportScheduler = new ExportScheduler(
                     sourceCoordinator, snapshotManager, exportTaskManager, s3Client, pluginMetrics);
             dataFileScheduler = new DataFileScheduler(
@@ -124,7 +127,8 @@ public class RdsService {
         }
 
         if (sourceConfig.isStreamEnabled()) {
-            ReplicationLogClientFactory replicationLogClientFactory = new ReplicationLogClientFactory(sourceConfig, rdsClient, dbMetadata);
+            ReplicationLogClientFactory replicationLogClientFactory = new ReplicationLogClientFactory(
+                    sourceConfig, rdsClient, dbMetadata, rdsSourceAggregateMetrics);
 
             if (sourceConfig.isTlsEnabled()) {
                 replicationLogClientFactory.setSSLMode(SSLMode.REQUIRED);
