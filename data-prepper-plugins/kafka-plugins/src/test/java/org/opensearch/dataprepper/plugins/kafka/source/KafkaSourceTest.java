@@ -98,7 +98,7 @@ class KafkaSourceTest {
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(
                 sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription,
-                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier);
+                kafkaClusterConfigSupplier, pluginConfigObservable, awsCredentialsSupplier, null);
     }
 
     @BeforeEach
