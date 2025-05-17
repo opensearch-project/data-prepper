@@ -5,13 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.linecorp.armeria.server.ServiceRequestContext;
-import org.junit.jupiter.api.Nested;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
-import org.opensearch.dataprepper.model.log.Log;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
@@ -23,10 +16,12 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,9 +29,18 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,25 +50,22 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 
 @ExtendWith(MockitoExtension.class)
 class LogHTTPServiceTest {
@@ -95,6 +96,9 @@ class LogHTTPServiceTest {
     @Mock
     private Buffer<Record<Log>> byteBuffer;
 
+    @Mock
+    private InputCodec codec;
+
     @BeforeEach
     public void setUp() throws Exception {
         when(pluginMetrics.counter(LogHTTPService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
@@ -112,7 +116,7 @@ class LogHTTPServiceTest {
         );
 
         Buffer<Record<Log>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics, null);
     }
 
     @Test
@@ -147,6 +151,26 @@ class LogHTTPServiceTest {
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
+    }
+
+    @Test
+    public void testHTTPRequestSuccessWithCodec() throws Exception {
+        // Prepare
+        Buffer<Record<Log>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics, codec);
+        AggregatedHttpRequest testRequest = generateRandomValidHTTPRequest(2);
+
+        // When
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(serviceRequestContext, testRequest).aggregate().get();
+
+        // Then
+        assertEquals(HttpStatus.OK, postResponse.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
         verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
@@ -204,7 +228,7 @@ class LogHTTPServiceTest {
             aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
             httpData = mock(HttpData.class);
 
-            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics);
+            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics, codec);
 
             StringBuilder sb = new StringBuilder(1024 * 1024 + 10240);
             for (int i = 0; i < 12500; i++) {
@@ -303,7 +327,7 @@ class LogHTTPServiceTest {
             aggregatedHttpRequest = mock(AggregatedHttpRequest.class);
             httpData = mock(HttpData.class);
 
-            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics);
+            logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, byteBuffer, pluginMetrics, codec);
 
             StringBuilder sb = new StringBuilder(1024 * 1024 + 10240);
             for (int i = 0; i < 12500; i++) {
