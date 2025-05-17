@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
@@ -45,6 +46,9 @@ class RdsSourceTest {
     @Mock
     private PluginConfigObservable pluginConfigObservable;
 
+    @Mock
+    private PipelineDescription pipelineDescription;
+
     @BeforeEach
     void setUp() {
         when(sourceConfig.getAwsAuthenticationConfig()).thenReturn(awsAuthenticationConfig);
@@ -58,6 +62,7 @@ class RdsSourceTest {
 
     private RdsSource createObjectUnderTest() {
         return new RdsSource(
-                pluginMetrics, sourceConfig, eventFactory, awsCredentialsSupplier, acknowledgementSetManager, pluginConfigObservable);
+                pluginMetrics, sourceConfig, eventFactory, awsCredentialsSupplier, acknowledgementSetManager,
+                pluginConfigObservable, pipelineDescription);
     }
 }

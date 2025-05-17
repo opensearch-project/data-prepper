@@ -65,6 +65,7 @@ public class PostgresSchemaManager implements SchemaManager {
             try {
                 PreparedStatement statement = conn.prepareStatement(createPublicationStatement);
                 statement.executeUpdate();
+                LOG.info("Publication {} created successfully. ", publicationName);
             } catch (Exception e) {
                 LOG.error("Failed to create publication: {}", e.getMessage());
                 throw e;
