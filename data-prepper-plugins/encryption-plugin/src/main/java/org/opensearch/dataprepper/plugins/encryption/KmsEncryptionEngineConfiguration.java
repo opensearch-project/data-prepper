@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.aws.api.AwsContext;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.arns.Arn;
