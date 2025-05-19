@@ -37,7 +37,7 @@ public class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
         this.s3Client = s3Client;
         this.encryptionKeyDirectory = encryptionKeyDirectory;
         this.s3BucketAndPrefix = S3BucketAndPrefix.fromS3Uri(encryptionKeyDirectory);
-        encryptedDataKey.set(retrieveTheLatestFileContent(s3BucketAndPrefix));
+        encryptedDataKey.set(retrieveLatestFileContent(s3BucketAndPrefix));
     }
 
     @Override
@@ -47,11 +47,11 @@ public class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
 
     @Override
     public void refresh() {
-        encryptedDataKey.set(retrieveTheLatestFileContent(s3BucketAndPrefix));
+        encryptedDataKey.set(retrieveLatestFileContent(s3BucketAndPrefix));
     }
 
-    private String retrieveTheLatestFileContent(final S3BucketAndPrefix s3BucketAndPrefix) {
-        final String latestFileKey = retrieveTheLatestFileKey(s3BucketAndPrefix);
+    private String retrieveLatestFileContent(final S3BucketAndPrefix s3BucketAndPrefix) {
+        final String latestFileKey = retrieveLatestFileKey(s3BucketAndPrefix);
         final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(s3BucketAndPrefix.getBucketName())
                 .key(latestFileKey)
@@ -65,7 +65,7 @@ public class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
         }
     }
 
-    private String retrieveTheLatestFileKey(final S3BucketAndPrefix s3BucketAndPrefix) {
+    private String retrieveLatestFileKey(final S3BucketAndPrefix s3BucketAndPrefix) {
         final List<S3Object> fileObjects = getAllS3Objects(
                 s3Client, s3BucketAndPrefix.getBucketName(), s3BucketAndPrefix.getPrefix())
                 .stream().filter(s3Object -> s3Object.size() > 0).collect(Collectors.toList());

@@ -26,7 +26,7 @@ public class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeyS
 
     public LocalDirectoryEncryptedDataKeySupplier(final String encryptionKeyDirectory) {
         this.encryptionKeyDirectory = Paths.get(encryptionKeyDirectory);
-        encryptedDataKey.set(retrieveTheLatestFileContent());
+        encryptedDataKey.set(retrieveLatestFileContent());
     }
 
     @Override
@@ -36,11 +36,11 @@ public class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeyS
 
     @Override
     public void refresh() {
-        encryptedDataKey.set(retrieveTheLatestFileContent());
+        encryptedDataKey.set(retrieveLatestFileContent());
     }
 
-    private String retrieveTheLatestFileContent() {
-        final Path latestFile = retrieveTheLatestFileKey();
+    private String retrieveLatestFileContent() {
+        final Path latestFile = retrieveLatestFileKey();
         try {
             LOG.info("Reading latest key file: {}", latestFile);
             return Files.readString(latestFile, StandardCharsets.UTF_8);
@@ -50,7 +50,7 @@ public class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeyS
         }
     }
 
-    private Path retrieveTheLatestFileKey() {
+    private Path retrieveLatestFileKey() {
         try {
             List<Path> keyFiles = Files.list(encryptionKeyDirectory)
                     .filter(path -> path.toString().endsWith(".key"))
