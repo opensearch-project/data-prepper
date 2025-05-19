@@ -9,6 +9,7 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
@@ -64,6 +65,7 @@ public class RdsService {
     private final RdsSourceConfig sourceConfig;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final PipelineDescription pipelineDescription;
     private ExecutorService executor;
     private LeaderScheduler leaderScheduler;
     private ExportScheduler exportScheduler;
@@ -77,13 +79,15 @@ public class RdsService {
                       final ClientFactory clientFactory,
                       final PluginMetrics pluginMetrics,
                       final AcknowledgementSetManager acknowledgementSetManager,
-                      final PluginConfigObservable pluginConfigObservable) {
+                      final PluginConfigObservable pluginConfigObservable,
+                      final PipelineDescription pipelineDescription) {
         this.sourceCoordinator = sourceCoordinator;
         this.eventFactory = eventFactory;
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.pipelineDescription = pipelineDescription;
 
         rdsClient = clientFactory.buildRdsClient();
         s3Client = clientFactory.buildS3Client();
@@ -109,7 +113,7 @@ public class RdsService {
         DbTableMetadata dbTableMetadata = getDbTableMetadata(dbMetadata, schemaManager);
 
         leaderScheduler = new LeaderScheduler(
-                sourceCoordinator, sourceConfig, s3PathPrefix,  schemaManager, dbTableMetadata);
+                sourceCoordinator, sourceConfig, s3PathPrefix, schemaManager, dbTableMetadata, pipelineDescription.getPipelineName());
         runnableList.add(leaderScheduler);
 
         if (sourceConfig.isExportEnabled()) {
