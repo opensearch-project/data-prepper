@@ -14,6 +14,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.office365.auth.Office365AuthenticationProvider;
+import org.opensearch.dataprepper.plugins.source.office365.models.AuditLogsResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -54,8 +55,6 @@ public class Office365RestClient {
     private final Counter auditLogRequestsFailedCounter;
     private final Counter auditLogRequestsSuccessCounter;
     private final Counter searchRequestsFailedCounter;
-
-    private String nextPageUri;
 
     public Office365RestClient(final Office365AuthenticationProvider authConfig,
                                final PluginMetrics pluginMetrics) {
@@ -134,9 +133,10 @@ public class Office365RestClient {
      * @param contentType the type of content to search for
      * @param startTime  the start time of the search range
      * @param endTime    the end time of the search range
-     * @return List of audit log entries
+     * @param pageUri    the URI for pagination (can be null for first page)
+     * @return AuditLogsResponse containing the list of audit log entries and the next page URI
      */
-    public List<Map<String, Object>> searchAuditLogs(final String contentType,
+    public AuditLogsResponse searchAuditLogs(final String contentType,
                                                      final Instant startTime,
                                                      final Instant endTime,
                                                      String pageUri) {
@@ -166,14 +166,13 @@ public class Office365RestClient {
 
                             // Extract NextPageUri from response headers
                             List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
-                            nextPageUri = (nextPageHeaders != null && !nextPageHeaders.isEmpty()) ?
+                            String nextPageUri = (nextPageHeaders != null && !nextPageHeaders.isEmpty()) ?
                                     nextPageHeaders.get(0) : null;
 
                             if (nextPageUri != null) {
                                 log.debug("Next page URI found: {}", nextPageUri);
                             }
-
-                            return response.getBody();
+                            return new AuditLogsResponse(response.getBody(), nextPageUri);
                         },
                         authConfig::renewCredentials
                 );
@@ -223,9 +222,5 @@ public class Office365RestClient {
                 throw new RuntimeException("Failed to fetch audit log", e);
             }
         });
-    }
-
-    public String getNextPageUri() {
-        return nextPageUri;
     }
 }
