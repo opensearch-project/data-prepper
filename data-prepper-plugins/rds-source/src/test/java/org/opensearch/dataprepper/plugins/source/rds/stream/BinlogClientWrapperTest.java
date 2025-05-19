@@ -10,6 +10,7 @@
 package org.opensearch.dataprepper.plugins.source.rds.stream;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
+import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,6 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
-import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +29,9 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientWrapper.ACCESS_DENIED;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientWrapper.CONNECTION_REFUSED;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.BinlogClientWrapper.FAILED_TO_DETERMINE_BINLOG_FILENAME;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +51,18 @@ class BinlogClientWrapperTest {
     @Mock
     private Counter stream5xxErrors;
 
+    @Mock
+    private Counter streamAuthErrors;
+
+    @Mock
+    private Counter streamServerNotFoundErrors;
+
+    @Mock
+    private Counter streamReplicationNotEnabledErrors;
+
+    @Mock
+    private Counter streamAccessDeniedErrors;
+
     private BinlogClientWrapper binlogClientWrapper;
 
     @BeforeEach
@@ -56,6 +71,10 @@ class BinlogClientWrapperTest {
         lenient().when(rdsSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
         lenient().when(rdsSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
         lenient().when(rdsSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamAuthErrors()).thenReturn(streamAuthErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamServerNotFoundErrors()).thenReturn(streamServerNotFoundErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamReplicationNotEnabledErrors()).thenReturn(streamReplicationNotEnabledErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamAccessDeniedErrors()).thenReturn(streamAccessDeniedErrors);
     }
 
     @Test
@@ -66,7 +85,7 @@ class BinlogClientWrapperTest {
     }
 
     @Test
-    void test_connect_with_4xx_exception() throws IOException {
+    void test_connect_with_4xx_auth_exception() throws IOException {
         doThrow(AuthenticationException.class).when(binaryLogClient).connect();
 
         try {
@@ -74,6 +93,52 @@ class BinlogClientWrapperTest {
         } catch (Exception e) {
             verify(streamApiInvocations).increment();
             verify(stream4xxErrors).increment();
+            verify(streamAuthErrors).increment();
+        }
+    }
+
+    @Test
+    void test_connect_with_4xx_server_not_found_exception() throws IOException {
+        Exception connectionRefusedException = new IOException(
+                "Failed to connect to MySQL server",
+                new Exception(CONNECTION_REFUSED)
+        );
+        doThrow(connectionRefusedException).when(binaryLogClient).connect();
+
+        try {
+            binlogClientWrapper.connect();
+        } catch (Exception e) {
+            verify(streamApiInvocations).increment();
+            verify(stream4xxErrors).increment();
+            verify(streamServerNotFoundErrors).increment();
+        }
+    }
+
+    @Test
+    void test_connect_with_4xx_binlog_exception() throws IOException {
+        final Exception binlogNotEnabledException = new IOException(FAILED_TO_DETERMINE_BINLOG_FILENAME);
+        doThrow(binlogNotEnabledException).when(binaryLogClient).connect();
+
+        try {
+            binlogClientWrapper.connect();
+        } catch (Exception e) {
+            verify(streamApiInvocations).increment();
+            verify(stream4xxErrors).increment();
+            verify(streamReplicationNotEnabledErrors).increment();
+        }
+    }
+
+    @Test
+    void test_connect_with_4xx_access_exception() throws IOException {
+        final Exception accessDeniedException = new IOException(ACCESS_DENIED);
+        doThrow(accessDeniedException).when(binaryLogClient).connect();
+
+        try {
+            binlogClientWrapper.connect();
+        } catch (Exception e) {
+            verify(streamApiInvocations).increment();
+            verify(stream4xxErrors).increment();
+            verify(streamAccessDeniedErrors).increment();
         }
     }
 

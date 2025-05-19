@@ -42,6 +42,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.rds.stream.LogicalReplicationClient.AUTHENTICATION_FAILED;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.LogicalReplicationClient.CONNECTION_REFUSED;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.LogicalReplicationClient.PERMISSION_DENIED;
+import static org.opensearch.dataprepper.plugins.source.rds.stream.LogicalReplicationClient.REPLICATION_SLOT_DOES_NOT_EXIST;
 
 @ExtendWith(MockitoExtension.class)
 class LogicalReplicationClientTest {
@@ -64,6 +67,18 @@ class LogicalReplicationClientTest {
     @Mock
     private Counter stream5xxErrors;
 
+    @Mock
+    private Counter streamAuthErrors;
+
+    @Mock
+    private Counter streamServerNotFoundErrors;
+
+    @Mock
+    private Counter streamReplicationNotEnabledErrors;
+
+    @Mock
+    private Counter streamAccessDeniedErrors;
+
     private String publicationName;
     private String replicationSlotName;
     private LogicalReplicationClient logicalReplicationClient;
@@ -77,6 +92,10 @@ class LogicalReplicationClientTest {
         lenient().when(rdsSourceAggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
         lenient().when(rdsSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
         lenient().when(rdsSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamAuthErrors()).thenReturn(streamAuthErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamServerNotFoundErrors()).thenReturn(streamServerNotFoundErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamReplicationNotEnabledErrors()).thenReturn(streamReplicationNotEnabledErrors);
+        lenient().when(rdsSourceAggregateMetrics.getStreamAccessDeniedErrors()).thenReturn(streamAccessDeniedErrors);
     }
 
     @Test
@@ -117,6 +136,41 @@ class LogicalReplicationClientTest {
         assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
         verify(streamApiInvocations).increment();
         verify(stream4xxErrors).increment();
+        verify(streamAuthErrors).increment();
+    }
+
+    @Test
+    void test_connect_server_exception_should_throw() throws SQLException {
+        Exception connectionRefusedException = new RuntimeException(
+                "Failed to establish connection",
+                new Exception(CONNECTION_REFUSED)
+        );
+        when(connectionManager.getConnection()).thenThrow(connectionRefusedException);
+
+        assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+        verify(streamServerNotFoundErrors).increment();
+    }
+
+    @Test
+    void test_connect_log_exception_should_throw() throws SQLException {
+        when(connectionManager.getConnection()).thenThrow(new RuntimeException(REPLICATION_SLOT_DOES_NOT_EXIST));
+
+        assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+        verify(streamReplicationNotEnabledErrors).increment();
+    }
+
+    @Test
+    void test_connect_access_exception_should_throw() throws SQLException {
+        when(connectionManager.getConnection()).thenThrow(new RuntimeException(PERMISSION_DENIED));
+
+        assertThrows(RuntimeException.class, () -> logicalReplicationClient.connect());
+        verify(streamApiInvocations).increment();
+        verify(stream4xxErrors).increment();
+        verify(streamAccessDeniedErrors).increment();
     }
 
     @Test
