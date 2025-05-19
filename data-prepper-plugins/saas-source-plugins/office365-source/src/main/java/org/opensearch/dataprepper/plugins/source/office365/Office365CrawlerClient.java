@@ -92,6 +92,7 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
                             data = objectMapper.readValue(auditLog, new TypeReference<Map<String, Object>>() {});
                         }
 
+                        // "Workload" is an Office365-specific field that indicates the source of the audit log
                         String contentType = (String) data.get("Workload");
                         log.debug("Processing log with content type: {}", contentType);
 
