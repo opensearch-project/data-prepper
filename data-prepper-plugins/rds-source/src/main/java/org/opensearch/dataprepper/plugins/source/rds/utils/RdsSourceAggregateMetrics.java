@@ -22,9 +22,12 @@ public class RdsSourceAggregateMetrics {
     private static final String RDS_SOURCE_EXPORT_4XX_ERRORS = "export4xxErrors";
     private static final String RDS_SOURCE_EXPORT_API_INVOCATIONS = "exportApiInvocations";
     private static final String RDS_SOURCE_EXPORT_PARTITION_QUERY_COUNT = "exportPartitionQueryCount";
+    private static final String RDS_SOURCE_STREAM_AUTH_ERRORS = "streamAuthErrors";
+    private static final String RDS_SOURCE_STREAM_SERVER_NOT_FOUND_ERRORS = "streamServerNotFoundErrors";
+    private static final String RDS_SOURCE_STREAM_REPLICATION_NOT_ENABLED_ERRORS = "streamReplicationNotEnabledErrors";
+    private static final String RDS_SOURCE_STREAM_ACCESS_DENIED_ERRORS = "streamAccessDeniedErrors";
 
     private final PluginMetrics pluginMetrics;
-
     private final Counter stream5xxErrors;
     private final Counter stream4xxErrors;
     private final Counter streamApiInvocations;
@@ -32,6 +35,10 @@ public class RdsSourceAggregateMetrics {
     private final Counter export4xxErrors;
     private final Counter exportApiInvocations;
     private final Counter exportPartitionQueryCount;
+    private final Counter streamAuthErrors;
+    private final Counter streamServerNotFoundErrors;
+    private final Counter streamReplicationNotEnabledErrors;
+    private final Counter streamAccessDeniedErrors;
 
     public RdsSourceAggregateMetrics() {
         this.pluginMetrics = PluginMetrics.fromPrefix(RDS_SOURCE);
@@ -42,6 +49,12 @@ public class RdsSourceAggregateMetrics {
         this.export4xxErrors = pluginMetrics.counter(RDS_SOURCE_EXPORT_4XX_ERRORS);
         this.exportApiInvocations = pluginMetrics.counter(RDS_SOURCE_EXPORT_API_INVOCATIONS);
         this.exportPartitionQueryCount = pluginMetrics.counter(RDS_SOURCE_EXPORT_PARTITION_QUERY_COUNT);
+
+        // More granular error metrics
+        this.streamAuthErrors = pluginMetrics.counter(RDS_SOURCE_STREAM_AUTH_ERRORS);
+        this.streamServerNotFoundErrors = pluginMetrics.counter(RDS_SOURCE_STREAM_SERVER_NOT_FOUND_ERRORS);
+        this.streamReplicationNotEnabledErrors = pluginMetrics.counter(RDS_SOURCE_STREAM_REPLICATION_NOT_ENABLED_ERRORS);
+        this.streamAccessDeniedErrors = pluginMetrics.counter(RDS_SOURCE_STREAM_ACCESS_DENIED_ERRORS);
     }
 
     public Counter getStream5xxErrors() {
@@ -70,5 +83,21 @@ public class RdsSourceAggregateMetrics {
 
     public Counter getExportPartitionQueryCount() {
         return exportPartitionQueryCount;
+    }
+
+    public Counter getStreamAuthErrors() {
+        return streamAuthErrors;
+    }
+
+    public Counter getStreamServerNotFoundErrors() {
+        return streamServerNotFoundErrors;
+    }
+
+    public Counter getStreamReplicationNotEnabledErrors() {
+        return streamReplicationNotEnabledErrors;
+    }
+
+    public Counter getStreamAccessDeniedErrors() {
+        return streamAccessDeniedErrors;
     }
 }

@@ -72,15 +72,19 @@ public class BinlogClientWrapper implements ReplicationLogClient {
     private void categorizeError(Exception e) {
         if (e instanceof AuthenticationException) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamAuthErrors().increment();
             LOG.error("Failed to connect to replication stream: Authentication failed. [{}]", e.getMessage());
         } else if (e.getCause() != null && e.getCause().getMessage() != null && e.getCause().getMessage().contains(CONNECTION_REFUSED)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamServerNotFoundErrors().increment();
             LOG.error("Failed to connect to replication stream: Cannot connect to MySQL server. [{}]", e.getMessage());
         } else if (e.getMessage() != null && e.getMessage().contains(FAILED_TO_DETERMINE_BINLOG_FILENAME)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamReplicationNotEnabledErrors().increment();
             LOG.error("Failed to connect to replication stream: Binary logging not enabled on the server. [{}]", e.getMessage());
         } else if (e.getMessage() != null && e.getMessage().contains(ACCESS_DENIED)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamAccessDeniedErrors().increment();
             LOG.error("Failed to connect to replication stream: Insufficient privileges. [{}]", e.getMessage());
         } else {
             rdsSourceAggregateMetrics.getStream5xxErrors().increment();

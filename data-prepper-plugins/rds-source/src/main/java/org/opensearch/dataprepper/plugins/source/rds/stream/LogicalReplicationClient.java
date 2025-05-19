@@ -145,15 +145,19 @@ public class LogicalReplicationClient implements ReplicationLogClient {
     private void categorizeError(Exception e) {
         if (e.getMessage() != null && e.getMessage().contains(AUTHENTICATION_FAILED)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamAuthErrors().increment();
             LOG.error("Failed to create or process PostgreSQL replication stream: Authentication failed. [{}]", e.getMessage());
         } else if (e.getCause() != null && e.getCause().getMessage() != null && e.getCause().getMessage().contains(CONNECTION_REFUSED)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamServerNotFoundErrors().increment();
             LOG.error("Failed to create or process PostgreSQL replication stream: Cannot connect to PostgreSQL server. [{}]", e.getMessage());
         } else if (e.getMessage() != null && e.getMessage().matches(REPLICATION_SLOT_DOES_NOT_EXIST)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamReplicationNotEnabledErrors().increment();
             LOG.error("Failed to create or process PostgreSQL replication stream: Replication slot does not exist. [{}]", e.getMessage());
         } else if (e.getMessage() != null && e.getMessage().contains(PERMISSION_DENIED)) {
             rdsSourceAggregateMetrics.getStream4xxErrors().increment();
+            rdsSourceAggregateMetrics.getStreamAccessDeniedErrors().increment();
             LOG.error("Failed to create or process PostgreSQL replication stream: Insufficient privileges. [{}]", e.getMessage());
         } else {
             rdsSourceAggregateMetrics.getStream5xxErrors().increment();
