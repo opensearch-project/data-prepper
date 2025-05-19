@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.encryption;
+package org.opensearch.dataprepper.aws.api;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,8 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -54,6 +52,7 @@ class AwsContextTest {
     @Test
     void getOrDefault_uses_uses_awsCredentialsConfig_to_with_sts() {
         when(awsCredentialsConfig.toCredentialsOptions()).thenReturn(awsCredentialsOptions);
+        when(awsCredentialsConfig.getStsRoleArn()).thenReturn(TEST_STS_ROLE_ARN);
         when(awsCredentialsOptions.getStsRoleArn()).thenReturn(TEST_STS_ROLE_ARN);
         when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
         final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest(awsCredentialsConfig)

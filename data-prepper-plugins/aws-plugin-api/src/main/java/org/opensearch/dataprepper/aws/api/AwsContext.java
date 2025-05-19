@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.encryption;
+package org.opensearch.dataprepper.aws.api;
 
-import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
