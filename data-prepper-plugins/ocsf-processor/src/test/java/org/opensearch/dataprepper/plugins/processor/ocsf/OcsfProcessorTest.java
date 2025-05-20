@@ -75,6 +75,7 @@ class OcsfProcessorTest {
         sourceData.put("Workload", "AzureActiveDirectory");
         sourceData.put("ResultStatus", "Success");
         sourceData.put("UserType", 0);
+        sourceData.put("CreationTime", "2025-05-12T03:05:48");
 
         Event event = JacksonEvent.builder()
                 .withEventType("event")
@@ -97,6 +98,7 @@ class OcsfProcessorTest {
         Map<String, Object> sourceData = new HashMap<>();
         sourceData.put("Operation", "Create");
         sourceData.put("Workload", "Exchange");
+        sourceData.put("CreationTime", "2025-05-12T03:05:48");
 
         Event event = JacksonEvent.builder()
                 .withEventType("event")
@@ -119,6 +121,7 @@ class OcsfProcessorTest {
         sourceData.put("Workload", "SharePoint");
         sourceData.put("ObjectId", "https://example.sharepoint.com/page");
         sourceData.put("Site", "site-id");
+        sourceData.put("CreationTime", "2025-05-12T03:05:48");
 
         Event event = JacksonEvent.builder()
                 .withEventType("event")
@@ -142,6 +145,7 @@ class OcsfProcessorTest {
         sourceData.put("Workload", "AzureActiveDirectory");
         sourceData.put("ResultStatus", "Success");
         sourceData.put("UserType", "a");  // Invalid integer
+        sourceData.put("CreationTime", "2025-05-12T03:05:48");
 
         Event event = JacksonEvent.builder()
                 .withEventType("event")
@@ -155,6 +159,29 @@ class OcsfProcessorTest {
         verify(successCounter, never()).increment();
         assertEquals("a", processedRecords.iterator().next().getData()
                 .get("UserType", String.class));
+    }
+
+    @Test
+    void testHandleInvalidCreationTimeFormatEvent() {
+        Map<String, Object> sourceData = new HashMap<>();
+        sourceData.put("Operation", "UserLoggedIn");
+        sourceData.put("Workload", "AzureActiveDirectory");
+        sourceData.put("ResultStatus", "Success");
+        sourceData.put("UserType", 0);
+        sourceData.put("CreationTime", "2025-05-12"); // Invalid creation time format
+
+        Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(sourceData)
+                .build();
+
+        Collection<Record<Event>> processedRecords = ocsfProcessor.doExecute(
+                Collections.singletonList(new Record<>(event)));
+
+        verify(failureCounter, times(1)).increment();
+        verify(successCounter, never()).increment();
+        assertEquals("2025-05-12", processedRecords.iterator().next().getData()
+                .get("CreationTime", String.class));
     }
 
     @Test

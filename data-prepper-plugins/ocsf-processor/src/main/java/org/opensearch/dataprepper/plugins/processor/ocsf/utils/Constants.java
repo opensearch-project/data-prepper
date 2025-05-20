@@ -34,6 +34,7 @@ public final class Constants {
     // Standard schema fields
     public static final String OPERATION_SCHEMA_VALIDATON = "Operation";
     public static final String WORKLOAD = "Workload";
+    public static final String CREATION_TIME = "CreationTime";
 
     // OCSF schema fields
     public static final String SOFTWARE_TYPE = "SoftwareType";
