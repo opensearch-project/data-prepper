@@ -30,6 +30,8 @@ public class PipelineConfigurationValidator {
     private static final String PIPELINE_TYPE = "pipeline";
     private static final Set<String> INVALID_PIPELINE_NAMES = new HashSet<>(List.of("data-prepper", "dataPrepper", "core"));
 
+    private static final String DEFAULT_ROUTE = "_default";
+
     /**
      * Sorts the pipelines in topological order while also validating for
      * i. cycles in pipeline configuration
@@ -199,6 +201,7 @@ public class PipelineConfigurationValidator {
                 }
                 List<String> invalidRoutes = sinkRoutes.stream()
                         .filter(route -> !validRoutes.contains(route))
+                        .filter(route -> !route.equals(DEFAULT_ROUTE))
                         .collect(Collectors.toList());
 
                 if (!invalidRoutes.isEmpty()) {

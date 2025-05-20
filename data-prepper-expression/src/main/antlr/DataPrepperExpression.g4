@@ -160,7 +160,7 @@ Function
 
 fragment
 FunctionArgs
-    : (FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg
+    : ((FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg)?
     ;
 
 fragment

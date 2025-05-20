@@ -112,13 +112,6 @@ class GenericExpressionEvaluator_MultiTypeIT {
     }
 
     @ParameterizedTest
-    @MethodSource("exceptionExpressionSyntaxArguments")
-    void testExpressionSyntaxEvaluatorCausesException(final String expression, final Event event) {
-        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
-        assertThrows(ExpressionParsingException.class, () -> evaluator.evaluate(expression, event));
-    }
-
-    @ParameterizedTest
     @MethodSource("exceptionExpressionArguments")
     void testExpressionEvaluatorCausesException(final String expression, final Event event) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
@@ -165,20 +158,15 @@ class GenericExpressionEvaluator_MultiTypeIT {
         );
     }
 
-    private static Stream<Arguments> exceptionExpressionSyntaxArguments() {
-        return Stream.of(
-                Arguments.of("join()", event("{\"list\":[\"string\", 1, true]}")),
-                Arguments.of("contains()", event("{\"list\":[\"string\", 1, true]}")),
-                Arguments.of("startsWith()", event("{\"list\":[\"string\", 1, true]}"))
-        );
-    }
-
     private static Stream<Arguments> exceptionExpressionArguments() {
         return Stream.of(
                 // Can't mix Numbers and Strings when using operators
                 Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}")),
                 // Wrong number of arguments
-                Arguments.of("join(/list, \" \", \"third_arg\")", event("{\"list\":[\"string\", 1, true]}"))
+                Arguments.of("join(/list, \" \", \"third_arg\")", event("{\"list\":[\"string\", 1, true]}")),
+                Arguments.of("join()", event("{\"list\":[\"string\", 1, true]}")),
+                Arguments.of("contains()", event("{\"list\":[\"string\", 1, true]}")),
+                Arguments.of("startsWith()", event("{\"list\":[\"string\", 1, true]}"))
         );
     }
 

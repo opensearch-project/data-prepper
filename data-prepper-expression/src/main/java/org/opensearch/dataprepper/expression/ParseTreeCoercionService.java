@@ -24,15 +24,17 @@ class ParseTreeCoercionService {
     private Function<Object, Object> convertLiteralType;
 
     @Inject
-    public ParseTreeCoercionService(final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions, ExpressionFunctionProvider expressionFunctionProvider) {
+    public ParseTreeCoercionService(
+            final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions,
+            final ExpressionFunctionProvider expressionFunctionProvider) {
         this.literalTypeConversions = literalTypeConversions;
         convertLiteralType = (value) -> {
-                if (literalTypeConversions.containsKey(value.getClass())) {
-                    return literalTypeConversions.get(value.getClass()).apply(value);
-                } else {
-                    throw new ExpressionCoercionException("Unsupported type for value " + value);
-                }
-            };
+            if (literalTypeConversions.containsKey(value.getClass())) {
+                return literalTypeConversions.get(value.getClass()).apply(value);
+            } else {
+                throw new ExpressionCoercionException("Unsupported type for value " + value);
+            }
+        };
         this.expressionFunctionProvider = expressionFunctionProvider;
     }
 
@@ -44,23 +46,31 @@ class ParseTreeCoercionService {
                 final int funcNameIndex = nodeStringValue.indexOf("(");
                 final String functionName = nodeStringValue.substring(0, funcNameIndex);
                 final int argsEndIndex = nodeStringValue.indexOf(")", funcNameIndex);
-                final String argsStr = nodeStringValue.substring(funcNameIndex+1, argsEndIndex);
-                // Split at commas if there's no backslash before the commas, because commas can be part of a function parameter
-                final String[] args = argsStr.split("(?<!\\\\),");
                 List<Object> argList = new ArrayList<>();
-                for (final String arg: args) {
-                    String trimmedArg = arg.trim();
-                    if (trimmedArg.charAt(0) == '/') {
-                        argList.add(trimmedArg);
-                    } else if (trimmedArg.charAt(0) == '"') {
-                        if (trimmedArg.length() < 2 || trimmedArg.charAt(trimmedArg.length()-1) != '"') {
-                            throw new RuntimeException("Invalid string argument: check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`.");
+
+                // Check if the function has at least one argument
+                 if(argsEndIndex > funcNameIndex + 1) {
+                    final String argsStr = nodeStringValue.substring(funcNameIndex + 1, argsEndIndex);
+                    // Split at commas if there's no backslash before the commas, because commas can
+                    // be part of a function parameter
+                    final String[] args = argsStr.split("(?<!\\\\),");
+                    
+                    for (final String arg : args) {
+                        String trimmedArg = arg.trim();
+                        if (trimmedArg.charAt(0) == '/') {
+                            argList.add(trimmedArg);
+                        } else if (trimmedArg.charAt(0) == '"') {
+                            if (trimmedArg.length() < 2 || trimmedArg.charAt(trimmedArg.length() - 1) != '"') {
+                                throw new RuntimeException(
+                                        "Invalid string argument: check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`.");
+                            }
+                            argList.add(trimmedArg);
+                        } else {
+                            throw new RuntimeException("Unsupported type passed as function argument");
                         }
-                        argList.add(trimmedArg);
-                    } else {
-                        throw new RuntimeException("Unsupported type passed as function argument");
                     }
                 }
+             
                 return expressionFunctionProvider.provideFunction(functionName, argList, event, convertLiteralType);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
@@ -97,14 +107,15 @@ class ParseTreeCoercionService {
         if (obj.getClass().isAssignableFrom(clazz)) {
             return (T) obj;
         }
-        throw new ExpressionCoercionException("Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
+        throw new ExpressionCoercionException(
+                "Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
     }
 
     private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
         final Object value = event.get(jsonPointer, Object.class);
         if (value == null) {
             return null;
-        } 
+        }
         return convertLiteralType.apply(value);
     }
 }

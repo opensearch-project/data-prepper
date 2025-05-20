@@ -13,7 +13,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
+import java.io.IOException;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,6 +24,7 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,6 +42,7 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.apache.commons.lang3.RandomStringUtils;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.RequestThrottledException;
+import software.amazon.awssdk.services.sqs.model.UnsupportedOperationException;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
@@ -90,6 +94,9 @@ public class SqsSinkServiceTest {
     private Counter requestsFailedCounter;
     @Mock
     private Counter dlqSuccessCounter;
+    @Mock
+    private DistributionSummary summary;
+
     private AtomicInteger eventsSuccessCount;
     private AtomicInteger requestsSuccessCount;
     private AtomicInteger eventsFailedCount;
@@ -146,6 +153,8 @@ public class SqsSinkServiceTest {
         requestsSuccessCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
         dlqSuccessCounter = mock(Counter.class);
+        summary = mock(DistributionSummary.class);
+        doNothing().when(summary).record(any(Double.class));
         lenient().doAnswer((a)-> {
             int v = (int)(double)(a.getArgument(0));
             eventsSuccessCount.addAndGet(v);
@@ -194,6 +203,11 @@ public class SqsSinkServiceTest {
             }
             return null;
         }).when(pluginMetrics).counter(anyString());
+
+        lenient().doAnswer(a -> {
+            return summary;
+        }).when(pluginMetrics).summary(anyString());
+        
     }
 
     @Test
@@ -202,6 +216,22 @@ public class SqsSinkServiceTest {
         assertTrue(sqsSinkService.exceedsMaxEventSizeThreshold(256*1024+1));
         assertFalse(sqsSinkService.exceedsMaxEventSizeThreshold(256*1024-1));
         assertFalse(sqsSinkService.exceedsMaxEventSizeThreshold(256*1024));
+    }
+
+    @Test
+    void TestWithInvalidQueueUrlMissingFieldInEvent() {
+        int numRecords = 10;
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+"${/abcd}");
+        when (thresholdConfig.getFlushInterval()).thenReturn(2L);
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        List<Record<Event>> records = getRecordList(numRecords);
+        sqsSinkService.execute(records);
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+            sqsSinkService.execute(Collections.emptyList());
+            assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(0)); 
+            assertThat(eventsSuccessCount.get(), equalTo(0));
+        });
     }
 
     @ParameterizedTest
@@ -235,6 +265,42 @@ public class SqsSinkServiceTest {
             assertThat(requestsSuccessCount.get(), equalTo(numRecords));
             verify(eventHandle, times(numRecords)).release(true);
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {18, 36, 54, 72})
+    void TestExecuteMultipleBatches(int numRecords) throws Exception {
+        OutputCodec mOutputCodec = mock(OutputCodec.class);
+        OutputCodec.Writer mWriter = mock(OutputCodec.Writer.class);
+        lenient().doAnswer((a)-> {
+            throw new IOException("IO Exception");
+        }).when(mWriter).complete();
+        when(mOutputCodec.createWriter(any(), eq(null), any(OutputCodecContext.class))).thenReturn(mWriter);
+        outputCodec = mOutputCodec;
+        when (thresholdConfig.getFlushInterval()).thenReturn(2L);
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+"${/id}");
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        List<Record<Event>> records = getRecordList(numRecords);
+        sqsSinkService.execute(records);
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+            sqsSinkService.execute(Collections.emptyList());
+            assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(0)); 
+            assertThat(eventsSuccessCount.get(), equalTo(0));
+            assertThat(requestsSuccessCount.get(), equalTo(0));
+            verify(eventHandle, times(numRecords)).release(true);
+        });
+    }
+
+    @Test
+    void TestLargeRecordToNoDLQ() {
+        dlqPushHandler = null;
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        Record<Event> record = getLargeRecord(300*1024);
+        sqsSinkService.execute(List.of(record));
+        assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(0)); 
+        assertThat(eventsSuccessCount.get(), equalTo(0));
+        assertThat(requestsSuccessCount.get(), equalTo(0));
     }
 
     @Test
@@ -271,7 +337,22 @@ public class SqsSinkServiceTest {
         assertThat(requestsSuccessCount.get(), equalTo(numRecords/10));
         verify(eventHandle, times(numRecords)).release(true);
     }
-    
+     
+    @Test
+    void TestSendingToDLQAfterNonRetryableException() {
+        final int numRecords = 10;
+        UnsupportedOperationException unsupportedOperationException = mock(UnsupportedOperationException.class);
+        when(unsupportedOperationException.getMessage()).thenReturn("Unsupported operation");
+        when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenThrow(unsupportedOperationException);
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        List<Record<Event>> records = getRecordList(numRecords);
+        sqsSinkService.execute(records);
+        assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(0)); 
+        assertThat(eventsSuccessCount.get(), equalTo(0));
+        assertThat(requestsSuccessCount.get(), equalTo(0));
+        verify(eventHandle, times(numRecords)).release(true);
+    }
+
     @Test
     void TestSendingToDLQAfterMultipleRetries() {
         final int numRecords = 10;
@@ -301,10 +382,34 @@ public class SqsSinkServiceTest {
     }
 
     @Test
+    void TestFiFoQWithEventsWithInvalidExpression() throws Exception {
+        int numRecords = 10;
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(true);
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+".fifo");
+        when (sqsSinkConfig.getDeDuplicationId()).thenReturn(UUID.randomUUID().toString()+"${/ident}");
+        when (sqsSinkConfig.getGroupId()).thenReturn(UUID.randomUUID().toString()+"${/ident}");
+        SqsSinkService sqsSinkService = createObjectUnderTest();
+        List<Record<Event>> records = getRecordList(numRecords);
+        for (int i = 0; i < numRecords-1; i++) {
+            Event event = records.get(i).getData();
+            long eSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+            boolean isFull = sqsSinkService.addToBuffer(event, eSize);
+            assertFalse(isFull);
+        }
+    }
+
+    @Test
     void TestFiFoQWithInvalidDeDupIdExpression() {
         when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(false);
         when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+".fifo");
         when (sqsSinkConfig.getDeDuplicationId()).thenReturn(UUID.randomUUID().toString()+"${/id - }");
+        assertThrows(IllegalArgumentException.class, ()-> createObjectUnderTest());
+    }
+
+    @Test
+    void TestFiFoQWithInvalidQueueUrlExpression() {
+        when(expressionEvaluator.isValidFormatExpression(anyString())).thenReturn(false);
+        when (sqsSinkConfig.getQueueUrl()).thenReturn(queueUrl+"${id - }"+".fifo");
         assertThrows(IllegalArgumentException.class, ()-> createObjectUnderTest());
     }
 
@@ -412,7 +517,7 @@ public class SqsSinkServiceTest {
                 assertThat(flushResult, not(equalTo(null)));
                 assertThat(sqsSinkService.getBatchUrlMap().size(), equalTo(1)); 
                 when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenReturn(flushResponse);
-                 flushResult = sqsSinkService.doFlushOnce(null);
+                flushResult = sqsSinkService.doFlushOnce(null);
                 assertThat(flushResult, equalTo(null));
             }
         }
@@ -454,11 +559,12 @@ public class SqsSinkServiceTest {
 
         for (int rows = 0; rows < numberOfRecords; rows++) {
 
-            HashMap<String, String> eventData = new HashMap<>();
+            HashMap<String, Object> eventData = new HashMap<>();
 
             eventData.put("name", "Person" + rows);
             eventData.put("age", Integer.toString(rows));
             eventData.put("id", Integer.toString(rows%2));
+            eventData.put("idx", rows);
             recordList.add(eventData);
 
         }

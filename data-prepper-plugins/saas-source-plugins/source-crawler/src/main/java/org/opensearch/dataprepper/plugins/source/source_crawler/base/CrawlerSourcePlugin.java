@@ -42,7 +42,6 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
     private final Crawler crawler;
     private final String sourcePluginName;
 
-
     public CrawlerSourcePlugin(final String sourcePluginName,
                                final PluginMetrics pluginMetrics,
                                final CrawlerSourceConfig sourceConfig,
@@ -56,17 +55,19 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.crawler = crawler;
-
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.executorService = executorServiceProvider.get();
     }
+
+    // Abstract method to be implemented by each subclass to provide its specific LeaderProgressState instance
+    protected abstract LeaderProgressState createLeaderProgressState();
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
         log.info("Starting {} Source Plugin", sourcePluginName);
-
-        boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
+        LeaderPartition leaderPartition = new LeaderPartition(createLeaderProgressState());
+        boolean isPartitionCreated = coordinator.createPartition(leaderPartition);
         log.debug("Leader partition creation status: {}", isPartitionCreated);
 
         Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler);
