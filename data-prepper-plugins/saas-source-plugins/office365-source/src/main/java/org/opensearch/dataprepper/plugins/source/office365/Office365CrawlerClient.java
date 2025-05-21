@@ -75,7 +75,6 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
     public void executePartition(final PaginationCrawlerWorkerProgressState state,
                                  final Buffer<Record<Event>> buffer,
                                  final AcknowledgementSet acknowledgementSet) {
-        // TODO: Investigate JIRA's approach of using state.getExportStartTime() as eventTime
         log.info("Starting to execute partition with {} log(s)", state.getItemIds().size());
         List<String> itemIds = state.getItemIds();
 
