@@ -5,26 +5,28 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.linecorp.armeria.server.ServiceRequestContext;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.log.Log;
-import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.Blocking;
 import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.http.codec.JsonCodec;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +50,7 @@ public class LogHTTPService {
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final JsonCodec jsonCodec = new JsonCodec();
     private final Buffer<Record<Log>> buffer;
+    private final InputCodec codec;
     private final int bufferWriteTimeoutInMillis;
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
@@ -60,11 +63,13 @@ public class LogHTTPService {
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
                           final Buffer<Record<Log>> buffer,
-                          final PluginMetrics pluginMetrics) {
+                          final PluginMetrics pluginMetrics,
+                          final InputCodec codec) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.bufferMaxRequestLength = buffer.getMaxRequestSize().isPresent() ? buffer.getMaxRequestSize().get(): null;
         this.bufferOptimalRequestLength = buffer.getOptimalRequestSize().isPresent() ? buffer.getOptimalRequestSize().get(): null;
+        this.codec = codec;
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         requestsOverOptimalSizeCounter = pluginMetrics.counter(REQUESTS_OVER_OPTIMAL_SIZE);
@@ -108,17 +113,32 @@ public class LogHTTPService {
             }
         } else {
             final List<String> jsonList;
+            final List<Record<Log>> records = new ArrayList<>();
 
-            try {
-                jsonList = jsonCodec.parse(content);
-            } catch (IOException e) {
-                LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
-                throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+            if (codec != null) {
+                try {
+                    codec.parse(content.toInputStream(), record -> {
+                        records.add(new Record<>((Log) record.getData()));
+                    });
+                } catch (IOException e) {
+                    LOG.error("Failed to parse the request of size {} using specified input codec {} due to: {}", content.length(), codec.getClass(), e.getMessage());
+                    throw new IOException("Bad request data format. ", e.getCause());
+                }
+            } else {
+
+                try {
+                    jsonList = jsonCodec.parse(content);
+                } catch (IOException e) {
+                    LOG.error("Failed to parse the request of size {} due to: {}", content.length(), e.getMessage());
+                    throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
+                }
+
+                records.addAll(
+                        jsonList.stream()
+                                .map(this::buildRecordLog)
+                                .collect(Collectors.toList())
+                );
             }
-
-            final List<Record<Log>> records = jsonList.stream()
-                    .map(this::buildRecordLog)
-                    .collect(Collectors.toList());
 
             try {
                 buffer.writeAll(records, bufferWriteTimeoutInMillis);
