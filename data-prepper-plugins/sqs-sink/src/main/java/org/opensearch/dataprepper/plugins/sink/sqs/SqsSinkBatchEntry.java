@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,12 +66,12 @@ public class SqsSinkBatchEntry {
         return buffer.getSize();
     }
 
-    public void complete() throws Exception {
+    public void complete() throws IOException {
         if (completed) {
             return;
         }
-        writer.complete();
         completed = true;
+        writer.complete();
     }
 
 
