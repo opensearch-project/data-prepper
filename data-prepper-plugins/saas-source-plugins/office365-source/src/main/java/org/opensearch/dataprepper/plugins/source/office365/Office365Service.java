@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.office365.configuration.Office365ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
+import org.opensearch.dataprepper.plugins.source.office365.models.AuditLogsResponse;
 
 import javax.inject.Named;
 import java.time.Duration;
@@ -33,10 +34,13 @@ public class Office365Service {
     private final Office365SourceConfig office365SourceConfig;
     private final Office365RestClient office365RestClient;
     private final Counter searchResultsFoundCounter;
+    private final Counter sevenDayLimitHitCounter;
+    private final Counter daysAdjustedCounter;
     private static final String CONTENT_ID_KEY = "contentId";
     private static final String CONTENT_CREATED_KEY = "contentCreated";
     private static final String CONTENT_URI_KEY = "contentUri";
     private static final String TYPE_KEY = "type";
+    private static final Duration TIME_WINDOW = Duration.ofHours(1);
 
     public Office365Service(final Office365SourceConfig office365SourceConfig,
                             final Office365RestClient office365RestClient,
@@ -44,17 +48,18 @@ public class Office365Service {
         this.office365SourceConfig = office365SourceConfig;
         this.office365RestClient = office365RestClient;
         this.searchResultsFoundCounter = pluginMetrics.counter("searchResultsFound");
+        this.sevenDayLimitHitCounter = pluginMetrics.counter("sevenDayLimitHit");
+        this.daysAdjustedCounter = pluginMetrics.counter("daysAdjusted");
     }
 
     public void initializeSubscriptions() {
         office365RestClient.startSubscriptions();
     }
 
-    public void getOffice365Entities(final Office365SourceConfig configuration,
-                                     final Instant timestamp,
+    public void getOffice365Entities(final Instant timestamp,
                                      final Queue<ItemInfo> itemInfoQueue) {
         log.trace("Started to fetch entities");
-        searchForNewLogs(configuration, timestamp, itemInfoQueue);
+        searchForNewLogs(timestamp, itemInfoQueue);
         log.trace("Creating item information and adding in queue");
     }
 
@@ -62,20 +67,46 @@ public class Office365Service {
         return office365RestClient.getAuditLog(contentId);
     }
 
-    private void searchForNewLogs(final Office365SourceConfig configuration,
-                                  final Instant timestamp,
+    private void searchForNewLogs(final Instant timestamp,
                                   final Queue<ItemInfo> itemInfoQueue) {
         log.trace("Looking for new logs with a Search API call");
         Instant endTime = Instant.now();
         Instant startTime = timestamp;
 
-        if (Duration.between(startTime, endTime).toHours() > 24) {
-            startTime = endTime.minus(Duration.ofHours(24));
+        Instant sevenDaysAgo = endTime.minus(Duration.ofDays(7));
+        if (startTime.isBefore(sevenDaysAgo)) {
+            long daysAdjusted = Duration.between(startTime, sevenDaysAgo).toDays();
+            sevenDayLimitHitCounter.increment(); // Track that we hit the limit
+            daysAdjustedCounter.increment(daysAdjusted); // Track by how many days
+            log.warn("Adjusting start time from {} to {} ({} days beyond 7-day limit)",
+                    startTime, sevenDaysAgo, daysAdjusted);
+            startTime = sevenDaysAgo;
         }
 
-        for (String contentType : CONTENT_TYPES) {
-            List<Map<String, Object>> items = office365RestClient.searchAuditLogs(contentType, startTime, endTime);
-            addItemsToQueue(items, contentType, itemInfoQueue);
+        while (startTime.isBefore(endTime)) {
+            Instant windowEnd = startTime.plus(TIME_WINDOW);
+            if (windowEnd.isAfter(endTime)) {
+                windowEnd = endTime;
+            }
+
+            for (String contentType : CONTENT_TYPES) {
+                String nextPageUri = null;
+
+                do {
+                    AuditLogsResponse response =
+                            office365RestClient.searchAuditLogs(contentType, startTime, windowEnd, nextPageUri);
+
+                    if (response.getItems() == null || response.getItems().isEmpty()) {
+                        break;
+                    }
+
+                    addItemsToQueue(response.getItems(), contentType, itemInfoQueue);
+                    nextPageUri = response.getNextPageUri();
+
+                } while (nextPageUri != null);
+            }
+
+            startTime = windowEnd;
         }
     }
 

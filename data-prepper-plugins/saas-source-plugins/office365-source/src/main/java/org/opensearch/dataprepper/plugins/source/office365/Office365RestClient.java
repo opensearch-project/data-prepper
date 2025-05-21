@@ -14,6 +14,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.office365.auth.Office365AuthenticationProvider;
+import org.opensearch.dataprepper.plugins.source.office365.models.AuditLogsResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -132,33 +133,47 @@ public class Office365RestClient {
      * @param contentType the type of content to search for
      * @param startTime  the start time of the search range
      * @param endTime    the end time of the search range
-     * @return List of audit log entries
+     * @param pageUri    the URI for pagination (can be null for first page)
+     * @return AuditLogsResponse containing the list of audit log entries and the next page URI
      */
-    public List<Map<String, Object>> searchAuditLogs(final String contentType,
+    public AuditLogsResponse searchAuditLogs(final String contentType,
                                                      final Instant startTime,
-                                                     final Instant endTime) {
+                                                     final Instant endTime,
+                                                     String pageUri) {
         final String GET_AUDIT_LOGS_URL = MANAGEMENT_API_BASE_URL +
                 "%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s";
 
-        final String url = String.format(GET_AUDIT_LOGS_URL,
-                authConfig.getTenantId(),
-                contentType,
-                startTime.toString(),
-                endTime.toString());
+        final String url = pageUri != null ? pageUri :
+                String.format(GET_AUDIT_LOGS_URL,
+                        authConfig.getTenantId(),
+                        contentType,
+                        startTime.toString(),
+                        endTime.toString());
 
         final HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(authConfig.getAccessToken());
 
         return searchCallLatencyTimer.record(() -> {
             try {
-                return RetryHandler.executeWithRetry(() ->
-                                restTemplate.exchange(
-                                        url,
-                                        HttpMethod.GET,
-                                        new HttpEntity<>(headers),
-                                        new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                                        }
-                                ).getBody(),
+                return RetryHandler.executeWithRetry(
+                        () -> {
+                            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                                    url,
+                                    HttpMethod.GET,
+                                    new HttpEntity<>(headers),
+                                    new ParameterizedTypeReference<>() {}
+                            );
+
+                            // Extract NextPageUri from response headers
+                            List<String> nextPageHeaders = response.getHeaders().get("NextPageUri");
+                            String nextPageUri = (nextPageHeaders != null && !nextPageHeaders.isEmpty()) ?
+                                    nextPageHeaders.get(0) : null;
+
+                            if (nextPageUri != null) {
+                                log.debug("Next page URI found: {}", nextPageUri);
+                            }
+                            return new AuditLogsResponse(response.getBody(), nextPageUri);
+                        },
                         authConfig::renewCredentials
                 );
             } catch (Exception e) {

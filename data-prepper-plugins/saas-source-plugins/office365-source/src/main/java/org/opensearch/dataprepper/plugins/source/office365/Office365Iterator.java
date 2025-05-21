@@ -35,7 +35,6 @@ import java.util.concurrent.Future;
 public class Office365Iterator implements Iterator<ItemInfo> {
     private static final int HAS_NEXT_TIMEOUT = 60;
 
-    private final Office365SourceConfig sourceConfig;
     private final Office365Service service;
     private final ExecutorService crawlerTaskExecutor;
 
@@ -47,11 +46,9 @@ public class Office365Iterator implements Iterator<ItemInfo> {
     private final List<Future<Boolean>> futureList;
 
     public Office365Iterator(final Office365Service service,
-                             final PluginExecutorServiceProvider executorServiceProvider,
-                             final Office365SourceConfig sourceConfig) {
+                             final PluginExecutorServiceProvider executorServiceProvider) {
         this.service = service;
         this.crawlerTaskExecutor = executorServiceProvider.get();
-        this.sourceConfig = sourceConfig;
         this.futureList = new ArrayList<>();
     }
 
@@ -110,7 +107,7 @@ public class Office365Iterator implements Iterator<ItemInfo> {
         log.debug("Starting crawler thread for Office 365 audit logs");
         Future<Boolean> future = crawlerTaskExecutor.submit(() -> {
             try {
-                service.getOffice365Entities(sourceConfig, lastPollTime, itemInfoQueue);
+                service.getOffice365Entities(lastPollTime, itemInfoQueue);
                 return true;
             } catch (Exception e) {
                 log.error("Error in crawler thread while fetching Office 365 audit logs", e);

@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.office365.auth.Office365AuthenticationProvider;
+import org.opensearch.dataprepper.plugins.source.office365.utils.Office365ConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
@@ -67,7 +68,7 @@ public class Office365Source extends CrawlerSourcePlugin {
     public void start(Buffer<Record<Event>> buffer) {
         LOG.info("Starting Office365 Source Plugin...");
         try {
-            // TODO: Add source config validation logic here like JIRA
+            Office365ConfigHelper.validateConfig(office365SourceConfig);
             office365AuthProvider.initCredentials();
             super.start(buffer);
         } catch (Exception e) {
