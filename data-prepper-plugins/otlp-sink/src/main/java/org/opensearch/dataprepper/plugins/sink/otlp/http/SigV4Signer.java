@@ -5,18 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
 import javax.annotation.Nonnull;
 import java.net.URI;
@@ -28,7 +26,6 @@ import java.net.URI;
 class SigV4Signer {
     private static final String SERVICE_NAME = "xray";
     private static final String OTLP_PATH = "/v1/traces";
-    private static final String OTLP_SINK_SESSION = "otlp-sink-session";
     private final Aws4Signer signer = Aws4Signer.create();
 
     private final AwsCredentialsProvider credentialsProvider;
@@ -38,44 +35,21 @@ class SigV4Signer {
     /**
      * Constructs a SigV4 signer helper.
      *
+     * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config Configuration for region and optional STS role
      */
-    SigV4Signer(@Nonnull final OtlpSinkConfig config) {
-        this(config, null);
-    }
-
-    /**
-     * Package-private constructor for unit testing with mocked STS client.
-     */
-    @VisibleForTesting
-    SigV4Signer(@Nonnull final OtlpSinkConfig config, final StsClient stsClient) {
+    SigV4Signer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config) {
         this.region = config.getAwsRegion();
-        this.credentialsProvider = initCredentialsProvider(region, config.getStsRoleArn(), config.getStsExternalId(), stsClient);
+
+        this.credentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
+                .withRegion(region)
+                .withStsRoleArn(config.getStsRoleArn())
+                .withStsExternalId(config.getStsExternalId())
+                .build());
+
         this.endpointUri = config.getEndpoint() != null
                 ? URI.create(config.getEndpoint())
                 : URI.create(String.format("https://xray.%s.amazonaws.com%s", region.id(), OTLP_PATH));
-    }
-
-    private static AwsCredentialsProvider initCredentialsProvider(
-            @Nonnull final Region region,
-            final String stsRoleArn,
-            final String stsExternalId,
-            final StsClient stsClient
-    ) {
-        if (stsRoleArn != null) {
-            return StsAssumeRoleCredentialsProvider.builder()
-                    .refreshRequest(r -> {
-                        r.roleArn(stsRoleArn);
-                        r.roleSessionName(OTLP_SINK_SESSION);
-                        if (stsExternalId != null) {
-                            r.externalId(stsExternalId);
-                        }
-                    })
-                    .stsClient(stsClient != null ? stsClient : StsClient.builder().region(region).build())
-                    .build();
-        }
-
-        return DefaultCredentialsProvider.create();
     }
 
     /**

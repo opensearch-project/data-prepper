@@ -17,17 +17,24 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
+import software.amazon.awssdk.utils.Pair;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Responsible for sending signed OTLP Protobuf requests to OTLP endpoint using an Ameria client.
@@ -45,11 +52,12 @@ public class OtlpHttpSender {
     /**
      * Constructor for the OtlpHttpSender.
      *
+     * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config The configuration for the OTLP sink plugin.
      * @param sinkMetrics The metrics for the OTLP sink plugin.
      */
-    public OtlpHttpSender(@Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(config), buildWebClient(config));
+    public OtlpHttpSender(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
+        this(sinkMetrics, new GzipCompressor(sinkMetrics), new SigV4Signer(awsCredentialsSupplier, config), buildWebClient(config));
     }
 
     /**
@@ -103,36 +111,52 @@ public class OtlpHttpSender {
     /**
      * Sends the provided OTLP Protobuf payload to the OTLP endpoint asynchronously.
      *
-     * @param payload The OTLP Protobuf-encoded data to be sent.
-     * @param spans The number of spans in the payload.
+     * @param batch the batch of spans to send
      */
-    public void send(@Nonnull final byte[] payload, final int spans) {
-        final byte[] compressedPayload = gzipCompressor.apply(payload);
-        if (compressedPayload.length == 0) {
-            sinkMetrics.incrementFailedSpansCount(spans);
+    public void send(@Nonnull final List<Pair<ResourceSpans, EventHandle>> batch) {
+        if (batch.isEmpty()) {
             return;
         }
 
-        final HttpRequest request = buildHttpRequest(compressedPayload);
+        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(batch);
+        final int spans = batch.size();
+        if (payloadAndCompressedPayload.right().length == 0) {
+            sinkMetrics.incrementFailedSpansCount(spans);
+            releaseAllEventHandle(batch, false);
+            return;
+        }
 
+        final HttpRequest request = buildHttpRequest(payloadAndCompressedPayload.right());
         final long startTime = System.currentTimeMillis();
+
         webClient.execute(request)
                 .aggregate()
                 .thenAccept(response -> {
                     final long latency = System.currentTimeMillis() - startTime;
                     sinkMetrics.recordHttpLatency(latency);
-                    sinkMetrics.incrementPayloadSize(payload.length);
-                    sinkMetrics.incrementPayloadGzipSize(compressedPayload.length);
+                    sinkMetrics.incrementPayloadSize(payloadAndCompressedPayload.left().length);
+                    sinkMetrics.incrementPayloadGzipSize(payloadAndCompressedPayload.right().length);
 
                     final int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    handleResponse(statusCode, responseBytes, spans);
+                    handleResponse(statusCode, responseBytes, batch);
                 })
                 .exceptionally(e -> {
                     LOG.error("Failed to send {} spans.", spans, e);
                     sinkMetrics.incrementRejectedSpansCount(spans);
+                    releaseAllEventHandle(batch, false);
                     return null;
                 });
+    }
+
+    private Pair<byte[], byte[]> getPayloadAndCompressedPayload(final List<Pair<ResourceSpans, EventHandle>> batch) {
+        final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
+                .addAllResourceSpans(batch.stream().map(Pair::left).collect(Collectors.toList()))
+                .build();
+        final byte[] payload = request.toByteArray();
+        final byte[] compressedPayload = gzipCompressor.apply(payload);
+
+        return Pair.of(payload, compressedPayload);
     }
 
     private HttpRequest buildHttpRequest(final byte[] compressedPayload) {
@@ -147,11 +171,11 @@ public class OtlpHttpSender {
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(compressedPayload));
     }
 
-    private void handleResponse(final int statusCode, final byte[] responseBytes, final int spans) {
+    private void handleResponse(final int statusCode, final byte[] responseBytes, final List<Pair<ResourceSpans, EventHandle>> batch) {
         sinkMetrics.recordResponseCode(statusCode);
 
         if (statusCode >= 200 && statusCode < 300) {
-            handleSuccessfulResponse(responseBytes, spans);
+            handleSuccessfulResponse(responseBytes, batch);
             return;
         }
 
@@ -160,15 +184,18 @@ public class OtlpHttpSender {
                 : "<no body>";
 
         LOG.error("Non-successful OTLP response. Status: {}, Response: {}", statusCode, responseBody);
-        sinkMetrics.incrementRejectedSpansCount(spans);
+        sinkMetrics.incrementRejectedSpansCount(batch.size());
+        releaseAllEventHandle(batch, false);
     }
 
     /**
      * Handles a successful OTLP response with partial success.
      */
-    private void handleSuccessfulResponse(final byte[] responseBytes, final int spans) {
+    private void handleSuccessfulResponse(final byte[] responseBytes, final List<Pair<ResourceSpans, EventHandle>> batch) {
+        final int spans = batch.size();
         if (responseBytes == null) {
             sinkMetrics.incrementRecordsOut(spans);
+            releaseAllEventHandle(batch, true);
             return;
         }
 
@@ -186,13 +213,22 @@ public class OtlpHttpSender {
 
                 final long deliveredSpans = spans - rejectedSpans;
                 sinkMetrics.incrementRecordsOut(deliveredSpans);
+
+                // Optimistically release all as true, no per-span granularity
+                releaseAllEventHandle(batch, true);
             } else {
                 sinkMetrics.incrementRecordsOut(spans);
+                releaseAllEventHandle(batch, true);
             }
         } catch (final Exception e) {
             LOG.error("Could not parse OTLP response as ExportTraceServiceResponse: {}", e.getMessage());
             sinkMetrics.incrementErrorsCount();
             sinkMetrics.incrementRecordsOut(spans);
+            releaseAllEventHandle(batch, true);
         }
+    }
+
+    private void releaseAllEventHandle(@Nonnull final List<Pair<ResourceSpans, EventHandle>> batch, final boolean success) {
+        batch.forEach(pair -> pair.right().release(success));
     }
 }

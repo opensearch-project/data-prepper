@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
@@ -31,10 +32,12 @@ class OtlpSinkTest {
     private OtlpSinkConfig mockConfig;
     private PluginMetrics mockMetrics;
     private PluginSetting mockSetting;
+    private AwsCredentialsSupplier mockAwsCredSupplier;
 
     @BeforeEach
     void setUp() throws Exception {
         // Arrange: stub out config, metrics, setting
+        mockAwsCredSupplier = mock(AwsCredentialsSupplier.class);
         mockConfig = mock(OtlpSinkConfig.class);
         when(mockConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
 
@@ -45,7 +48,7 @@ class OtlpSinkTest {
         when(mockSetting.getName()).thenReturn("otlp");
 
         // Create the real sink
-        target = new OtlpSink(mockConfig, mockMetrics, mockSetting);
+        target = new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting);
 
         // Replace its private buffer with a mock
         mockBuffer = mock(OtlpSinkBuffer.class);
@@ -101,6 +104,6 @@ class OtlpSinkTest {
     @Test
     void testConstructor_doesNotThrow() {
         // Just ensure the three-arg constructor still works
-        assertDoesNotThrow(() -> new OtlpSink(mockConfig, mockMetrics, mockSetting));
+        assertDoesNotThrow(() -> new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting));
     }
 }

@@ -6,9 +6,10 @@
 package org.opensearch.dataprepper.plugins.sink.otlp.buffer;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import lombok.Getter;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoStandardCodec;
@@ -17,6 +18,7 @@ import org.opensearch.dataprepper.plugins.sink.otlp.http.OtlpHttpSender;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.utils.Pair;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -52,11 +54,12 @@ public class OtlpSinkBuffer {
     /**
      * Creates a new OTLP sink buffer.
      *
+     * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config      the OTLP sink configuration
      * @param sinkMetrics the metrics collector to use
      */
-    public OtlpSinkBuffer(@Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
-        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(config, sinkMetrics));
+    public OtlpSinkBuffer(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final OtlpSinkMetrics sinkMetrics) {
+        this(config, sinkMetrics, new OTelProtoStandardCodec.OTelProtoEncoder(), new OtlpHttpSender(awsCredentialsSupplier, config, sinkMetrics));
     }
 
     /**
@@ -144,7 +147,7 @@ public class OtlpSinkBuffer {
      * Handles encoding failures, timeout-based flush, and final flush on shutdown.
      */
     private void run() {
-        final List<ResourceSpans> batch = new ArrayList<>();
+        final List<Pair<ResourceSpans, EventHandle>> batch = new ArrayList<>();
         long batchSize = 0;
         long lastFlush = System.currentTimeMillis();
 
@@ -156,7 +159,8 @@ public class OtlpSinkBuffer {
                 if (record != null) {
                     try {
                         final ResourceSpans resourceSpans = encoder.convertToResourceSpans(record.getData());
-                        batch.add(resourceSpans);
+                        final EventHandle eventHandle = record.getData().getEventHandle();
+                        batch.add(Pair.of(resourceSpans, eventHandle));
                         batchSize += resourceSpans.getSerializedSize();
                     } catch (final Exception e) {
                         LOG.error("Failed to encode span, skipping", e);
@@ -169,7 +173,8 @@ public class OtlpSinkBuffer {
                 final boolean flushByTime = !batch.isEmpty() && (now - lastFlush >= flushTimeoutMillis);
 
                 if (flushBySize || flushByTime) {
-                    send(batch);
+                    sender.send(batch);
+                    batch.clear();
                     batchSize = 0;
                     lastFlush = now;
                 }
@@ -190,24 +195,8 @@ public class OtlpSinkBuffer {
 
         // Final flush
         if (!batch.isEmpty()) {
-            send(batch);
+            sender.send(batch);
+            batch.clear();
         }
-    }
-
-    /**
-     * Builds an ExportTraceServiceRequest from the given batch, sends it over HTTP.
-     * The batch is cleared in all cases to prepare for the next batch.
-     *
-     * @param batch the list of ResourceSpans to send
-     */
-    private void send(final List<ResourceSpans> batch) {
-        final ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder()
-                .addAllResourceSpans(batch)
-                .build();
-        final byte[] payload = request.toByteArray();
-
-        final int spans = batch.size();
-        sender.send(payload, spans);
-        batch.clear();
     }
 }

@@ -19,10 +19,10 @@ configurations {
 
 dependencies {
     // AWS SDK
-    implementation 'software.amazon.awssdk:core:2.28.23'
-    implementation 'software.amazon.awssdk:auth:2.28.23'
-    implementation 'software.amazon.awssdk:sts:2.28.23'
-    implementation 'software.amazon.awssdk:regions:2.28.23'
+    implementation 'software.amazon.awssdk:sdk-core'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:regions'
     implementation 'software.amazon.awssdk:http-client-spi'
     implementation 'software.amazon.awssdk:apache-client'
 
@@ -37,8 +37,8 @@ dependencies {
 
     // Jackson
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3'
-    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.3'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.30'

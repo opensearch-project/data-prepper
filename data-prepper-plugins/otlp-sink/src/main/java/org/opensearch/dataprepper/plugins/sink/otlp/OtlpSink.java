@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
@@ -23,6 +25,7 @@ import java.util.Collection;
 /**
  *  OTLP Sink Plugin for Data Prepper.
  */
+@Experimental
 @DataPrepperPlugin(
         name = "otlp",
         pluginType = Sink.class,
@@ -36,16 +39,17 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
     /**
      * Constructor for the OTLP sink plugin.
      *
+     * @param awsCredentialsSupplier the AWS credentials supplier
      * @param config        the configuration for the sink
      * @param pluginMetrics the plugin metrics to use
      * @param pluginSetting the plugin setting to use
      */
     @DataPrepperPluginConstructor
-    public OtlpSink(@Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
+    public OtlpSink(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
         super(pluginSetting);
 
         this.sinkMetrics = new OtlpSinkMetrics(pluginMetrics, pluginSetting);
-        this.buffer = new OtlpSinkBuffer(config, sinkMetrics);
+        this.buffer = new OtlpSinkBuffer(awsCredentialsSupplier, config, sinkMetrics);
     }
 
     /**
