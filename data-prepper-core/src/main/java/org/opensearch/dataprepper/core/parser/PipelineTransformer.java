@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
+import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
@@ -228,10 +230,30 @@ public class PipelineTransformer {
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
 
-            // TODO: Re-enable zero-buffer
-            //if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
-            //    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline, processors));
-            //}
+            if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+                // Check if there are any processors with @SingleThread annotation
+                boolean hasSingleThreadedProcessors = processorSets.stream()
+                    .flatMap(List::stream)
+                    .map(IdentifiedComponent::getComponent)
+                    .map(Object::getClass)
+                    .anyMatch(processorClass -> processorClass.isAnnotationPresent(SingleThread.class));
+
+                // Only allow ZeroBuffer for single-threaded pipelines with no @SingleThread processors
+                if (processorThreads == 1 && !hasSingleThreadedProcessors) {
+                    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(
+                        new PipelineRunnerImpl(pipeline, pipeline.getProcessors()));
+                } else {
+                    if (hasSingleThreadedProcessors) {
+                        throw new IllegalStateException(
+                            "ZeroBuffer cannot be used with @SingleThread processors. " +
+                            "Pipeline [" + pipelineName + "] contains one or more @SingleThread processors.");
+                    } else {
+                        throw new IllegalStateException(
+                            "ZeroBuffer cannot be used with multiple processor threads. " +
+                            "Pipeline [" + pipelineName + "] is configured with " + processorThreads + " threads.");
+                    }
+                }
+            }
 
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
