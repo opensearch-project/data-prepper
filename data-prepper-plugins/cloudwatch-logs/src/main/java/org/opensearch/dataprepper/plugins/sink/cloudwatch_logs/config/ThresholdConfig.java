@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -31,13 +32,10 @@ public class ThresholdConfig {
     private int batchSize = DEFAULT_BATCH_SIZE;
 
     @JsonProperty(value = "max_event_size", defaultValue="256k")
-    @Min(1)
-    @Max(256)
+    @Size(min = 1, max = 256, message = "max_event_size amount should be between 1 to 256 kilobytes")
     private String maxEventSize = DEFAULT_EVENT_SIZE;
 
     @JsonProperty(value = "max_request_size", defaultValue="1mb")
-    @Min(1)
-    @Max(1048576)
     private String maxRequestSize = DEFAULT_SIZE_OF_REQUEST;
 
     @JsonProperty("flush_interval")
