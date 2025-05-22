@@ -205,7 +205,7 @@ public class CloudWatchLogsIT {
         when(cloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
 
         thresholdConfig = mock(ThresholdConfig.class);
-        when(thresholdConfig.getLogSendInterval()).thenReturn(60L);
+        when(thresholdConfig.getFlushInterval()).thenReturn(60L);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
     }
@@ -266,7 +266,7 @@ public class CloudWatchLogsIT {
     void TestSinkOperationWithLogSendInterval() throws Exception {
         long startTime = Instant.now().toEpochMilli();
         when(thresholdConfig.getBatchSize()).thenReturn(10);
-        when(thresholdConfig.getLogSendInterval()).thenReturn(10L);
+        when(thresholdConfig.getFlushInterval()).thenReturn(10L);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
         
