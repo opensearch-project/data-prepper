@@ -32,6 +32,7 @@ import java.util.Collection;
         pluginConfigurationType = OtlpSinkConfig.class
 )
 public class OtlpSink extends AbstractSink<Record<Span>> {
+    private volatile boolean initialized = false;
 
     private final OtlpSinkBuffer buffer;
     private final OtlpSinkMetrics sinkMetrics;
@@ -48,6 +49,8 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
     public OtlpSink(@Nonnull final AwsCredentialsSupplier awsCredentialsSupplier, @Nonnull final OtlpSinkConfig config, @Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
         super(pluginSetting);
 
+        config.validate();
+
         this.sinkMetrics = new OtlpSinkMetrics(pluginMetrics, pluginSetting);
         this.buffer = new OtlpSinkBuffer(awsCredentialsSupplier, config, sinkMetrics);
     }
@@ -58,6 +61,7 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
     @Override
     public void doInitialize() {
         buffer.start();
+        initialized = true;
     }
 
     /**
@@ -79,7 +83,7 @@ public class OtlpSink extends AbstractSink<Record<Span>> {
      */
     @Override
     public boolean isReady() {
-        return buffer.isRunning();
+        return initialized && buffer.isRunning();
     }
 
     /**

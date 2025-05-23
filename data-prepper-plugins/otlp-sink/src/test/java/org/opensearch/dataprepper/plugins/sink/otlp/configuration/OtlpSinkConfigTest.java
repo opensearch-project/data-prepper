@@ -21,8 +21,11 @@ import java.time.Duration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OtlpSinkConfigTest {
 
@@ -75,8 +78,62 @@ class OtlpSinkConfigTest {
     }
 
     @Test
+    void testGetStsRoleArnReturnsNullWhenNotSet() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",  // sts_role_arn not set
+                "max_retries: 5"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertNull(config.getStsRoleArn());
+    }
+
+    @Test
+    void testGetStsExternalIdReturnsNullWhenNotSet() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",  // sts_external_id not set
+                "max_retries: 5"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertNull(config.getStsExternalId());
+    }
+
+    @Test
+    void testAwsRegion_throwsWhenHostIsNull() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"mailto:user@example.com\"", // No host component
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertThrows(IllegalArgumentException.class, config::getAwsRegion);
+    }
+
+    @Test
+    void testAwsRegion_throwsWhenUriIsMalformed() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"https://xray .us-west-2.amazonaws.com\"", // Invalid URI with space
+                "aws: {}"
+        );
+
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, config::getAwsRegion);
+        assertTrue(thrown.getMessage().contains("Failed to parse AWS region from endpoint"));
+    }
+
+    @Test
     void testMinimumConfigDefaults() throws Exception {
-        final String yaml = "endpoint: \"" + EXPECTED_ENDPOINT + "\"";
+        final String yaml = String.join("\n",
+                "endpoint:      \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
 
         final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
 
@@ -94,6 +151,7 @@ class OtlpSinkConfigTest {
     void testCustomThresholdAndRetries() throws Exception {
         final String yaml = String.join("\n",
                 "endpoint:      \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
                 "max_retries:   3",
                 "threshold:",
                 "  max_events:     " + CUSTOM_MAX_EVENTS,
@@ -108,6 +166,26 @@ class OtlpSinkConfigTest {
         assertEquals(CUSTOM_MAX_EVENTS, config.getMaxEvents());
         assertEquals(CUSTOM_BATCH_BYTES, config.getMaxBatchSize());
         assertEquals(CUSTOM_FLUSH_TIMEOUT, config.getFlushTimeoutMillis());
+    }
+
+    @Test
+    void testValidateAwsConfig_doesNotThrowWhenPresent() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}"
+        );
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+        assertDoesNotThrow(config::validate);
+    }
+
+    @Test
+    void testValidateAwsConfig_throwsException() throws Exception {
+        final String yaml = String.join("\n",
+                "endpoint: \"" + EXPECTED_ENDPOINT + "\""
+        );
+        final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
+
+        assertThrows(IllegalArgumentException.class, config::validate);
     }
 
     @Test
@@ -130,25 +208,25 @@ class OtlpSinkConfigTest {
     }
 
     @Test
-    void testAwsSectionMissing_staysNull() throws Exception {
+    void testAwsSectionPresentButEmpty_doesNotThrow() throws Exception {
         final String yaml = String.join("\n",
                 "endpoint:    \"" + EXPECTED_ENDPOINT + "\"",
+                "aws: {}",
                 "max_retries: " + DEFAULT_MAX_RETRIES
         );
 
         final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
 
-        assertEquals(EXPECTED_ENDPOINT, config.getEndpoint());
-        assertEquals(DEFAULT_MAX_RETRIES, config.getMaxRetries());
-
-        assertThat(config.getStsRoleArn(), nullValue());
-        assertThat(config.getStsExternalId(), nullValue());
+        // aws block exists, so validateAwsConfig() will not throw
+        assertNull(config.getStsRoleArn());
+        assertNull(config.getStsExternalId());
     }
 
     @Test
     void testAwsRegion_parsedFromStandardXrayEndpoint() throws Exception {
         final String yaml = String.join("\n",
                 "endpoint: \"https://xray.us-east-1.amazonaws.com\"",
+                "aws: {}",
                 "max_retries: 5"
         );
 
@@ -164,6 +242,7 @@ class OtlpSinkConfigTest {
     void testAwsRegion_invalidEndpoint_throwsException() {
         final String yaml = String.join("\n",
                 "endpoint: \"https://example.invalid-endpoint\"",
+                "aws: {}",
                 "max_retries: 5"
         );
 
@@ -177,6 +256,7 @@ class OtlpSinkConfigTest {
     void testAwsRegion_throwsException_onInvalidEndpoint() {
         final String yaml = String.join("\n",
                 "endpoint: \"invalid-endpoint\"",
+                "aws: {}",
                 "max_retries: 5"
         );
 

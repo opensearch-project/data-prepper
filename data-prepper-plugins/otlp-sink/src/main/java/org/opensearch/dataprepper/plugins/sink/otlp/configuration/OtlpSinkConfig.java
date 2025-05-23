@@ -68,7 +68,7 @@ public class OtlpSinkConfig {
      */
     @JsonProperty("aws")
     @Valid
-    private AwsConfig awsAuthenticationConfig;
+    private AwsConfig awsConfig;
 
     /**
      * Get AWS region from the provided endpoint.
@@ -97,18 +97,30 @@ public class OtlpSinkConfig {
     }
 
     public String getStsRoleArn() {
-        if (awsAuthenticationConfig == null) {
+        if (awsConfig == null || awsConfig.getAwsStsRoleArn() == null) {
             return null;
         }
 
-        return awsAuthenticationConfig.getAwsStsRoleArn();
+        return awsConfig.getAwsStsRoleArn();
     }
 
     public String getStsExternalId() {
-        if (awsAuthenticationConfig == null) {
+        if (awsConfig == null || awsConfig.getAwsStsExternalId() == null) {
             return null;
         }
 
-        return awsAuthenticationConfig.getAwsStsExternalId();
+        return awsConfig.getAwsStsExternalId();
+    }
+
+    /**
+     * Validate the AWS configuration.
+     * This method ensures breaking change in future release where non-AWS OTLP endpoints are supported.
+     *
+     * @throws IllegalArgumentException if the AWS configuration is invalid
+     */
+    public void validate() {
+        if (awsConfig == null) {
+            throw new IllegalArgumentException("aws configuration is required");
+        }
     }
 }

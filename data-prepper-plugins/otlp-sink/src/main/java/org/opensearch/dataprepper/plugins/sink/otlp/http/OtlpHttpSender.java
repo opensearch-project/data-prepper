@@ -14,7 +14,6 @@ import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
-import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.RequestHeadersBuilder;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -42,7 +41,6 @@ import java.util.stream.Collectors;
 public class OtlpHttpSender {
     private static final Logger LOG = LoggerFactory.getLogger(OtlpHttpSender.class);
     private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 502, 503, 504);
-    private static final MediaType PROTOBUF = MediaType.parse("application/x-protobuf");
 
     private final SigV4Signer signer;
     private final WebClient webClient;
@@ -85,7 +83,6 @@ public class OtlpHttpSender {
      * adding complexity with minimal benefit for most OTLP endpoints.
      * - Our exponential backoff already handles typical retry intervals gracefully.
      */
-
     private static WebClient buildWebClient(final OtlpSinkConfig config) {
         final RetryRuleWithContent<HttpResponse> retryRule = RetryRuleWithContent.<HttpResponse>builder()
                 .onStatus((ctx, status) -> RETRYABLE_STATUS_CODES.contains(status.code()))
@@ -118,11 +115,14 @@ public class OtlpHttpSender {
             return;
         }
 
-        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(batch);
-        final int spans = batch.size();
+        // Defensive copy to avoid ConcurrentModificationException
+        final List<Pair<ResourceSpans, EventHandle>> immutableBatch = List.copyOf(batch);
+
+        final Pair<byte[], byte[]> payloadAndCompressedPayload = getPayloadAndCompressedPayload(immutableBatch);
+        final int spans = immutableBatch.size();
         if (payloadAndCompressedPayload.right().length == 0) {
             sinkMetrics.incrementFailedSpansCount(spans);
-            releaseAllEventHandle(batch, false);
+            releaseAllEventHandle(immutableBatch, false);
             return;
         }
 
@@ -139,12 +139,12 @@ public class OtlpHttpSender {
 
                     final int statusCode = response.status().code();
                     final byte[] responseBytes = response.content().array();
-                    handleResponse(statusCode, responseBytes, batch);
+                    handleResponse(statusCode, responseBytes, immutableBatch);
                 })
                 .exceptionally(e -> {
                     LOG.error("Failed to send {} spans.", spans, e);
                     sinkMetrics.incrementRejectedSpansCount(spans);
-                    releaseAllEventHandle(batch, false);
+                    releaseAllEventHandle(immutableBatch, false);
                     return null;
                 });
     }
@@ -161,12 +161,14 @@ public class OtlpHttpSender {
 
     private HttpRequest buildHttpRequest(final byte[] compressedPayload) {
         final SdkHttpFullRequest signedRequest = signer.signRequest(compressedPayload);
+
         final RequestHeadersBuilder headersBuilder = RequestHeaders.builder()
                 .method(HttpMethod.POST)
-                .path(signedRequest.getUri().getPath())
-                .contentType(PROTOBUF)
-                .add("Content-Encoding", "gzip");
+                .scheme(signedRequest.getUri().getScheme())
+                .path(signedRequest.getUri().getRawPath())
+                .authority(signedRequest.getUri().getAuthority());
 
+        // ONLY use the signed headers
         signedRequest.headers().forEach((k, vList) -> vList.forEach(v -> headersBuilder.add(k, v)));
         return HttpRequest.of(headersBuilder.build(), HttpData.wrap(compressedPayload));
     }

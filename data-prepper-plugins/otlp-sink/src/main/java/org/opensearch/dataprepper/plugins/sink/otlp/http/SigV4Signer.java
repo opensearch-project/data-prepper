@@ -63,6 +63,7 @@ class SigV4Signer {
                 .method(SdkHttpMethod.POST)
                 .uri(endpointUri)
                 .putHeader("Content-Type", "application/x-protobuf")
+                .putHeader("Content-Encoding", "gzip")
                 .contentStreamProvider(() -> SdkBytes.fromByteArray(payload).asInputStream())
                 .build();
 

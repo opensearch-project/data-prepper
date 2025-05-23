@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.otlp.metrics.OtlpSinkMetrics;
+import software.amazon.awssdk.http.SdkHttpFullRequest;
+import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.utils.Pair;
 
 import java.lang.reflect.Method;
@@ -77,8 +79,8 @@ class OtlpHttpSenderTest {
 
         when(gzipCompressor.apply(any())).thenReturn(PAYLOAD);
         when(signer.signRequest(any())).thenReturn(
-                software.amazon.awssdk.http.SdkHttpFullRequest.builder()
-                        .method(software.amazon.awssdk.http.SdkHttpMethod.POST)
+                SdkHttpFullRequest.builder()
+                        .method(SdkHttpMethod.POST)
                         .uri(URI.create("https://localhost/v1/traces"))
                         .putHeader("Authorization", "sig")
                         .build()
@@ -269,6 +271,7 @@ class OtlpHttpSenderTest {
     void testConstructor_withDefaultConfig() {
         final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
 
+        when(config.getEndpoint()).thenReturn("https://localhost/v1/traces");
         when(config.getMaxBatchSize()).thenReturn(1_000_000L);
         when(config.getMaxRetries()).thenReturn(2);
         when(config.getFlushTimeoutMillis()).thenReturn(5000L);
@@ -283,6 +286,7 @@ class OtlpHttpSenderTest {
         final OtlpSinkConfig config = mock(OtlpSinkConfig.class);
 
         // Set all threshold values to minimum valid input
+        when(config.getEndpoint()).thenReturn("https://localhost/v1/traces");
         when(config.getMaxBatchSize()).thenReturn(0L);
         when(config.getMaxRetries()).thenReturn(0);
         when(config.getFlushTimeoutMillis()).thenReturn(1L);

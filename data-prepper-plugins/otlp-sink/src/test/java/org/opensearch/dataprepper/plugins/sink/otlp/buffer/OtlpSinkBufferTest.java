@@ -53,6 +53,7 @@ class OtlpSinkBufferTest {
     @BeforeEach
     void setUp() {
         config = mock(OtlpSinkConfig.class);
+        when(config.getEndpoint()).thenReturn("https://localhost/v1/traces");
         when(config.getMaxEvents()).thenReturn(2);
         when(config.getMaxRetries()).thenReturn(2);
         when(config.getMaxBatchSize()).thenReturn(1_000_000L);
@@ -456,7 +457,7 @@ class OtlpSinkBufferTest {
     }
 
     @Test
-    void testDaemonThreadConfiguration() throws Exception {
+    void testDaemonThreadConfiguration() {
         // This test verifies that the thread is created as non-daemon
         // We can't directly test this, but we can verify the thread factory is called
         buffer.start();

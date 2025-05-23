@@ -17,6 +17,25 @@ to any OTLP Protobuf-compatible endpoint.
 
 ## Sample Pipeline Configuration
 
+### Minimal Configuration (No STS)
+
+Use this when Data Prepper has permission to write to AWS X-Ray directly.
+
+```yaml
+otlp_pipeline:
+  source:
+    otel_trace_source:
+
+  sink:
+    - otlp:
+        endpoint: "https://xray.us-west-2.amazonaws.com/v1/traces"
+        aws: { }
+```
+
+### Full Configuration with STS
+
+Use this when assuming a cross-account role is required.
+
 ```yaml
 otlp_pipeline:
   workers: 2
@@ -56,7 +75,7 @@ otlp_pipeline:
 | `threshold.max_events`     | `int`    | No       | `512` (recommended)   | Maximum number of spans per batch. Use `0` to disable count-based flushing. Must be ≥ 0.                 |
 | `threshold.max_batch_size` | `String` | No       | `1mb` (recommended)   | Maximum total payload bytes per batch. Supports human-readable suffixes (`kb`, `mb`).                    |   
 | `threshold.flush_timeout`  | `String` | No       | `200ms` (recommended) | Maximum time to wait before flushing a non-empty batch. Minimum: 1ms (e.g., `200ms`, `1s`)               |
-| **aws**                    | `Object` | No       | —                     | AWS authentication settings. See below.                                                                  |
+| **aws**                    | `Object` | Yes      | —                     | AWS authentication settings. Use `{}` if no STS role is needed. See below.                               |
 | `aws.sts_role_arn`         | `String` | No       | —                     | IAM Role ARN that Data Prepper (or OSI) assumes to send spans to X-Ray on behalf of a customer account.  |
 | `aws.sts_external_id`      | `String` | No       | —                     | External ID to use when assuming the role. Required only if the target IAM role enforces sts:ExternalId. |
 
