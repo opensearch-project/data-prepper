@@ -11,12 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
-public class AtlassianLeaderProgressStateTest {
+public class PaginationCrawlerLeaderProgressStateTest {
 
     @Test
     void testInitializedValuesWithIsoInstant() throws JsonProcessingException {
         String json = "{\n" +
-                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState\",\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState\",\n" +
                 "  \"last_poll_time\": \"2024-10-20T02:27:15.717Z\",\n" +
                 "  \"initialized\": true\n" +
                 "}";
@@ -25,7 +25,7 @@ public class AtlassianLeaderProgressStateTest {
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        AtlassianLeaderProgressState state = mapper.readValue(json, AtlassianLeaderProgressState.class);
+        PaginationCrawlerLeaderProgressState state = mapper.readValue(json, PaginationCrawlerLeaderProgressState.class);
 
         assertTrue(state.isInitialized());
         assertEquals(Instant.parse("2024-10-20T02:27:15.717Z"), state.getLastPollTime());
@@ -34,7 +34,7 @@ public class AtlassianLeaderProgressStateTest {
     @Test
     void testConstructor_setsLastPollTimeCorrectly() {
         Instant now = Instant.now();
-        AtlassianLeaderProgressState state = new AtlassianLeaderProgressState(now);
+        PaginationCrawlerLeaderProgressState state = new PaginationCrawlerLeaderProgressState(now);
         assertEquals(now, state.getLastPollTime());
         assertFalse(state.isInitialized(), "Expected 'initialized' to be false by default");
     }

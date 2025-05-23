@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-public class AtlassianWorkerProgressState implements SaasWorkerProgressState {
+public class PaginationCrawlerWorkerProgressState implements SaasWorkerProgressState {
 
     @JsonProperty("totalItems")
     private int totalItems;
