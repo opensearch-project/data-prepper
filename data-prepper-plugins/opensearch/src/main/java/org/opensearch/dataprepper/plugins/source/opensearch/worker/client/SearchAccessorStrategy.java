@@ -62,6 +62,17 @@ public class SearchAccessorStrategy {
         this.pluginConfigObservable = pluginConfigObservable;
     }
 
+    private SearchContextType determineSearchContextType(final String distribution, final String versionNumber) {
+        if (Objects.nonNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+            validateSearchContextTypeOverride(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType(), distribution, versionNumber);
+            return openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType();
+        } else if (versionSupportsPointInTime(distribution, versionNumber)) {
+            return SearchContextType.POINT_IN_TIME;
+        } else {
+            return SearchContextType.SCROLL;
+        }
+    }
+
     /**
      * Provides a {@link SearchAccessor} that is based on the {@link OpenSearchSourceConfiguration}
      * @return a {@link SearchAccessor}
@@ -79,99 +90,100 @@ public class SearchAccessorStrategy {
             return createSearchAccessorForServerlessCollection(clientRefresher);
         }
 
-        InfoResponse infoResponse = null;
-
-        PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher = null;
-        
-        try {
-            infoResponse = clientRefresher.get().info();
-            pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update(
-                    (OpenSearchSourceConfiguration) newConfig));
-        } catch (final Exception e) {
-
-            if (DistributionVersion.OPENSEARCH.equals(openSearchSourceConfiguration.getDistributionVersion())) {
-                LOG.info("distribution_version is opensearch. Forcing creation of OpenSearch client...");
-                return new OpenSearchAccessor(clientRefresher,
-                        openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType() != null ?
-                                openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType() :
-                                SearchContextType.SCROLL);
+        final DistributionVersion configuredDistribution = openSearchSourceConfiguration.getDistributionVersion();
+        if (Objects.nonNull(configuredDistribution)) {
+            SearchContextType searchContextType = openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType();
+            if (searchContextType == null) {
+                searchContextType = SearchContextType.SCROLL;
+            } else if (searchContextType == SearchContextType.POINT_IN_TIME) {
+                LOG.warn("search_context_type is POINT_IN_TIME for a forced distribution ('{}'). Version compatibility cannot be verified without connecting to the cluster.", configuredDistribution);
             }
 
-            LOG.info("Detected Elasticsearch cluster. Constructing Elasticsearch client");
+            if (configuredDistribution == DistributionVersion.OPENSEARCH) {
+                pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+                return new OpenSearchAccessor(clientRefresher, searchContextType);
+            } else {
+                PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher =
+                        new ClientRefresher<>(openSearchSourcePluginMetrics,
+                                ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
+                                openSearchSourceConfiguration);
+                pluginConfigObservable.addPluginConfigObserver(newConfig -> elasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+                return new ElasticsearchAccessor(elasticsearchClientRefresher, searchContextType);
+            }
+        }
 
+        InfoResponse infoResponse = null;
+        PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher = null;
+
+        try {
+            infoResponse = clientRefresher.get().info();
+            pluginConfigObservable.addPluginConfigObserver(newConfig -> clientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+        } catch (final Exception e) {
             try {
-                elasticsearchClientRefresher = new ClientRefresher<>(openSearchSourcePluginMetrics,
-                        ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
-                        openSearchSourceConfiguration);
-                final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
-                        finalElasticsearchClientRefresher = elasticsearchClientRefresher;
-                pluginConfigObservable.addPluginConfigObserver(
-                        newConfig -> finalElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig));
+                final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> esRefresherInCatch =
+                        new ClientRefresher<>(openSearchSourcePluginMetrics,
+                                ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
+                                openSearchSourceConfiguration);
+                esRefresherInCatch.get();
+                pluginConfigObservable.addPluginConfigObserver(newConfig -> esRefresherInCatch.update((OpenSearchSourceConfiguration) newConfig));
+                elasticsearchClientRefresher = esRefresherInCatch;
             } catch (final Exception ex) {
-                throw new RuntimeException("There was an error looking up the OpenSearch cluster info: ", ex);
             }
         }
 
         final Pair<String, String> distributionAndVersion = getDistributionAndVersionNumber(infoResponse, elasticsearchClientRefresher);
-
         final String distribution = distributionAndVersion.getLeft();
         final String versionNumber = distributionAndVersion.getRight();
 
         validateDistribution(distribution);
 
-        SearchContextType searchContextType;
+        SearchContextType searchContextType = determineSearchContextType(distribution, versionNumber);
 
-        if (Objects.nonNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
-            LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
-            validateSearchContextTypeOverride(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType(), distribution, versionNumber);
-            searchContextType = openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType();
-        } else if (versionSupportsPointInTime(distribution, versionNumber)) {
-            LOG.info("{} distribution and version {} detected. Point in time APIs will be used to search documents", distribution, versionNumber);
-            searchContextType = SearchContextType.POINT_IN_TIME;
+        String accessorTypeName;
+        SearchAccessor accessor;
+
+        if (OPENSEARCH_DISTRIBUTION.equals(distribution) || distribution.startsWith(OPENSEARCH_DISTRIBUTION + "-")) {
+            accessorTypeName = "OpenSearch";
+            accessor = new OpenSearchAccessor(clientRefresher, searchContextType);
         } else {
-            LOG.info("{} distribution, version {} detected. Scroll contexts will be used to search documents. " +
-                    "Upgrade your cluster to at least OpenSearch {} to use Point in Time APIs instead of scroll.", distribution, versionNumber,
-                    OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
-            searchContextType = SearchContextType.SCROLL;
+            accessorTypeName = "Elasticsearch";
+            PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> finalEsRefresherForAccessor = elasticsearchClientRefresher;
+            if (finalEsRefresherForAccessor == null) {
+                final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> newlyCreatedEsRefresher =
+                        new ClientRefresher<>(openSearchSourcePluginMetrics,
+                                ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
+                                openSearchSourceConfiguration);
+
+                pluginConfigObservable.addPluginConfigObserver(newConfig -> newlyCreatedEsRefresher.update((OpenSearchSourceConfiguration) newConfig));
+                finalEsRefresherForAccessor = newlyCreatedEsRefresher;
+            }
+            accessor = new ElasticsearchAccessor(finalEsRefresherForAccessor, searchContextType);
+        }
+        LOG.info("Using {}Accessor. Determined distribution: '{}', version: '{}'. Search_context_type: '{}'.",
+                accessorTypeName, distribution, versionNumber, searchContextType);
+
+        if (searchContextType == SearchContextType.SCROLL &&
+                openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType() == null) {
+            boolean isElasticsearch = distribution.startsWith(ELASTICSEARCH_DISTRIBUTION);
+            String upgradeDistributionName = isElasticsearch ? "Elasticsearch" : "OpenSearch";
+            String upgradeVersionCutoff = isElasticsearch ? ELASTICSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF : OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF;
+
+            LOG.info("Scroll contexts will be used because {} version {} does not support Point in Time APIs. " +
+                            "To use Point in Time APIs, consider upgrading your cluster to at least {} {}.",
+                    distribution, versionNumber, upgradeDistributionName, upgradeVersionCutoff);
         }
 
-        if (OPENSEARCH_DISTRIBUTION.equals(distribution)) {
-            LOG.debug("Using OpenSearchAccessor as the determined distribution is OpenSearch.");
-            return new OpenSearchAccessor(clientRefresher, searchContextType);
-        } else { 
-            LOG.debug("Using ElasticsearchAccessor as the determined distribution is Elasticsearch.");
-            PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> currentElasticsearchClientRefresher = elasticsearchClientRefresher;
-            if (Objects.isNull(currentElasticsearchClientRefresher)) {
-                LOG.info("Elasticsearch distribution determined, but no existing Elasticsearch client refresher found (e.g., OpenSearch client reported Elasticsearch, or distribution_version was set to elasticsearch). Creating a new Elasticsearch client refresher.");
-                try {
-                    currentElasticsearchClientRefresher = new ClientRefresher<>(openSearchSourcePluginMetrics,
-                            ElasticsearchClient.class, openSearchClientFactory::provideElasticSearchClient,
-                            openSearchSourceConfiguration);
-                    final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration>
-                            finalNewElasticsearchClientRefresher = currentElasticsearchClientRefresher;
-                    pluginConfigObservable.addPluginConfigObserver(
-                            newConfig -> {
-                                if (finalNewElasticsearchClientRefresher != null) {
-                                    finalNewElasticsearchClientRefresher.update((OpenSearchSourceConfiguration) newConfig);
-                                }
-                            });
-                } catch (final Exception e) {
-                    LOG.error("Failed to create Elasticsearch client for an Elasticsearch distribution when one was not pre-existing.", e);
-                    throw new RuntimeException("Failed to create Elasticsearch client for an Elasticsearch distribution: " + e.getMessage(), e);
-                }
-            }
-            return new ElasticsearchAccessor(currentElasticsearchClientRefresher, searchContextType);
-        }
+        return accessor;
     }
 
-    private SearchAccessor createSearchAccessorForServerlessCollection(final PluginComponentRefresher clientRefresher) {
+    private SearchAccessor createSearchAccessorForServerlessCollection(final PluginComponentRefresher<OpenSearchClient, OpenSearchSourceConfiguration> clientRefresher) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
             return new OpenSearchAccessor(clientRefresher,
                     SearchContextType.NONE);
         } else {
             if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType()) ||
-                SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+                    SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
                 throw new InvalidPluginConfigurationException("A search_context_type of point_in_time or scroll is not supported for serverless collections");
             }
 
@@ -186,7 +198,7 @@ public class SearchAccessorStrategy {
         if (searchContextType.equals(SearchContextType.POINT_IN_TIME) && !versionSupportsPointInTime(distribution, version)) {
             throw new IllegalArgumentException(
                     String.format("A search_context_type of point_in_time is only supported on OpenSearch versions %s and above. " +
-                    "The version of the OpenSearch cluster passed is %s. Elasticsearch clusters with build-flavor %s do not support point in time",
+                                    "The version of the OpenSearch cluster passed is %s. Elasticsearch clusters with build-flavor %s do not support point in time",
                             distribution.startsWith(ELASTICSEARCH_DISTRIBUTION) ? ELASTICSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF : OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF,
                             version, ELASTICSEARCH_OSS_BUILD_FLAVOR));
         }
@@ -207,62 +219,53 @@ public class SearchAccessorStrategy {
         return actualVersion.compareTo(cutoffVersion) >= 0;
     }
 
-    private Pair<String, String> getDistributionAndVersionNumber(final InfoResponse infoResponseOpenSearch,
-                                                                 final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchClientRefresher) {
-        if (Objects.nonNull(infoResponseOpenSearch)) {
-            final String distribution = infoResponseOpenSearch.version().distribution();
-            final String versionNumber = infoResponseOpenSearch.version().number();
+    private Pair<String, String> getDistributionAndVersionNumber(
+            final InfoResponse infoResponseFromInitialOpenSearchAttempt,
+            final PluginComponentRefresher<ElasticsearchClient, OpenSearchSourceConfiguration> elasticsearchRefresherAfterOpenSearchFailure) {
+
+        final DistributionVersion configuredVersionEnum = openSearchSourceConfiguration.getDistributionVersion();
+        if (Objects.nonNull(configuredVersionEnum)) {
+            LOG.info("distribution_version is configured to '{}'. Trusting this configuration and skipping API-based auto-detection.", configuredVersionEnum.name());
+            if (configuredVersionEnum == DistributionVersion.OPENSEARCH) {
+                return Pair.of(OPENSEARCH_DISTRIBUTION, OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
+            } else {
+                return Pair.of(ELASTICSEARCH_DISTRIBUTION, ELASTICSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
+            }
+        }
+
+        if (Objects.nonNull(infoResponseFromInitialOpenSearchAttempt)) {
+            final String distribution = infoResponseFromInitialOpenSearchAttempt.version().distribution();
+            final String versionNumber = infoResponseFromInitialOpenSearchAttempt.version().number();
             if (Objects.nonNull(distribution) && Objects.nonNull(versionNumber)) {
-                LOG.info("Detected OpenSearch distribution '{}' version '{}' from API response.", distribution, versionNumber);
+                LOG.info("Auto-detected OpenSearch distribution '{}' version '{}' from OpenSearch client API response.", distribution, versionNumber);
                 return Pair.of(distribution, versionNumber);
             }
-            LOG.warn("Distribution or version number is null in OpenSearch API response. Proceeding to check Elasticsearch or default.");
-        }
+        } else {
+            if (elasticsearchRefresherAfterOpenSearchFailure != null) {
+                try {
+                    final ElasticsearchClient elasticsearchClient = elasticsearchRefresherAfterOpenSearchFailure.get();
+                    if (elasticsearchClient != null) {
+                        final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClient.info();
+                        final String esBuildFlavor = infoResponseElasticsearch.version().buildFlavor();
+                        final String esVersionNumber = infoResponseElasticsearch.version().number();
 
-        if (elasticsearchClientRefresher != null) {
-            try {
-                final ElasticsearchClient elasticsearchClient = elasticsearchClientRefresher.get();
-                if (elasticsearchClient == null) {
-                    LOG.info("ElasticsearchClient from refresher is null. Cannot attempt Elasticsearch .info() call. Proceeding to default.");
-                } else {
-                    final co.elastic.clients.elasticsearch.core.InfoResponse infoResponseElasticsearch = elasticsearchClient.info();
-                    final String esBuildFlavor = infoResponseElasticsearch.version().buildFlavor();
-                    final String esVersionNumber = infoResponseElasticsearch.version().number();
-
-                    if (Objects.nonNull(esVersionNumber)) {
-                        String effectiveDistribution = ELASTICSEARCH_DISTRIBUTION;
-                        LOG.info("Detected Elasticsearch (flavor '{}') version '{}' from API response.",
-                                Objects.toString(esBuildFlavor, "unknown"), esVersionNumber);
-                        if (ELASTICSEARCH_OSS_BUILD_FLAVOR.equalsIgnoreCase(esBuildFlavor)) {
-                            effectiveDistribution = ELASTICSEARCH_DISTRIBUTION + "-" + ELASTICSEARCH_OSS_BUILD_FLAVOR;
+                        if (Objects.nonNull(esVersionNumber)) {
+                            String effectiveDistribution = ELASTICSEARCH_DISTRIBUTION;
+                            LOG.info("Auto-detected Elasticsearch (flavor '{}') version '{}' from Elasticsearch client API response.",
+                                    Objects.toString(esBuildFlavor, "unknown"), esVersionNumber);
+                            if (ELASTICSEARCH_OSS_BUILD_FLAVOR.equalsIgnoreCase(esBuildFlavor)) {
+                                effectiveDistribution = ELASTICSEARCH_DISTRIBUTION + "-" + ELASTICSEARCH_OSS_BUILD_FLAVOR;
+                            }
+                            return Pair.of(effectiveDistribution, esVersionNumber);
                         }
-                        return Pair.of(effectiveDistribution, esVersionNumber);
                     }
-                    LOG.warn("Version number is null in Elasticsearch API response. Proceeding to default.");
+                } catch (final Exception e) {
                 }
-            } catch (final Exception e) {
-                LOG.warn("Failed to get cluster info using Elasticsearch client. Will proceed with default behavior.", e);
             }
-        } else {
-            LOG.info("Elasticsearch client refresher is null, skipping Elasticsearch .info() call.");
         }
 
-        if (openSearchSourceConfiguration.getDistributionVersion() == null) { 
-            LOG.warn("Failed to auto-detect cluster distribution from API response for both OpenSearch and (if attempted) Elasticsearch clients. " +
-                     "Defaulting to OpenSearch distribution. Consider setting 'distribution_version' in the configuration if this is not an OpenSearch cluster.");
-            return Pair.of(OPENSEARCH_DISTRIBUTION, OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
-        } else {
-            final String configuredDistributionName = openSearchSourceConfiguration.getDistributionVersion().name();
-            LOG.error("Failed to connect to the cluster and verify its distribution. The 'distribution_version' was configured as '{}', " +
-                      "but communication attempts with the cluster failed or the cluster did not respond as expected for this distribution type. " +
-                      "Please check the endpoint, network connectivity, and the specified 'distribution_version'.",
-                      configuredDistributionName);
-            throw new InvalidPluginConfigurationException(
-                String.format("Failed to connect to the cluster and verify its distribution. The 'distribution_version' was configured as '%s', " +
-                              "but communication attempts with the cluster failed or the cluster did not respond as expected for this distribution type. " +
-                              "Please check the endpoint, network connectivity, and the specified 'distribution_version'.",
-                              configuredDistributionName));
-        }
+        LOG.warn("Failed to auto-detect cluster distribution because API calls failed or returned inconclusive data, and 'distribution_version' was not configured. Defaulting to OpenSearch distribution.");
+        return Pair.of(OPENSEARCH_DISTRIBUTION, OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
     }
 
     private void validateDistribution(final String distribution) {
