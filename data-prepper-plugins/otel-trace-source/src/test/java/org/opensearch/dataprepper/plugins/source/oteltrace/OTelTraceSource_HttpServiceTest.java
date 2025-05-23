@@ -379,7 +379,7 @@ class OTelTraceSource_HttpServiceTest {
     private void assertResponseBodyForRetryInformation(final AggregatedHttpResponse response, String expectedDelay) {
         String body = response.content(StandardCharsets.UTF_8);
 
-        // todo tlongo map to numeric value when creating status in exception handler
+        // todo map to numeric value when creating status in exception handler
         assertThat(body, hasJsonPath("$.details[0].retryDelay", equalTo(expectedDelay)));
     }
 }
