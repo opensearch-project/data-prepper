@@ -267,4 +267,58 @@ class DissectProcessorTest {
             reflectField.setAccessible(false);
         }
     }
+
+    @Test
+    void test_delete_source_requested() throws NoSuchFieldException, IllegalAccessException {
+
+        Field dissectedField = new NormalField("level");
+        dissectedField.setValue("WARN");
+
+        when(dissector.dissectText(any(String.class))).thenReturn(true);
+        when(dissector.getDissectedFields()).thenReturn(List.of(dissectedField));
+        when(dissectConfig.isDeleteSourceRequested()).thenReturn(true);
+
+        final DissectProcessor processor = createObjectUnderTest();
+        reflectivelySetDissectorMap(processor);
+        final Record<Event> dataPrepperRecord = getEvent("2025-01-28T00:00:00.000Z WARN This is a test log");
+        final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(dataPrepperRecord));
+
+        assertTrue(dissectedRecords.get(0).getData().containsKey("level"));
+        assertThat(dissectedRecords.get(0).getData().get("level", String.class), is("WARN"));
+        assertFalse(dissectedRecords.get(0).getData().containsKey("test"));
+    }
+
+    @Test
+    void test_delete_source_not_requested() throws NoSuchFieldException, IllegalAccessException {
+        Field dissectedField = new NormalField("level");
+        dissectedField.setValue("WARN");
+
+        when(dissector.dissectText(any(String.class))).thenReturn(true);
+        when(dissector.getDissectedFields()).thenReturn(List.of(dissectedField));
+        when(dissectConfig.isDeleteSourceRequested()).thenReturn(false);
+
+        final DissectProcessor processor = createObjectUnderTest();
+        reflectivelySetDissectorMap(processor);
+        final Record<Event> dataPrepperRecord = getEvent("2025-01-28T00:00:00.000Z WARN This is a test log");
+        final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(dataPrepperRecord));
+
+        assertTrue(dissectedRecords.get(0).getData().containsKey("level"));
+        assertThat(dissectedRecords.get(0).getData().get("level", String.class), is("WARN"));
+        assertTrue(dissectedRecords.get(0).getData().containsKey("test"));
+    }
+
+    @Test
+    void test_delete_source_requested_dissect_fail() throws NoSuchFieldException, IllegalAccessException {
+
+        when(dissector.dissectText(any(String.class))).thenReturn(false);
+        when(dissectConfig.isDeleteSourceRequested()).thenReturn(true);
+
+        final DissectProcessor processor = createObjectUnderTest();
+        reflectivelySetDissectorMap(processor);
+        final Record<Event> dataPrepperRecord = getEvent("2025-01-28T00:00:00.000Z WARN This is a test log");
+        final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(dataPrepperRecord));
+
+        assertTrue(dissectedRecords.get(0).getData().containsKey("test"));
+    }
+
 }
