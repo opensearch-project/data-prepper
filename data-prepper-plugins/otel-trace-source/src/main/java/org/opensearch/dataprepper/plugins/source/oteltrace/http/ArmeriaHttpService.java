@@ -61,7 +61,7 @@ public class ArmeriaHttpService {
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
-    // todo tlongo make path configurable
+    // todo make path configurable
     @Post("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
     @Consumes(value = "application/json")
     public ExportTraceServiceResponse exportTrace(ExportTraceServiceRequest request) {

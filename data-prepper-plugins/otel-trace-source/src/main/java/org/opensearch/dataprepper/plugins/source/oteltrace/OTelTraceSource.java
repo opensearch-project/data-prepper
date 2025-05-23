@@ -89,7 +89,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
             configureTaskExecutor(serverBuilder);
 
             configureGrpcService(serverBuilder, buffer);
-            // todo tlongo needed until clarified if unframedRequests should survive
+
+            // todo needed until clarified if unframedRequests should survive
             if (!oTelTraceSourceConfig.enableUnframedRequests()) {
                 configureHttpService(serverBuilder, buffer);
             }
