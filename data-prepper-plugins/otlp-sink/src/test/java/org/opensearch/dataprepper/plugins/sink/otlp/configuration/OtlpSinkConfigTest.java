@@ -21,8 +21,8 @@ import java.time.Duration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -169,23 +169,22 @@ class OtlpSinkConfigTest {
     }
 
     @Test
-    void testValidateAwsConfig_doesNotThrowWhenPresent() throws Exception {
+    void testIsAwsConfigValid_returnsTrue_whenPresent() throws Exception {
         final String yaml = String.join("\n",
                 "endpoint: \"" + EXPECTED_ENDPOINT + "\"",
                 "aws: {}"
         );
         final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
-        assertDoesNotThrow(config::validate);
+        assertTrue(config.isAwsConfigValid());
     }
 
     @Test
-    void testValidateAwsConfig_throwsException() throws Exception {
+    void testIsAwsConfigValid_returnsFalse_whenMissing() throws Exception {
         final String yaml = String.join("\n",
                 "endpoint: \"" + EXPECTED_ENDPOINT + "\""
         );
         final OtlpSinkConfig config = mapper.readValue(yaml, OtlpSinkConfig.class);
-
-        assertThrows(IllegalArgumentException.class, config::validate);
+        assertFalse(config.isAwsConfigValid());
     }
 
     @Test

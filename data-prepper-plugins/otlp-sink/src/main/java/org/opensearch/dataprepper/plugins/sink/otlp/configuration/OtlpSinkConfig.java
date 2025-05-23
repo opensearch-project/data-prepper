@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.sink.otlp.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -115,12 +116,9 @@ public class OtlpSinkConfig {
     /**
      * Validate the AWS configuration.
      * This method ensures breaking change in future release where non-AWS OTLP endpoints are supported.
-     *
-     * @throws IllegalArgumentException if the AWS configuration is invalid
      */
-    public void validate() {
-        if (awsConfig == null) {
-            throw new IllegalArgumentException("aws configuration is required");
-        }
+    @AssertTrue
+    boolean isAwsConfigValid() {
+        return awsConfig != null;
     }
 }

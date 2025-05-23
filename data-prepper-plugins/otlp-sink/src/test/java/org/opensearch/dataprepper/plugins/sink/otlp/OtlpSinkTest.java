@@ -4,10 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.sink.otlp;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -23,7 +21,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -68,23 +65,6 @@ class OtlpSinkTest {
 
         // Assert
         verify(mockBuffer).start();
-    }
-
-    @Test
-    void testConstructor_throwsWhenAwsConfigIsMissing() {
-        doThrow(new IllegalArgumentException("aws configuration is required"))
-                .when(mockConfig).validate();
-
-        // Act & Assert
-        final Executable constructorCall = () ->
-                new OtlpSink(mockAwsCredSupplier, mockConfig, mockMetrics, mockSetting);
-
-        final IllegalArgumentException thrown = Assertions.assertThrows(
-                IllegalArgumentException.class,
-                constructorCall
-        );
-
-        Assertions.assertEquals("aws configuration is required", thrown.getMessage());
     }
 
     @Test
