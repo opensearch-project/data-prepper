@@ -97,7 +97,7 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 
 
-// todo tlongo check if unframed requests are still needed. If not, remove this whole test class
+// todo check if unframed requests are still needed. If not, remove this whole test class
 @ExtendWith(MockitoExtension.class)
 class OTelTraceSource_UnframedRequestsTest {
     // used to configure the path for unframed requests and make sure not to use the same path

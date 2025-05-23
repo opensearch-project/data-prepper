@@ -88,13 +88,12 @@ public class GrpcService {
             grpcServiceBuilder.addService(new HealthGrpcService());
         }
 
-        // todo tlongo extract into separate grpc config
         if (oTelTraceSourceConfig.hasProtoReflectionService()) {
             LOG.info("Proto reflection service is enabled");
             grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
         }
 
-        // todo tlongo still needed with new http-service?
+        // todo still needed with new http-service?
         grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
 
         if (oTelTraceSourceConfig.getAuthentication() != null) {
