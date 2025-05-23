@@ -37,6 +37,11 @@ public class KafkaDataConfigAdapter implements KafkaDataConfig {
     }
 
     @Override
+    public String getEncryptionId() {
+        return topicConfig.getEncryptionId();
+    }
+
+    @Override
     public String getEncryptedDataKey() {
         if(topicConfig.getEncryptionKey() == null)
             return null;

@@ -12,6 +12,8 @@ public interface KafkaDataConfig {
     MessageFormat getSerdeFormat();
     Supplier<byte[]> getEncryptionKeySupplier();
 
+    String getEncryptionId();
+
     /**
      * Returns an encrypted data key. If the encryption key is not encrypted,
      * then this will return <code>null</code>.
