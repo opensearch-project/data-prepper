@@ -29,7 +29,7 @@ arithmeticExpression
     ;
 
 multiplicativeExpression
-    : multiplicativeExpression (MULTIPLY | DIVIDE) arithmeticTerm
+    : multiplicativeExpression (MULTIPLY | DIVIDE | MOD) arithmeticTerm
     | arithmeticTerm
     ;
 
@@ -334,6 +334,7 @@ ZERO : '0';
 PLUS: '+';
 MULTIPLY: '*';
 DOT : '.';
+MOD: '%';
 EXPONENTLETTER
     : 'E'
     | 'e'
