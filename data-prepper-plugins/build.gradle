@@ -10,6 +10,10 @@ plugins {
 subprojects {
     apply plugin: 'data-prepper.publish'
     group = 'org.opensearch.dataprepper.plugins'
+
+    jar {
+        archiveBaseName.set("data-prepper-${project.name}")
+    }
 }
 
 dependencies {
