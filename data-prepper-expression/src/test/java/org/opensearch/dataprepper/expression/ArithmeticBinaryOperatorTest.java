@@ -37,6 +37,10 @@ class ArithmeticBinaryOperatorTest {
         return new OperatorConfiguration().divideOperator();
     }
 
+    private Operator createModOperatorUnderTest() {
+        return new OperatorConfiguration().modOperator();
+    }
+
     @Mock
     private ParserRuleContext ctx;
 
@@ -47,6 +51,8 @@ class ArithmeticBinaryOperatorTest {
         objectUnderTest = createMultiplyOperatorUnderTest();
         assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
         objectUnderTest = createDivideOperatorUnderTest();
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
+        objectUnderTest = createModOperatorUnderTest();
         assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
 
         when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_arithmeticExpression);
@@ -82,6 +88,12 @@ class ArithmeticBinaryOperatorTest {
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
+
+        objectUnderTest = createModOperatorUnderTest();
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_multiplicativeExpression);
+        assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
+        when(ctx.getRuleIndex()).thenReturn(-1);
+        assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
     }
 
     @Test
@@ -94,6 +106,8 @@ class ArithmeticBinaryOperatorTest {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.MULTIPLY));
         objectUnderTest = createDivideOperatorUnderTest();
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.DIVIDE));
+        objectUnderTest = createModOperatorUnderTest();
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.MOD));
     }
 
     @Test
@@ -105,6 +119,8 @@ class ArithmeticBinaryOperatorTest {
         objectUnderTest = createMultiplyOperatorUnderTest();
         assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
         objectUnderTest = createDivideOperatorUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+        objectUnderTest = createModOperatorUnderTest();
         assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
     }
 
@@ -204,4 +220,11 @@ class ArithmeticBinaryOperatorTest {
         assertThat(objectUnderTest.evaluate(5.0, 2.0), is(2.5));
     }
 
+    @Test
+    void testEvalValidArgsForMod() {
+        objectUnderTest = createModOperatorUnderTest();
+        assertThat(objectUnderTest.evaluate(5, 5), is(0));
+        assertThat(objectUnderTest.evaluate(5, 2), is(1));
+        assertThat(objectUnderTest.evaluate(6, 3), is(0));
+    }
 }

@@ -56,6 +56,7 @@ class ParseTreeEvaluatorListenerTest {
             operatorConfiguration.subtractOperator(),
             operatorConfiguration.multiplyOperator(),
             operatorConfiguration.divideOperator(),
+            operatorConfiguration.modOperator(),
             new NotOperator()
     );
     private final OperatorProvider operatorProvider = new OperatorProvider(operators);
