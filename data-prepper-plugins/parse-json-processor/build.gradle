@@ -15,8 +15,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
     implementation libs.parquet.common
-    testImplementation project(':data-prepper-test-common')
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
     testImplementation testLibs.slf4j.simple
 }
 
