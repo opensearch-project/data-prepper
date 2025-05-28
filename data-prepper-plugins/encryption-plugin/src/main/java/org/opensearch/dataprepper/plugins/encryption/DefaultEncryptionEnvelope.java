@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.model.encryption.EncryptionEnvelope;
 
 @Builder
 @Getter
-class DefaultEncryptionEnvelope implements EncryptionEnvelope {
+public class DefaultEncryptionEnvelope implements EncryptionEnvelope {
     private byte[] encryptedData;
     private String encryptedDataKey;
 
