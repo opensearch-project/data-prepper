@@ -7,11 +7,13 @@
  * compatible open source license.
  */
 
-package org.opensearch.dataprepper.plugins.source.microsoft_office365;
+package org.opensearch.dataprepper.plugins.source.microsoft_office365.service;
 
 import io.micrometer.core.instrument.Counter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365RestClient;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.configuration.Office365ItemInfo;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
@@ -22,7 +24,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.UUID;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.microsoft_office365.utils.Constants.CONTENT_TYPES;
 
 /**
@@ -36,11 +40,13 @@ public class Office365Service {
     private final Counter searchResultsFoundCounter;
     private final Counter sevenDayLimitHitCounter;
     private final Counter daysAdjustedCounter;
+    private final Counter windowRetryCounter;
     private static final String CONTENT_ID_KEY = "contentId";
     private static final String CONTENT_CREATED_KEY = "contentCreated";
     private static final String CONTENT_URI_KEY = "contentUri";
     private static final String TYPE_KEY = "type";
     private static final Duration TIME_WINDOW = Duration.ofHours(1);
+    private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
 
     public Office365Service(final Office365SourceConfig office365SourceConfig,
                             final Office365RestClient office365RestClient,
@@ -50,6 +56,7 @@ public class Office365Service {
         this.searchResultsFoundCounter = pluginMetrics.counter("searchResultsFound");
         this.sevenDayLimitHitCounter = pluginMetrics.counter("sevenDayLimitHit");
         this.daysAdjustedCounter = pluginMetrics.counter("daysAdjusted");
+        this.windowRetryCounter = pluginMetrics.counter("windowRetry");
     }
 
     public void initializeSubscriptions() {
@@ -89,24 +96,43 @@ public class Office365Service {
                 windowEnd = endTime;
             }
 
+            boolean windowSuccessful = true;
             for (String contentType : CONTENT_TYPES) {
                 String nextPageUri = null;
+                try {
+                    do {
+                        AuditLogsResponse response =
+                                office365RestClient.searchAuditLogs(contentType, startTime, windowEnd, nextPageUri);
 
-                do {
-                    AuditLogsResponse response =
-                            office365RestClient.searchAuditLogs(contentType, startTime, windowEnd, nextPageUri);
+                        if (response.getItems() == null || response.getItems().isEmpty()) {
+                            break;
+                        }
 
-                    if (response.getItems() == null || response.getItems().isEmpty()) {
-                        break;
-                    }
+                        addItemsToQueue(response.getItems(), contentType, itemInfoQueue);
+                        nextPageUri = response.getNextPageUri();
 
-                    addItemsToQueue(response.getItems(), contentType, itemInfoQueue);
-                    nextPageUri = response.getNextPageUri();
-
-                } while (nextPageUri != null);
+                    } while (nextPageUri != null);
+                } catch (Exception e) {
+                    log.error(NOISY, "Failed to fetch logs for time window {} to {} for content type {}. Will retry this window.",
+                            startTime, windowEnd, contentType, e);
+                    windowSuccessful = false;
+                    windowRetryCounter.increment();
+                    break; // Exit the content type loop on failure
+                }
             }
 
-            startTime = windowEnd;
+            // Only move the pointer if all content types were processed successfully
+            if (windowSuccessful) {
+                startTime = windowEnd;
+            } else {
+                // Add a small delay before retrying the same window
+                try {
+                    Thread.sleep(RETRY_DELAY.toMillis());
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting to retry time window", ie);
+                }
+            }
         }
     }
 
@@ -117,7 +143,7 @@ public class Office365Service {
             ItemInfo itemInfo = Office365ItemInfo.builder()
                     .itemId((String) item.get(CONTENT_ID_KEY))
                     .eventTime(Instant.parse((String) item.get(CONTENT_CREATED_KEY)))
-                    .partitionKey(contentType)
+                    .partitionKey(contentType + UUID.randomUUID())
                     .metadata(item)
                     .keyAttributes(Map.of(TYPE_KEY, contentType, CONTENT_URI_KEY, item.get(CONTENT_URI_KEY)))
                     .lastModifiedAt(Instant.parse((String) item.get(CONTENT_CREATED_KEY)))

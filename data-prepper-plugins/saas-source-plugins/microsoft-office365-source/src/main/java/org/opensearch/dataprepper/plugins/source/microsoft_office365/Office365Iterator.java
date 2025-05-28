@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.service.Office365Service;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.springframework.util.CollectionUtils;
 
