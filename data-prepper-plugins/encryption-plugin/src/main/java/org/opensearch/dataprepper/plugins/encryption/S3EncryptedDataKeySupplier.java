@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
+class S3EncryptedDataKeySupplier implements EncryptedDataKeySupplier {
     private static final Logger LOG = LoggerFactory.getLogger(S3EncryptedDataKeySupplier.class);
 
     private final String encryptionKeyDirectory;

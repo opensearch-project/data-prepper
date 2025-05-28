@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.kms.model.GenerateDataKeyWithoutPlaintext
 
 import java.util.Base64;
 
-public class KmsEncryptionRotationHandler implements EncryptionRotationHandler {
+class KmsEncryptionRotationHandler implements EncryptionRotationHandler {
     private static final Logger LOG = LoggerFactory.getLogger(KmsEncryptionRotationHandler.class);
 
     static final String ENCRYPTION_ROTATION_SUCCESS = "encryptionRotationSuccess";

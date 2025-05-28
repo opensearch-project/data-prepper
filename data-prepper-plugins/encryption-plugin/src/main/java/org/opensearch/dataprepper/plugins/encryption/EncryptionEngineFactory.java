@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 import org.opensearch.dataprepper.model.encryption.EncryptionEngine;
 import org.opensearch.dataprepper.model.encryption.KeyProvider;
 
-public class EncryptionEngineFactory {
+class EncryptionEngineFactory {
     private final KeyProviderFactory keyProviderFactory;
 
     public static EncryptionEngineFactory create(final KeyProviderFactory keyProviderFactory) {

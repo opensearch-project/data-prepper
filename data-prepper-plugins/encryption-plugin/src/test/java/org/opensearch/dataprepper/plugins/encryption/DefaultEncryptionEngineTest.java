@@ -19,6 +19,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -55,16 +56,18 @@ class DefaultEncryptionEngineTest {
     void testEncrypt_returns_expected_encryption_envelope() throws IllegalBlockSizeException, BadPaddingException {
         final byte[] testData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final byte[] testEncryptedData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        final String testEncryptedDataKey = UUID.randomUUID().toString();
+        final byte[] testEncryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final byte[] testUnencryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        when(encryptedDataKeySupplier.retrieveValue()).thenReturn(testEncryptedDataKey);
-        when(keyProvider.apply(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
+        when(encryptedDataKeySupplier.retrieveValue()).thenReturn(
+                Base64.getEncoder().encodeToString(testEncryptedDataKey));
+        when(keyProvider.decryptKey(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
         when(encryptionContext.getOrCreateEncryptionCipher(eq(testUnencryptedDataKey))).thenReturn(encryptCipher);
         when(encryptCipher.doFinal(eq(testData))).thenReturn(testEncryptedData);
 
         final EncryptionEnvelope encryptionEnvelope = objectUnderTest.encrypt(testData);
         assertThat(encryptionEnvelope.getEncryptedData(), equalTo(testEncryptedData));
-        assertThat(encryptionEnvelope.getEncryptedDataKey(), equalTo(testEncryptedDataKey));
+        assertThat(encryptionEnvelope.getEncryptedDataKey(),
+                equalTo(Base64.getEncoder().encodeToString(testEncryptedDataKey)));
     }
 
     @ParameterizedTest
@@ -72,10 +75,11 @@ class DefaultEncryptionEngineTest {
     void testEncrypt_throws_RuntimeException_when_cipher_fails(
             final Class<? extends Exception> exception) throws IllegalBlockSizeException, BadPaddingException {
         final byte[] testData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        final String testEncryptedDataKey = UUID.randomUUID().toString();
+        final byte[] testEncryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final byte[] testUnencryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        when(encryptedDataKeySupplier.retrieveValue()).thenReturn(testEncryptedDataKey);
-        when(keyProvider.apply(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
+        when(encryptedDataKeySupplier.retrieveValue()).thenReturn(
+                Base64.getEncoder().encodeToString(testEncryptedDataKey));
+        when(keyProvider.decryptKey(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
         when(encryptionContext.getOrCreateEncryptionCipher(eq(testUnencryptedDataKey))).thenReturn(encryptCipher);
         when(encryptCipher.doFinal(eq(testData))).thenThrow(exception);
 
@@ -86,13 +90,13 @@ class DefaultEncryptionEngineTest {
     void testDecrypt_returns_expected_raw_data() throws IllegalBlockSizeException, BadPaddingException {
         final byte[] testData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final byte[] testEncryptedData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        final String testEncryptedDataKey = UUID.randomUUID().toString();
+        final byte[] testEncryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final EncryptionEnvelope encryptionEnvelope = DefaultEncryptionEnvelope.builder()
                 .encryptedData(testEncryptedData)
-                .encryptedDataKey(testEncryptedDataKey)
+                .encryptedDataKey(Base64.getEncoder().encodeToString(testEncryptedDataKey))
                 .build();
         final byte[] testUnencryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        when(keyProvider.apply(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
+        when(keyProvider.decryptKey(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
         when(encryptionContext.getOrCreateDecryptionCipher(eq(testUnencryptedDataKey))).thenReturn(decryptCipher);
         when(decryptCipher.doFinal(eq(testEncryptedData))).thenReturn(testData);
 
@@ -104,13 +108,13 @@ class DefaultEncryptionEngineTest {
     void testDecrypt_throws_RuntimeException_when_cipher_fails(
             final Class<? extends Exception> exception) throws IllegalBlockSizeException, BadPaddingException {
         final byte[] testEncryptedData = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        final String testEncryptedDataKey = UUID.randomUUID().toString();
+        final byte[] testEncryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
         final EncryptionEnvelope encryptionEnvelope = DefaultEncryptionEnvelope.builder()
                 .encryptedData(testEncryptedData)
-                .encryptedDataKey(testEncryptedDataKey)
+                .encryptedDataKey(Base64.getEncoder().encodeToString(testEncryptedDataKey))
                 .build();
         final byte[] testUnencryptedDataKey = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
-        when(keyProvider.apply(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
+        when(keyProvider.decryptKey(eq(testEncryptedDataKey))).thenReturn(testUnencryptedDataKey);
         when(encryptionContext.getOrCreateDecryptionCipher(eq(testUnencryptedDataKey))).thenReturn(decryptCipher);
         when(decryptCipher.doFinal(eq(testEncryptedData))).thenThrow(exception);
 

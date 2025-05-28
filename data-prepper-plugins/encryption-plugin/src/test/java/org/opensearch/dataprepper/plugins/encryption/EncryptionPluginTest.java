@@ -107,10 +107,10 @@ class EncryptionPluginTest {
                     .addExtensionProvider(extensionProviderArgumentCaptor.capture());
             final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
             assertThat(actualExtensionProviders.get(0), instanceOf(EncryptionSupplierExtensionProvider.class));
-            final Optional<EncryptionSupplier> optionalEncryptionSupplier =
+            final Optional<DefaultEncryptionSupplier> optionalEncryptionSupplier =
                     actualExtensionProviders.get(0).provideInstance(context);
             assertThat(optionalEncryptionSupplier.isPresent(), is(true));
-            final EncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
+            final DefaultEncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
             assertThat(encryptionSupplier.getEncryptionEngineMap().isEmpty(), is(false));
             assertThat(encryptionSupplier.getEncryptedDataKeySupplierMap().isEmpty(), is(false));
             assertThat(actualExtensionProviders.get(1), instanceOf(EncryptionHttpHandlerExtensionProvider.class));
@@ -164,10 +164,10 @@ class EncryptionPluginTest {
                     .addExtensionProvider(extensionProviderArgumentCaptor.capture());
             final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
             assertThat(actualExtensionProviders.get(0), instanceOf(EncryptionSupplierExtensionProvider.class));
-            final Optional<EncryptionSupplier> optionalEncryptionSupplier =
+            final Optional<DefaultEncryptionSupplier> optionalEncryptionSupplier =
                     actualExtensionProviders.get(0).provideInstance(context);
             assertThat(optionalEncryptionSupplier.isPresent(), is(true));
-            final EncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
+            final DefaultEncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
             assertThat(encryptionSupplier.getEncryptionEngineMap().isEmpty(), is(false));
             assertThat(encryptionSupplier.getEncryptedDataKeySupplierMap().isEmpty(), is(false));
             assertThat(actualExtensionProviders.get(1), instanceOf(EncryptionHttpHandlerExtensionProvider.class));
@@ -199,10 +199,10 @@ class EncryptionPluginTest {
                     .addExtensionProvider(extensionProviderArgumentCaptor.capture());
             final List<ExtensionProvider> actualExtensionProviders = extensionProviderArgumentCaptor.getAllValues();
             assertThat(actualExtensionProviders.get(0), instanceOf(EncryptionSupplierExtensionProvider.class));
-            final Optional<EncryptionSupplier> optionalEncryptionSupplier =
+            final Optional<DefaultEncryptionSupplier> optionalEncryptionSupplier =
                     actualExtensionProviders.get(0).provideInstance(context);
             assertThat(optionalEncryptionSupplier.isPresent(), is(true));
-            final EncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
+            final DefaultEncryptionSupplier encryptionSupplier = optionalEncryptionSupplier.get();
             assertThat(encryptionSupplier.getEncryptionEngineMap(), equalTo(Collections.emptyMap()));
             assertThat(encryptionSupplier.getEncryptedDataKeySupplierMap(), equalTo(Collections.emptyMap()));
             assertThat(actualExtensionProviders.get(1), instanceOf(EncryptionHttpHandlerExtensionProvider.class));

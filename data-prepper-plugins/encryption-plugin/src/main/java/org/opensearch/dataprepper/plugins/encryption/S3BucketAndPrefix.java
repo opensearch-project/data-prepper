@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.encryption;
 
-public class S3BucketAndPrefix {
+class S3BucketAndPrefix {
     static final String S3_PREFIX = "s3://";
 
     private final String bucketName;

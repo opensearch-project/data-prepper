@@ -12,7 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-public class LocalDirectoryEncryptedDataKeyWriter implements EncryptedDataKeyWriter {
+class LocalDirectoryEncryptedDataKeyWriter implements EncryptedDataKeyWriter {
     private static final String KEY_NAME_FORMAT = "%s.key";
     private final Path encryptionKeyDirectory;
 

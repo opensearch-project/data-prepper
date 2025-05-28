@@ -19,4 +19,5 @@ dependencies {
     implementation libs.commons.io
     implementation libs.caffeine
     implementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    testImplementation libs.commons.lang3
 }

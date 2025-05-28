@@ -11,25 +11,27 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class EncryptionSupplier {
+class DefaultEncryptionSupplier implements EncryptionSupplier {
     private final Map<String, EncryptionEngine> encryptionEngineMap;
     private final Map<String, EncryptedDataKeySupplier> encryptedDataKeySupplierMap;
     private final EncryptionEngineFactory encryptionEngineFactory;
     private final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory;
 
-    public EncryptionSupplier(final EncryptionPluginConfig encryptionPluginConfig,
-                              final EncryptionEngineFactory encryptionEngineFactory,
-                              final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory) {
+    public DefaultEncryptionSupplier(final EncryptionPluginConfig encryptionPluginConfig,
+                                     final EncryptionEngineFactory encryptionEngineFactory,
+                                     final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory) {
         this.encryptionEngineFactory = encryptionEngineFactory;
         this.encryptedDataKeySupplierFactory = encryptedDataKeySupplierFactory;
         encryptedDataKeySupplierMap = toEncryptedDataKeySupplierMap(encryptionPluginConfig);
         encryptionEngineMap = toEncryptionEngineMap(encryptionPluginConfig, encryptedDataKeySupplierMap);
     }
 
+    @Override
     public EncryptionEngine getEncryptionEngine(final String encryptionId) {
         return encryptionEngineMap.get(encryptionId);
     }
 
+    @Override
     public EncryptedDataKeySupplier getEncryptedDataKeySupplier(final String encryptionId) {
         return encryptedDataKeySupplierMap.get(encryptionId);
     }

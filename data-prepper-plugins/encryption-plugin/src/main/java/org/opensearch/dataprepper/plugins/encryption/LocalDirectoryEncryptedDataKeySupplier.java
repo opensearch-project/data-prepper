@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeySupplier {
+class LocalDirectoryEncryptedDataKeySupplier implements EncryptedDataKeySupplier {
     private static final Logger LOG = LoggerFactory.getLogger(LocalDirectoryEncryptedDataKeySupplier.class);
 
     private final Path encryptionKeyDirectory;

@@ -13,14 +13,12 @@ import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
 
-import java.util.Base64;
-
-public class KmsKeyProvider implements KeyProvider {
+class KmsKeyProvider implements KeyProvider {
     static final Integer MAXIMUM_CACHED_KEYS = 5;
 
     private final KmsEncryptionEngineConfiguration kmsEncryptionEngineConfiguration;
     private final KmsClient kmsClient;
-    private final Cache<String, byte[]> decryptedKeyCache =
+    private final Cache<byte[], byte[]> decryptedKeyCache =
             Caffeine.newBuilder()
                     .maximumSize(MAXIMUM_CACHED_KEYS)
                     .build();
@@ -31,14 +29,12 @@ public class KmsKeyProvider implements KeyProvider {
     }
 
     @Override
-    public byte[] apply(String encryptionKey) {
+    public byte[] decryptKey(final byte[] encryptionKey) {
         return decryptedKeyCache.asMap().computeIfAbsent(encryptionKey, key -> {
             final String kmsKeyId = kmsEncryptionEngineConfiguration.getKeyId();
-
-            final byte[] decodedEncryptionKey = Base64.getDecoder().decode(key);
             final DecryptRequest decryptRequest = DecryptRequest.builder()
                     .keyId(kmsKeyId)
-                    .ciphertextBlob(SdkBytes.fromByteArray(decodedEncryptionKey))
+                    .ciphertextBlob(SdkBytes.fromByteArray(key))
                     .encryptionContext(kmsEncryptionEngineConfiguration.getEncryptionContext())
                     .build();
             final DecryptResponse decryptResponse = kmsClient.decrypt(decryptRequest);

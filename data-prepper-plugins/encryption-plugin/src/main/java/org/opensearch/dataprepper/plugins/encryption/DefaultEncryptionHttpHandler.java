@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.Set;
 
-public class DefaultEncryptionHttpHandler implements EncryptionHttpHandler {
+class DefaultEncryptionHttpHandler implements EncryptionHttpHandler {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultEncryptionHttpHandler.class);
 
     private final Set<EncryptionRotationHandler> encryptionRotationHandlers;

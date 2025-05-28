@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.s3.S3Client;
 
-public class EncryptionRotationHandlerFactory {
+class EncryptionRotationHandlerFactory {
     private final PluginMetrics pluginMetrics;
     private final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory;
 

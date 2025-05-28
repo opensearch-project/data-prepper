@@ -21,7 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @ExtendWith(MockitoExtension.class)
 class EncryptionSupplierExtensionProviderTest {
     @Mock
-    private EncryptionSupplier encryptionSupplier;
+    private DefaultEncryptionSupplier encryptionSupplier;
 
     @Mock
     private ExtensionProvider.Context context;

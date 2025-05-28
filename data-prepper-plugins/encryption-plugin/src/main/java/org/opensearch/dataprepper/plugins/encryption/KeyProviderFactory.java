@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.encryption;
 
-public class KeyProviderFactory {
+class KeyProviderFactory {
 
     public static KeyProviderFactory create() {
         return new KeyProviderFactory();
