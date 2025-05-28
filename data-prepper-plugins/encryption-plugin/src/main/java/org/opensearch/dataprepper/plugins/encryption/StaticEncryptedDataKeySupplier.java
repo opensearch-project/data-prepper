@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.encryption;
 
-public class StaticEncryptedDataKeySupplier implements EncryptedDataKeySupplier {
+class StaticEncryptedDataKeySupplier implements EncryptedDataKeySupplier {
     private final String encryptionKey;
 
     public StaticEncryptedDataKeySupplier(final String encryptionKey) {

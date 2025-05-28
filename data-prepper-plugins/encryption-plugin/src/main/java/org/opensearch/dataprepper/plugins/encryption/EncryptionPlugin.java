@@ -39,7 +39,7 @@ public class EncryptionPlugin implements ExtensionPlugin {
         final EncryptedDataKeySupplierFactory encryptedDataKeySupplierFactory =
                 EncryptedDataKeySupplierFactory.create();
         if (encryptionPluginConfig != null) {
-            encryptionSupplier = new EncryptionSupplier(
+            encryptionSupplier = new DefaultEncryptionSupplier(
                     encryptionPluginConfig, encryptionEngineFactory, encryptedDataKeySupplierFactory);
             pluginMetrics = PluginMetrics.fromPrefix("encryption");
             final EncryptedDataKeyWriterFactory encryptedDataKeyWriterFactory = new EncryptedDataKeyWriterFactory();
@@ -54,7 +54,7 @@ public class EncryptionPlugin implements ExtensionPlugin {
             encryptionHttpHandler = DefaultEncryptionHttpHandler.create(encryptionRotationHandlers);
             submitEncryptionRefreshJobs(encryptionPluginConfig, encryptionSupplier);
         } else {
-            encryptionSupplier = new EncryptionSupplier(
+            encryptionSupplier = new DefaultEncryptionSupplier(
                     new EncryptionPluginConfig(), encryptionEngineFactory, encryptedDataKeySupplierFactory);
             encryptionHttpHandler = DefaultEncryptionHttpHandler.create(Collections.emptySet());
         }

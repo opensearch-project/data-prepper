@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.encryption;
 
+/**
+ * An interface available to plugins via the encryption plugin extension which supplies encrypted data key.
+ */
 public interface EncryptedDataKeySupplier {
     /**
      * Retrieve the current encrypted data key.

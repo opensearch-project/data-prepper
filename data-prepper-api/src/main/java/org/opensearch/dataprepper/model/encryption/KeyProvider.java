@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.model.encryption;
 
-import java.util.function.Function;
-
-public interface KeyProvider extends Function<String, byte[]> {
+@FunctionalInterface
+public interface KeyProvider {
+    byte[] decryptKey(byte[] encryptedKey);
 }

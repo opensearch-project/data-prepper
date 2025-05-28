@@ -18,7 +18,6 @@ import software.amazon.awssdk.services.kms.model.DecryptRequest;
 import software.amazon.awssdk.services.kms.model.DecryptResponse;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
@@ -51,7 +50,7 @@ class KmsKeyProviderTest {
     }
 
     @Test
-    void apply_returns_plaintext_from_decrypt_request() {
+    void decryptKey_returns_plaintext_from_decrypt_request() {
         final String testDecryptedDataKey = "test_decrypted_data_key";
         final String testKeyId = UUID.randomUUID().toString();
         final String testContextKey = UUID.randomUUID().toString();
@@ -64,10 +63,8 @@ class KmsKeyProviderTest {
         when(decryptResponse.plaintext()).thenReturn(
                 SdkBytes.fromString(testDecryptedDataKey, StandardCharsets.UTF_8));
         final String testEncryptionKey = "test_encryption_key";
-        final String base64EncodedEncryptionKey = Base64.getEncoder().encodeToString(
-                testEncryptionKey.getBytes(StandardCharsets.UTF_8));
         KmsKeyProvider objectUnderTest = createObjectUnderTest();
-        final byte[] actualBytes = objectUnderTest.apply(base64EncodedEncryptionKey);
+        final byte[] actualBytes = objectUnderTest.decryptKey(testEncryptionKey.getBytes(StandardCharsets.UTF_8));
 
         assertThat(actualBytes, equalTo(testDecryptedDataKey.getBytes(StandardCharsets.UTF_8)));
         verify(kmsClient).decrypt(decryptRequestArgumentCaptor.capture());
@@ -79,7 +76,7 @@ class KmsKeyProviderTest {
     }
 
     @Test
-    void apply_calls_decrypt_with_correct_values_when_encryption_context_is_null() {
+    void decryptKey_calls_decrypt_with_correct_values_when_encryption_context_is_null() {
         final String testDecryptedDataKey = "test_decrypted_data_key";
         final String testKeyId = UUID.randomUUID().toString();
 
@@ -89,10 +86,8 @@ class KmsKeyProviderTest {
         when(decryptResponse.plaintext()).thenReturn(
                 SdkBytes.fromString(testDecryptedDataKey, StandardCharsets.UTF_8));
         final String testEncryptionKey = "test_encryption_key";
-        final String base64EncodedEncryptionKey = Base64.getEncoder().encodeToString(
-                testEncryptionKey.getBytes(StandardCharsets.UTF_8));
         KmsKeyProvider objectUnderTest = createObjectUnderTest();
-        final byte[] actualBytes = objectUnderTest.apply(base64EncodedEncryptionKey);
+        final byte[] actualBytes = objectUnderTest.decryptKey(testEncryptionKey.getBytes(StandardCharsets.UTF_8));
 
         assertThat(actualBytes, equalTo(testDecryptedDataKey.getBytes(StandardCharsets.UTF_8)));
         verify(kmsClient).decrypt(decryptRequestArgumentCaptor.capture());
@@ -104,7 +99,7 @@ class KmsKeyProviderTest {
     }
 
     @Test
-    void apply_on_the_same_encryption_key_returns_result_from_cache() {
+    void decryptKey_on_the_same_encryption_key_returns_result_from_cache() {
         final String testDecryptedDataKey = "test_decrypted_data_key";
         final String testKeyId = UUID.randomUUID().toString();
         final String testContextKey = UUID.randomUUID().toString();
@@ -117,10 +112,9 @@ class KmsKeyProviderTest {
         when(decryptResponse.plaintext()).thenReturn(
                 SdkBytes.fromString(testDecryptedDataKey, StandardCharsets.UTF_8));
         final String testEncryptionKey = "test_encryption_key";
-        final String base64EncodedEncryptionKey = Base64.getEncoder().encodeToString(
-                testEncryptionKey.getBytes(StandardCharsets.UTF_8));
         KmsKeyProvider objectUnderTest = createObjectUnderTest();
-        final byte[] retrievedBytesFirstCall = objectUnderTest.apply(base64EncodedEncryptionKey);
+        final byte[] retrievedBytesFirstCall = objectUnderTest.decryptKey(
+                testEncryptionKey.getBytes(StandardCharsets.UTF_8));
         assertThat(retrievedBytesFirstCall, equalTo(testDecryptedDataKey.getBytes(StandardCharsets.UTF_8)));
         verify(kmsClient).decrypt(decryptRequestArgumentCaptor.capture());
         final DecryptRequest decryptRequest = decryptRequestArgumentCaptor.getValue();
@@ -129,7 +123,8 @@ class KmsKeyProviderTest {
                 equalTo(SdkBytes.fromByteArray(testEncryptionKey.getBytes(StandardCharsets.UTF_8))));
         assertThat(decryptRequest.encryptionContext(), equalTo(testEncryptionContext));
 
-        final byte[] retrievedBytesSecondCall = objectUnderTest.apply(base64EncodedEncryptionKey);
+        final byte[] retrievedBytesSecondCall = objectUnderTest.decryptKey(
+                testEncryptionKey.getBytes(StandardCharsets.UTF_8));
         assertThat(retrievedBytesSecondCall, equalTo(testDecryptedDataKey.getBytes(StandardCharsets.UTF_8)));
         verifyNoMoreInteractions(kmsClient);
     }

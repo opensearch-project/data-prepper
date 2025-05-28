@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 
 import software.amazon.awssdk.services.s3.S3Client;
 
-public class EncryptedDataKeyWriterFactory {
+class EncryptedDataKeyWriterFactory {
     public S3EncryptedDataKeyWriter createS3EncryptedDataKeyWriter(
             final S3Client s3Client, final String encryptionKeyDirectory) {
         return new S3EncryptedDataKeyWriter(s3Client, encryptionKeyDirectory);

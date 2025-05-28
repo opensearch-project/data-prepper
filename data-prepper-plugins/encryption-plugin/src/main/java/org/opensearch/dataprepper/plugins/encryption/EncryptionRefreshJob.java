@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EncryptionRefreshJob implements Runnable {
+class EncryptionRefreshJob implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(EncryptionRefreshJob.class);
     static final String ENCRYPTION_REFRESH_SUCCESS = "encryptionRefreshSuccess";
     static final String ENCRYPTION_REFRESH_FAILURE = "encryptionRefreshFailure";

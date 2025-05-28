@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;
 
-public class EncryptionHttpHandlerExtensionProvider implements ExtensionProvider<EncryptionHttpHandler> {
+class EncryptionHttpHandlerExtensionProvider implements ExtensionProvider<EncryptionHttpHandler> {
     private final EncryptionHttpHandler encryptionHttpHandler;
 
     public EncryptionHttpHandlerExtensionProvider(final EncryptionHttpHandler encryptionHttpHandler) {

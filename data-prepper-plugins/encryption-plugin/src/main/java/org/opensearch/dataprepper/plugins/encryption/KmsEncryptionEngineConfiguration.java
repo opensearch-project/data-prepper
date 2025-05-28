@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.aws.api.AwsContext;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.arns.Arn;
@@ -23,7 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @JsonTypeName(KmsEncryptionEngineConfiguration.NAME)
-public class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration, AwsCredentialsConfig {
+class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration, AwsCredentialsConfig {
     static final String S3_PREFIX = "s3://";
     private static final String AWS_IAM = "iam";
     private static final String AWS_IAM_ROLE = "role";
@@ -106,7 +107,7 @@ public class KmsEncryptionEngineConfiguration implements EncryptionEngineConfigu
     }
 
     public boolean isEncryptionKeyInS3() {
-        return encryptionKeyDirectory != null && encryptionKeyDirectory.toLowerCase().startsWith(S3_PREFIX);
+        return encryptionKeyDirectory != null && encryptionKeyDirectory.startsWith(S3_PREFIX);
     }
 
     public KmsClient createKmsClient() {

@@ -20,7 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class EncryptionSupplierTest {
+class DefaultEncryptionSupplierTest {
     private static final String TEST_ENCRYPTION_ID = "test_encryption_id";
     @Mock
     private EncryptionPluginConfig encryptionPluginConfig;
@@ -35,7 +35,7 @@ class EncryptionSupplierTest {
     @Mock
     private EncryptedDataKeySupplier encryptedDataKeySupplier;
 
-    private EncryptionSupplier objectUnderTest;
+    private DefaultEncryptionSupplier objectUnderTest;
 
     @BeforeEach
     void setUp() {
@@ -45,7 +45,7 @@ class EncryptionSupplierTest {
                 .thenReturn(encryptionEngine);
         when(encryptedDataKeySupplierFactory.createEncryptedDataKeySupplier(encryptionEngineConfiguration))
                 .thenReturn(encryptedDataKeySupplier);
-        objectUnderTest = new EncryptionSupplier(
+        objectUnderTest = new DefaultEncryptionSupplier(
                 encryptionPluginConfig, encryptionEngineFactory, encryptedDataKeySupplierFactory);
     }
 

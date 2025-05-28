@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.encryption;
 
 import software.amazon.awssdk.services.s3.S3Client;
 
-public class EncryptedDataKeySupplierFactory {
+class EncryptedDataKeySupplierFactory {
     public static EncryptedDataKeySupplierFactory create() {
         return new EncryptedDataKeySupplierFactory();
     }

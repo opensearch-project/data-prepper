@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-public class S3EncryptedDataKeyWriter implements EncryptedDataKeyWriter {
+class S3EncryptedDataKeyWriter implements EncryptedDataKeyWriter {
     static final String S3_PREFIX = "s3://";
     static final String KEY_NAME_FORMAT = "%s.key";
     private static final String FULL_KEY_FORMAT = "%s/%s";
