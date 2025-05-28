@@ -83,6 +83,10 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
 
         Map<String, Object> tokenResponse = response.getBody();
 
+        if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+            throw new IllegalStateException("Invalid token response: missing access_token");
+        }
+
         this.accessToken = (String) tokenResponse.get("access_token");
         int expiresIn = (int) tokenResponse.get("expires_in");
         this.expireTime = Instant.now().plusSeconds(expiresIn);

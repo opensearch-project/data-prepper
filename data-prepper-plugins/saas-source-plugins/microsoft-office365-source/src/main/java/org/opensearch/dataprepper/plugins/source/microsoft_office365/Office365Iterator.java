@@ -104,7 +104,7 @@ public class Office365Iterator implements Iterator<ItemInfo> {
         return itemInfoQueue == null || itemInfoQueue.isEmpty();
     }
 
-    private void startCrawlerThreads() {
+    void startCrawlerThreads() {
         log.debug("Starting crawler thread for Office 365 audit logs");
         Future<Boolean> future = crawlerTaskExecutor.submit(() -> {
             try {
