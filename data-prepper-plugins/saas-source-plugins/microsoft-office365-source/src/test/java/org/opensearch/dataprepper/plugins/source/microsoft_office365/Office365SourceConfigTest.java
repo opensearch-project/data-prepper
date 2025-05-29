@@ -11,7 +11,6 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.AuthenticationConfiguration;
 
 import java.util.HashMap;
 import java.util.Map;
