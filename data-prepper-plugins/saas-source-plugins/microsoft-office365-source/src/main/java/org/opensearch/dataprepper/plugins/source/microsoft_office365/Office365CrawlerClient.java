@@ -74,7 +74,6 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
     private final Counter bufferWriteRetrySuccessCounter;
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
-    private final Counter workerStateUpdatesCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -95,7 +94,6 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
-        this.workerStateUpdatesCounter = pluginMetrics.counter(WORKER_STATE_UPDATES);
     }
 
     @VisibleForTesting
@@ -226,7 +224,7 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
         int retryCount = 0;
         int currentBackoff = 1000; // Start with 1 second
         final int maxBackoff = 30000; // Max 30 seconds
-        final int maxRetries = 1000; // Keep retrying to write to the buffer
+        final int maxRetries = 5;
 
         while (true) {
             try {
@@ -258,12 +256,9 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
 
                 try {
                     Thread.sleep(currentBackoff);
-
-                    // Update worker state to prevent timeout
-                    Instant currentTime = Instant.now();
-                    state.setExportStartTime(currentTime);
-                    workerStateUpdatesCounter.increment();
-
+                    // TODO: Update worker partition state to prevent timeout
+                    // Ideally, we want to call the saveWorkerPartitionState and extend the lease like so
+                    // coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Buffer write retry interrupted", ie);
