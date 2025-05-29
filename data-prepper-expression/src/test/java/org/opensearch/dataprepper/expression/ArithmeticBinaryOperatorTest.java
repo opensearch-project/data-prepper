@@ -122,6 +122,8 @@ class ArithmeticBinaryOperatorTest {
         assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
         objectUnderTest = createModOperatorUnderTest();
         assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2.0, 1));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1.0));
     }
 
     @Test
