@@ -9,6 +9,7 @@
 
 package org.opensearch.dataprepper.plugins.source.microsoft_office365;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,7 +98,7 @@ public class Office365CrawlerClient implements CrawlerClient<PaginationCrawlerWo
         this.workerStateUpdatesCounter = pluginMetrics.counter(WORKER_STATE_UPDATES);
     }
 
-    // For testing purposes only
+    @VisibleForTesting
     void injectObjectMapper(final ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }

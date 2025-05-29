@@ -41,6 +41,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     private final String clientId;
     private final String clientSecret;
     private final String tenantId;
+    private final Object lock = new Object();
 
     @Getter
     private String accessToken;
@@ -65,31 +66,33 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
 
     @Override
     public void renewCredentials() {
-        log.info("Getting new access token for Office 365 Management API");
+        synchronized(lock) {
+            log.info("Getting new access token for Office 365 Management API");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, clientId, clientSecret, MANAGEMENT_API_SCOPE);
+            String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, clientId, clientSecret, MANAGEMENT_API_SCOPE);
 
-        HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-        String tokenEndpoint = String.format(TOKEN_URL, tenantId);
+            HttpEntity<String> entity = new HttpEntity<>(payload, headers);
+            String tokenEndpoint = String.format(TOKEN_URL, tenantId);
 
-        ResponseEntity<Map> response = RetryHandler.executeWithRetry(
-                () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
-                () -> {
-                } // No credential renewal for authentication endpoint
-        );
+            ResponseEntity<Map> response = RetryHandler.executeWithRetry(
+                    () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
+                    () -> {
+                    } // No credential renewal for authentication endpoint
+            );
 
-        Map<String, Object> tokenResponse = response.getBody();
+            Map<String, Object> tokenResponse = response.getBody();
 
-        if (tokenResponse == null || tokenResponse.get("access_token") == null) {
-            throw new IllegalStateException("Invalid token response: missing access_token");
+            if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+                throw new IllegalStateException("Invalid token response: missing access_token");
+            }
+
+            this.accessToken = (String) tokenResponse.get("access_token");
+            int expiresIn = (int) tokenResponse.get("expires_in");
+            this.expireTime = Instant.now().plusSeconds(expiresIn);
+            log.info("Received new access token. Expires in {} seconds", expiresIn);
         }
-
-        this.accessToken = (String) tokenResponse.get("access_token");
-        int expiresIn = (int) tokenResponse.get("expires_in");
-        this.expireTime = Instant.now().plusSeconds(expiresIn);
-        log.info("Received new access token. Expires in {} seconds", expiresIn);
     }
 }

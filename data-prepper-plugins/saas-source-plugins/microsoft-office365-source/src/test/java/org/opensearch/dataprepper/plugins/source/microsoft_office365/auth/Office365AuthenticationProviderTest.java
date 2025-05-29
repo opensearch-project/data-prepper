@@ -6,12 +6,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +43,7 @@ class Office365AuthenticationProviderTest {
     private Office365AuthenticationProvider authProvider;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws NoSuchFieldException, IllegalAccessException {
         when(config.getAuthenticationConfiguration()).thenReturn(authConfig);
         when(authConfig.getOauth2()).thenReturn(oAuth2Credentials);
         when(oAuth2Credentials.getClientId()).thenReturn("testClientId");
@@ -51,11 +51,11 @@ class Office365AuthenticationProviderTest {
         when(config.getTenantId()).thenReturn("testTenantId");
 
         authProvider = new Office365AuthenticationProvider(config);
-        ReflectionTestUtils.setField(authProvider, "restTemplate", restTemplate);
+        ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "restTemplate", restTemplate);
     }
 
     @Test
-    void testCredentialRetrieval() {
+    void testCredentialRetrieval() throws NoSuchFieldException, IllegalAccessException {
         mockSuccessfulTokenResponse();
 
         // Test init
@@ -63,7 +63,7 @@ class Office365AuthenticationProviderTest {
         assertEquals("testAccessToken", authProvider.getAccessToken());
 
         // Clear the token and test renew directly
-        ReflectionTestUtils.setField(authProvider, "accessToken", null);
+        ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
         authProvider.renewCredentials();
         assertEquals("testAccessToken", authProvider.getAccessToken());
     }

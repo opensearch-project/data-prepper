@@ -18,13 +18,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationProvider;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -59,9 +59,9 @@ class Office365RestClientTest {
     private Office365RestClient office365RestClient;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws NoSuchFieldException, IllegalAccessException{
         office365RestClient = new Office365RestClient(authConfig, pluginMetrics);
-        ReflectionTestUtils.setField(office365RestClient, "restTemplate", restTemplate);
+        ReflectivelySetField.setField(Office365RestClient.class, office365RestClient, "restTemplate", restTemplate);
     }
 
     @Test
