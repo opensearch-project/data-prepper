@@ -11,7 +11,7 @@
 package org.opensearch.dataprepper.plugins.source.confluence.utils;
 
 public class CqlConstants {
-    public static final String GREATER_THAN = ">";
+    public static final String GREATER_THAN_OR_EQUALS = ">=";
     public static final String CLOSING_ROUND_BRACKET = ")";
 
     public static final String SPACE_IN = " AND space in (";

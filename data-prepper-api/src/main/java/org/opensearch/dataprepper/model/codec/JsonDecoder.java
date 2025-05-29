@@ -72,7 +72,7 @@ public class JsonDecoder implements ByteDecoder {
             }
 
             if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
-                if (keyName != null && !nodeName.equals(keyName)) {
+                if (keyName != null && !keyName.equals(nodeName)) {
                     continue;
                 }
                 parseRecordsArray(jsonParser, timeReceived, eventConsumer, includeKeysMap, includeMetadataKeysMap);

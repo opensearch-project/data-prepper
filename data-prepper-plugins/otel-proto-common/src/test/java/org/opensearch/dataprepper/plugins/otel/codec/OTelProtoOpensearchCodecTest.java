@@ -466,7 +466,7 @@ public class OTelProtoOpensearchCodecTest {
             assertThat(logRecord.getObservedTime(), is("2020-05-24T14:00:02Z"));
             assertThat(logRecord.getBody(), is("Log value"));
             assertThat(logRecord.getDroppedAttributesCount(), is(3));
-            assertThat(logRecord.getSchemaUrl(), is("schemaurl"));
+            assertThat(logRecord.getSchemaUrl(), is("resourceSchemaUrl"));
             assertThat(logRecord.getSeverityNumber(), is(5));
             assertThat(logRecord.getSeverityText(), is("Severity value"));
             assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));

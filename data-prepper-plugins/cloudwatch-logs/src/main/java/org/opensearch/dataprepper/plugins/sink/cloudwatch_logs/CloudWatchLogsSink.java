@@ -29,11 +29,13 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.exception.Invalid
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.model.annotations.Experimental;
 
 import java.util.Collection;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+@Experimental
 @DataPrepperPlugin(name = "cloudwatch_logs", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
 public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     private final CloudWatchLogsService cloudWatchLogsService;
@@ -53,7 +55,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         CloudWatchLogsMetrics cloudWatchLogsMetrics = new CloudWatchLogsMetrics(pluginMetrics);
         CloudWatchLogsLimits cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(),
                 thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getFlushInterval());
 
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
@@ -64,9 +66,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         }
 
         BufferFactory bufferFactory = null;
-        if (cloudWatchLogsSinkConfig.getBufferType().equals("in_memory")) {
-            bufferFactory = new InMemoryBufferFactory();
-        }
+        bufferFactory = new InMemoryBufferFactory();
 
         if (cloudWatchLogsSinkConfig.getDlq() != null) {
             String region = awsConfig.getAwsRegion().toString();
@@ -82,8 +82,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .dlqPushHandler(dlqPushHandler)
                 .logGroup(cloudWatchLogsSinkConfig.getLogGroup())
                 .logStream(cloudWatchLogsSinkConfig.getLogStream())
-                .backOffTimeBase(thresholdConfig.getBackOffTime())
-                .retryCount(thresholdConfig.getRetryCount())
+                .retryCount(cloudWatchLogsSinkConfig.getMaxRetries())
                 .executor(executor)
                 .build();
 

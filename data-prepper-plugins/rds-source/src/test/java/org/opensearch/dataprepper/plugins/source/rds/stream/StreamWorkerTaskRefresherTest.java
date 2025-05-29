@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,6 +42,7 @@ import java.util.function.Supplier;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -232,8 +234,26 @@ class StreamWorkerTaskRefresherTest {
 
         @Test
         void test_shutdown() {
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(binaryLogClientWrapper);
+            when(binaryLogClientWrapper.getBinlogClient()).thenReturn(binaryLogClient);
+            final Map<String, Object> progressState = mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<BinlogEventListener> binlogEventListenerMockedStatic = mockStatic(BinlogEventListener.class);
+                 MockedStatic<DbTableMetadata> dbTableMetadataMockedStatic = mockStatic(DbTableMetadata.class)) {
+                dbTableMetadataMockedStatic.when(() -> DbTableMetadata.fromMap(progressState)).thenReturn(dbTableMetadata);
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                binlogEventListenerMockedStatic.when(() -> BinlogEventListener.create(eq(streamPartition), eq(buffer), any(RdsSourceConfig.class),
+                                any(String.class), eq(pluginMetrics), eq(binaryLogClient), eq(streamCheckpointer),
+                                eq(acknowledgementSetManager), eq(dbTableMetadata), any(CascadingActionDetector.class)))
+                        .thenReturn(binlogEventListener);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+            }
             streamWorkerTaskRefresher.shutdown();
-            verify(executorService).shutdownNow();
+
+            InOrder inOrder = inOrder(streamWorker, executorService);
+            inOrder.verify(streamWorker).shutdown();
+            inOrder.verify(executorService).shutdownNow();
         }
 
         private StreamWorkerTaskRefresher createObjectUnderTest() {
@@ -345,8 +365,22 @@ class StreamWorkerTaskRefresherTest {
 
         @Test
         void test_shutdown() {
+            when(replicationLogClientFactory.create(streamPartition)).thenReturn(logicalReplicationClient);
+            mockGlobalStateAndProgressState();
+            try (MockedStatic<StreamWorker> streamWorkerMockedStatic = mockStatic(StreamWorker.class);
+                 MockedStatic<LogicalReplicationEventProcessor> logicalReplicationEventProcessorMockedStatic = mockStatic(LogicalReplicationEventProcessor.class)) {
+                streamWorkerMockedStatic.when(() -> StreamWorker.create(eq(sourceCoordinator), any(ReplicationLogClient.class), eq(pluginMetrics)))
+                        .thenReturn(streamWorker);
+                logicalReplicationEventProcessorMockedStatic.when(() -> LogicalReplicationEventProcessor.create(eq(streamPartition), any(RdsSourceConfig.class),
+                                eq(buffer), any(String.class), eq(pluginMetrics), eq(logicalReplicationClient), eq(streamCheckpointer), eq(acknowledgementSetManager)))
+                        .thenReturn(logicalReplicationEventProcessor);
+                streamWorkerTaskRefresher.initialize(sourceConfig);
+            }
             streamWorkerTaskRefresher.shutdown();
-            verify(executorService).shutdownNow();
+
+            InOrder inOrder = inOrder(streamWorker, executorService);
+            inOrder.verify(streamWorker).shutdown();
+            inOrder.verify(executorService).shutdownNow();
         }
 
         private StreamWorkerTaskRefresher createObjectUnderTest() {

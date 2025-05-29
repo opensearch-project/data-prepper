@@ -11,13 +11,13 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.utils.ServerIdGenerator;
 import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 public class StreamWorker {
     private static final Logger LOG = LoggerFactory.getLogger(StreamWorker.class);
@@ -56,6 +56,7 @@ public class StreamWorker {
 
         if (replicationLogClient instanceof BinlogClientWrapper) {
             setStartBinlogPosition(streamPartition);
+            setServerId();
         } else {
             setStartLsn(streamPartition);
         }
@@ -64,12 +65,14 @@ public class StreamWorker {
             LOG.info("Connect to database to read change events.");
             replicationLogClient.connect();
         } catch (Exception e) {
-            LOG.warn(NOISY, "Error while connecting to replication stream, will retry.", e);
+            LOG.warn("Error while connecting to replication stream, will retry.");
+            LOG.debug("Give up stream partition and shut down stream worker");
             sourceCoordinator.giveUpPartition(streamPartition);
-            throw new RuntimeException(e);
-        } finally {
             shutdown();
+            throw new RuntimeException(e);
         }
+
+        LOG.debug("Exited connect() method in stream worker.");
     }
 
     public void shutdown() {
@@ -107,6 +110,12 @@ public class StreamWorker {
             binaryLogClient.setBinlogFilename(binlogFilename);
             binaryLogClient.setBinlogPosition(binlogPosition);
         }
+    }
+
+    private void setServerId() {
+        final int serverId = ServerIdGenerator.generateServerId();
+        LOG.info("Binary log client server id is {}", serverId);
+        ((BinlogClientWrapper) replicationLogClient).getBinlogClient().setServerId(serverId);
     }
 
     private void setStartLsn(final StreamPartition streamPartition) {

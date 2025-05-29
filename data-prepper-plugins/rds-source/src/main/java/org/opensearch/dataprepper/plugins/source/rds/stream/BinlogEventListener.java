@@ -201,6 +201,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
+    public void stopCheckpointManager() {
+        streamCheckpointManager.stop();
+    }
+
     void handleRotateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final RotateEventData data = event.getData();
         currentBinlogCoordinate = new BinlogCoordinate(data.getBinlogFilename(), data.getBinlogPosition());

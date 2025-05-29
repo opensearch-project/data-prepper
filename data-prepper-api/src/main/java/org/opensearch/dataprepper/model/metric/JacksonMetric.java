@@ -37,6 +37,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
+    protected static final String METADATA_KEY = "metadata";
     private boolean flattenAttributes;
 
     protected JacksonMetric(Builder builder, boolean flattenAttributes) {
@@ -99,6 +100,11 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     @Override
     public String getKind() {
         return this.get(KIND_KEY, String.class);
+    }
+
+    @Override
+    public Map<String, Object> getMetricMetadata() {
+        return this.get(METADATA_KEY, Map.class);
     }
 
     @Override
@@ -256,7 +262,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
         }
 
         /**
-         * Sets the scope of the log event
+         * Sets the scope of the metric event
          *
          * @param scope scope to be set
          * @return the builder
@@ -268,7 +274,19 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
         }
 
         /**
-         * Sets the resource of the log event
+         * Sets the metadata of the metric event
+         *
+         * @param metadata metadata to be set
+         * @return the builder
+         * @since 2.11
+         */
+        public T withMetricMetadata(final Map<String, Object> metadata) {
+            put(METADATA_KEY, metadata);
+            return getThis();
+        }
+
+        /**
+         * Sets the resource of the metric event
          *
          * @param resource resource to be set
          * @return the builder

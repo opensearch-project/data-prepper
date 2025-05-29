@@ -69,7 +69,7 @@ dependencyResolutionManagement {
             version('hadoop', '3.4.0')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
-            version('avro', '1.11.3')
+            version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
         }
@@ -170,6 +170,7 @@ include 'data-prepper-plugins:buffer-common'
 include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:sqs-common'
 include 'data-prepper-plugins:cloudwatch-logs'
+include 'data-prepper-plugins:sqs-sink'
 //include 'data-prepper-plugins:http-sink'
 //include 'data-prepper-plugins:sns-sink'
 //include 'data-prepper-plugins:prometheus-sink'
@@ -195,4 +196,4 @@ include 'data-prepper-plugins:saas-source-plugins:jira-source'
 include 'data-prepper-plugins:encryption-plugin'
 include 'data-prepper-plugins:saas-source-plugins:confluence-source'
 include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
-
+include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'

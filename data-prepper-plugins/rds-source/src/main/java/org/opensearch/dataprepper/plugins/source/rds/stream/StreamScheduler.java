@@ -79,6 +79,10 @@ public class StreamScheduler implements Runnable {
                     streamPartition = (StreamPartition) sourcePartition.get();
                     final StreamCheckpointer streamCheckpointer = new StreamCheckpointer(sourceCoordinator, streamPartition, pluginMetrics);
 
+                    if (streamWorkerTaskRefresher != null) {
+                        streamWorkerTaskRefresher.shutdown();
+                    }
+
                     streamWorkerTaskRefresher = StreamWorkerTaskRefresher.create(
                             sourceCoordinator, streamPartition, streamCheckpointer, s3Prefix, replicationLogClientFactory, buffer,
                             () -> Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("rds-source-stream-worker")),
@@ -90,22 +94,15 @@ public class StreamScheduler implements Runnable {
                     pluginConfigObservable.addPluginConfigObserver(pluginConfig -> streamWorkerTaskRefresher.update((RdsSourceConfig) pluginConfig));
                 }
 
-                try {
-                    LOG.debug("Looping to acquire new stream partition or idle while stream worker is working");
-                    Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
-                } catch (final InterruptedException e) {
-                    LOG.info("The StreamScheduler was interrupted while waiting to retry, stopping processing");
-                    break;
-                }
-
+                LOG.debug("Looping to acquire new stream partition or idle while stream worker is working");
+                Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
+            } catch (final InterruptedException e) {
+                LOG.info("The StreamScheduler was interrupted, stopping processing");
+                giveUpPartition(streamPartition);
+                break;
             } catch (Exception e) {
                 LOG.error("Received an exception during stream processing, backing off and retrying", e);
-                if (streamPartition != null) {
-                    if (sourceConfig.isDisableS3ReadForLeader()) {
-                        System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
-                    }
-                    sourceCoordinator.giveUpPartition(streamPartition);
-                }
+                giveUpPartition(streamPartition);
 
                 try {
                     Thread.sleep(DEFAULT_TAKE_LEASE_INTERVAL_MILLIS);
@@ -119,8 +116,18 @@ public class StreamScheduler implements Runnable {
 
     public void shutdown() {
         if (streamWorkerTaskRefresher != null) {
+            LOG.debug("Shutting down StreamWorkerTaskRefresher");
             streamWorkerTaskRefresher.shutdown();
         }
         shutdownRequested = true;
+    }
+
+    private void giveUpPartition(final StreamPartition streamPartition) {
+        if (streamPartition != null) {
+            if (sourceConfig.isDisableS3ReadForLeader()) {
+                System.clearProperty(STOP_S3_SCAN_PROCESSING_PROPERTY);
+            }
+            sourceCoordinator.giveUpPartition(streamPartition);
+        }
     }
 }

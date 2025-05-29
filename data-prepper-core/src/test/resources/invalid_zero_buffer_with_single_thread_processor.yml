@@ -1,0 +1,10 @@
+simple-pipeline:
+  workers: 1
+  source:
+    random:
+  buffer:
+    zero:
+  processor:
+    - test_processor:
+  sink:
+    - stdout:

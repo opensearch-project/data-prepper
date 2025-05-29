@@ -172,6 +172,20 @@ public class JsonDecoderTest {
         }
 
         @Test
+        void test_JsonDecoder_withKeyName_when_parsing_json_array_should_skip() throws IOException {
+            final Instant now = Instant.now();
+            String inputString = "[]";
+            List<Record<Event>> records = new ArrayList<>();
+            jsonDecoder = new JsonDecoder(key_name, null, null, maxEventLength);
+            jsonDecoder.parse(new ByteArrayInputStream(inputString.getBytes()), now, (record) -> {
+                records.add(record);
+                receivedTime = record.getData().getEventHandle().getInternalOriginationTime();
+            });
+
+            assertTrue(records.isEmpty());
+        }
+
+        @Test
         void test_basicJsonDecoder_withInputConfig_withoutEvents_empty_metadata_keys() throws IOException {
             final Instant now = Instant.now();
             List<Record<Event>> records = new ArrayList<>();

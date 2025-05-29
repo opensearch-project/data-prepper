@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UploaderTest {
+    private static final int RETRY_COUNT = 5;
     private CloudWatchLogsClient mockCloudWatchLogsClient;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
 
@@ -50,8 +51,7 @@ class UploaderTest {
                 .putLogEventsRequest(getMockPutLogEventsRequest())
                 .eventHandles(getTestEventHandles())
                 .totalEventCount(ThresholdConfig.DEFAULT_BATCH_SIZE)
-                .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
-                .backOffTimeBase(ThresholdConfig.DEFAULT_BACKOFF_TIME)
+                .retryCount(RETRY_COUNT)
                 .build();
     }
 
@@ -78,7 +78,7 @@ class UploaderTest {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 
@@ -88,7 +88,7 @@ class UploaderTest {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, times(RETRY_COUNT)).increaseRequestFailCounter(1);
         verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 }

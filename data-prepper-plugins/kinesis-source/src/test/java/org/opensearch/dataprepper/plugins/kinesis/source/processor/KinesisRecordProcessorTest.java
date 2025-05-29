@@ -37,6 +37,7 @@ import org.opensearch.dataprepper.plugins.kinesis.source.configuration.KinesisSt
 import org.opensearch.dataprepper.plugins.kinesis.source.converter.KinesisRecordConverter;
 import org.opensearch.dataprepper.plugins.kinesis.source.converter.MetadataKeyAttributes;
 import org.opensearch.dataprepper.plugins.kinesis.source.exceptions.KinesisStreamNotFoundException;
+import software.amazon.awssdk.arns.Arn;
 import software.amazon.kinesis.common.StreamIdentifier;
 import software.amazon.kinesis.exceptions.InvalidStateException;
 import software.amazon.kinesis.exceptions.ShutdownException;
@@ -661,6 +662,165 @@ public class KinesisRecordProcessorTest {
 
         assertDoesNotThrow(() -> new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
                 acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier));
+    }
+
+    @Test
+    void testProcessRecordsWithStreamArnAndConsumerArn() throws Exception {
+        final String streamArn = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
+        final String streamName = "streamName";
+        StreamIdentifier streamIdentifier = mock(StreamIdentifier.class);
+        when(kinesisStreamConfig.getStreamArn()).thenReturn(streamArn);
+        when(streamIdentifier.streamArnOptional()).thenReturn(Optional.of(Arn.fromString(streamArn)));
+        when(streamIdentifier.streamName()).thenReturn(streamName);
+        when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
+        when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
+        when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(Duration.ofMillis(0));
+
+        List<KinesisInputOutputRecord> records = new ArrayList<>();
+        Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamName);
+        Record<Event> record = new Record<>(event);
+        KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
+                .data(ByteBuffer.wrap(event.toJsonString().getBytes()))
+                .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
+        List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
+        kinesisClientRecords.add(kinesisClientRecord);
+        final long recordsSize = kinesisClientRecords.stream()
+                .map(kclRecord -> kclRecord.data().position())
+                .mapToLong(Integer::longValue).sum();
+
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
+        when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
+
+        InputStream inputStream = mock(InputStream.class);
+        when(decompressionEngine.createInputStream(inputStream)).thenReturn(inputStream);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamName))).thenReturn(records);
+
+        recordProcessed = mock(Counter.class);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessed);
+
+        recordProcessingErrors = mock(Counter.class);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessingErrors);
+
+        bytesReceivedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME)).thenReturn(bytesReceivedSummary);
+
+        bytesProcessedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME)).thenReturn(bytesProcessedSummary);
+
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
+        KinesisCheckpointerRecord kinesisCheckpointerRecord = mock(KinesisCheckpointerRecord.class);
+        ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
+        when(extendedSequenceNumber.sequenceNumber()).thenReturn(sequence_number);
+        when(extendedSequenceNumber.subSequenceNumber()).thenReturn(sub_sequence_number);
+        when(kinesisCheckpointerRecord.getExtendedSequenceNumber()).thenReturn(extendedSequenceNumber);
+        when(kinesisCheckpointerRecord.getCheckpointer()).thenReturn(checkpointer);
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
+        kinesisRecordProcessor.initialize(initializationInput);
+
+        kinesisRecordProcessor.processRecords(processRecordsInput);
+
+        verify(checkpointer).checkpoint(eq(sequence_number), eq(sub_sequence_number));
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+
+        verify(bufferAccumulator).add(recordArgumentCaptor.capture());
+        verify(bufferAccumulator).flush();
+
+        List<Record<Event>> recordsCaptured = recordArgumentCaptor.getAllValues();
+        assertEquals(recordsCaptured.size(), records.size());
+        for (Record<Event> eventRecord: recordsCaptured) {
+            EventMetadata eventMetadata = eventRecord.getData().getMetadata();
+            assertEquals(eventMetadata.getAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE), streamIdentifier.streamName());
+        }
+
+        verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
+        verify(recordProcessed, times(1)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
+    }
+
+    @Test
+    void testProcessRecordsWithStreamArn() throws Exception {
+        final String streamArn = "arn:aws:kinesis:us-east-1:123456789012:stream/streamName";
+        final String streamName = "streamName";
+        StreamIdentifier streamIdentifier = mock(StreamIdentifier.class);
+        when(kinesisStreamConfig.getStreamArn()).thenReturn(streamArn);
+        when(streamIdentifier.streamName()).thenReturn(streamName);
+        when(kinesisSourceConfig.getStreams()).thenReturn(List.of(kinesisStreamConfig));
+        when(kinesisSourceConfig.isAcknowledgments()).thenReturn(false);
+        when(kinesisStreamConfig.getCheckPointInterval()).thenReturn(Duration.ofMillis(0));
+
+        List<KinesisInputOutputRecord> records = new ArrayList<>();
+        Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        event.getMetadata().setAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE, streamName);
+        Record<Event> record = new Record<>(event);
+        KinesisClientRecord kinesisClientRecord = KinesisClientRecord.builder()
+                .data(ByteBuffer.wrap(event.toJsonString().getBytes()))
+                .sequenceNumber(Integer.toString(1000)).subSequenceNumber(1).build();
+        List<KinesisClientRecord> kinesisClientRecords = new ArrayList<>();
+        kinesisClientRecords.add(kinesisClientRecord);
+        final long recordsSize = kinesisClientRecords.stream()
+                .map(kclRecord -> kclRecord.data().position())
+                .mapToLong(Integer::longValue).sum();
+
+        records.add(KinesisInputOutputRecord.builder()
+                .withDataPrepperRecord(record)
+                .withIncomingRecordSizeBytes(recordsSize).build()
+        );
+        when(processRecordsInput.records()).thenReturn(kinesisClientRecords);
+
+        InputStream inputStream = mock(InputStream.class);
+        when(decompressionEngine.createInputStream(inputStream)).thenReturn(inputStream);
+        when(kinesisRecordConverter.convert(eq(decompressionEngine), eq(kinesisClientRecords), eq(streamName))).thenReturn(records);
+
+        recordProcessed = mock(Counter.class);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSED_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessed);
+
+        recordProcessingErrors = mock(Counter.class);
+        when(pluginMetrics.counterWithTags(KINESIS_RECORD_PROCESSING_ERRORS_METRIC_NAME, KINESIS_STREAM_TAG_KEY, streamIdentifier.streamName())).thenReturn(recordProcessingErrors);
+
+        bytesReceivedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_RECEIVED_METRIC_NAME)).thenReturn(bytesReceivedSummary);
+
+        bytesProcessedSummary = mock(DistributionSummary.class);
+        when(pluginMetrics.summary(KINESIS_RECORD_BYTES_PROCESSED_METRIC_NAME)).thenReturn(bytesProcessedSummary);
+
+        kinesisRecordProcessor = new KinesisRecordProcessor(bufferAccumulator, kinesisSourceConfig,
+                acknowledgementSetManager, pluginMetrics, kinesisRecordConverter, kinesisCheckpointerTracker, streamIdentifier);
+        KinesisCheckpointerRecord kinesisCheckpointerRecord = mock(KinesisCheckpointerRecord.class);
+        ExtendedSequenceNumber extendedSequenceNumber = mock(ExtendedSequenceNumber.class);
+        when(extendedSequenceNumber.sequenceNumber()).thenReturn(sequence_number);
+        when(extendedSequenceNumber.subSequenceNumber()).thenReturn(sub_sequence_number);
+        when(kinesisCheckpointerRecord.getExtendedSequenceNumber()).thenReturn(extendedSequenceNumber);
+        when(kinesisCheckpointerRecord.getCheckpointer()).thenReturn(checkpointer);
+        when(kinesisCheckpointerTracker.popLatestReadyToCheckpointRecord()).thenReturn(Optional.of(kinesisCheckpointerRecord));
+        kinesisRecordProcessor.initialize(initializationInput);
+
+        kinesisRecordProcessor.processRecords(processRecordsInput);
+
+        verify(checkpointer).checkpoint(eq(sequence_number), eq(sub_sequence_number));
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+
+        verify(bufferAccumulator).add(recordArgumentCaptor.capture());
+        verify(bufferAccumulator).flush();
+
+        List<Record<Event>> recordsCaptured = recordArgumentCaptor.getAllValues();
+        assertEquals(recordsCaptured.size(), records.size());
+        for (Record<Event> eventRecord: recordsCaptured) {
+            EventMetadata eventMetadata = eventRecord.getData().getMetadata();
+            assertEquals(eventMetadata.getAttribute(MetadataKeyAttributes.KINESIS_STREAM_NAME_METADATA_ATTRIBUTE), streamIdentifier.streamName());
+        }
+
+        verify(acknowledgementSetManager, times(0)).create(any(), any(Duration.class));
+        verify(recordProcessed, times(1)).increment(anyDouble());
+        verify(bytesReceivedSummary, times(1)).record(eq((double) recordsSize));
+        verify(bytesProcessedSummary, times(1)).record(eq((double) recordsSize));
     }
 
     private List<KinesisClientRecord> createInputKinesisClientRecords() {

@@ -38,11 +38,6 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void GIVEN_new_sink_config_WHEN_get_buffer_type_called_SHOULD_return_default_buffer_type() {
-        assertThat(new CloudWatchLogsSinkConfig().getBufferType(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_BUFFER_TYPE));
-    }
-
-    @Test
     void GIVEN_new_sink_config_WHEN_get_log_group_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getLogGroup(), equalTo(null));
     }

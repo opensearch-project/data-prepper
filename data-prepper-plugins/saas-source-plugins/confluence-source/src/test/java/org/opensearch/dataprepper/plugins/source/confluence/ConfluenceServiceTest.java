@@ -54,7 +54,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -291,7 +290,8 @@ public class ConfluenceServiceTest {
                 .format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
         StringBuilder contentFilterCriteria = confluenceService.createContentFilterCriteria(confluenceSourceConfig, pollingTime);
         assertNotNull(contentFilterCriteria);
-        assertTrue(contentFilterCriteria.toString().contains(formattedZonedPollingTime));
+        String cqlToAssert = "lastModified>=\"" + formattedZonedPollingTime + "\" order by lastModified asc ";
+        assertEquals(cqlToAssert, contentFilterCriteria.toString());
     }
 
 

@@ -42,7 +42,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlCons
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CONTENT_TYPE_NOT_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.DELIMITER;
-import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN;
+import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.GREATER_THAN_OR_EQUALS;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.PREFIX;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_IN;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.SPACE_NOT_IN;
@@ -160,7 +160,7 @@ public class ConfluenceService {
         }
 
         String formattedTimeStamp = ts.atZone(this.confluenceServerZoneId).format(DateTimeFormatter.ofPattern(CQL_LAST_MODIFIED_DATE_FORMAT));
-        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN + "\"" + formattedTimeStamp + "\"");
+        StringBuilder cQl = new StringBuilder(LAST_MODIFIED + GREATER_THAN_OR_EQUALS + "\"" + formattedTimeStamp + "\"");
         if (!CollectionUtils.isEmpty(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration))) {
             cQl.append(SPACE_IN).append(ConfluenceConfigHelper.getSpacesNameIncludeFilter(configuration).stream()
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
@@ -181,7 +181,7 @@ public class ConfluenceService {
                             .collect(Collectors.joining(DELIMITER, PREFIX, SUFFIX)))
                     .append(CLOSING_ROUND_BRACKET);
         }
-        cQl.append(" order by " + LAST_MODIFIED);
+        cQl.append(" order by " + LAST_MODIFIED + " asc ");
         log.info("Created content filter criteria ConfluenceQl query: {}", cQl);
         return cQl;
     }

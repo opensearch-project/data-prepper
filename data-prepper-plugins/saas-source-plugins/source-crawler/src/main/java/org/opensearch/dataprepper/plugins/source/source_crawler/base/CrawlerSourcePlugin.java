@@ -41,8 +41,6 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
     private final CrawlerSourceConfig sourceConfig;
     private final Crawler crawler;
     private final String sourcePluginName;
-    private final int batchSize;
-
 
     public CrawlerSourcePlugin(final String sourcePluginName,
                                final PluginMetrics pluginMetrics,
@@ -57,25 +55,25 @@ public abstract class CrawlerSourcePlugin implements Source<Record<Event>>, Uses
         this.sourceConfig = sourceConfig;
         this.pluginFactory = pluginFactory;
         this.crawler = crawler;
-        this.batchSize = sourceConfig.getBatchSize();
-
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.executorService = executorServiceProvider.get();
     }
 
+    // Abstract method to be implemented by each subclass to provide its specific LeaderProgressState instance
+    protected abstract LeaderProgressState createLeaderProgressState();
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Objects.requireNonNull(coordinator);
         log.info("Starting {} Source Plugin", sourcePluginName);
-
-        boolean isPartitionCreated = coordinator.createPartition(new LeaderPartition());
+        LeaderPartition leaderPartition = new LeaderPartition(createLeaderProgressState());
+        boolean isPartitionCreated = coordinator.createPartition(leaderPartition);
         log.debug("Leader partition creation status: {}", isPartitionCreated);
 
-        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler, batchSize);
+        Runnable leaderScheduler = new LeaderScheduler(coordinator, crawler);
         this.executorService.submit(leaderScheduler);
         //Register worker threaders
-        for (int i = 0; i < sourceConfig.DEFAULT_NUMBER_OF_WORKERS; i++) {
+        for (int i = 0; i < sourceConfig.getNumberOfWorkers(); i++) {
             WorkerScheduler workerScheduler = new WorkerScheduler(sourcePluginName, buffer, coordinator,
                     sourceConfig, crawler, pluginMetrics, acknowledgementSetManager);
             this.executorService.submit(new Thread(workerScheduler));
