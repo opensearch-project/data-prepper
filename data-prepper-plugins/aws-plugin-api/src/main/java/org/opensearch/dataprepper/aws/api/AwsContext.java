@@ -6,70 +6,13 @@
 package org.opensearch.dataprepper.aws.api;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
-import java.util.UUID;
+/**
+ * An interface available to plugins which provides the default AWS credentials and region.
+ */
+public interface AwsContext {
+    AwsCredentialsProvider getOrDefault();
 
-public class AwsContext {
-    private final AwsCredentialsConfig awsCredentialsConfig;
-
-    public AwsContext(final AwsCredentialsConfig awsCredentialsConfig) {
-        this.awsCredentialsConfig = awsCredentialsConfig;
-    }
-
-    public AwsCredentialsProvider getOrDefault() {
-        if (awsCredentialsConfig == null || awsCredentialsConfig.getStsRoleArn() == null) {
-            return getDefault();
-        }
-
-        return getFromOptions(awsCredentialsConfig.toCredentialsOptions());
-    }
-
-    public Region getRegionOrDefault() {
-        if (awsCredentialsConfig != null && awsCredentialsConfig.getRegion() != null) {
-            return Region.of(awsCredentialsConfig.getRegion());
-        }
-        return null;
-    }
-
-    private AwsCredentialsProvider getDefault() {
-        final AwsCredentialsOptions credentialsOptions;
-        if (awsCredentialsConfig != null) {
-            credentialsOptions = awsCredentialsConfig.toCredentialsOptions();
-        } else {
-            credentialsOptions = AwsCredentialsOptions.defaultOptions();
-        }
-
-        return getFromOptions(credentialsOptions);
-    }
-
-    private AwsCredentialsProvider getFromOptions(AwsCredentialsOptions awsCredentialsOptions) {
-        final AwsCredentialsProvider awsCredentialsProvider;
-        final String awsStsRoleArn = awsCredentialsOptions.getStsRoleArn();
-        if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-
-            final StsClient stsClient = StsClient.builder()
-                    .region(awsCredentialsOptions.getRegion())
-                    .build();
-
-            AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
-                    .roleSessionName("aws-iam-" + UUID.randomUUID())
-                    .roleArn(awsStsRoleArn);
-
-            awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
-                    .stsClient(stsClient)
-                    .refreshRequest(assumeRoleRequestBuilder.build())
-                    .build();
-
-        } else {
-            // use default credential provider
-            awsCredentialsProvider = DefaultCredentialsProvider.create();
-        }
-
-        return awsCredentialsProvider;
-    }
+    Region getRegionOrDefault();
 }

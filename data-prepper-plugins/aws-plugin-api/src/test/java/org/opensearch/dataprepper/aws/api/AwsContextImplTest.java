@@ -23,15 +23,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AwsContextTest {
+class AwsContextImplTest {
     private static final String TEST_STS_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
     @Mock
     private AwsCredentialsConfig awsCredentialsConfig;
     @Mock
     private AwsCredentialsOptions awsCredentialsOptions;
 
-    private AwsContext createObjectUnderTest(final AwsCredentialsConfig awsCredentialsConfig) {
-        return new AwsContext(awsCredentialsConfig);
+    private AwsContextImpl createObjectUnderTest(final AwsCredentialsConfig awsCredentialsConfig) {
+        return new AwsContextImpl(awsCredentialsConfig);
     }
 
     @Test
