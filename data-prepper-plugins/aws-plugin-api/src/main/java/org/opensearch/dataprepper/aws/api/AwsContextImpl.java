@@ -14,6 +14,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.util.UUID;
 
+// TODO: This class should be provided as Bean in aws-plugin once the issue is resolved:
+//  https://github.com/opensearch-project/data-prepper/issues/2825
 public class AwsContextImpl implements AwsContext {
     private final AwsCredentialsConfig awsCredentialsConfig;
 
