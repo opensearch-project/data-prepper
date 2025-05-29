@@ -1,0 +1,5 @@
+kms:
+  encryption_key: AQIDAHjFkMiA+2vRaQi3zhsZlkWK0PIkoEtyUW5mjJOPpgk7wQG01/MpWJcuSIRtCsU/9XIUAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM+bWmsE5QSh1qFsPFAgEQgDuUEZ8iMZmqZyD9Y3yIqROvURbXGvhMGkIuibiSFZ3INpx5hUhbCGLXg++HC6mPWg4aMI2C+fNYzaOKog
+  key_id: arn:aws:kms:us-east-1:0123456789012:key/8376d0d2-e25f-4b61-99ed-53e6f76d65d5
+  region: us-east-1
+  sts_role_arn: invalid_arn
