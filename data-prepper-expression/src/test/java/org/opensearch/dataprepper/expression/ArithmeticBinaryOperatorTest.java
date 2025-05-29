@@ -228,5 +228,7 @@ class ArithmeticBinaryOperatorTest {
         assertThat(objectUnderTest.evaluate(5, 5), is(0));
         assertThat(objectUnderTest.evaluate(5, 2), is(1));
         assertThat(objectUnderTest.evaluate(6, 3), is(0));
+        assertThat(objectUnderTest.evaluate(7, 4), is(3));
+        assertThat(objectUnderTest.evaluate(9, 5), is(4));
     }
 }
