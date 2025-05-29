@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.time.DurationMin;
+import org.opensearch.dataprepper.aws.api.AwsContextImpl;
 import org.opensearch.dataprepper.aws.api.AwsContext;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsConfig;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
@@ -111,7 +112,7 @@ class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration,
     }
 
     public KmsClient createKmsClient() {
-        final AwsContext awsContext = new AwsContext(this);
+        final AwsContext awsContext = new AwsContextImpl(this);
         final AwsCredentialsProvider awsCredentialsProvider = awsContext.getOrDefault();
         return KmsClient.builder()
                 .credentialsProvider(awsCredentialsProvider)
@@ -120,7 +121,7 @@ class KmsEncryptionEngineConfiguration implements EncryptionEngineConfiguration,
     }
 
     public S3Client createS3Client() {
-        final AwsContext awsContext = new AwsContext(this);
+        final AwsContext awsContext = new AwsContextImpl(this);
         final AwsCredentialsProvider awsCredentialsProvider = awsContext.getOrDefault();
         return S3Client.builder()
                 .credentialsProvider(awsCredentialsProvider)
