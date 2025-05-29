@@ -22,7 +22,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@DataPrepperExtensionPlugin(modelType = EncryptionPluginConfig.class, rootKeyJsonPath = "/encryption")
+@DataPrepperExtensionPlugin(modelType = EncryptionPluginConfig.class, rootKeyJsonPath = "/encryption", allowInPipelineConfigurations = true)
 public class EncryptionPlugin implements ExtensionPlugin {
     static final int PERIOD_IN_SECONDS = 60;
     private static final Logger LOG = LoggerFactory.getLogger(EncryptionPlugin.class);
