@@ -44,6 +44,8 @@ public class KinesisSourceConfigTest {
     private static final String PIPELINE_CONFIG_WITH_ACKS_ENABLED = "pipeline_with_acks_enabled.yaml";
     private static final String PIPELINE_CONFIG_WITH_POLLING_CONFIG_ENABLED = "pipeline_with_polling_config_enabled.yaml";
     private static final String PIPELINE_CONFIG_CHECKPOINT_ENABLED = "pipeline_with_checkpoint_enabled.yaml";
+    private static final String PIPELINE_CONFIG_STREAM_ARN_ENABLED = "pipeline_with_stream_arn_config.yaml";
+    private static final String PIPELINE_CONFIG_STREAM_ARN_CONSUMER_ARN_ENABLED = "pipeline_with_stream_arn_consumer_arn_config.yaml";
     private static final Duration MINIMAL_CHECKPOINT_INTERVAL = Duration.ofMillis(2 * 60 * 1000); // 2 minute
 
     KinesisSourceConfig kinesisSourceConfig;
@@ -95,6 +97,8 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
+            assertNull(kinesisStreamConfig.getStreamArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
@@ -161,9 +165,73 @@ public class KinesisSourceConfigTest {
 
         for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
             assertTrue(kinesisStreamConfig.getName().contains("stream"));
+            assertNull(kinesisStreamConfig.getStreamArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
             assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.TRIM_HORIZON);
             assertEquals(kinesisStreamConfig.getCheckPointInterval(), expectedCheckpointIntervals.get(kinesisStreamConfig.getName()));
             assertEquals(kinesisStreamConfig.getCompression(), CompressionOption.GZIP);
+        }
+    }
+
+    @Test
+    @Tag(PIPELINE_CONFIG_STREAM_ARN_ENABLED)
+    void testSourceConfigWithStreamArn() {
+
+        assertThat(kinesisSourceConfig, notNullValue());
+        assertEquals(KinesisSourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, kinesisSourceConfig.getNumberOfRecordsToAccumulate());
+        assertEquals(KinesisSourceConfig.DEFAULT_TIME_OUT_IN_MILLIS, kinesisSourceConfig.getBufferTimeout());
+        assertEquals(KinesisSourceConfig.DEFAULT_MAX_INITIALIZATION_ATTEMPTS, kinesisSourceConfig.getMaxInitializationAttempts());
+        assertEquals(KinesisSourceConfig.DEFAULT_INITIALIZATION_BACKOFF_TIME, kinesisSourceConfig.getInitializationBackoffTime());
+        assertFalse(kinesisSourceConfig.isAcknowledgments());
+        assertEquals(KinesisSourceConfig.DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT, kinesisSourceConfig.getShardAcknowledgmentTimeout());
+        assertThat(kinesisSourceConfig.getAwsAuthenticationConfig(), notNullValue());
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion(), Region.US_EAST_1);
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn(), "arn:aws:iam::123456789012:role/OSI-PipelineRole");
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsExternalId());
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsHeaderOverrides());
+        assertNotNull(kinesisSourceConfig.getCodec());
+        List<KinesisStreamConfig> streamConfigs = kinesisSourceConfig.getStreams();
+
+        assertEquals(streamConfigs.size(), 3);
+
+        for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
+            assertTrue(kinesisStreamConfig.getStreamArn().contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(kinesisStreamConfig.getStreamArn());
+            assertNull(kinesisStreamConfig.getConsumerArn());
+            assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
+            assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
+        }
+    }
+
+    @Test
+    @Tag(PIPELINE_CONFIG_STREAM_ARN_CONSUMER_ARN_ENABLED)
+    void testSourceConfigWithStreamArnConsumerArn() {
+
+        assertThat(kinesisSourceConfig, notNullValue());
+        assertEquals(KinesisSourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, kinesisSourceConfig.getNumberOfRecordsToAccumulate());
+        assertEquals(KinesisSourceConfig.DEFAULT_TIME_OUT_IN_MILLIS, kinesisSourceConfig.getBufferTimeout());
+        assertEquals(KinesisSourceConfig.DEFAULT_MAX_INITIALIZATION_ATTEMPTS, kinesisSourceConfig.getMaxInitializationAttempts());
+        assertEquals(KinesisSourceConfig.DEFAULT_INITIALIZATION_BACKOFF_TIME, kinesisSourceConfig.getInitializationBackoffTime());
+        assertFalse(kinesisSourceConfig.isAcknowledgments());
+        assertEquals(KinesisSourceConfig.DEFAULT_SHARD_ACKNOWLEDGEMENT_TIMEOUT, kinesisSourceConfig.getShardAcknowledgmentTimeout());
+        assertThat(kinesisSourceConfig.getAwsAuthenticationConfig(), notNullValue());
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsRegion(), Region.US_EAST_1);
+        assertEquals(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsRoleArn(), "arn:aws:iam::123456789012:role/OSI-PipelineRole");
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsExternalId());
+        assertNull(kinesisSourceConfig.getAwsAuthenticationConfig().getAwsStsHeaderOverrides());
+        assertNotNull(kinesisSourceConfig.getCodec());
+        List<KinesisStreamConfig> streamConfigs = kinesisSourceConfig.getStreams();
+
+        assertEquals(streamConfigs.size(), 3);
+
+        for (KinesisStreamConfig kinesisStreamConfig: streamConfigs) {
+            String streamArn = kinesisStreamConfig.getStreamArn();
+            assertTrue(streamArn.contains("arn:aws:kinesis:us-east-1:123456789012:stream/stream"));
+            assertNotNull(streamArn);
+            assertNotNull(kinesisStreamConfig.getConsumerArn());
+            assertTrue(kinesisStreamConfig.getConsumerArn().contains(streamArn+"/consumer/consumer-1:1"));
+            assertEquals(kinesisStreamConfig.getInitialPosition(), InitialPositionInStream.LATEST);
+            assertEquals(kinesisStreamConfig.getCheckPointInterval(), MINIMAL_CHECKPOINT_INTERVAL);
         }
     }
 }

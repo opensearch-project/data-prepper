@@ -134,6 +134,11 @@ public class CrawlerSourcePluginTest {
                                        final PluginExecutorServiceProvider executorServiceProvider) {
             super("TestcasePlugin", pluginMetrics, sourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         }
+
+        @Override
+        protected LeaderProgressState createLeaderProgressState() {
+            return null;
+        }
     }
 
 

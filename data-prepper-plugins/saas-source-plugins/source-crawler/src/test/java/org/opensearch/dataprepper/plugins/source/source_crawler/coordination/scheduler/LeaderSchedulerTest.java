@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -48,11 +49,12 @@ public class LeaderSchedulerTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
+    void testPaginationCrawlerLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
         LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
-        LeaderPartition leaderPartition = new LeaderPartition();
-        leaderPartition.getProgressState().get().setInitialized(initializationState);
-        leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
+        LeaderPartition leaderPartition = new LeaderPartition(new PaginationCrawlerLeaderProgressState(Instant.EPOCH));
+        PaginationCrawlerLeaderProgressState state = (PaginationCrawlerLeaderProgressState) leaderPartition.getProgressState().get();
+        state.setInitialized(initializationState);
+        state.setLastPollTime(Instant.ofEpochMilli(0L));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
         doThrow(RuntimeException.class).when(coordinator).saveProgressStateForPartition(any(LeaderPartition.class), any(Duration.class));
 
@@ -72,9 +74,10 @@ public class LeaderSchedulerTest {
     @ValueSource(booleans = {true, false})
     void testExceptionWhileAcquiringLeaderPartition(boolean initializationState) throws InterruptedException {
         LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
-        LeaderPartition leaderPartition = new LeaderPartition();
-        leaderPartition.getProgressState().get().setInitialized(initializationState);
-        leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
+        LeaderPartition leaderPartition = new LeaderPartition(new PaginationCrawlerLeaderProgressState(Instant.EPOCH));
+        PaginationCrawlerLeaderProgressState state = (PaginationCrawlerLeaderProgressState) leaderPartition.getProgressState().get();
+        state.setInitialized(initializationState);
+        state.setLastPollTime(Instant.ofEpochMilli(0L));
         given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willThrow(RuntimeException.class);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -91,9 +94,10 @@ public class LeaderSchedulerTest {
     void testWhileLoopRunnningAfterTheSleep() throws InterruptedException {
         LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
         leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
-        LeaderPartition leaderPartition = new LeaderPartition();
-        leaderPartition.getProgressState().get().setInitialized(false);
-        leaderPartition.getProgressState().get().setLastPollTime(Instant.ofEpochMilli(0L));
+        LeaderPartition leaderPartition = new LeaderPartition(new PaginationCrawlerLeaderProgressState(Instant.EPOCH));
+        PaginationCrawlerLeaderProgressState state = (PaginationCrawlerLeaderProgressState) leaderPartition.getProgressState().get();
+        state.setInitialized(false);
+        state.setLastPollTime(Instant.ofEpochMilli(0L));
         when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class))).thenReturn(Instant.ofEpochMilli(10));
         when(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
                 .thenReturn(Optional.of(leaderPartition))

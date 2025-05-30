@@ -12,8 +12,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.AwsAuthenticationConfig;
@@ -22,9 +24,12 @@ import org.opensearch.dataprepper.plugins.source.rds.configuration.ExportConfig;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.state.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.rds.coordination.state.PostgresStreamState;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
-import org.opensearch.dataprepper.plugins.source.rds.schema.MySqlSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.PostgresSchemaManager;
+import org.opensearch.dataprepper.plugins.source.rds.schema.SchemaManager;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -33,6 +38,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -53,7 +62,7 @@ class LeaderSchedulerTest {
     private RdsSourceConfig sourceConfig;
 
     @Mock
-    private MySqlSchemaManager schemaManager;
+    private SchemaManager schemaManager;
 
     @Mock
     private DbTableMetadata dbTableMetadata;
@@ -64,13 +73,18 @@ class LeaderSchedulerTest {
     @Mock
     private LeaderProgressState leaderProgressState;
 
+    @Mock
+    private PipelineDescription pipelineDescription;
+
     private String s3Prefix;
+    private String pipelineName;
     private LeaderScheduler leaderScheduler;
 
     @BeforeEach
     void setUp() {
         s3Prefix = UUID.randomUUID().toString();
         leaderScheduler = createObjectUnderTest();
+        pipelineName = UUID.randomUUID().toString();
 
         AwsAuthenticationConfig awsAuthenticationConfig = mock(AwsAuthenticationConfig.class);
         lenient().when(awsAuthenticationConfig.getAwsStsRoleArn()).thenReturn(UUID.randomUUID().toString());
@@ -78,6 +92,7 @@ class LeaderSchedulerTest {
         ExportConfig exportConfig = mock(ExportConfig.class);
         lenient().when(exportConfig.getKmsKeyId()).thenReturn(UUID.randomUUID().toString());
         lenient().when(sourceConfig.getExport()).thenReturn(exportConfig);
+        lenient().when(pipelineDescription.getPipelineName()).thenReturn(pipelineName);
     }
 
     @Test
@@ -146,7 +161,43 @@ class LeaderSchedulerTest {
         executorService.shutdownNow();
     }
 
+    @Test
+    void leader_node_performs_init_creates_slot_with_expected_name() throws InterruptedException {
+        final PostgresSchemaManager postgresSchemaManager = mock(PostgresSchemaManager.class);
+        final String pipelineName = "simple-pipeline";
+
+        when(sourceCoordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).thenReturn(Optional.of(leaderPartition));
+        when(leaderPartition.getProgressState()).thenReturn(Optional.of(leaderProgressState));
+        when(leaderProgressState.isInitialized()).thenReturn(false);
+        when(sourceConfig.isStreamEnabled()).thenReturn(true);
+        when(sourceConfig.getEngine()).thenReturn(EngineType.POSTGRES);
+
+        final LeaderScheduler leaderScheduler = new LeaderScheduler(sourceCoordinator, sourceConfig, s3Prefix,
+                postgresSchemaManager, dbTableMetadata, pipelineName);
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(leaderScheduler);
+        await().atMost(Duration.ofSeconds(1))
+                .untilAsserted(() -> verify(sourceCoordinator).acquireAvailablePartition(LeaderPartition.PARTITION_TYPE));
+        Thread.sleep(100);
+        executorService.shutdownNow();
+
+        ArgumentCaptor<StreamPartition> streamPartitionArgumentCaptor = ArgumentCaptor.forClass(StreamPartition.class);
+        verify(sourceCoordinator).createPartition(any(GlobalState.class));
+        verify(sourceCoordinator).createPartition(streamPartitionArgumentCaptor.capture());
+        verify(sourceCoordinator).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+
+        final StreamPartition streamPartition = streamPartitionArgumentCaptor.getValue();
+        assertThat(streamPartition.getProgressState().get().getPostgresStreamState(), notNullValue());
+
+        PostgresStreamState postgresStreamState = streamPartition.getProgressState().get().getPostgresStreamState();
+        final String publicationName = postgresStreamState.getPublicationName();
+        final String slotName = postgresStreamState.getReplicationSlotName();
+        assertThat(publicationName, startsWith("data_prepper_simple_pipeline"));
+        assertThat(slotName, startsWith("data_prepper_simple_pipeline"));
+        assertThat(publicationName.substring(publicationName.length() - 8), is(slotName.substring(slotName.length() - 8)));
+    }
+
     private LeaderScheduler createObjectUnderTest() {
-        return new LeaderScheduler(sourceCoordinator, sourceConfig, s3Prefix, schemaManager, dbTableMetadata);
+        return new LeaderScheduler(sourceCoordinator, sourceConfig, s3Prefix, schemaManager, dbTableMetadata, pipelineName);
     }
 }

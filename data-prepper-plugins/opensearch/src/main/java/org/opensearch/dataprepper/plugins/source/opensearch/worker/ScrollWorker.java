@@ -49,7 +49,7 @@ public class ScrollWorker implements SearchWorker {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScrollWorker.class);
     private static final Duration BACKOFF_ON_SCROLL_LIMIT_REACHED = Duration.ofSeconds(120);
-    static final String SCROLL_TIME_PER_BATCH = "1m";
+    static final String SCROLL_TIME_PER_BATCH = "10m";
 
     private final ObjectMapper objectMapper;
     private final SearchAccessor searchAccessor;

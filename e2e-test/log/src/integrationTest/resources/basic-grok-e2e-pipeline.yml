@@ -1,4 +1,5 @@
 grok-pipeline:
+  workers: 2
   source:
     http:
       path: "/${pipelineName}/logs"

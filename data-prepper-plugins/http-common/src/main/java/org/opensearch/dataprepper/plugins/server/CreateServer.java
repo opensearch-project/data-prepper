@@ -167,8 +167,8 @@ public class CreateServer {
                     )
             );
         } else {
-            LOG.warn("Creating http source without SSL/TLS. This is not secure.");
-            LOG.warn("In order to set up TLS for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
+            LOG.warn("Creating " + sourceName + " without SSL/TLS. This is not secure.");
+            LOG.warn("In order to set up TLS for the " + sourceName + ", go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
             sb.http(serverConfiguration.getPort());
         }
 

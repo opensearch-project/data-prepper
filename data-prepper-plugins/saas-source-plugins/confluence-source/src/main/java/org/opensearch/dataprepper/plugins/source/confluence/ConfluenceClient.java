@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.source.confluence.utils.HtmlToTextConv
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerClient;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourceConfig;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.model.ItemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +49,7 @@ import static org.opensearch.dataprepper.plugins.source.confluence.utils.Constan
  * This class represents a Confluence client.
  */
 @Named
-public class ConfluenceClient implements CrawlerClient {
+public class ConfluenceClient implements CrawlerClient<PaginationCrawlerWorkerProgressState> {
 
     private static final Logger log = LoggerFactory.getLogger(ConfluenceClient.class);
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -81,7 +81,7 @@ public class ConfluenceClient implements CrawlerClient {
     }
 
     @Override
-    public void executePartition(SaasWorkerProgressState state,
+    public void executePartition(PaginationCrawlerWorkerProgressState state,
                                  Buffer<Record<Event>> buffer,
                                  AcknowledgementSet acknowledgementSet) {
         log.trace("Executing the partition: {} with {} ticket(s)",

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.processor;
 
+import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
@@ -14,6 +15,7 @@ import java.util.Collection;
  * Processor interface. These are intermediary processing units using which users can filter,
  * transform and enrich the records into desired format before publishing to the sink.
  */
+@PluginComponentType("processor")
 public interface Processor<InputRecord extends Record<?>, OutputRecord extends Record<?>> {
 
     /**

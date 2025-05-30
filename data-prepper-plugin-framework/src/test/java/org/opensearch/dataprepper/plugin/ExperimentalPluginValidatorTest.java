@@ -18,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -78,6 +80,50 @@ class ExperimentalPluginValidatorTest {
         @Test
         void accept_with_Experimental_plugin_does_not_throw_if_experimental_is_enabled() {
             when(experimentalConfiguration.isEnableAll()).thenReturn(true);
+
+            createObjectUnderTest().accept(definedPlugin);
+        }
+
+        @Test
+        void accept_with_Experimental_plugin_throws_if_experimental_is_not_enabled_for_pluginType() {
+            final String pluginName = UUID.randomUUID().toString();
+            final String pluginTypeName = UUID.randomUUID().toString();
+            when(definedPlugin.getPluginName()).thenReturn(pluginName);
+            when(definedPlugin.getPluginTypeName()).thenReturn(pluginTypeName);
+
+            final ExperimentalPluginValidator objectUnderTest = createObjectUnderTest();
+
+            final NoPluginFoundException actualException = assertThrows(NoPluginFoundException.class, () -> objectUnderTest.accept(definedPlugin));
+
+            assertThat(actualException.getMessage(), notNullValue());
+            assertThat(actualException.getMessage(), containsString(pluginName));
+            assertThat(actualException.getMessage(), containsString("experimental plugin"));
+        }
+
+        @Test
+        void accept_with_Experimental_plugin_throws_if_experimental_is_enabled_for_pluginType_but_not_for_plugin() {
+            final String pluginName = UUID.randomUUID().toString();
+            final String pluginTypeName = UUID.randomUUID().toString();
+            when(definedPlugin.getPluginName()).thenReturn(pluginName);
+            when(definedPlugin.getPluginTypeName()).thenReturn(pluginTypeName);
+            experimentalConfiguration.getEnabledPlugins().put(pluginTypeName, Set.of(UUID.randomUUID().toString()));
+
+            final ExperimentalPluginValidator objectUnderTest = createObjectUnderTest();
+
+            final NoPluginFoundException actualException = assertThrows(NoPluginFoundException.class, () -> objectUnderTest.accept(definedPlugin));
+
+            assertThat(actualException.getMessage(), notNullValue());
+            assertThat(actualException.getMessage(), containsString(pluginName));
+            assertThat(actualException.getMessage(), containsString("experimental plugin"));
+        }
+
+        @Test
+        void accept_with_Experimental_plugin_does_not_throw_if_experimental_is_enabled_for_specific_pluginType() {
+            final String pluginName = UUID.randomUUID().toString();
+            final String pluginTypeName = UUID.randomUUID().toString();
+            when(definedPlugin.getPluginName()).thenReturn(pluginName);
+            when(definedPlugin.getPluginTypeName()).thenReturn(pluginTypeName);
+            when(experimentalConfiguration.getEnabledPlugins()).thenReturn(Map.of(pluginTypeName, Set.of(UUID.randomUUID().toString(), pluginName)));
 
             createObjectUnderTest().accept(definedPlugin);
         }

@@ -15,4 +15,5 @@ public class Constants {
     public static final String LAST_UPDATED = "last_updated";
     public static final String MARKER_KEY = "_marker";
     public static final int BATCH_SIZE = 10000;
+    public static final String NEXT_PAGE = "Next-Page";
 }

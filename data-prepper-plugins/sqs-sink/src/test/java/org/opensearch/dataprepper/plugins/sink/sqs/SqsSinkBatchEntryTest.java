@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,6 +123,18 @@ public class SqsSinkBatchEntryTest {
         assertThat(sqsSinkBatchEntry.getDedupId(), equalTo(deDupId));
         assertThat(sqsSinkBatchEntry.getSize(), equalTo(expectedSize));
         assertThat(sqsSinkBatchEntry.getEventHandles().size(), equalTo(numRecords));
+    }
+
+    @Test
+    public void TestAddingToCompletedEntry() throws Exception {
+        SqsSinkBatchEntry sqsSinkBatchEntry = createObjectUnderTest();
+        List<Record<Event>> records = getRecordList(1);
+        Event event = records.get(0).getData();
+        sqsSinkBatchEntry.addEvent(event);
+        sqsSinkBatchEntry.complete();
+        List<Record<Event>> newRecords = getRecordList(1);
+        Event newEvent = records.get(0).getData();
+        assertThrows(RuntimeException.class, () -> sqsSinkBatchEntry.addEvent(newEvent));
     }
     
     private List<Record<Event>> getRecordList(int numberOfRecords) {

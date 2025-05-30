@@ -23,8 +23,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
-
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,7 +48,7 @@ public class ConfluenceClientTest {
     @Mock
     private Buffer<Record<Event>> buffer;
     @Mock
-    private SaasWorkerProgressState saasWorkerProgressState;
+    private PaginationCrawlerWorkerProgressState saasWorkerProgressState;
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock

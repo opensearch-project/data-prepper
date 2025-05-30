@@ -69,7 +69,7 @@ dependencyResolutionManagement {
             version('hadoop', '3.4.0')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
-            version('avro', '1.11.3')
+            version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
         }
@@ -193,7 +193,9 @@ include 'data-prepper-plugins:opensearch-api-source'
 include 'data-prepper-plugins:saas-source-plugins'
 include 'data-prepper-plugins:saas-source-plugins:source-crawler'
 include 'data-prepper-plugins:saas-source-plugins:jira-source'
+include 'data-prepper-plugins:encryption-plugin'
 include 'data-prepper-plugins:saas-source-plugins:confluence-source'
 include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
 include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
+include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
 include 'data-prepper-plugins:otlp-sink'
