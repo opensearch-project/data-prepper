@@ -1,0 +1,88 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+sourceSets {
+    integrationTest {
+        java.srcDir file('src/integrationTest/java')
+        resources.srcDir file('src/integrationTest/resources')
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+dependencies {
+    // AWS SDK
+    implementation 'software.amazon.awssdk:sdk-core'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:regions'
+    implementation 'software.amazon.awssdk:http-client-spi'
+    implementation 'software.amazon.awssdk:apache-client'
+
+    // Hibernate
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+    // OpenTelemetry Protobuf
+    implementation libs.opentelemetry.proto
+    implementation libs.protobuf.util
+    testImplementation libs.opentelemetry.proto
+    testImplementation libs.protobuf.util
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // Data Prepper Projects
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:otel-proto-common')
+
+    // Armeria
+    implementation libs.armeria.core
+
+    // Metrics
+    implementation 'io.micrometer:micrometer-core'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+    useJUnitPlatform()
+}
+
+check.dependsOn integrationTest
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled = true
+            element = 'CLASS'
+            includes = ['org.opensearch.dataprepper.plugins.sink.otlp.*']
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 1.00
+            }
+        }
+    }
+}
