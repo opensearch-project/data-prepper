@@ -40,8 +40,8 @@ dependencies {
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    testImplementation project(':data-prepper-test-common')
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugin-framework')

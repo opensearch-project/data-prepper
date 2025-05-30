@@ -22,7 +22,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4'
-    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation project(path: ':data-prepper-test:test-common')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.0'
 
     implementation(libs.spring.context) {

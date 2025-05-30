@@ -19,7 +19,7 @@ dependencies {
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation 'org.assertj:assertj-core:3.25.3'
     compileOnly 'org.projectlombok:lombok:1.18.20'

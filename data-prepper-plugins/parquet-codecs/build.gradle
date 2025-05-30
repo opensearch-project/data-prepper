@@ -22,8 +22,8 @@ dependencies {
         exclude group: 'org.apache.hadoop', module: 'hadoop-hdfs-client'
         exclude group: 'org.apache.zookeeper', module: 'zookeeper'
     }
-    testImplementation project(':data-prepper-test-common')
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
     testImplementation(libs.hadoop.common) {
         exclude group: 'org.eclipse.jetty'
         exclude group: 'org.apache.hadoop', module: 'hadoop-auth'

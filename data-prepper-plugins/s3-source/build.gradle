@@ -37,7 +37,7 @@ dependencies {
     testImplementation 'org.eclipse.jetty:jetty-bom:11.0.20'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation testLibs.junit.vintage
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:csv-processor')
     testImplementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-plugins:newline-codecs')
@@ -46,7 +46,7 @@ dependencies {
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-event')
     testImplementation libs.avro.core
     testImplementation(libs.hadoop.common)  {
         exclude group: 'org.eclipse.jetty'
