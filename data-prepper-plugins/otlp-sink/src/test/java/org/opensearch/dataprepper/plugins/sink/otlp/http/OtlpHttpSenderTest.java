@@ -422,4 +422,20 @@ class OtlpHttpSenderTest {
         verify(mockEventHandle2).release(true);
         verify(mockEventHandle3).release(true);
     }
+
+    @Test
+    void testHandleResponse_withNullResponseBody_logsNoBody() throws Exception {
+        final Method method = OtlpHttpSender.class.getDeclaredMethod("handleResponse", int.class, byte[].class, List.class);
+        method.setAccessible(true);
+
+        method.invoke(sender, 500, null, testBatch);
+
+        verify(metrics).recordResponseCode(500);
+        verify(metrics).incrementRejectedSpansCount(SPANS_COUNT);
+
+        // Verifying event handles released with success=false
+        verify(mockEventHandle1).release(false);
+        verify(mockEventHandle2).release(false);
+        verify(mockEventHandle3).release(false);
+    }
 }
