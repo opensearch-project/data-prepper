@@ -85,7 +85,8 @@ class CredentialsProviderFactory {
             assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(credentialsOptions.getStsExternalId());
         }
 
-        final Map<String, String> awsStsHeaderOverrides = credentialsOptions.getStsHeaderOverrides();
+        final Map<String, String> awsStsHeaderOverrides = credentialsOptions.getStsHeaderOverrides() != null ? 
+                credentialsOptions.getStsHeaderOverrides() : defaultStsConfiguration.getStsHeaderOverrides();
 
         if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
             assumeRoleRequestBuilder = assumeRoleRequestBuilder

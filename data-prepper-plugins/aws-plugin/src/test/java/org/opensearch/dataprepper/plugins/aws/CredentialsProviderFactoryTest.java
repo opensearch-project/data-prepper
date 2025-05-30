@@ -409,6 +409,47 @@ class CredentialsProviderFactoryTest {
 
             assertThat(retryPolicy.throttlingBackoffStrategy(), sameInstance(backoffStrategy));
         }
+
+        @Test
+        void providerFromOptions_should_use_default_STS_Headers_when_credentialsOptions_HeaderOverrides_are_null() {
+            final String defaultHeaderName = "default-header";
+            final String defaultHeaderValue = "default-value";
+            final Map<String, String> defaultHeaders = Map.of(defaultHeaderName, defaultHeaderValue);
+
+            when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
+            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsHeaderOverrides()).thenReturn(null);
+            when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(defaultHeaders);
+
+            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
+
+            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
+            final AwsCredentialsProvider actualCredentialsProvider;
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
+                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+
+            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(actualAssumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(actualAssumeRoleRequest.roleSessionName(), startsWith("Data-Prepper-"));
+            assertThat(actualAssumeRoleRequest.overrideConfiguration(), notNullValue());
+            assertThat(actualAssumeRoleRequest.overrideConfiguration().isPresent(), equalTo(true));
+            final AwsRequestOverrideConfiguration overrideConfiguration = actualAssumeRoleRequest.overrideConfiguration().get();
+            assertThat(overrideConfiguration.headers(), notNullValue());
+            assertThat(overrideConfiguration.headers().size(), equalTo(1));
+            assertThat(overrideConfiguration.headers(), hasKey(defaultHeaderName));
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName), notNullValue());
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName).size(), equalTo(1));
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName), hasItem(defaultHeaderValue));
+        }
     }
 
     private String createStsRole() {
