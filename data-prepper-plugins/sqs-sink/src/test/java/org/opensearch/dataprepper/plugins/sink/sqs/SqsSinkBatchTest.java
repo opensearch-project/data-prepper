@@ -13,9 +13,12 @@ import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -23,6 +26,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
+import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -39,10 +43,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.greaterThan;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,6 +61,8 @@ public class SqsSinkBatchTest {
     private SqsClient sqsClient;
     @Mock
     private SqsException sqsException;
+    @Mock
+    private SqsThresholdConfig sqsThresholdConfig;
 
     private AtomicInteger eventsSuccessCount;
     private AtomicInteger requestsSuccessCount;
@@ -77,11 +85,15 @@ public class SqsSinkBatchTest {
     private String queueUrl;
 
     private SqsSinkBatch createObjectUnderTest() {
-        return new SqsSinkBatch(bufferFactory, sqsClient, sinkMetrics, queueUrl, outputCodec, outputCodecContext, maxMessageSize, maxEvents);
+        return new SqsSinkBatch(bufferFactory, sqsClient, sinkMetrics, queueUrl, outputCodec, outputCodecContext, sqsThresholdConfig, (a, b) -> {});
     }
 
     @BeforeEach
     void setup() {
+        sqsThresholdConfig = mock(SqsThresholdConfig.class);
+        maxMessageSize = 256 * 1024;
+        when(sqsThresholdConfig.getMaxMessageSizeBytes()).thenReturn(maxMessageSize);
+        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         eventsSuccessCount = new AtomicInteger(0);
         requestsSuccessCount = new AtomicInteger(0);
         eventsFailedCount = new AtomicInteger(0);
@@ -117,7 +129,6 @@ public class SqsSinkBatchTest {
         flushResponse = mock(SendMessageBatchResponse.class);
         outputCodec = new JsonOutputCodec(new JsonOutputCodecConfig());
         outputCodecContext = new OutputCodecContext();
-        maxMessageSize = 256 * 1024;
     }
 
     @Test
@@ -129,9 +140,10 @@ public class SqsSinkBatchTest {
         assertThat(batch.getEntries().size(), equalTo(0));
     }
 
-    @Test
-    void TestOneBatch_WithOneEventPerMessage_WithSuccessfulSendMessage() throws Exception {
-        maxEvents = 1;
+    @ParameterizedTest
+    @ValueSource(strings= {"", ".fifo"})
+    void TestOneBatch_WithOneEventPerMessage_WithSuccessfulSendMessage(String queueUrlSuffix) throws Exception {
+        queueUrl += queueUrlSuffix;
         batch = createObjectUnderTest();
         groupId = UUID.randomUUID().toString();
         String dedupId = UUID.randomUUID().toString();
@@ -163,7 +175,7 @@ public class SqsSinkBatchTest {
         assertTrue(batch.willExceedLimits(1L));
         assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
         assertThat(batch.getEventCount(), equalTo(SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
-        boolean flushResult = batch.flushOnce(null);
+        boolean flushResult = batch.flushOnce();
         assertTrue(flushResult);
         assertThat(eventsSuccessCount.get(), equalTo(numRecords));
         assertThat(requestsSuccessCount.get(), equalTo(1));
@@ -171,8 +183,142 @@ public class SqsSinkBatchTest {
     }
 
     @Test
+    void TestOneBatch_WithMultipleEventsPerMessage_WithSuccessfulSendMessage() throws Exception {
+        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(2);
+        batch = createObjectUnderTest();
+        groupId = UUID.randomUUID().toString();
+        String dedupId = UUID.randomUUID().toString();
+
+        when(flushResponse.hasFailed()).thenReturn(false);
+        when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenReturn(flushResponse);
+        final int numRecords = 2*SqsSinkBatch.MAX_MESSAGES_PER_BATCH;
+        List<Record<Event>> records = getRecordList(numRecords);
+        long minSize = 0;
+        for (int i = 0; i < numRecords; i++) {
+
+            Event event = records.get(i%numRecords).getData();
+            minSize += event.toJsonString().length();
+            long eSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+            boolean result = batch.addEntry(event, groupId, dedupId, eSize);
+            if (i < numRecords-1) {
+                assertFalse(result);
+            } else {
+                assertTrue(result);
+            }
+        }
+        assertThat(batch.getEntries().size(), equalTo(numRecords/2));
+        batch.setFlushReady();
+        assertTrue(batch.willExceedLimits(1L));
+        assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
+        assertThat(batch.getEventCount(), equalTo(2*SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
+        boolean flushResult = batch.flushOnce();
+        assertTrue(flushResult);
+        assertThat(eventsSuccessCount.get(), equalTo(numRecords));
+        assertThat(requestsSuccessCount.get(), equalTo(1));
+        verify(eventHandle, times(numRecords)).release(true);
+    }
+
+    @Test
+    void TestOneBatch_WithMultipleEventsPerMessageWithMessageSize_WithSuccessfulSendMessage() throws Exception {
+        when(sqsThresholdConfig.getMaxMessageSizeBytes()).thenReturn(95L);
+        when(sqsThresholdConfig.getMaxEventsPerMessage()).thenReturn(3);
+        batch = createObjectUnderTest();
+        assertTrue(batch.flushOnce());
+        batch.setFlushReady();
+        assertTrue(batch.flushOnce());
+        groupId = UUID.randomUUID().toString();
+        String dedupId = UUID.randomUUID().toString();
+
+        when(flushResponse.hasFailed()).thenReturn(false);
+        when(sqsClient.sendMessageBatch(any(SendMessageBatchRequest.class))).thenReturn(flushResponse);
+        final int numRecords = 2*SqsSinkBatch.MAX_MESSAGES_PER_BATCH;
+        List<Record<Event>> records = getRecordList(numRecords);
+        long minSize = 0;
+        for (int i = 0; i < numRecords; i++) {
+
+            Event event = records.get(i%numRecords).getData();
+            minSize += event.toJsonString().length();
+            long eSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+            assertFalse(batch.willExceedLimits(45L));
+            boolean result = batch.addEntry(event, groupId, dedupId, eSize);
+            assertFalse(result);
+        }
+        assertThat(batch.getEntries().size(), equalTo(numRecords/2));
+        batch.setFlushReady();
+        assertTrue(batch.willExceedLimits(45L));
+        assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
+        assertThat(batch.getEventCount(), equalTo(2*SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
+        boolean flushResult = batch.flushOnce();
+        assertTrue(flushResult);
+        assertThat(eventsSuccessCount.get(), equalTo(numRecords));
+        assertThat(requestsSuccessCount.get(), equalTo(1));
+        verify(eventHandle, times(numRecords)).release(true);
+    }
+
+    @Test
+    void TestBatchFull() throws Exception {
+        batch = createObjectUnderTest();
+        final int numRecords = SqsSinkBatch.MAX_MESSAGES_PER_BATCH;
+        List<Record<Event>> records = getRecordList(numRecords);
+        for (int i = 0; i < records.size(); i++) {
+            Event event = records.get(i).getData();
+            long eSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+            boolean isFull = batch.addEntry(event, null, null, eSize);
+            if (i == records.size()-1) {
+                assertTrue(isFull);
+            } else {
+                assertFalse(isFull);
+            }
+        }
+    }
+            
+    private Record<Event> getLargeRecord(int size) {
+        final Event event = JacksonLog.builder()
+                            .withData(Map.of("key", RandomStringUtils.randomAlphabetic(size)))
+                            .withEventHandle(eventHandle)
+                            .build();
+        return new Record<>(event);
+    }
+
+    @Test
+    void TestOneBatch_WithOneEventPerMessage_WithFlushFailure_NotSenderFault() throws Exception {
+        batch = createObjectUnderTest();
+        groupId = UUID.randomUUID().toString();
+        String dedupId = UUID.randomUUID().toString();
+
+        SendMessageBatchResponse flushResponse = mock(SendMessageBatchResponse.class);
+        when(flushResponse.hasFailed()).thenReturn(true);
+        BatchResultErrorEntry errorEntry = mock(BatchResultErrorEntry.class);
+        when(errorEntry.id()).thenReturn(UUID.randomUUID().toString());
+        when(errorEntry.message()).thenReturn(UUID.randomUUID().toString());
+        when(errorEntry.senderFault()).thenReturn(false);
+        List<BatchResultErrorEntry> errorEntries = new ArrayList<>();
+        doAnswer((a) -> {
+            SendMessageBatchRequest batchRequest = (SendMessageBatchRequest)a.getArgument(0);
+            List<SendMessageBatchRequestEntry> entries = batchRequest.entries();
+            for (final SendMessageBatchRequestEntry entry: entries) {
+                errorEntries.add(BatchResultErrorEntry.builder().id(entry.id()).senderFault(false).message(entry.messageBody()).build());
+            }
+            return flushResponse;
+        }).when(sqsClient).sendMessageBatch(any(SendMessageBatchRequest.class));
+        when(flushResponse.failed()).thenReturn(errorEntries);
+        final int numRecords = SqsSinkBatch.MAX_MESSAGES_PER_BATCH;
+        List<Record<Event>> records = getRecordList(numRecords);
+        for (int i = 0; i < numRecords; i++) {
+
+            Event event = records.get(i).getData();
+            long eSize = outputCodec.getEstimatedSize(event, new OutputCodecContext());
+            batch.addEntry(event, groupId, dedupId, eSize);
+        }
+        assertThat(batch.getEntries().size(), equalTo(numRecords));
+        batch.setFlushReady();
+        assertThat(batch.getEventCount(), equalTo(SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
+        boolean flushResult = batch.flushOnce();
+        assertFalse(flushResult);
+    }
+
+    @Test
     void TestOneBatch_WithOneEventPerMessage_WithFlushFailure() throws Exception {
-        maxEvents = 1;
         batch = createObjectUnderTest();
         groupId = UUID.randomUUID().toString();
         String dedupId = UUID.randomUUID().toString();
@@ -200,7 +346,7 @@ public class SqsSinkBatchTest {
         assertTrue(batch.willExceedLimits(1L));
         assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
         assertThat(batch.getEventCount(), equalTo(SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
-        boolean flushResult = batch.flushOnce((e, m) -> {});
+        boolean flushResult = batch.flushOnce();
         // all entries sent to DLQ
         assertTrue(flushResult);
     }
@@ -208,7 +354,6 @@ public class SqsSinkBatchTest {
 
     @Test
     void TestOneBatch_WithOneEventPerMessage_WithFlushExceptionFailure() throws Exception {
-        maxEvents = 1;
         batch = createObjectUnderTest();
         groupId = UUID.randomUUID().toString();
         String dedupId = UUID.randomUUID().toString();
@@ -229,13 +374,12 @@ public class SqsSinkBatchTest {
         assertTrue(batch.willExceedLimits(1L));
         assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
         assertThat(batch.getEventCount(), equalTo(SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
-        boolean flushResult = batch.flushOnce((e, m) -> {});
+        boolean flushResult = batch.flushOnce();
         assertFalse(flushResult);
     }
 
     @Test
     void TestOneBatch_WithOneEventPerMessage_WithFlushException() throws Exception {
-        maxEvents = 1;
         batch = createObjectUnderTest();
         groupId = UUID.randomUUID().toString();
         String dedupId = UUID.randomUUID().toString();
@@ -256,7 +400,7 @@ public class SqsSinkBatchTest {
         assertTrue(batch.willExceedLimits(1L));
         assertThat(batch.getCurrentBatchSize(), greaterThan(minSize));
         assertThat(batch.getEventCount(), equalTo(SqsSinkBatch.MAX_MESSAGES_PER_BATCH));
-        boolean flushResult = batch.flushOnce((e, m) -> {});
+        boolean flushResult = batch.flushOnce();
         assertTrue(flushResult);
         assertThat(eventsFailedCount.get(), equalTo(numRecords));
         assertThat(requestsFailedCount.get(), equalTo(1));

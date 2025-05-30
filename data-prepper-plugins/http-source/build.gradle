@@ -23,6 +23,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.27.0'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
 }
 
 jacocoTestCoverageVerification {

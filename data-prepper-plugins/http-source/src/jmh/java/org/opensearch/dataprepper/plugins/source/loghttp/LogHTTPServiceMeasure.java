@@ -51,7 +51,7 @@ public class LogHTTPServiceMeasure {
             when(buffer.getOptimalRequestSize()).thenReturn(Optional.of(256 * 1024));
 
             serviceRequestContext = mock(ServiceRequestContext.class);
-            logHTTPService = new LogHTTPService((int) Duration.ofSeconds(10).toMillis(), buffer, PluginMetrics.fromPrefix("testing"));
+            logHTTPService = new LogHTTPService((int) Duration.ofSeconds(10).toMillis(), buffer, PluginMetrics.fromPrefix("testing"), null);
 
             requestHeaders = RequestHeaders.builder()
                     .method(HttpMethod.POST)

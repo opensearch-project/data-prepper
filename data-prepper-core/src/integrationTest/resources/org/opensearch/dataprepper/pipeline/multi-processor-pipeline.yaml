@@ -1,0 +1,15 @@
+multi-processor-pipeline:
+  workers: 4
+  source:
+    in_memory:
+      testing_key: ProcessorValidationIT
+  buffer:
+    bounded_blocking:
+      buffer_size: 1000
+      batch_size: 10
+  processor:
+    - single_thread_events_tracking_test:
+    - basic_events_tracking_test:
+  sink:
+    - in_memory:
+        testing_key: ProcessorValidationIT

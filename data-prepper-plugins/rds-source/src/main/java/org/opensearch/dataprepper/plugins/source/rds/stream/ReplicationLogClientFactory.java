@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.rds.coordination.state.Postgres
 import org.opensearch.dataprepper.plugins.source.rds.model.DbMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManager;
 import org.opensearch.dataprepper.plugins.source.rds.schema.ConnectionManagerFactory;
+import org.opensearch.dataprepper.plugins.source.rds.utils.RdsSourceAggregateMetrics;
 import software.amazon.awssdk.services.rds.RdsClient;
 
 import java.util.NoSuchElementException;
@@ -27,6 +28,7 @@ public class ReplicationLogClientFactory {
 
     private final RdsClient rdsClient;
     private final DbMetadata dbMetadata;
+    private final RdsSourceAggregateMetrics rdsSourceAggregateMetrics;
     private RdsSourceConfig sourceConfig;
     private String username;
     private String password;
@@ -34,17 +36,19 @@ public class ReplicationLogClientFactory {
 
     public ReplicationLogClientFactory(final RdsSourceConfig sourceConfig,
                                        final RdsClient rdsClient,
-                                       final DbMetadata dbMetadata) {
+                                       final DbMetadata dbMetadata,
+                                       final RdsSourceAggregateMetrics rdsSourceAggregateMetrics) {
         this.sourceConfig = sourceConfig;
         this.rdsClient = rdsClient;
         this.dbMetadata = dbMetadata;
+        this.rdsSourceAggregateMetrics = rdsSourceAggregateMetrics;
         username = sourceConfig.getAuthenticationConfig().getUsername();
         password = sourceConfig.getAuthenticationConfig().getPassword();
     }
 
     public ReplicationLogClient create(StreamPartition streamPartition) {
         if (sourceConfig.getEngine().isMySql()) {
-            return new BinlogClientWrapper(createBinaryLogClient());
+            return new BinlogClientWrapper(createBinaryLogClient(), rdsSourceAggregateMetrics);
         } else { // Postgres
             return createLogicalReplicationClient(streamPartition);
         }
@@ -74,7 +78,7 @@ public class ReplicationLogClientFactory {
         }
         final ConnectionManagerFactory connectionManagerFactory = new ConnectionManagerFactory(sourceConfig, dbMetadata);
         final ConnectionManager connectionManager = connectionManagerFactory.getConnectionManager();
-        return new LogicalReplicationClient(connectionManager, publicationName, replicationSlotName);
+        return new LogicalReplicationClient(connectionManager, publicationName, replicationSlotName, rdsSourceAggregateMetrics);
     }
 
     public void setSSLMode(SSLMode sslMode) {

@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
@@ -39,6 +40,7 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
     private final EventFactory eventFactory;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final PluginConfigObservable pluginConfigObservable;
+    private final PipelineDescription pipelineDescription;
     private EnhancedSourceCoordinator sourceCoordinator;
     private RdsService rdsService;
 
@@ -48,12 +50,14 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
                      final EventFactory eventFactory,
                      final AwsCredentialsSupplier awsCredentialsSupplier,
                      final AcknowledgementSetManager acknowledgementSetManager,
-                     final PluginConfigObservable pluginConfigObservable) {
+                     final PluginConfigObservable pluginConfigObservable,
+                     final PipelineDescription pipelineDescription) {
         this.pluginMetrics = pluginMetrics;
         this.sourceConfig = sourceConfig;
         this.eventFactory = eventFactory;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginConfigObservable = pluginConfigObservable;
+        this.pipelineDescription = pipelineDescription;
 
         clientFactory = new ClientFactory(awsCredentialsSupplier, sourceConfig);
     }
@@ -64,7 +68,8 @@ public class RdsSource implements Source<Record<Event>>, UsesEnhancedSourceCoord
         Objects.requireNonNull(sourceCoordinator);
         sourceCoordinator.createPartition(new LeaderPartition());
 
-        rdsService = new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+        rdsService = new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics,
+                acknowledgementSetManager, pluginConfigObservable, pipelineDescription);
 
         LOG.info("Start RDS service");
         rdsService.start(buffer);

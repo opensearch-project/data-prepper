@@ -111,13 +111,12 @@ public class SqsSinkService extends SqsSinkExecutor {
 
     @Override
     public void pushDLQList() {
+        // If DLQ push handler is null, dlqObjects list
+        // would be empty
         if (dlqObjects.size() == 0) {
             return;
         }
-        boolean result = false;
-        if (dlqPushHandler != null) {
-            result = dlqPushHandler.perform(dlqObjects);
-        }
+        boolean result = dlqPushHandler.perform(dlqObjects);
         for (final DlqObject dlqObject : dlqObjects) {
             dlqObject.releaseEventHandles(result);
         }
@@ -150,20 +149,9 @@ public class SqsSinkService extends SqsSinkExecutor {
             return false;
         boolean result = batch.willExceedLimits(estimatedSize);
         if (result) {
-            setFlushReady(qUrl, batch);
+            batch.setFlushReady();
         }
         return result;
-    }
-
-    private boolean doFlushBatch(SqsSinkBatch batch) {
-        boolean flushSuccess = batch.flushOnce(
-            (batchEntry, exceptionMessage ) -> {
-                addBatchEntryToDLQ(batchEntry, exceptionMessage);
-             });
-
-        // Sending to DLQ is also considered success (because no
-        // retry needed)
-        return flushSuccess;
     }
 
     @Override
@@ -173,7 +161,7 @@ public class SqsSinkService extends SqsSinkExecutor {
         if (previousFailedBatches != null) {
             List<SqsSinkBatch> pFailedBatches = (List<SqsSinkBatch>) previousFailedBatches;
             for (SqsSinkBatch failedBatch: pFailedBatches) {
-                if (!doFlushBatch(failedBatch)) {
+                if (!failedBatch.flushOnce()) {
                     failedBatches.add(failedBatch);
                 } else {
                     successQueueUrls.add(failedBatch.getQueueUrl());
@@ -185,7 +173,7 @@ public class SqsSinkService extends SqsSinkExecutor {
                 Map.Entry<String, SqsSinkBatch> qUrlEntry = iterator.next();
                 SqsSinkBatch batch = qUrlEntry.getValue();
                 if (batch.isReady()) {
-                    if (!doFlushBatch(batch)) {
+                    if (!batch.flushOnce()) {
                         failedBatches.add(batch);
                     } else {
                         successQueueUrls.add(batch.getQueueUrl());
@@ -205,12 +193,7 @@ public class SqsSinkService extends SqsSinkExecutor {
         String qUrl = queueUrl;
         if (isDynamicQueueUrl) {
             try {
-                Object obj = event.formatString(queueUrl, expressionEvaluator);
-                if (obj instanceof String) {
-                    qUrl = (String) obj;
-                } else {
-                    throw new RuntimeException("Evaluated queue url is not a string");
-                }
+                qUrl = event.formatString(queueUrl, expressionEvaluator);
             } catch (Exception e) {
                 qUrl = null;
                 if (logError) {
@@ -226,12 +209,7 @@ public class SqsSinkService extends SqsSinkExecutor {
         String gId = groupId;
         if (isDynamicGroupId) {
             try {
-                Object obj = event.formatString(groupId, expressionEvaluator);
-                if (obj instanceof String) {
-                    gId = (String) obj;
-                } else {
-                    throw new RuntimeException("Evaluated group id is not a string");
-                }
+                gId = event.formatString(groupId, expressionEvaluator);
             } catch (Exception e) {
                 LOG.error(NOISY, "Invalid groupId expression {}, using random groupId ", e.getMessage());
             }
@@ -243,12 +221,7 @@ public class SqsSinkService extends SqsSinkExecutor {
         String ddId = deDupId;
         if (isDynamicDeDupId) {
             try {
-                Object obj = event.formatString(deDupId, expressionEvaluator);
-                if (obj instanceof String) {
-                    ddId = (String) obj;
-                } else {
-                    throw new RuntimeException("Evaluated deduplicate id is not a string");
-                }
+                 ddId = event.formatString(deDupId, expressionEvaluator);
             } catch (Exception e) {
                 LOG.error(NOISY, "Invalid deDupId expression {}, using random deDupId ", e.getMessage());
             }
@@ -275,7 +248,9 @@ public class SqsSinkService extends SqsSinkExecutor {
         SqsSinkBatch batch = batchUrlMap.get(qUrl);
         if (batch == null) {
             final OutputCodecContext codecContext = OutputCodecContext.fromSinkContext(sinkContext);
-            batch = new SqsSinkBatch(inMemoryBufferFactory, sqsClient, sinkMetrics, qUrl, codec, codecContext, thresholdConfig.getMaxMessageSizeBytes(), thresholdConfig.getMaxEventsPerMessage());
+            batch = new SqsSinkBatch(inMemoryBufferFactory, sqsClient, sinkMetrics, qUrl, codec, codecContext, thresholdConfig, (batchEntry, exceptionMessage ) -> {
+                    addBatchEntryToDLQ(batchEntry, exceptionMessage);
+            });
 
             batchUrlMap.put(qUrl, batch);
         }
@@ -283,36 +258,23 @@ public class SqsSinkService extends SqsSinkExecutor {
         String ddId = getDeDupId(event);
         boolean isFull = batch.addEntry(event, gId, ddId, estimatedSize);
         if (isFull) {
-            setFlushReady(qUrl, batch);
+            batch.setFlushReady();
         }
         return isFull;
     }
 
-    private boolean setFlushReady(final String queueUrl, final SqsSinkBatch batch) {
-        try {
-            batch.setFlushReady();
-            return true;
-        } catch (Exception e) {
-            for (Map.Entry<String, SqsSinkBatchEntry> entry: batch.getEntries().entrySet()) {
-                addBatchEntryToDLQ(entry.getValue(), "Failed to setFlushReady for the batch");
-            }
-            batchUrlMap.remove(queueUrl);
-            return false;
-        }
-    }
 
     @Override
     public boolean exceedsFlushTimeInterval() {
         long now = Instant.now().getEpochSecond();
         boolean result = false;
 
-        Iterator<Map.Entry<String, SqsSinkBatch>> iterator = batchUrlMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, SqsSinkBatch> qUrlEntry = iterator.next();
+        for (Map.Entry<String, SqsSinkBatch> qUrlEntry: batchUrlMap.entrySet()) {
             String qUrl = qUrlEntry.getKey();
             SqsSinkBatch batch = qUrlEntry.getValue();
             if (now - batch.getLastFlushedTime() > thresholdConfig.getFlushInterval()) {
-                result = result || setFlushReady(qUrl, batch);
+                batch.setFlushReady();
+                result = true;
             }
         }
         return result;
@@ -332,6 +294,11 @@ public class SqsSinkService extends SqsSinkExecutor {
                 handle.release(false);
             }
         }
+    }
+
+    @Override
+    public void recordLatency(double latencyMillis) {
+        sinkMetrics.recordRequestLatency((double)latencyMillis);
     }
 
     @Override

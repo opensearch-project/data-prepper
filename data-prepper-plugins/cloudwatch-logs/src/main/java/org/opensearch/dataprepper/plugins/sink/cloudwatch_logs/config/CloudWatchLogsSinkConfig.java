@@ -6,7 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -37,8 +38,9 @@ public class CloudWatchLogsSinkConfig {
     @NotNull
     private String logStream;
 
-    @JsonProperty("max_retries")
-    @Size(min = 1, max = 15, message = "retry_count amount should be between 1 and 15")
+    @JsonProperty(value = "max_retries", defaultValue = "5")
+    @Min(1)
+    @Max(15)
     private int maxRetries = DEFAULT_RETRY_COUNT;
 
     public AwsConfig getAwsConfig() {

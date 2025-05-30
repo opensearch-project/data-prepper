@@ -20,8 +20,11 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 
 
 import java.time.Instant;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +46,9 @@ public class SqsSinkBatch {
     private final SqsClient sqsClient;
     private final BufferFactory bufferFactory;
     private final SqsSinkMetrics sinkMetrics;
+    private String currentId;
     private SqsSinkBatchEntry currentBatchEntry;
+    private final BiConsumer<SqsSinkBatchEntry, String> addToDLQList;
 
     public SqsSinkBatch(final BufferFactory bufferFactory,
                         final SqsClient sqsClient,
@@ -51,11 +56,12 @@ public class SqsSinkBatch {
                         final String queueUrl,
                         final OutputCodec codec,
                         final OutputCodecContext codecContext,
-                        final long maxMessageSize,
-                        final int maxEvents) {
-        this.maxMessageSize = maxMessageSize;
+                        final SqsThresholdConfig thresholdConfig,
+                        final BiConsumer<SqsSinkBatchEntry, String> addToDLQList) {
         this.bufferFactory = bufferFactory;
-        this.maxEvents = maxEvents;
+        this.maxMessageSize = thresholdConfig.getMaxMessageSizeBytes();
+        this.maxEvents = thresholdConfig.getMaxEventsPerMessage();
+        this.addToDLQList = addToDLQList;
         this.codec = codec;
         this.sinkMetrics = sinkMetrics;
         this.codecContext = codecContext;
@@ -66,6 +72,7 @@ public class SqsSinkBatch {
         fifoQueue = queueUrl.endsWith(SQS_FIFO_SUFFIX);
         entries = new HashMap<>();
         currentBatchEntry = null;
+        currentId = null;
     }
 
     public String getQueueUrl() {
@@ -73,7 +80,7 @@ public class SqsSinkBatch {
     }
 
     private boolean isFull() {
-        return entries.size() == MAX_MESSAGES_PER_BATCH && (currentBatchEntry.getEventCount() == maxEvents || currentBatchEntry.getSize() == maxMessageSize);
+        return entries.size() == MAX_MESSAGES_PER_BATCH && currentBatchEntry.getEventCount() == maxEvents;
     }
 
     public boolean willExceedLimits(long estimatedSize) {
@@ -99,7 +106,12 @@ public class SqsSinkBatch {
                 currentBatchEntry.addEvent(event);
                 return isFull();
             } else {
-                currentBatchEntry.complete();
+                try {
+                    currentBatchEntry.complete();
+                } catch (IOException ex) {
+                    addToDLQList.accept(currentBatchEntry, ex.getMessage());
+                    entries.remove(currentId);
+                }
             }
         }
         if (entries.size() == MAX_MESSAGES_PER_BATCH) {
@@ -115,6 +127,7 @@ public class SqsSinkBatch {
 
         currentBatchEntry.addEvent(event);
         final String id = UUID.randomUUID().toString();
+        currentId = id;
         entries.put(id, currentBatchEntry);
         return isFull();
     }
@@ -126,7 +139,16 @@ public class SqsSinkBatch {
     public long getCurrentBatchSize() {
         long sum = 0;
         for (Map.Entry<String, SqsSinkBatchEntry> entry : entries.entrySet()) {
-            sum += entry.getValue().getSize();
+            SqsSinkBatchEntry batchEntry = entry.getValue();
+            sum += batchEntry.getSize();
+            if (fifoQueue) {
+                if (batchEntry.getGroupId() != null) {
+                    sum += batchEntry.getGroupId().length();
+                }
+                if (batchEntry.getDedupId() != null) {
+                    sum += batchEntry.getDedupId().length();
+                }
+            }
         }
         return sum;
     }
@@ -135,9 +157,16 @@ public class SqsSinkBatch {
         return entries.values().stream().mapToInt(SqsSinkBatchEntry::getEventCount).sum();
     }
 
-    public void setFlushReady() throws Exception {
-        for (Map.Entry<String, SqsSinkBatchEntry> entry: entries.entrySet()) {
-            entry.getValue().complete();
+    public void setFlushReady() {
+        Iterator<Map.Entry<String, SqsSinkBatchEntry>> iterator = entries.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, SqsSinkBatchEntry> entry = iterator.next();
+            try {
+                entry.getValue().complete();
+            } catch (IOException ex) {
+                addToDLQList.accept(entry.getValue(), ex.getMessage());
+                iterator.remove();
+            }
         }
         flushReady = true;
     }
@@ -162,16 +191,31 @@ public class SqsSinkBatch {
         return (e instanceof RequestThrottledException);
     }
 
-    public boolean flushOnce(final BiConsumer<SqsSinkBatchEntry, String> addToDLQList) {
-        if (!isReady()) {
+    private long getEntrySize(SqsSinkBatchEntry entry) {
+        long result = entry.getBody().getBytes(StandardCharsets.UTF_8).length;
+        if (fifoQueue) {
+            if (entry.getGroupId() != null) {
+                result += entry.getGroupId().getBytes(StandardCharsets.UTF_8).length;
+            }
+            if (entry.getDedupId() != null) {
+                result += entry.getDedupId().getBytes(StandardCharsets.UTF_8).length;
+            }
+        }
+        return result;
+    }
+
+    public boolean flushOnce() {
+        if (!isReady() || entries.size() == 0) {
             return true;
         }
         SendMessageBatchResponse flushResponse;
         List<SendMessageBatchRequestEntry> requestEntries = new ArrayList<>();
+        long requestSize = 0;
         for (Map.Entry<String, SqsSinkBatchEntry> groupEntry: entries.entrySet()) {
             final String id = groupEntry.getKey();
             final SqsSinkBatchEntry entry = groupEntry.getValue();
             requestEntries.add(getRequestEntry(id, entry));
+            requestSize += getEntrySize(entry);
         }
         SendMessageBatchRequest batchRequest =
             SendMessageBatchRequest.builder()
@@ -180,6 +224,8 @@ public class SqsSinkBatch {
             .build();
         try {
             flushResponse = sqsClient.sendMessageBatch(batchRequest);
+            sinkMetrics.recordRequestSize((double)requestSize);
+
         } catch (SqsException e) {
             sinkMetrics.incrementRequestsFailedCounter(1);
             sinkMetrics.incrementEventsFailedCounter(entries.size());

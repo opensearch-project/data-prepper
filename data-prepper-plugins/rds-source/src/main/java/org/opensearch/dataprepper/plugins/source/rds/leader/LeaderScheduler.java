@@ -46,6 +46,7 @@ public class LeaderScheduler implements Runnable {
     private final String s3Prefix;
     private final SchemaManager schemaManager;
     private final DbTableMetadata dbTableMetadata;
+    private final String pipelineName;
 
     private LeaderPartition leaderPartition;
     private List<String> tableNames;
@@ -56,12 +57,14 @@ public class LeaderScheduler implements Runnable {
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
                            final SchemaManager schemaManager,
-                           final DbTableMetadata dbTableMetadata) {
+                           final DbTableMetadata dbTableMetadata,
+                           final String pipelineName) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
         this.schemaManager = schemaManager;
         this.dbTableMetadata = dbTableMetadata;
+        this.pipelineName = pipelineName;
         tableNames = new ArrayList<>(dbTableMetadata.getTableColumnDataTypeMap().keySet());
     }
 
@@ -180,8 +183,9 @@ public class LeaderScheduler implements Runnable {
         } else {
             // Postgres
             // Create replication slot, which will mark the starting point for stream
-            final String publicationName = generatePublicationName();
-            final String slotName = generateReplicationSlotName();
+            final String suffix = UUID.randomUUID().toString().substring(0, 8);
+            final String publicationName = generatePublicationName(suffix);
+            final String slotName = generateReplicationSlotName(suffix);
             ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(tableNames, publicationName, slotName);
             final PostgresStreamState postgresStreamState = new PostgresStreamState();
             postgresStreamState.setPublicationName(publicationName);
@@ -199,11 +203,17 @@ public class LeaderScheduler implements Runnable {
         return binlogCoordinate;
     }
 
-    private String generatePublicationName() {
-        return "data_prepper_publication_" + UUID.randomUUID().toString().substring(0, 8);
+    private String generatePublicationName(final String suffix) {
+        return "data_prepper_" + getPipelineName() + "_pub_" + suffix;
     }
 
-    private String generateReplicationSlotName() {
-        return "data_prepper_slot_" + UUID.randomUUID().toString().substring(0, 8);
+    private String generateReplicationSlotName(final String suffix) {
+        return "data_prepper_" + getPipelineName() + "_slot_" + suffix;
+    }
+
+    private String getPipelineName() {
+        // Shorten the name (if needed) and replace any invalid characters with underscores
+        final String shortenedPipelineName = pipelineName.length() <= 16 ? pipelineName : pipelineName.substring(0, 16);
+        return shortenedPipelineName.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 }

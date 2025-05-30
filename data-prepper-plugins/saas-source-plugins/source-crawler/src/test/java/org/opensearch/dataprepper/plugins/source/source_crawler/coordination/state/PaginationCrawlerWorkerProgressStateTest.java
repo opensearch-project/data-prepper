@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class AtlassianWorkerProgressStateTest {
+public class PaginationCrawlerWorkerProgressStateTest {
 
     private static final ObjectMapper objectMapper = new ObjectMapper(new JsonFactory())
             .registerModule(new JavaTimeModule())
@@ -20,9 +20,9 @@ public class AtlassianWorkerProgressStateTest {
 
     @Test
     void testDefaultValues() throws JsonProcessingException {
-        AtlassianWorkerProgressState originalState = new AtlassianWorkerProgressState();
+        PaginationCrawlerWorkerProgressState originalState = new PaginationCrawlerWorkerProgressState();
         String serializedState = objectMapper.writeValueAsString(originalState);
-        AtlassianWorkerProgressState workerProgressState = objectMapper.readValue(serializedState, AtlassianWorkerProgressState.class);
+        PaginationCrawlerWorkerProgressState workerProgressState = objectMapper.readValue(serializedState, PaginationCrawlerWorkerProgressState.class);
         assertEquals(0, workerProgressState.getTotalItems());
         assertEquals(0, workerProgressState.getLoadedItems());
         assertNotNull(workerProgressState.getKeyAttributes());
@@ -34,7 +34,7 @@ public class AtlassianWorkerProgressStateTest {
     @Test
     void testInitializedValuesWithIsoInstant() throws JsonProcessingException {
         String json = "{\n" +
-                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState\",\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState\",\n" +
                 "  \"keyAttributes\": {\"project\": \"project-1\"},\n" +
                 "  \"totalItems\": 10,\n" +
                 "  \"loadedItems\": 20,\n" +
@@ -42,7 +42,7 @@ public class AtlassianWorkerProgressStateTest {
                 "  \"itemIds\": [\"GTMS-25\", \"GTMS-24\"]\n" +
                 "}";
 
-        AtlassianWorkerProgressState workerProgressState = objectMapper.readValue(json, AtlassianWorkerProgressState.class);
+        PaginationCrawlerWorkerProgressState workerProgressState = objectMapper.readValue(json, PaginationCrawlerWorkerProgressState.class);
         assertEquals(10, workerProgressState.getTotalItems());
         assertEquals(20, workerProgressState.getLoadedItems());
         assertNotNull(workerProgressState.getKeyAttributes());

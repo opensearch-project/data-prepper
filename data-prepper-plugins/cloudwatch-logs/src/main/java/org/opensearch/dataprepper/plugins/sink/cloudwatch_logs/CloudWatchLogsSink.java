@@ -55,7 +55,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         CloudWatchLogsMetrics cloudWatchLogsMetrics = new CloudWatchLogsMetrics(pluginMetrics);
         CloudWatchLogsLimits cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(),
                 thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getFlushInterval());
 
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");

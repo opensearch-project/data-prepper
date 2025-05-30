@@ -56,7 +56,7 @@ class CloudWatchLogsServiceTest {
 
         thresholdConfig = new ThresholdConfig();
         cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getFlushInterval());
 
         mockClient = mock(CloudWatchLogsClient.class);
         mockMetrics = mock(CloudWatchLogsMetrics.class);

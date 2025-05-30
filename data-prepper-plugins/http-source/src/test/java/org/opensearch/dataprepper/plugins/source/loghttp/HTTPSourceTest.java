@@ -43,6 +43,7 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -56,6 +57,8 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferCo
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodecConfig;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -115,6 +118,7 @@ class HTTPSourceTest {
     private final String TEST_PIPELINE_NAME = "test_pipeline";
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
     private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
+    private static final String CLOUDWATCH_LOGS_SAMPLE = "/cloudwatch-logs-sample.json";
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -152,10 +156,10 @@ class HTTPSourceTest {
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
 
-    private BlockingBuffer<Record<Log>> getBuffer() throws JsonProcessingException {
+    private BlockingBuffer<Record<Log>> getBuffer(final int bufferSize, final int batchSize) throws JsonProcessingException {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        integerHashMap.put("batch_size", 1);
+        integerHashMap.put("buffer_size", bufferSize);
+        integerHashMap.put("batch_size", batchSize);
         ObjectMapper objectMapper = new ObjectMapper();
         String json = objectMapper.writeValueAsString(integerHashMap);
         BlockingBufferConfig blockingBufferConfig = objectMapper.readValue(json, BlockingBufferConfig.class);
@@ -233,7 +237,7 @@ class HTTPSourceTest {
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
 
-        testBuffer = getBuffer();
+        testBuffer = getBuffer(1, 1);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
@@ -710,7 +714,7 @@ class HTTPSourceTest {
         when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
-        testBuffer = getBuffer();
+        testBuffer = getBuffer(1, 1);
         HTTPSourceUnderTest.start(testBuffer);
 
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
@@ -740,7 +744,7 @@ class HTTPSourceTest {
         when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
-        testBuffer = getBuffer();
+        testBuffer = getBuffer(1, 1);
         HTTPSourceUnderTest.start(testBuffer);
 
         CompletableFuture<AggregatedHttpResponse> future = WebClient.builder()
@@ -777,7 +781,7 @@ class HTTPSourceTest {
         when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
-        testBuffer = getBuffer();
+        testBuffer = getBuffer(1, 1);
         HTTPSourceUnderTest.start(testBuffer);
 
         final String path = "/" + TEST_PIPELINE_NAME + "/test";
@@ -935,4 +939,90 @@ class HTTPSourceTest {
         assertTrue(testBuffer.isEmpty());
     }
 
+    @Test
+    public void testHTTPJsonCodec() throws IOException {
+        // Prepare
+        final String testData;
+        try (InputStream inputStream = this.getClass().getResourceAsStream(CLOUDWATCH_LOGS_SAMPLE)) {
+            testData = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        final int testPayloadSize = testData.getBytes().length;
+
+        when(sourceConfig.getCodec()).thenReturn(mock(PluginModel.class));
+        when(sourceConfig.getMaxRequestLength()).thenReturn(ByteCount.ofBytes(2048000));
+
+        ObjectMapper mapper = new ObjectMapper();
+        final String configString = "{\"key_name\": \"logEvents\",\"include_keys\":[\"owner\",\"logGroup\",\"logStream\"]}";
+        final JsonInputCodecConfig codecConfig = mapper.readValue(configString, JsonInputCodecConfig.class);
+
+        final InputCodec codec = new JsonInputCodec(codecConfig);
+
+        when(pluginFactory.loadPlugin(eq(InputCodec.class), any(PluginSetting.class))).thenReturn(codec);
+
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        testBuffer = getBuffer(5, 5);
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.POST)
+                                .path("/log/ingest")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        // Then
+        assertFalse(testBuffer.isEmpty());
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        assertEquals(3, records.size());
+
+        // Verify content
+        final Record<Log> record = records.get(0);
+        assertCommonFields(record);
+        assertEquals("31953106606966983378809025079804211143289615424298221568", record.getData().get("id", String.class));
+        assertEquals(1432826855000L, record.getData().get("timestamp", Long.class));
+        assertEquals("{\"eventVersion\":\"1.01\",\"userIdentity\":{\"type\":\"Root\"}", record.getData().get("message", String.class));
+
+        final Record<Log> record2 = records.get(1);
+        assertCommonFields(record2);
+        assertEquals("31953106606966983378809025079804211143289615424298221569", record2.getData().get("id", String.class));
+        assertEquals(1432826855001L, record2.getData().get("timestamp", Long.class));
+        assertEquals("{\"eventVersion\":\"1.02\",\"userIdentity\":{\"type\":\"Root\"}", record2.getData().get("message", String.class));
+
+        final Record<Log> record3 = records.get(2);
+        assertCommonFields(record3);
+        assertEquals("31953106606966983378809025079804211143289615424298221570", record3.getData().get("id", String.class));
+        assertEquals(1432826855002L, record3.getData().get("timestamp", Long.class));
+        assertEquals("{\"eventVersion\":\"1.03\",\"userIdentity\":{\"type\":\"Root\"}", record3.getData().get("message", String.class));
+
+        // Verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        assertEquals(1.0, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        assertEquals(1.0, successRequestsCount.getValue());
+        final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.COUNT);
+        assertEquals(1.0, requestProcessDurationCount.getValue());
+        final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.MAX);
+        assertTrue(requestProcessDurationMax.getValue() > 0);
+        final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
+                payloadSizeSummaryMeasurements, Statistic.MAX);
+        assertEquals(testPayloadSize, payloadSizeMax.getValue());
+    }
+
+    private void assertCommonFields(Record<Log> record) {
+        assertEquals("111111111111", record.getData().get("owner", String.class));
+        assertEquals("CloudTrail/logs", record.getData().get("logGroup", String.class));
+        assertEquals("111111111111_CloudTrail/logs_us-east-1", record.getData().get("logStream", String.class));
+    }
 }

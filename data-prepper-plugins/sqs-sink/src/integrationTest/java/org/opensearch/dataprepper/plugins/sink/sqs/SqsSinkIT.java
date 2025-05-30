@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,6 +66,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -125,6 +127,8 @@ public class SqsSinkIT {
     private Counter requestsFailedCounter;
     @Mock
     private Counter dlqSuccessCounter;
+    @Mock
+    private DistributionSummary summary;
 
     private JsonOutputCodec jsonCodec;
     private String bucket;
@@ -165,6 +169,8 @@ public class SqsSinkIT {
         requestsSuccessCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
         dlqSuccessCounter = mock(Counter.class);
+        summary = mock(DistributionSummary.class);
+        doNothing().when(summary).record(any(Double.class));
         lenient().doAnswer((a)-> {
             int v = (int)(double)(a.getArgument(0));
             eventsSuccessCount.addAndGet(v);
@@ -213,6 +219,7 @@ public class SqsSinkIT {
             }
             return null;
         }).when(pluginMetrics).counter(anyString());
+        when(pluginMetrics.summary(anyString())).thenReturn(summary);
         messages = new ArrayList<>();
         pluginFactory = mock(PluginFactory.class);
         jsonCodec = new JsonOutputCodec(new JsonOutputCodecConfig());

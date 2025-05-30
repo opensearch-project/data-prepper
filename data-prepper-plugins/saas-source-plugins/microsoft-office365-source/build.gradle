@@ -1,0 +1,37 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
+dependencies {
+    // Data Prepper dependencies
+    implementation project(path: ':data-prepper-plugins:saas-source-plugins:source-crawler')
+    implementation project(path: ':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:buffer-common')
+    implementation project(path: ':data-prepper-plugins:common')
+
+    // Microsoft Graph API dependencies
+    implementation 'com.microsoft.graph:microsoft-graph:5.65.0'
+    implementation 'com.microsoft.azure:msal4j:1.13.9'
+    implementation 'com.azure:azure-identity:1.11.1'
+
+    implementation libs.commons.io
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'javax.inject:javax.inject:1'
+    implementation 'org.jsoup:jsoup:1.18.3'
+
+    implementation 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    testImplementation project(path: ':data-prepper-test-common')
+
+    implementation(libs.spring.context) {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation(libs.spring.web)
+}

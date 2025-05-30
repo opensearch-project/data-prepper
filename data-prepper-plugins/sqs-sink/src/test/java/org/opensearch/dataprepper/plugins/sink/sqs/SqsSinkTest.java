@@ -28,11 +28,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.source.sqs.common.SqsClientFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
 import org.opensearch.dataprepper.aws.api.AwsConfig;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -46,6 +52,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
 import java.util.UUID;
 
 public class SqsSinkTest {
@@ -87,8 +95,10 @@ public class SqsSinkTest {
         when(sinkContext.getTagsTargetKey()).thenReturn(null);
         sqsClient = mock(SqsClient.class);
         expressionEvaluator = mock(ExpressionEvaluator.class);
-        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         awsCredentialsProvider = mock(AwsCredentialsProvider.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
+        when(awsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.of("us-west-2")));
         when(sqsSinkConfig.getDlq()).thenReturn(null);
         codecConfig = mock(PluginModel.class);
         when(codecConfig.getPluginName()).thenReturn(TEST_CODEC_PLUGIN_NAME);
@@ -122,23 +132,81 @@ public class SqsSinkTest {
     }
 
     @Test
-    void TestWithInvalidCodec() {
-        when(codecConfig.getPluginName()).thenReturn("badCodec");
-        awsCredentialsSupplier = null;
+    void TestBasicWithNullAwsConfig() {
         when(sqsSinkConfig.getAwsConfig()).thenReturn(null);
         try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
             mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
                             any(AwsCredentialsProvider.class)))
                     .thenReturn(sqsClient);
 
-            assertThrows(RuntimeException.class, ()-> createObjectUnderTest());
+            SqsSink sqsSink = createObjectUnderTest();
+            sqsSink.doInitialize();
+            assertTrue(sqsSink.isReady());
         }
     }
 
     @Test
-    void TestWithNullAwsConfig() {
-        awsCredentialsSupplier = null;
-        when(sqsSinkConfig.getAwsConfig()).thenReturn(null);
+    void TestBasicNdJsonCodec() {
+        when(codecConfig.getPluginName()).thenReturn("ndjson");
+        try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
+            mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
+                            any(AwsCredentialsProvider.class)))
+                    .thenReturn(sqsClient);
+
+            SqsSink sqsSink = createObjectUnderTest();
+            sqsSink.doInitialize();
+            assertTrue(sqsSink.isReady());
+        }
+    }
+
+    @Test
+    void TestWithDLQConfig() {
+        awsConfig = mock(AwsConfig.class);
+        when(awsConfig.getAwsRegion()).thenReturn(Region.of("us-west-2"));
+        when(sqsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
+        PluginModel dlqConfig = mock(PluginModel.class);
+        when(dlqConfig.getPluginSettings()).thenReturn(new HashMap<String, Object>());
+        when(dlqConfig.getPluginName()).thenReturn("testDlqPlugin");
+        DlqProvider dlqProvider = mock(DlqProvider.class);
+
+        StsClient stsClient = mock(StsClient.class);
+        StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+        when(stsClientBuilder.region(any())).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.credentialsProvider(any())).thenReturn(stsClientBuilder);
+        
+        GetCallerIdentityResponse identityResponse = mock(GetCallerIdentityResponse.class);
+        when(identityResponse.arn()).thenReturn("arn");
+        when(stsClient.getCallerIdentity()).thenReturn(identityResponse);
+        
+        when(pluginFactory.loadPlugin(eq(DlqProvider.class), any())).thenReturn(dlqProvider);
+
+        when(sqsSinkConfig.getDlq()).thenReturn(dlqConfig);
+        try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+             final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+            when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                    .thenReturn(assumeRoleRequestBuilder);
+            when(assumeRoleRequestBuilder.roleArn(anyString()))
+                    .thenReturn(assumeRoleRequestBuilder);
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+
+            try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
+                mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
+                                any(AwsCredentialsProvider.class)))
+                        .thenReturn(sqsClient);
+
+                SqsSink sqsSink = createObjectUnderTest();
+                sqsSink.doInitialize();
+                assertTrue(sqsSink.isReady());
+            }
+        }
+    }
+
+    @Test
+    void TestWithInvalidCodec() {
+        when(codecConfig.getPluginName()).thenReturn("badCodec");
         try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
             mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
                             any(AwsCredentialsProvider.class)))
@@ -151,6 +219,20 @@ public class SqsSinkTest {
     @Test
     void TestForDefaultCodec() {
         when(sqsSinkConfig.getCodec()).thenReturn(codecConfig);
+        try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
+            mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
+                            any(AwsCredentialsProvider.class)))
+                    .thenReturn(sqsClient);
+
+            SqsSink sqsSink = createObjectUnderTest();
+            sqsSink.doInitialize();
+            assertTrue(sqsSink.isReady());
+        }
+    }
+
+    @Test
+    void TestForNullCodec() {
+        when(sqsSinkConfig.getCodec()).thenReturn(null);
         try(MockedStatic<SqsClientFactory> mockedStatic = mockStatic(SqsClientFactory.class)) {
             mockedStatic.when(() -> SqsClientFactory.createSqsClient(any(Region.class),
                             any(AwsCredentialsProvider.class)))

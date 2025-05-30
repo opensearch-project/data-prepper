@@ -20,7 +20,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,9 +71,9 @@ public class WorkerSchedulerTest {
     }
 
     @Test
-    void testDeserializeAtlassianWorkerProgressState() throws Exception {
+    void testDeserializePaginationCrawlerWorkerProgressState() throws Exception {
         String json = "{\n" +
-                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState\",\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState\",\n" +
                 "  \"keyAttributes\": {\"project\": \"project-1\"},\n" +
                 "  \"totalItems\": 10,\n" +
                 "  \"loadedItems\": 5,\n" +
@@ -82,18 +82,18 @@ public class WorkerSchedulerTest {
                 "}";
 
         ObjectMapper mapper = new ObjectMapper();
-        mapper.registerSubtypes(AtlassianWorkerProgressState.class);
+        mapper.registerSubtypes(PaginationCrawlerWorkerProgressState.class);
         mapper.registerModule(new JavaTimeModule());
 
         SaasWorkerProgressState state = mapper.readValue(json, SaasWorkerProgressState.class);
 
-        assertTrue(state instanceof AtlassianWorkerProgressState);
-        AtlassianWorkerProgressState atlassianState = (AtlassianWorkerProgressState) state;
+        assertTrue(state instanceof PaginationCrawlerWorkerProgressState);
+        PaginationCrawlerWorkerProgressState paginationCrawlerState = (PaginationCrawlerWorkerProgressState) state;
 
-        assertEquals(10, atlassianState.getTotalItems());
-        assertEquals(5, atlassianState.getLoadedItems());
-        assertEquals("project-1", atlassianState.getKeyAttributes().get("project"));
-        assertEquals(2, atlassianState.getItemIds().size());
+        assertEquals(10, paginationCrawlerState.getTotalItems());
+        assertEquals(5, paginationCrawlerState.getLoadedItems());
+        assertEquals("project-1", paginationCrawlerState.getKeyAttributes().get("project"));
+        assertEquals(2, paginationCrawlerState.getItemIds().size());
     }
 
     @Test

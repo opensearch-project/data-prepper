@@ -44,6 +44,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -90,7 +91,20 @@ public class EndToEndBasicLogTest {
             for (String key: expectedDocKeys) {
                 assertThat(expectedDoc, hasKey(key));
             }
+
+            verifyVerbFieldNotDuplicated(expectedDoc);
         });
+    }
+
+    /**
+     * Verifies that the verb field does not contain duplicated values.
+     * This is to ensure that grok processor doesn't produce duplicate values.
+     */
+    private void verifyVerbFieldNotDuplicated(Map<String, Object> document) {
+        if (document.containsKey("verb") && document.get("verb") != null) {
+            Object verbValue = document.get("verb");
+            assertFalse(verbValue instanceof List, "Verb field should not contain duplicates: " + verbValue);
+        }
     }
 
     private List<String> createListOfExpectedDocumentKeys() {

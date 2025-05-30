@@ -14,8 +14,8 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgr
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeLeaderProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import java.time.Instant;
@@ -68,12 +68,12 @@ public class PartitionFactoryTest {
         return Stream.of(
                 Arguments.of(
                         "{\n" +
-                                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianLeaderProgressState\",\n" +
+                                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState\",\n" +
                                 "  \"last_poll_time\": \"2024-10-30T20:17:46.332Z\"\n" +
                                 "}",
-                        AtlassianLeaderProgressState.class,
+                        PaginationCrawlerLeaderProgressState.class,
                         Instant.parse("2024-10-30T20:17:46.332Z"),
-                        new AtlassianLeaderProgressState(Instant.ofEpochMilli(12345L))
+                        new PaginationCrawlerLeaderProgressState(Instant.ofEpochMilli(12345L))
                 ),
                 Arguments.of(
                         "{\n" +
@@ -115,8 +115,8 @@ public class PartitionFactoryTest {
     }
 
     private static Stream<Arguments> provideWorkerPartitionInputs() {
-        String atlassianJson = "{\n" +
-                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.AtlassianWorkerProgressState\",\n" +
+        String paginationCrawlerJson = "{\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState\",\n" +
                 "  \"keyAttributes\": {\"project\": \"project-1\"},\n" +
                 "  \"totalItems\": 0,\n" +
                 "  \"loadedItems\": 20,\n" +
@@ -132,7 +132,7 @@ public class PartitionFactoryTest {
                 "}";
 
         return Stream.of(
-                Arguments.of(SaasSourcePartition.PARTITION_TYPE, atlassianJson, AtlassianWorkerProgressState.class),
+                Arguments.of(SaasSourcePartition.PARTITION_TYPE, paginationCrawlerJson, PaginationCrawlerWorkerProgressState.class),
                 Arguments.of(SaasSourcePartition.PARTITION_TYPE, crowdStrikeJson, CrowdStrikeWorkerProgressState.class)
         );
     }

@@ -6,7 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.sqs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -18,8 +19,9 @@ public class SqsThresholdConfig {
     public static final ByteCount DEFAULT_MAX_MESSAGE_SIZE = ByteCount.parse("256kb");
     public static final long DEFAULT_FLUSH_INTERVAL_TIME = 30;
 
-    @JsonProperty("max_events_per_message")
-    @Size(min = 1, max = 1000, message = "batch_size amount should be between 1 to 1000")
+    @JsonProperty(value = "max_events_per_message", defaultValue="25")
+    @Min(1)
+    @Max(1000)
     private int maxEventsPerMessage = DEFAULT_MESSAGES_PER_EVENT;
 
     @JsonProperty("max_message_size")
