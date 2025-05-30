@@ -8,7 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.regions.Region;
 
@@ -36,7 +37,10 @@ class SigV4SignerTest {
         mockSupplier = mock(AwsCredentialsSupplier.class);
 
         when(mockConfig.getAwsRegion()).thenReturn(REGION);
-        when(mockSupplier.getProvider(any())).thenReturn(DefaultCredentialsProvider.create());
+
+        final AwsBasicCredentials mockCredentials = AwsBasicCredentials.create("mockAccessKey", "mockSecretKey");
+        final StaticCredentialsProvider mockCredentialsProvider = StaticCredentialsProvider.create(mockCredentials);
+        when(mockSupplier.getProvider(any())).thenReturn(mockCredentialsProvider);
     }
 
     @Test
