@@ -108,7 +108,7 @@ logTestConfigurations.each { testConfiguration ->
     }
 
     tasks.register(testConfiguration.testName, Test) {
-        dependsOn build
+        dependsOn compileJava
         dependsOn startOpenSearchDockerContainer
         dependsOn "start${testConfiguration.testName}"
 
