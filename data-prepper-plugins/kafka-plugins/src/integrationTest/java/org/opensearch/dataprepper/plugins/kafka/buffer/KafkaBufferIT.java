@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.util.TestConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.TestProducer;
@@ -76,6 +77,8 @@ public class KafkaBufferIT {
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
     private AcknowledgementSet acknowledgementSet;
+    @Mock
+    private EncryptionSupplier encryptionSupplier;
 
     private Random random;
 
@@ -123,11 +126,11 @@ public class KafkaBufferIT {
     }
 
     private KafkaBuffer createObjectUnderTestWithJsonDecoder() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new JsonDecoder(), null, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, new JsonDecoder(), null, null, encryptionSupplier);
     }
 
     private KafkaBuffer createObjectUnderTest() {
-        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null);
+        return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null, encryptionSupplier);
     }
 
     @Test
