@@ -90,6 +90,7 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
             })
             .collect(Collectors.toList());
 
+        mlBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
         if (recordsToMlCommons.isEmpty()) {
             return records;
         }
@@ -109,14 +110,16 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
 
     @Override
     public void prepareForShutdown() {
+        mlBatchJobCreator.prepareForShutdown();
     }
 
     @Override
     public boolean isReadyForShutdown() {
-        return true;
+        return mlBatchJobCreator.isReadyForShutdown();
     }
 
     @Override
     public void shutdown() {
+        mlBatchJobCreator.shutdown();
     }
 }
