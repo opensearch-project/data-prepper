@@ -102,6 +102,7 @@ public class MLProcessorTest {
 
         Collection<Record<Event>> result = mlProcessor.doExecute(records);
 
+        verify(mlBatchJobCreator, times(1)).addProcessedBatchRecordsToResults(new ArrayList<>());
         verify(mlBatchJobCreator, times(1)).createMLBatchJob(records, new ArrayList<>());
         verify(successCounter, times(1)).increment();
     }
@@ -128,7 +129,8 @@ public class MLProcessorTest {
         Collection<Record<Event>> result = mlProcessor.doExecute(records);
 
         // Verify no interactions with mlBatchJobCreator, successCounter, or failureCounter
-        verifyNoInteractions(mlBatchJobCreator, successCounter, failureCounter);
+        verify(mlBatchJobCreator, times(1)).addProcessedBatchRecordsToResults(records);
+        verifyNoInteractions(successCounter, failureCounter);
 
         // Assert that the input records are returned as output
         assertEquals(records, result);
@@ -149,8 +151,16 @@ public class MLProcessorTest {
 
     @Test
     void testShutdownMethods() {
+        when(mlBatchJobCreator.isReadyForShutdown()).thenReturn(true);
+
         assertTrue(mlProcessor.isReadyForShutdown());
         mlProcessor.prepareForShutdown();
         mlProcessor.shutdown();
+
+        // Verify that these methods were called on the batch job creator
+        verify(mlBatchJobCreator).isReadyForShutdown();
+        verify(mlBatchJobCreator).prepareForShutdown();
+        verify(mlBatchJobCreator).shutdown();
+
     }
 }

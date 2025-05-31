@@ -28,6 +28,7 @@ import java.util.List;
 @JsonClassDescription("The <code>ml</code> processor enables invocation of the ml-commons plugin in OpenSearch service within your pipeline in order to process events. " +
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class MLProcessorConfig {
+    private static final int DEFAULT_MAX_BATCH_SIZE = 100;
 
     @JsonProperty("aws")
     @NotNull
@@ -75,6 +76,9 @@ public class MLProcessorConfig {
                     "or exception occurs. This tag may be used in conditional expressions in " +
                     "other parts of the configuration.")
     private List<String> tagsOnFailure = Collections.emptyList();
+
+    @JsonProperty("max_batch_size")
+    private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
 
     public ActionType getActionType() {
         return actionType;
