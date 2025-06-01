@@ -6,7 +6,7 @@ dependencies {
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
     implementation 'com.fasterxml.jackson.core:jackson-annotations' 
     testImplementation libs.commons.lang3
-    testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
+    testImplementation 'org.hibernate.validator:hibernate-validator:9.0.0.Final'
 }
 
 test {
