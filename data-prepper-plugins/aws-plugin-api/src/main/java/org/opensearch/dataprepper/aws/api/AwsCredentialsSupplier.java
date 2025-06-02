@@ -28,4 +28,10 @@ public interface AwsCredentialsSupplier {
      * @return Default {@link Region}
      */
     Optional<Region> getDefaultRegion();
+
+    /**
+     * Gets the default STS role ARN if it is configured. Otherwise returns empty Optional
+     * @return Default STS role ARN as String
+     */
+    Optional<String> getDefaultStsRoleArn();
 }
