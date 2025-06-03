@@ -13,7 +13,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.github.ua-parser:uap-java:1.6.1'
     implementation libs.caffeine
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-event')
 }
 
 jacocoTestCoverageVerification {

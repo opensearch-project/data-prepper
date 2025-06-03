@@ -12,8 +12,8 @@ ext.coreProjects = [
         project(':data-prepper-main'),
         project(':data-prepper-pipeline-parser'),
         project(':data-prepper-plugins'),
-        project(':data-prepper-test-common'),
-        project(':data-prepper-test-event'),
+        project(':data-prepper-test:test-common'),
+        project(':data-prepper-test:test-event'),
         project(':data-prepper-plugin-framework'),
         project(':data-prepper-plugin-schema'),
         project(':data-prepper-plugin-schema-cli')

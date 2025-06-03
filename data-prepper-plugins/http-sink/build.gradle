@@ -27,7 +27,7 @@ dependencies {
     implementation project(path: ':data-prepper-core')
     implementation project(':data-prepper-plugins:parse-json-processor')
     implementation 'software.amazon.awssdk:sts'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 }
 
 test {

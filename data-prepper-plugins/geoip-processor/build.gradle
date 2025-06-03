@@ -32,7 +32,7 @@ dependencies {
     testImplementation project(':data-prepper-pipeline-parser')
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 }
 
 def downloadFiles = tasks.register('downloadFiles')
