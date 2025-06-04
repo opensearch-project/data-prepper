@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class OtelTraceJsonPojo {
     @JsonProperty("resourceSpans")
@@ -39,7 +40,7 @@ public class OtelTraceJsonPojo {
         public String stringValue;
 
         @JsonProperty("intValue")
-        public Integer intValue;
+        public Long intValue;
 
         @JsonProperty("doubleValue")
         public Double doubleValue;
@@ -47,12 +48,25 @@ public class OtelTraceJsonPojo {
         @JsonProperty("boolValue")
         public Boolean boolValue;
 
+        @JsonProperty("arrayValue")
+        public ArrayValue arrayValue;
+
         public Object getValue() {
             if (stringValue != null) return stringValue;
             if (intValue != null) return intValue;
             if (doubleValue != null) return doubleValue;
             if (boolValue != null) return boolValue;
-            return null;
+            if (arrayValue != null) return arrayValue.getValue();
+            return "";
+        }
+    }
+
+    static class ArrayValue {
+        @JsonProperty("values")
+        public List<Value> values;
+
+        public List<Object> getValue() {
+            return values.stream().map(Value::getValue).collect(Collectors.toList());
         }
     }
 
