@@ -105,10 +105,11 @@ public class Office365Iterator implements Iterator<ItemInfo> {
     }
 
     void startCrawlerThreads() {
-        log.debug("Starting crawler thread for Office 365 audit logs");
+        log.debug("Starting crawler thread for Office 365 audit logs with lastPollTime: {}", lastPollTime);
         Future<Boolean> future = crawlerTaskExecutor.submit(() -> {
             try {
                 service.getOffice365Entities(lastPollTime, itemInfoQueue);
+                log.debug("Completed crawler thread for Office 365 audit logs with lastPollTime: {}", lastPollTime);
                 return true;
             } catch (Exception e) {
                 log.error("Error in crawler thread while fetching Office 365 audit logs", e);
