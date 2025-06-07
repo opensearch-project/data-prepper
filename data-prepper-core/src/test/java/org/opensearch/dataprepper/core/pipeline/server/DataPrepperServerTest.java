@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -183,6 +184,6 @@ public class DataPrepperServerTest {
                                                     final Authenticator authenticator,
                                                     final EncryptionHttpHandler encryptionHttpHandler) {
         return new DataPrepperServer(
-                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, encryptionHttpHandler, prometheusMeterRegistry, authenticator);
+                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, mock(UpdatePipelineHandler.class), encryptionHttpHandler, prometheusMeterRegistry, authenticator);
     }
 }
