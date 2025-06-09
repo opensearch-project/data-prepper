@@ -75,7 +75,7 @@ public class Office365RestClient {
         log.info("Starting Office 365 subscriptions for audit logs");
         try {
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(authConfig.getAccessToken());
+
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // TODO: Only start the subscriptions only if the call commented
@@ -103,6 +103,7 @@ public class Office365RestClient {
 
                 RetryHandler.executeWithRetry(() -> {
                     try {
+                        headers.setBearerAuth(authConfig.getAccessToken());
                         ResponseEntity<String> response = restTemplate.exchange(
                                 url,
                                 HttpMethod.POST,
@@ -155,12 +156,13 @@ public class Office365RestClient {
                         endTime.toString());
 
         final HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(authConfig.getAccessToken());
 
         return searchCallLatencyTimer.record(() -> {
             try {
                 return RetryHandler.executeWithRetry(
                         () -> {
+                            headers.setBearerAuth(authConfig.getAccessToken());
+
                             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                                     url,
                                     HttpMethod.GET,
@@ -205,19 +207,19 @@ public class Office365RestClient {
                 contentId);
 
         final HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(authConfig.getAccessToken());
 
         return auditLogFetchLatencyTimer.record(() -> {
             try {
-                String response = RetryHandler.executeWithRetry(() ->
-                                restTemplate.exchange(
-                                        url,
-                                        HttpMethod.GET,
-                                        new HttpEntity<>(headers),
-                                        String.class
-                                ).getBody(),
-                        authConfig::renewCredentials
-                );
+                String response = RetryHandler.executeWithRetry(() -> {
+                    headers.setBearerAuth(authConfig.getAccessToken());
+
+                    return restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            new HttpEntity<>(headers),
+                            String.class
+                    ).getBody();
+                }, authConfig::renewCredentials);
                 auditLogRequestsSuccessCounter.increment();
                 return response;
             } catch (Exception e) {
