@@ -37,7 +37,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class UpdatePipelineHandlerTest {
+public class UpdatePipelineBaseHandlerTest {
     @Mock
     private PipelinesProvider pipelinesProvider;
     @Mock

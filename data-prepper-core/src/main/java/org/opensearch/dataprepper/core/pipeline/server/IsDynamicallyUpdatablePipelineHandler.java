@@ -17,20 +17,20 @@ import java.io.IOException;
 /**
  * HttpHandler to handle requests for updating pipeline configurations from S3
  */
-public class UpdatePipelineHandler extends UpdatePipelineBaseHandler implements HttpHandler {
+public class IsDynamicallyUpdatablePipelineHandler extends UpdatePipelineBaseHandler implements HttpHandler {
 
-    private static final Logger LOG = LoggerFactory.getLogger(UpdatePipelineHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IsDynamicallyUpdatablePipelineHandler.class);
 
-    public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider) {
+    public IsDynamicallyUpdatablePipelineHandler(final PipelinesProvider pipelinesProvider) {
         super(pipelinesProvider);
     }
 
-    public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
+    public IsDynamicallyUpdatablePipelineHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
         super(pipelinesProvider, s3Client);
     }
 
     @Override
     public void handle(final HttpExchange exchange) throws IOException {
-        baseHandle(exchange, true);
+        baseHandle(exchange, false);
     }
 }

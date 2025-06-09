@@ -34,6 +34,7 @@ public class DataPrepperServer {
     private final ListPipelinesHandler listPipelinesHandler;
     private final GetPipelinesHandler getPipelinesHandler;
     private final UpdatePipelineHandler updatePipelineHandler;
+    private final IsDynamicallyUpdatablePipelineHandler isDynamicallyUpdatablePipelineHandler;
     private final ShutdownHandler shutdownHandler;
     private final EncryptionHttpHandler encryptionHttpHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
@@ -47,6 +48,7 @@ public class DataPrepperServer {
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
             final UpdatePipelineHandler updatePipelineHandler,
+            final IsDynamicallyUpdatablePipelineHandler isDynamicallyUpdatablePipelineHandler,
             @Autowired(required = false) @Nullable final EncryptionHttpHandler encryptionHttpHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
@@ -56,6 +58,7 @@ public class DataPrepperServer {
         this.shutdownHandler = shutdownHandler;
         this.getPipelinesHandler = getPipelinesHandler;
         this.updatePipelineHandler = updatePipelineHandler;
+        this.isDynamicallyUpdatablePipelineHandler = isDynamicallyUpdatablePipelineHandler;
         this.encryptionHttpHandler = encryptionHttpHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
@@ -79,6 +82,7 @@ public class DataPrepperServer {
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
         createContext(server, updatePipelineHandler, authenticator, "/updatePipelineConfig");
+        createContext(server, isDynamicallyUpdatablePipelineHandler, authenticator, "/isDynamicallyUpdatablePipelineConfig");
 
         if (encryptionHttpHandler != null) {
             createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");

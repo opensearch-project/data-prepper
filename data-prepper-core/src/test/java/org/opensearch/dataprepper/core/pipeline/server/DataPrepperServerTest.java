@@ -90,7 +90,7 @@ public class DataPrepperServerTest {
         verifyServerStart();
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
-        verify(context, times(6)).setAuthenticator(eq(authenticator));
+        verify(context, times(7)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -104,7 +104,7 @@ public class DataPrepperServerTest {
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/encryption/rotate"), any(EncryptionHttpHandler.class));
-        verify(context, times(7)).setAuthenticator(eq(authenticator));
+        verify(context, times(8)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -115,7 +115,7 @@ public class DataPrepperServerTest {
         dataPrepperServer.start();
 
         verifyServerStart();
-        verify(context, times(4)).setAuthenticator(eq(authenticator));
+        verify(context, times(5)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -184,6 +184,11 @@ public class DataPrepperServerTest {
                                                     final Authenticator authenticator,
                                                     final EncryptionHttpHandler encryptionHttpHandler) {
         return new DataPrepperServer(
-                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, mock(UpdatePipelineHandler.class), encryptionHttpHandler, prometheusMeterRegistry, authenticator);
+                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler,
+                mock(UpdatePipelineHandler.class),
+                mock(IsDynamicallyUpdatablePipelineHandler.class),
+                encryptionHttpHandler,
+                prometheusMeterRegistry,
+                authenticator);
     }
 }
