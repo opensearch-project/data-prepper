@@ -29,6 +29,9 @@ public class SchemaConfig {
   @JsonProperty("registry_url")
   private String registryURL;
 
+  @JsonProperty("override_endpoint")
+  private Boolean overrideEndpoint = false;
+
   @JsonProperty("version")
   private Integer version;
 
@@ -93,6 +96,10 @@ public class SchemaConfig {
 
   public int getSessionTimeoutms() {
     return sessionTimeoutms;
+  }
+
+  public boolean getOverrideEndpoint() {
+    return overrideEndpoint;
   }
 
   public String getBasicAuthCredentialsSource() {

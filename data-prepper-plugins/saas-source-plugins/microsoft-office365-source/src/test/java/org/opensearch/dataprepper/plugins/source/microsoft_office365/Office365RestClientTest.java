@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -42,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -241,5 +243,50 @@ class Office365RestClientTest {
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> office365RestClient.getAuditLog("test-content-id"));
         assertEquals("Failed to fetch audit log", exception.getMessage());
+    }
+
+    @Test
+    void testTokenRenewal() {
+        // Setup
+        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant endTime = Instant.now();
+
+        List<String> tokensUsed = new ArrayList<>();
+        List<String> requestTokens = new ArrayList<>();
+
+        when(authConfig.getTenantId()).thenReturn("test-tenant-id");
+        when(authConfig.getAccessToken()).thenAnswer(invocation -> {
+            String token = "token-" + tokensUsed.size();
+            tokensUsed.add(token);
+            return token;
+        });
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.GET),
+                argThat(request -> {
+                    requestTokens.add(request.getHeaders().getFirst("Authorization"));
+                    return true;
+                }),
+                any(ParameterizedTypeReference.class)
+        )).thenAnswer(invocation -> {
+            if (requestTokens.size() == 1) {
+                throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED); // First request fails with 401
+            }
+            return new ResponseEntity<>(Collections.singletonList(new HashMap<>()), HttpStatus.OK); // Second request succeeds
+        });
+
+        // Execute
+        office365RestClient.searchAuditLogs(
+                "Audit.AzureActiveDirectory",
+                startTime,
+                endTime,
+                null
+        );
+
+        // Verify
+        assertEquals(2, requestTokens.size(), "Should have made two requests");
+        assertEquals("Bearer token-0", requestTokens.get(0), "First request should use token-0");
+        assertEquals("Bearer token-1", requestTokens.get(1), "Second request should use token-1");
     }
 }

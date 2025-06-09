@@ -402,9 +402,10 @@ public class KafkaSecurityConfigurer {
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
         configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
         configs.put(AWSSchemaRegistryConstants.COMPATIBILITY_SETTING, Compatibility.FULL);
-        String endpointOverride = kafkaConsumerConfig.getSchemaConfig().getRegistryURL();
-        if (endpointOverride != null) {
-            configs.put(AWSSchemaRegistryConstants.AWS_ENDPOINT, endpointOverride);
+        String registryUrl = kafkaConsumerConfig.getSchemaConfig().getRegistryURL();
+        boolean endpointOverride = kafkaConsumerConfig.getSchemaConfig().getOverrideEndpoint();
+        if (endpointOverride) {
+            configs.put(AWSSchemaRegistryConstants.AWS_ENDPOINT, registryUrl);
         }
         glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(awsGlueCredentialsProvider, configs);
         return glueDeserializer;
