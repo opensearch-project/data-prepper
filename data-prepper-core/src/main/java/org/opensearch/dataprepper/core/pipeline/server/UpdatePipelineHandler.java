@@ -39,7 +39,7 @@ public class UpdatePipelineHandler implements HttpHandler {
     private static final Logger LOG = LoggerFactory.getLogger(UpdatePipelineHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern S3_PATH_PATTERN = Pattern.compile("s3://([^/]+)/(.+)");
-    private static final Pattern PIPELINE_NAME_PATTERN = Pattern.compile("([^/]+)\\.json$");
+    private static final Pattern PIPELINE_NAME_PATTERN = Pattern.compile("/([a-zA-Z0-9]{1,20})$");
     protected final S3Client s3Client;
     private final PipelinesProvider pipelinesProvider;
 

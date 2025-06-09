@@ -71,23 +71,24 @@ public class UpdatePipelineHandlerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/invalid/path/without-extension",
-            "/invalid.txt",
-            "/path/to/file.yaml",
-            "/test.json.bak",
-            "/",
-            ""
+            "/test@pipeline",              // Invalid characters
+            "/toolongpipelinename12345678901",  // Too long
+            "/pipeline.name",                    // Invalid characters
+            "/123-pipeline",                     // Invalid characters
+            "/",                                 // Empty name
+            ""                                   // Empty path
     })
     void testInvalidPipelineNameInPath(final String invalidPath) throws IOException {
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.PUT);
         when(httpExchange.getRequestURI()).thenReturn(URI.create(invalidPath));
         when(httpExchange.getResponseBody()).thenReturn(outputStream);
         when(httpExchange.getResponseHeaders()).thenReturn(headers);
-        doNothing().when(httpExchange).sendResponseHeaders(any(Integer.class), anyLong());
 
         updatePipelineHandler.handle(httpExchange);
 
         verify(httpExchange).sendResponseHeaders(eq(HttpURLConnection.HTTP_BAD_REQUEST), anyLong());
+        verify(httpExchange.getResponseHeaders()).add(eq("Content-Type"), eq("application/json; charset=UTF-8"));
+        verify(outputStream).write(any(byte[].class));
         verify(outputStream).close();
     }
 
@@ -100,11 +101,10 @@ public class UpdatePipelineHandlerTest {
     })
     void testInvalidRequestBody(final String requestBody) throws IOException {
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.PUT);
-        when(httpExchange.getRequestURI()).thenReturn(URI.create("/test-pipeline.json"));
+        when(httpExchange.getRequestURI()).thenReturn(URI.create("/pipeline123"));
         when(httpExchange.getRequestBody()).thenReturn(new ByteArrayInputStream(requestBody.getBytes(StandardCharsets.UTF_8)));
         when(httpExchange.getResponseBody()).thenReturn(outputStream);
         when(httpExchange.getResponseHeaders()).thenReturn(headers);
-        doNothing().when(httpExchange).sendResponseHeaders(any(Integer.class), anyLong());
 
         updatePipelineHandler.handle(httpExchange);
 
@@ -114,6 +114,7 @@ public class UpdatePipelineHandlerTest {
 
     @Test
     void testMultipleValidS3Paths() throws IOException {
+        doNothing().when(httpExchange).sendResponseHeaders(any(Integer.class), anyLong());
         // Setup mock responses for S3 client
         String content1 = "content1";
         String content2 = "content2";
@@ -135,7 +136,7 @@ public class UpdatePipelineHandlerTest {
 
         // Setup HTTP exchange
         when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.PUT);
-        when(httpExchange.getRequestURI()).thenReturn(URI.create("/test-pipeline.json"));
+        when(httpExchange.getRequestURI()).thenReturn(URI.create("/pipeline123"));
         when(httpExchange.getRequestBody()).thenReturn(new ByteArrayInputStream(
                 "{\"s3paths\": [\"s3://bucket1/path1\", \"s3://bucket2/path2\"]}".getBytes(StandardCharsets.UTF_8)));
         when(httpExchange.getResponseBody()).thenReturn(outputStream);

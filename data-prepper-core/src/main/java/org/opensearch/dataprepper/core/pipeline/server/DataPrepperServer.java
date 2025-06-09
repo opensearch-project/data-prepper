@@ -78,7 +78,7 @@ public class DataPrepperServer {
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
-        createContext(server, updatePipelineHandler, authenticator, "/updatePipelineConfig/");
+        createContext(server, updatePipelineHandler, authenticator, "/updatePipelineConfig");
 
         if (encryptionHttpHandler != null) {
             createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
