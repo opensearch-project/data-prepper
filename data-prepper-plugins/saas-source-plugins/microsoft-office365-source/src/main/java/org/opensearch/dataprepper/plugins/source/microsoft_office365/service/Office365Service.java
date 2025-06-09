@@ -76,8 +76,8 @@ public class Office365Service {
 
     private void searchForNewLogs(final Instant timestamp,
                                   final Queue<ItemInfo> itemInfoQueue) {
-        log.trace("Looking for new logs with a Search API call");
         Instant endTime = Instant.now();
+        log.info("Searching for logs between {} and {}", timestamp, endTime);
         Instant startTime = timestamp;
 
         Instant sevenDaysAgo = endTime.minus(Duration.ofDays(7));
@@ -95,7 +95,7 @@ public class Office365Service {
             if (windowEnd.isAfter(endTime)) {
                 windowEnd = endTime;
             }
-
+            log.debug("Processing time window: {} to {}", startTime, windowEnd);
             boolean windowSuccessful = true;
             for (String contentType : CONTENT_TYPES) {
                 String nextPageUri = null;
@@ -123,8 +123,10 @@ public class Office365Service {
 
             // Only move the pointer if all content types were processed successfully
             if (windowSuccessful) {
+                log.trace("Successfully completed time window: {} to {}, moving to next window", startTime, windowEnd);
                 startTime = windowEnd;
             } else {
+                log.error("Failed to complete time window: {} to {}, retrying after delay", startTime, windowEnd);
                 // Add a small delay before retrying the same window
                 try {
                     Thread.sleep(RETRY_DELAY.toMillis());
@@ -146,7 +148,7 @@ public class Office365Service {
                     .partitionKey(contentType + UUID.randomUUID())
                     .metadata(item)
                     .keyAttributes(Map.of(TYPE_KEY, contentType, CONTENT_URI_KEY, item.get(CONTENT_URI_KEY)))
-                    .lastModifiedAt(Instant.parse((String) item.get(CONTENT_CREATED_KEY)))
+                    .lastModifiedAt(Instant.now()) // Used to track the time that it was imported
                     .build();
             itemInfoQueue.add(itemInfo);
         });
