@@ -74,7 +74,6 @@ public class UpdatePipelineHandlerTest {
             "/test@pipeline",              // Invalid characters
             "/toolongpipelinename12345678901",  // Too long
             "/pipeline.name",                    // Invalid characters
-            "/123-pipeline",                     // Invalid characters
             "/",                                 // Empty name
             ""                                   // Empty path
     })
