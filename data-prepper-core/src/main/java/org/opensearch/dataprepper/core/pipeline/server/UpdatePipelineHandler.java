@@ -23,7 +23,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,14 +39,18 @@ public class UpdatePipelineHandler implements HttpHandler {
     private static final Logger LOG = LoggerFactory.getLogger(UpdatePipelineHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern S3_PATH_PATTERN = Pattern.compile("s3://([^/]+)/(.+)");
-    private static final Pattern PIPELINE_NAME_PATTERN = Pattern.compile("/pipelines/([^/]+)");
-    
+    private static final Pattern PIPELINE_NAME_PATTERN = Pattern.compile("([^/]+)\\.json$");
+    protected final S3Client s3Client;
     private final PipelinesProvider pipelinesProvider;
-    private final S3Client s3Client;
 
     public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider) {
         this.pipelinesProvider = pipelinesProvider;
         this.s3Client = S3Client.builder().build();
+    }
+
+    public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
+        this.pipelinesProvider = pipelinesProvider;
+        this.s3Client = s3Client;
     }
 
     @Override
@@ -84,7 +87,7 @@ public class UpdatePipelineHandler implements HttpHandler {
                 configurationContents.add(readConfigurationFromS3(s3path));
                 LOG.info("Successfully read configuration for pipeline '{}' from S3 path: {}", pipelineName, s3path);
             }
-            
+
             // TODO: Validate and update pipeline configuration
             // For now, we'll just log the contents and return success
             LOG.debug("Configuration contents: {}", configurationContents);
@@ -92,7 +95,7 @@ public class UpdatePipelineHandler implements HttpHandler {
             // Send success response
             final String successMessage = "{\"message\": \"Pipeline configuration updated successfully\", \"pipeline\": \"" + pipelineName + "\"}";
             final byte[] response = successMessage.getBytes(StandardCharsets.UTF_8);
-            
+
             exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
@@ -124,13 +127,11 @@ public class UpdatePipelineHandler implements HttpHandler {
 
     private S3PathRequest parseS3PathRequest(final String requestBody) {
         try {
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> requestMap = OBJECT_MAPPER.readValue(requestBody, Map.class);
+            @SuppressWarnings("unchecked") final Map<String, Object> requestMap = OBJECT_MAPPER.readValue(requestBody, Map.class);
             final Object s3pathsObj = requestMap.get("s3paths");
-            
+
             if (s3pathsObj instanceof List) {
-                @SuppressWarnings("unchecked")
-                final List<String> s3paths = (List<String>) s3pathsObj;
+                @SuppressWarnings("unchecked") final List<String> s3paths = (List<String>) s3pathsObj;
                 if (!s3paths.isEmpty() && s3paths.stream().allMatch(path -> path != null && !path.trim().isEmpty())) {
                     return new S3PathRequest(s3paths.stream()
                             .map(String::trim)
@@ -162,7 +163,7 @@ public class UpdatePipelineHandler implements HttpHandler {
 
         try (final ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
              final BufferedReader reader = new BufferedReader(new InputStreamReader(s3Object, StandardCharsets.UTF_8))) {
-            
+
             return reader.lines().collect(Collectors.joining("\n"));
         }
     }
@@ -170,7 +171,7 @@ public class UpdatePipelineHandler implements HttpHandler {
     private void sendErrorResponse(final HttpExchange exchange, final int statusCode, final String message) throws IOException {
         final String errorResponse = "{\"error\": \"" + message.replace("\"", "\\\"") + "\"}";
         final byte[] response = errorResponse.getBytes(StandardCharsets.UTF_8);
-        
+
         exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
         exchange.sendResponseHeaders(statusCode, response.length);
         exchange.getResponseBody().write(response);
