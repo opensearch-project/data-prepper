@@ -116,6 +116,14 @@ class CredentialsProviderFactoryTest {
         assertThat(actualRegion, equalTo(region));
     }
 
+    @Test
+    void getDefaultStsRoleArn_returns_from_default_configuration() {
+        final String roleArn = "arn:aws:iam::123456789012:role/test-role";
+        when(defaultStsConfiguration.getAwsStsRoleArn()).thenReturn(roleArn);
+
+        assertThat(createObjectUnderTest().getDefaultStsRoleArn(), equalTo(roleArn));
+    }
+
     private static List<Region> getRegions() {
         return Region.regions();
     }
