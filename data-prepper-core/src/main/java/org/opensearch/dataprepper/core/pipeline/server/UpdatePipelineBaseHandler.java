@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -44,7 +45,7 @@ public class UpdatePipelineBaseHandler {
 
     public UpdatePipelineBaseHandler(final PipelinesProvider pipelinesProvider) {
         this.pipelinesProvider = pipelinesProvider;
-        this.s3Client = S3Client.builder().build();
+        this.s3Client = S3Client.builder().region(Region.US_EAST_1).build();
     }
 
     public UpdatePipelineBaseHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
