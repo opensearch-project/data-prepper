@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class CloudWatchLogsSinkConfig {
     public static final int DEFAULT_RETRY_COUNT = 5;
+    public static final int DEFAULT_NUM_THREADS = 10;
 
     @JsonProperty("aws")
     @Valid
@@ -43,6 +44,11 @@ public class CloudWatchLogsSinkConfig {
     @Max(15)
     private int maxRetries = DEFAULT_RETRY_COUNT;
 
+    @JsonProperty(value = "num_threads", defaultValue = "10")
+    @Min(1)
+    @Max(50)
+    private int numThreads = DEFAULT_NUM_THREADS;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -65,6 +71,10 @@ public class CloudWatchLogsSinkConfig {
 
     public int getMaxRetries() {
         return maxRetries;
+    }
+
+    public int getNumThreads() {
+        return numThreads;
     }
 
 }
