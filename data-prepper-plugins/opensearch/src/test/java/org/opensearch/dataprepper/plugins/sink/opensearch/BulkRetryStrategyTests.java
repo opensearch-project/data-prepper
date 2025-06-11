@@ -226,6 +226,129 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
+    public void testDeleteNotFound_ReachesMaxRetryLimit() throws Exception {
+        final String testIndex = "delete-404-retry-limit";
+        final FakeClient client = new FakeClient(testIndex);
+        client.deleteNotFoundMaxRetries = true;
+        
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
+
+        final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle1));
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        assertEquals("DELETE+404 should retry exactly 3 times before giving up", 3, client.attempt); 
+        assertEquals("No events should succeed", 0, numEventsSucceeded);
+        assertEquals("DELETE+404 operation should be sent to DLQ after max retries", 1, numEventsFailed);
+    }
+
+    
+    @Test
+    public void testDeleteNotFound_MixedWithSuccessfulOperations() throws Exception {
+        final String testIndex = "mixed-delete-404-test";
+        final FakeClient client = new FakeClient(testIndex);
+        client.deleteNotFoundMixed = true;
+        
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
+
+        final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
+        final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation1).build(), eventHandle1));
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle2));
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation2).build(), eventHandle3));
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        assertEquals("Both INDEX operations should succeed", 2, numEventsSucceeded);
+        assertEquals("DELETE+404 operation should be sent to DLQ after max retries", 1, numEventsFailed);
+    }
+
+    @Test
+    public void testDeleteNotFound_DoesNotAffectOtherNotFoundOperations() throws Exception {
+        final String testIndex = "other-404-test";
+        final FakeClient client = new FakeClient(testIndex);
+        client.indexNotFoundTest = true;
+        
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
+
+        final IndexOperation<SerializedJson> indexOperation = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation).build(), eventHandle1));
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        assertEquals("INDEX+404 should not be retried multiple times", 1, client.attempt);
+        assertEquals("No events should succeed", 0, numEventsSucceeded);
+        assertEquals("INDEX+404 operation should be sent to DLQ immediately", 1, numEventsFailed);
+    }
+
+    @Test
+    public void testDeleteNotFound_RetryCountDoesNotAffectOtherOperations() throws Exception {
+        final String testIndex = "retry-isolation-test";
+        final FakeClient client = new FakeClient(testIndex);
+        client.retryCountIsolationTest = true;
+        
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
+
+        final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
+        final IndexOperation<SerializedJson> indexOperation = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle1));
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation).build(), eventHandle2));
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        assertEquals("At least 2 events should be processed", 2, numEventsSucceeded + numEventsFailed);
+    }
+
+    @Test
+    public void testDeleteNotFound_RetriesWithOtherErrors() throws Exception {
+        final String testIndex = "delete-404-with-others-test";
+        final FakeClient client = new FakeClient(testIndex);
+        client.deleteNotFoundWithOthers = true;
+        
+        numEventsSucceeded = 0;
+        numEventsFailed = 0;
+        final BulkRetryStrategy bulkRetryStrategy = createObjectUnderTest(
+                client::bulk, logFailureConsumer,
+                () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder()));
+
+        final DeleteOperation deleteOperation = new DeleteOperation.Builder().index(testIndex).id("delete-404-test").build();
+        final IndexOperation<SerializedJson> indexOperation = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().delete(deleteOperation).build(), eventHandle1));
+        accumulatingBulkRequest.addOperation(new BulkOperationWrapper(new BulkOperation.Builder().index(indexOperation).build(), eventHandle2));
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
+
+        assertEquals("INDEX operation should eventually succeed", 1, numEventsSucceeded);
+        assertEquals("DELETE+404 operation should be sent to DLQ after max retries", 1, numEventsFailed);
+    }
+
+    @Test
     public void testExecuteSuccessOnFirstAttempt() throws Exception {
         final String testIndex = "bar";
         final FakeClient client = new FakeClient(testIndex);
@@ -1100,6 +1223,11 @@ public class BulkRetryStrategyTests {
         boolean nonRetryableException = true;
         boolean maxRetriesWithSuccesses = false;
         boolean maxRetriesWithException = false;
+        boolean deleteNotFoundMaxRetries = false;
+        boolean deleteNotFoundMixed = false;
+        boolean indexNotFoundTest = false;
+        boolean retryCountIsolationTest = false;
+        boolean deleteNotFoundWithOthers = false;
         int maxRetriesTestValue = 0;
         int attempt = 0;
         String index;
@@ -1131,6 +1259,26 @@ public class BulkRetryStrategyTests {
                     finalResponse = bulkMaxRetriesResponse(bulkRequest);
                 }
                 return finalResponse;
+            }
+            if (deleteNotFoundMaxRetries) {
+                attempt++;
+                return bulkDeleteNotFoundResponse(bulkRequest);
+            }
+            if (deleteNotFoundMixed) {
+                attempt++;
+                return bulkDeleteNotFoundMixedResponse(bulkRequest);
+            }
+            if (indexNotFoundTest) {
+                attempt++;
+                return bulkIndexNotFoundResponse(bulkRequest);
+            }
+            if (retryCountIsolationTest) {
+                attempt++;
+                return bulkRetryCountIsolationResponse(bulkRequest);
+            }
+            if (deleteNotFoundWithOthers) {
+                attempt++;
+                return bulkDeleteNotFoundWithOthersResponse(bulkRequest);
             }
             if (successOnFirstAttempt) {
                 attempt++;
@@ -1228,6 +1376,105 @@ public class BulkRetryStrategyTests {
                     successItemResponse(index), successItemResponse(index), successItemResponse(index),
                     successItemResponse(index));
             return new BulkResponse.Builder().items(bulkItemResponses).took(10).errors(false).build();
+        }
+
+        private BulkResponse bulkDeleteNotFoundResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.operations().size();
+            assert requestSize == 1; 
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                    deleteNotFoundItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+        }
+
+        private BulkResponse bulkDeleteNotFoundMixedResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.operations().size();
+            
+            if (attempt == 1) {
+                assert requestSize == 3;
+                final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                        successItemResponse(index),     
+                        deleteNotFoundItemResponse(index), 
+                        successItemResponse(index));     
+                return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+            } else if (attempt <= 3) {
+                assert requestSize == 1;
+                final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                        deleteNotFoundItemResponse(index)); 
+                return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+            } else {
+                assert requestSize == 0;
+                return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
+            }
+        }
+
+        private BulkResponse bulkIndexNotFoundResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.operations().size();
+            assert requestSize == 1;
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                    indexNotFoundItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+        }
+
+        private BulkResponse bulkRetryCountIsolationResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.operations().size();
+            
+            if (attempt == 1) {
+                assert requestSize == 2;
+                final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                        deleteNotFoundItemResponse(index),     
+                        internalServerErrorItemResponse(index));
+                return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+            } else if (attempt <= 3) {
+                if (requestSize == 2) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            deleteNotFoundItemResponse(index),
+                            internalServerErrorItemResponse(index));
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+                } else if (requestSize == 1) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            successItemResponse(index));
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
+                }
+            } else {
+                if (requestSize >= 1) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            successItemResponse(index));
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
+                }
+            }
+            
+            return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
+        }
+
+        private BulkResponse bulkDeleteNotFoundWithOthersResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.operations().size();
+            
+            if (attempt == 1) {
+                assert requestSize == 2;
+                final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                        deleteNotFoundItemResponse(index),
+                        internalServerErrorItemResponse(index));   
+                return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+            } else if (attempt <= 3) {
+                if (requestSize == 2) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            deleteNotFoundItemResponse(index),     
+                            internalServerErrorItemResponse(index));
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
+                } else if (requestSize == 1) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            successItemResponse(index)); 
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
+                }
+            } else {
+                if (requestSize >= 1) {
+                    final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                            successItemResponse(index)); 
+                    return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
+                }
+            }
+            
+            return new BulkResponse.Builder().items(Arrays.asList()).errors(false).took(10).build();
         }
     }
 }
