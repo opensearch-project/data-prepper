@@ -195,8 +195,26 @@ public class JacksonEvent implements Event {
         JsonNode childNode = node.get(key);
         if (childNode == null) {
             childNode = mapper.createObjectNode();
-            ((ObjectNode) node).set(key, childNode);
+            if (node.isArray()) {
+                int index = Integer.parseInt(key);
+                ArrayNode arrayNode = (ArrayNode) node;
+
+                while (arrayNode.size() <= index) {
+                    arrayNode.addNull();
+                }
+
+                JsonNode existing = arrayNode.get(index);
+                if (existing == null || !existing.isObject()) {
+                    childNode = mapper.createObjectNode();
+                    arrayNode.set(index, childNode);
+                } else {
+                    childNode = existing;
+                }
+            } else {
+                ((ObjectNode) node).set(key, childNode);
+            }
         }
+
         return childNode;
     }
 

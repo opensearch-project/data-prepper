@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundExcepti
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -145,6 +146,64 @@ public class JacksonEventTest {
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    void testPutAndGet_withArrays_eventKey() {
+
+        final String key = "list-key/0/foo";
+        final String newValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listValue = new ArrayList<>();
+        final Map<String, Object> mapValue = Map.of("foo", "bar", "foo-2", "bar-2");
+        listValue.add(mapValue);
+
+        final String listKey = "list-key";
+        final EventKey eventKey = new JacksonEventKey(listKey);
+        event.put(eventKey, listValue);
+
+        final Map<String, Object> expectedMap = new HashMap<>();
+        expectedMap.put(listKey, listValue);
+
+        assertThat(event.toMap(), equalTo(expectedMap));
+
+        final EventKey eventNestedKey = new JacksonEventKey(key);
+        event.put(eventNestedKey, newValue);
+
+        final List<Map<String, Object>> newlistValue = new ArrayList<>();
+        final Map<String, Object> newMapValue = Map.of("foo", newValue, "foo-2", "bar-2");
+        newlistValue.add(newMapValue);
+
+        expectedMap.put(listKey, newlistValue);
+
+        assertThat(event.toMap(), equalTo(expectedMap));
+
+
+        final List<Map<String, Object>> result = event.get(listKey, List.class);
+        assertThat(result, equalTo(newlistValue));
+
+        final String resultValue = event.get(key, String.class);
+        assertThat(resultValue, equalTo(newValue));
+    }
+
+    @Test
+    void testPutAndGet_withArrays_out_of_bounds_creates_new_element() {
+
+        final String key = "list-key/1/foo";
+        final String fooValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listValue = new ArrayList<>();
+        final Map<String, Object> mapValue = Map.of("foo", "bar", "foo-2", "bar-2");
+        listValue.add(mapValue);
+
+        final String listKey = "list-key";
+        final EventKey eventKey = new JacksonEventKey(listKey);
+        event.put(eventKey, listValue);
+
+        event.put(key, fooValue);
+
+        final String resultValue = event.get(key, String.class);
+        assertThat(resultValue, equalTo(fooValue));
     }
 
     @Test
@@ -1117,5 +1176,4 @@ public class JacksonEventTest {
                 Arguments.of("1.000")
         );
     }
-
 }
