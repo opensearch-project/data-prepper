@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -23,11 +24,14 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,6 +52,7 @@ public class FileSource implements Source<Record<Object>> {
     private final FileSourceConfig fileSourceConfig;
     private final FileStrategy fileStrategy;
     private final EventFactory eventFactory;
+    private final DecompressionEngine decompressionEngine;
 
     private Thread readThread;
 
@@ -63,6 +68,7 @@ public class FileSource implements Source<Record<Object>> {
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;
         this.writeTimeout = FileSourceConfig.DEFAULT_TIMEOUT;
+        this.decompressionEngine = fileSourceConfig.getCompression().getDecompressionEngine();
 
         if(fileSourceConfig.getCodec() != null) {
             fileStrategy = new CodecFileStrategy(pluginFactory);
@@ -104,7 +110,8 @@ public class FileSource implements Source<Record<Object>> {
     private class ClassicFileStrategy implements FileStrategy {
         @Override
         public void start(Buffer<Record<Object>> buffer) {
-            try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileSourceConfig.getFilePathToRead()), StandardCharsets.UTF_8)) {
+            Path filePath = Paths.get(fileSourceConfig.getFilePathToRead());
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(decompressionEngine.createInputStream(Files.newInputStream(filePath)), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null && !isStopRequested) {
                     writeLineAsEventOrString(line, buffer);
@@ -166,13 +173,13 @@ public class FileSource implements Source<Record<Object>> {
             final PluginModel codecConfiguration = fileSourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
-
         }
 
         @Override
         public void start(final Buffer<Record<Object>> buffer) {
-            try {
-                codec.parse(new FileInputStream(fileSourceConfig.getFilePathToRead()), eventRecord -> {
+            Path filePath = Paths.get(fileSourceConfig.getFilePathToRead());
+            try(InputStream is = decompressionEngine.createInputStream(Files.newInputStream(filePath))) {
+                codec.parse(is, eventRecord -> {
                     try {
                         buffer.write((Record) eventRecord, writeTimeout);
                     } catch (TimeoutException e) {
