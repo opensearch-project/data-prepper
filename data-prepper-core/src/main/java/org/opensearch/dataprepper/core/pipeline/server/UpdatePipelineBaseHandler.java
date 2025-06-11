@@ -34,23 +34,16 @@ import java.util.stream.Collectors;
 /**
  * HttpHandler to handle requests for updating pipeline configurations from S3
  */
-public class UpdatePipelineBaseHandler {
+public abstract class UpdatePipelineBaseHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(UpdatePipelineBaseHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern S3_PATH_PATTERN = Pattern.compile("s3://([^/]+)/(.+)");
     private static final Pattern PIPELINE_NAME_PATTERN = Pattern.compile("/([a-zA-Z0-9-]{1,28})$");
-    protected final S3Client s3Client;
     private final PipelinesProvider pipelinesProvider;
 
     public UpdatePipelineBaseHandler(final PipelinesProvider pipelinesProvider) {
         this.pipelinesProvider = pipelinesProvider;
-        this.s3Client = S3Client.builder().region(Region.US_EAST_1).build();
-    }
-
-    public UpdatePipelineBaseHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
-        this.pipelinesProvider = pipelinesProvider;
-        this.s3Client = s3Client;
     }
 
     public void baseHandle(final HttpExchange exchange, boolean executeUpdate) throws IOException {
@@ -79,12 +72,28 @@ public class UpdatePipelineBaseHandler {
                 sendErrorResponse(exchange, HttpURLConnection.HTTP_BAD_REQUEST, "Invalid request body. Expected JSON with 's3paths' field containing an array of S3 paths");
                 return;
             }
+            // Get region
+            final Region region;
+            try {
+                region = s3PathRequest.s3region != null ? Region.of(s3PathRequest.s3region) : Region.US_EAST_1;
+            } catch (IllegalArgumentException e) {
+                sendErrorResponse(exchange, HttpURLConnection.HTTP_BAD_REQUEST, "Invalid AWS region");
+                return;
+            }
 
             // Read configurations from S3
+            final S3Client regionSpecificClient = createS3Client(region);
+
             final List<String> configurationContents = new ArrayList<>();
-            for (String s3path : s3PathRequest.s3paths) {
-                configurationContents.add(readConfigurationFromS3(s3path));
-                LOG.info("Successfully read configuration for pipeline '{}' from S3 path: {}", pipelineName, s3path);
+            try {
+                for (String s3path : s3PathRequest.s3paths) {
+                    configurationContents.add(readConfigurationFromS3(s3path, regionSpecificClient));
+                    LOG.info("Successfully read configuration for pipeline '{}' from S3 path: {}", pipelineName, s3path);
+                }
+            } catch (SdkClientException | S3Exception e) {
+                LOG.error("AWS SDK error: {}", e.getMessage());
+                sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "AWS error: " + e.getMessage());
+                return;
             }
 
             // TODO: Validate and update pipeline configuration
@@ -102,18 +111,24 @@ public class UpdatePipelineBaseHandler {
         } catch (final IllegalArgumentException e) {
             LOG.warn("Invalid request parameters: {}", e.getMessage());
             sendErrorResponse(exchange, HttpURLConnection.HTTP_BAD_REQUEST, e.getMessage());
-        } catch (final S3Exception e) {
-            LOG.error("Failed to read from S3: {}", e.getMessage());
-            sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "Unable to read configuration from S3: " + e.getMessage());
         } catch (final SdkClientException e) {
-            LOG.error("AWS credentials or S3 access error: {}", e.getMessage());
-            sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "AWS credentials error or S3 access denied: " + e.getMessage());
+            if (e.getCause() instanceof java.net.UnknownHostException || e.getMessage().contains("Invalid AWS region")) {
+                LOG.warn("Invalid AWS region: {}", e.getMessage());
+                sendErrorResponse(exchange, HttpURLConnection.HTTP_BAD_REQUEST, "Invalid AWS region");
+            } else {
+                LOG.error("AWS SDK error: {}", e.getMessage());
+                sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "AWS error: " + e.getMessage());
+            }
         } catch (final Exception e) {
             LOG.error("Unexpected error updating pipeline configuration", e);
             sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "Internal server error: " + e.getMessage());
         } finally {
             exchange.getResponseBody().close();
         }
+    }
+
+    public S3Client createS3Client(final Region region) {
+        return S3Client.builder().region(region).build();
     }
 
     private String extractPipelineNameFromPath(final String path) {
@@ -132,9 +147,10 @@ public class UpdatePipelineBaseHandler {
             if (s3pathsObj instanceof List) {
                 @SuppressWarnings("unchecked") final List<String> s3paths = (List<String>) s3pathsObj;
                 if (!s3paths.isEmpty() && s3paths.stream().allMatch(path -> path != null && !path.trim().isEmpty())) {
+                    final String s3region = (String) requestMap.get("s3region");
                     return new S3PathRequest(s3paths.stream()
                             .map(String::trim)
-                            .collect(Collectors.toList()));
+                            .collect(Collectors.toList()), s3region);
                 }
             }
             return null;
@@ -144,7 +160,7 @@ public class UpdatePipelineBaseHandler {
         }
     }
 
-    private String readConfigurationFromS3(final String s3path) throws IOException {
+    private String readConfigurationFromS3(final String s3path, final S3Client client) throws IOException {
         final Matcher matcher = S3_PATH_PATTERN.matcher(s3path);
         if (!matcher.matches()) {
             throw new IllegalArgumentException("Invalid S3 path format. Expected: s3://bucket/key");
@@ -160,10 +176,20 @@ public class UpdatePipelineBaseHandler {
                 .key(key)
                 .build();
 
-        try (final ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
+        try (final ResponseInputStream<GetObjectResponse> s3Object = client.getObject(getObjectRequest);
              final BufferedReader reader = new BufferedReader(new InputStreamReader(s3Object, StandardCharsets.UTF_8))) {
 
             return reader.lines().collect(Collectors.joining("\n"));
+        }
+    }
+
+    private void handleS3ClientException(final HttpExchange exchange, final Exception e) throws IOException {
+        if (e instanceof SdkClientException && e.getCause() instanceof java.net.UnknownHostException) {
+            LOG.warn("Invalid AWS region: {}", e.getMessage());
+            sendErrorResponse(exchange, HttpURLConnection.HTTP_BAD_REQUEST, "Invalid AWS region");
+        } else {
+            LOG.error("AWS SDK error: {}", e.getMessage());
+            sendErrorResponse(exchange, HttpURLConnection.HTTP_INTERNAL_ERROR, "AWS error: " + e.getMessage());
         }
     }
 
@@ -178,9 +204,11 @@ public class UpdatePipelineBaseHandler {
 
     private static class S3PathRequest {
         public final List<String> s3paths;
+        public final String s3region;
 
-        public S3PathRequest(final List<String> s3paths) {
+        public S3PathRequest(final List<String> s3paths, final String s3region) {
             this.s3paths = s3paths;
+            this.s3region = s3region;
         }
     }
 }

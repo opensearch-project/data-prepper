@@ -10,7 +10,6 @@ import com.sun.net.httpserver.HttpHandler;
 import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 
@@ -23,10 +22,6 @@ public class UpdatePipelineHandler extends UpdatePipelineBaseHandler implements 
 
     public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider) {
         super(pipelinesProvider);
-    }
-
-    public UpdatePipelineHandler(final PipelinesProvider pipelinesProvider, S3Client s3Client) {
-        super(pipelinesProvider, s3Client);
     }
 
     @Override
