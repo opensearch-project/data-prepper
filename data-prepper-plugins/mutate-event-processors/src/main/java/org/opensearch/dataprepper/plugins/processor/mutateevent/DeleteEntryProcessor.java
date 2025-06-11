@@ -74,12 +74,11 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-
             try {
                 for (final DeleteEntryProcessorConfig.Entry entry : entries) {
                     final String iterateOn = deleteEntryProcessorConfig.getIterateOn();
                     if (Objects.isNull(iterateOn)) {
-                        if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+                        if (Objects.nonNull(entry.getDeleteWhen()) && !expressionEvaluator.evaluateConditional(entry.getDeleteWhen(), recordEvent)) {
                             continue;
                         }
 
@@ -89,10 +88,10 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                         }
                     } else {
                         final boolean applyEventDeleteWhen = !deleteEntryProcessorConfig.isUseIterateOnContext() &&
-                                Objects.nonNull(deleteWhen);
+                                Objects.nonNull(entry.getDeleteWhen());
                         final boolean applyIterateDeleteWhen = deleteEntryProcessorConfig.isUseIterateOnContext() &&
-                                Objects.nonNull(deleteWhen);
-                        if (applyEventDeleteWhen && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
+                                Objects.nonNull(entry.getDeleteWhen());
+                        if (applyEventDeleteWhen && !expressionEvaluator.evaluateConditional(entry.getDeleteWhen(), recordEvent)) {
                             continue;
                         }
                         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
@@ -104,7 +103,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                                         .withData(item)
                                         .build();
                                 if (applyIterateDeleteWhen &&
-                                        !expressionEvaluator.evaluateConditional(deleteWhen, context)) {
+                                        !expressionEvaluator.evaluateConditional(entry.getDeleteWhen(), context)) {
                                     continue;
                                 }
 
