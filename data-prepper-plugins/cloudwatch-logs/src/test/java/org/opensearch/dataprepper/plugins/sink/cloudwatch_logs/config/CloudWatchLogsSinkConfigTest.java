@@ -46,7 +46,7 @@ class CloudWatchLogsSinkConfigTest {
 
     @Test
     void GIVEN_new_sink_config_WHEN_get_num_threads_called_SHOULD_return_default_value() {
-        assertThat(new CloudWatchLogsSinkConfig().getNumThreads(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_THREADS));
+        assertThat(new CloudWatchLogsSinkConfig().getWorkers(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_WORKERS));
     }
 
     @Test
@@ -57,8 +57,8 @@ class CloudWatchLogsSinkConfigTest {
     @Test
     void GIVEN_num_threads_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
         int testValue = (new Random()).nextInt();
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "numThreads", testValue);
-        assertThat(cloudWatchLogsSinkConfig.getNumThreads(), equalTo(testValue));
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "workers", testValue);
+        assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(testValue));
     }
 
     @Test

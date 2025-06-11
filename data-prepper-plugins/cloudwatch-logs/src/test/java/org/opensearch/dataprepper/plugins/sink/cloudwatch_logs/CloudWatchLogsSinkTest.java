@@ -68,7 +68,7 @@ class CloudWatchLogsSinkTest {
         when(mockCloudWatchLogsSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
         when(mockCloudWatchLogsSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
         when(mockCloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
-        when(mockCloudWatchLogsSinkConfig.getNumThreads()).thenReturn(10);
+        when(mockCloudWatchLogsSinkConfig.getWorkers()).thenReturn(10);
 
         when(mockPluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
         when(mockPluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
