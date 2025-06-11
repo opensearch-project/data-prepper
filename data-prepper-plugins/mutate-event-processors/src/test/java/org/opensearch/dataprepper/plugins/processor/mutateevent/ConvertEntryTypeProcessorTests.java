@@ -389,4 +389,40 @@ public class ConvertEntryTypeProcessorTests {
         when(mockConfig.getKey()).thenReturn("");
         assertThrows(IllegalArgumentException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
     }
+
+    @Test
+    void convert_type_on_value_in_array_element_converts_correctly() {
+        final String eventKey = "list-key/0/foo";
+
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("long"));
+        when(mockConfig.getKey()).thenReturn(eventKey);
+
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final Map<String, Object> eventData = new HashMap<>();
+
+        final List<Map<String, Object>> listElement = new ArrayList<>();
+        listElement.add(Map.of("foo", 10.0));
+
+        eventData.put("list-key", listElement);
+
+        final Event event = JacksonEvent.builder()
+                .withData(eventData)
+                .withEventType("event")
+                .build();
+
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) typeConversionProcessor.doExecute(Collections.singletonList(new Record<>(event)));
+        assertThat(processedRecords.size(), equalTo(1));
+
+        final Event resultEvent = processedRecords.get(0).getData();
+
+        final Map<String, Object> resultEventData = resultEvent.toMap();
+
+        final Map<String, Object> expectedEventData = new HashMap<>();
+        final List<Map<String, Object>> expectedListElement = new ArrayList<>();
+        expectedListElement.add(Map.of("foo", 10L));
+        expectedEventData.put("list-key", expectedListElement);
+
+        assertThat(resultEventData, equalTo(expectedEventData));
+    }
 }
