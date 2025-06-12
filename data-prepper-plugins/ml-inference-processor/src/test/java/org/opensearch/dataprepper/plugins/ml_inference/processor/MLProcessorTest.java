@@ -111,7 +111,7 @@ public class MLProcessorTest {
     void testDoExecute_WithNoRecords() {
         Collection<Record<Event>> result = mlProcessor.doExecute(Collections.emptyList());
 
-        verifyNoInteractions(mlBatchJobCreator, successCounter, failureCounter);
+        verifyNoInteractions(successCounter, failureCounter);
         assertTrue(result.isEmpty());
     }
 
@@ -130,6 +130,7 @@ public class MLProcessorTest {
 
         // Verify no interactions with mlBatchJobCreator, successCounter, or failureCounter
         verify(mlBatchJobCreator, times(1)).addProcessedBatchRecordsToResults(records);
+        verify(mlBatchJobCreator, times(1)).checkAndProcessBatch();
         verifyNoInteractions(successCounter, failureCounter);
 
         // Assert that the input records are returned as output

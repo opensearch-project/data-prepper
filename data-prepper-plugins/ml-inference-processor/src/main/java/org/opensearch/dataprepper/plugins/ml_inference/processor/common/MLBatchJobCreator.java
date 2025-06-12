@@ -46,4 +46,12 @@ public interface MLBatchJobCreator {
      */
     default void addProcessedBatchRecordsToResults(List<Record<Event>> resultRecords) {
     }
+
+    /**
+     * Checks and processes batch if batch processing is supported.
+     * Default implementation does nothing.
+     */
+    default void checkAndProcessBatch() {
+        // Default no-op implementation
+    }
 }

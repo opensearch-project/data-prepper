@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -69,8 +68,6 @@ public class SageMakerBatchJobCreatorTest {
     @Mock
     private S3Client s3Client;
 
-    @Mock
-    private ScheduledExecutorService scheduler;
     private SageMakerBatchJobCreator sageMakerBatchJobCreator;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -106,11 +103,6 @@ public class SageMakerBatchJobCreatorTest {
             Field processedBatchRecordsField = SageMakerBatchJobCreator.class.getDeclaredField("processedBatchRecords");
             processedBatchRecordsField.setAccessible(true);
             processedBatchRecords = (ConcurrentLinkedQueue<Record<Event>>) processedBatchRecordsField.get(sageMakerBatchJobCreator);
-
-            // Replace scheduler with mock
-            Field schedulerField = SageMakerBatchJobCreator.class.getDeclaredField("scheduler");
-            schedulerField.setAccessible(true);
-            schedulerField.set(sageMakerBatchJobCreator, scheduler);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         } catch (IllegalAccessException e) {
@@ -171,7 +163,7 @@ public class SageMakerBatchJobCreatorTest {
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act - trigger batch processing directly
-            callPrivateCheckAndProcessBatch();
+            sageMakerBatchJobCreator.checkAndProcessBatch();
 
             // Assert
             verify(sageMakerBatchJobCreator).incrementSuccessCounter();
@@ -198,7 +190,7 @@ public class SageMakerBatchJobCreatorTest {
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act
-            callPrivateCheckAndProcessBatch();
+            sageMakerBatchJobCreator.checkAndProcessBatch();
 
             // Assert
             verify(sageMakerBatchJobCreator).incrementSuccessCounter();
@@ -246,7 +238,7 @@ public class SageMakerBatchJobCreatorTest {
                     .thenThrow(new RuntimeException("S3 upload failed"));
 
             // Act
-            callPrivateCheckAndProcessBatch();
+            sageMakerBatchJobCreator.checkAndProcessBatch();
 
             // Assert
             verify(sageMakerBatchJobCreator).incrementFailureCounter();
@@ -283,7 +275,7 @@ public class SageMakerBatchJobCreatorTest {
             mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
 
             // Act
-            callPrivateCheckAndProcessBatch();
+            sageMakerBatchJobCreator.checkAndProcessBatch();
 
             // Assert
             verify(sageMakerBatchJobCreator).incrementFailureCounter();
@@ -291,24 +283,6 @@ public class SageMakerBatchJobCreatorTest {
             assertEquals(1, processedBatchRecords.size());
             assertTrue(batch_records.isEmpty());
         }
-    }
-
-    @Test
-    void testShutdown() {
-        // Act
-        sageMakerBatchJobCreator.shutdown();
-
-        // Assert
-        verify(scheduler).shutdown();
-    }
-
-    @Test
-    void testPrepareForShutdown() {
-        // Act
-        sageMakerBatchJobCreator.prepareForShutdown();
-
-        // Assert
-        verify(scheduler).shutdown();
     }
 
     @Test
@@ -344,7 +318,7 @@ public class SageMakerBatchJobCreatorTest {
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act - trigger batch processing with a batch that will fail
-            callPrivateCheckAndProcessBatch();
+            sageMakerBatchJobCreator.checkAndProcessBatch();
 
             // Assert
             verify(counter, times(1)).increment(); // Failure counter
@@ -362,13 +336,6 @@ public class SageMakerBatchJobCreatorTest {
         // Mock the event.get method which is used when inputKey is not null
         when(event.get(mlProcessorConfig.getInputKey(), String.class)).thenReturn(key);
         return event;
-    }
-
-    private void callPrivateCheckAndProcessBatch() throws Exception {
-        // Use reflection to call private method
-        java.lang.reflect.Method method = SageMakerBatchJobCreator.class.getDeclaredMethod("checkAndProcessBatch");
-        method.setAccessible(true);
-        method.invoke(sageMakerBatchJobCreator);
     }
 
     private void callPrivateProcessRemainingBatch() throws Exception {

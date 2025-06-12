@@ -27,9 +27,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -50,7 +47,6 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private final int MAX_BATCH_SIZE;
     private final AtomicLong lastUpdateTimestamp = new AtomicLong(-1);
     private final long INACTIVITY_TIMEOUT_MS = 60000; // 1 minute in milliseconds
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private static final String SAGEMAKER_PAYLOAD_TEMPLATE = "{\"parameters\":{\"TransformInput\":{\"ContentType\":\"application/json\","
             + "\"DataSource\":{\"S3DataSource\":{\"S3DataType\":\"ManifestFile\",\"S3Uri\":\"\"}},"
@@ -64,14 +60,6 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         this.s3Client = createS3Client(mlProcessorConfig, awsCredentialsSupplier);
         this.dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         this.MAX_BATCH_SIZE = mlProcessorConfig.getMaxBatchSize();
-
-        // Initialize batch processing scheduler
-        scheduler.scheduleAtFixedRate(
-                this::checkAndProcessBatch,
-                1000, // Initial delay of 1 second
-                10000, // Check every 5 seconds
-                TimeUnit.MILLISECONDS
-        );
     }
 
     @Override
@@ -101,7 +89,8 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         }
     }
 
-    private void checkAndProcessBatch() {
+    @Override
+    public void checkAndProcessBatch() {
         try {
             if (batch_records.isEmpty()) {
                 return;
@@ -176,15 +165,6 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     // Shutdown methods
     @Override
     public void prepareForShutdown() {
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
     }
 
     @Override

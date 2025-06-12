@@ -61,11 +61,16 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+        List<Record<Event>> resultRecords = new ArrayList<>();
+        // check and process any existing batch
+        mlBatchJobCreator.checkAndProcessBatch();
+        // Add processed records to results
+        mlBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
         // reads from input - S3 input
         if (records.size() == 0)
-            return records;
+            return resultRecords;
 
-        List<Record<Event>> resultRecords = new ArrayList<>();
+        // Process new records
         List<Record<Event>> recordsToMlCommons = records.stream()
             .filter(record -> {
                 try {
@@ -90,9 +95,8 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
             })
             .collect(Collectors.toList());
 
-        mlBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
         if (recordsToMlCommons.isEmpty()) {
-            return records;
+            return resultRecords;
         }
 
         try {
