@@ -48,6 +48,12 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new InvalidPluginConfigurationException(
                         String.format("add_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
             }
+
+            if (entry.getAddToElementWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getAddToElementWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("add_to_element_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
+            }
         });
     }
 
@@ -68,52 +74,18 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                         final String metadataKey = entry.getMetadataKey();
                         final String iterateOn = entry.getIterateOn();
                         if (Objects.isNull(iterateOn)) {
-                            final Object value = retrieveValue(entry, recordEvent);
-                            if (!Objects.isNull(key)) {
-                                if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                                    recordEvent.put(key, value);
-                                } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
-                                    mergeValueToEvent(recordEvent, key, value);
-                                }
-                            } else {
-                                Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
-                                if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
-                                    recordEvent.getMetadata().setAttribute(metadataKey, value);
-                                } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
-                                    mergeValueToEventMetadata(recordEvent, metadataKey, value);
-                                }
-                            }
+                            handleWithoutIterateOn(entry, recordEvent, key, metadataKey);
                         } else if (!Objects.isNull(key)) {
-                            final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
-                            if (iterateOnList != null) {
-                                for (final Map<String, Object> item : iterateOnList) {
-                                    final Object value;
-                                    if (entry.isUseIterateOnContext()) {
-                                        final Event context = JacksonEvent.builder()
-                                                .withEventMetadata(recordEvent.getMetadata())
-                                                .withData(item)
-                                                .build();
-                                        value = retrieveValue(entry, context);
-                                    } else {
-                                        value = retrieveValue(entry, recordEvent);
-                                    }
-                                    if (!item.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                                        item.put(key, value);
-                                    } else if (item.containsKey(key) && entry.getAppendIfKeyExists()) {
-                                        mergeValueToMap(item, key, value);
-                                    }
-                                }
-                                recordEvent.put(iterateOn, iterateOnList);
-                            }
+                            handleWithIterateOn(entry, recordEvent, iterateOn, key);
                         }
                     } catch (Exception e) {
                         LOG.atError()
                                 .addMarker(EVENT)
                                 .addMarker(NOISY)
-                                .setMessage("Error adding entry to record [{}] with iterate_on [{}], use_iterate_on_context [{}], key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]")
+                                .setMessage("Error adding entry to record [{}] with iterate_on [{}], add_to_element_when [{}], key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]")
                                 .addArgument(recordEvent)
                                 .addArgument(entry.getIterateOn())
-                                .addArgument(entry.isUseIterateOnContext())
+                                .addArgument(entry.getAddToElementWhen())
                                 .addArgument(entry.getKey())
                                 .addArgument(entry.getMetadataKey())
                                 .addArgument(entry.getValueExpression())
@@ -149,7 +121,56 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     public void shutdown() {
     }
 
-    private Object retrieveValue(final AddEntryProcessorConfig.Entry entry, final Event context) {
+    private void handleWithoutIterateOn(final AddEntryProcessorConfig.Entry entry,
+                                        final Event recordEvent,
+                                        final String key,
+                                        final String metadataKey) {
+        final Object value = retrieveValue(entry, recordEvent);
+        if (!Objects.isNull(key)) {
+            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                recordEvent.put(key, value);
+            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+                mergeValueToEvent(recordEvent, key, value);
+            }
+        } else {
+            Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
+            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+                recordEvent.getMetadata().setAttribute(metadataKey, value);
+            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+                mergeValueToEventMetadata(recordEvent, metadataKey, value);
+            }
+        }
+    }
+
+    private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
+                                     final Event recordEvent,
+                                     final String iterateOn,
+                                     final String key) {
+        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+        if (iterateOnList != null) {
+            for (final Map<String, Object> item : iterateOnList) {
+                final Object value;
+                final Event context = JacksonEvent.builder()
+                        .withEventMetadata(recordEvent.getMetadata())
+                        .withData(item)
+                        .build();
+                if (entry.getAddToElementWhen() != null && !expressionEvaluator.evaluateConditional(entry.getAddToElementWhen(), recordEvent)) {
+                    continue;
+                }
+
+                value = retrieveValue(entry, context);
+                if (!item.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                    item.put(key, value);
+                } else if (item.containsKey(key) && entry.getAppendIfKeyExists()) {
+                    mergeValueToMap(item, key, value);
+                }
+            }
+            recordEvent.put(iterateOn, iterateOnList);
+        }
+    }
+
+    private Object retrieveValue(final AddEntryProcessorConfig.Entry entry,
+                                 final Event context) {
         Object value;
         if (!Objects.isNull(entry.getValueExpression())) {
             value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
