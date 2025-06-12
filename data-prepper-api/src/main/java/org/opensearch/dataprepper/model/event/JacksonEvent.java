@@ -201,13 +201,12 @@ public class JacksonEvent implements Event {
                 int index = Integer.parseInt(key);
                 ArrayNode arrayNode = (ArrayNode) node;
 
+                int distanceFromArrayEnd = index - arrayNode.size();
+                if (distanceFromArrayEnd >= FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT + 1) {
+                    throw new IndexOutOfBoundsException(
+                            String.format("Cannot expand array past the limit of size %s to reach index %s", arrayNode.size(), index));
+                }
                 while (arrayNode.size() <= index) {
-                    int distanceFromArrayEnd = index - arrayNode.size();
-                    if (distanceFromArrayEnd >= FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT + 1) {
-                        throw new IndexOutOfBoundsException(
-                                String.format("Cannot expand array past the limit of size %s to reach index %s", arrayNode.size(), index));
-                    }
-
                     arrayNode.addNull();
                 }
 
