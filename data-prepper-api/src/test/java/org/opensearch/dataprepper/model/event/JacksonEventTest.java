@@ -207,7 +207,7 @@ public class JacksonEventTest {
     }
 
     @Test
-    void testPutAndGet_withArrays_out_of_bounds_creates_new_elements() {
+    void testPutAndGet_withArrays_out_of_bounds_throws_IndexOutOfBoundsException() {
 
         final String key = "list-key/3/foo";
         final String fooValue = UUID.randomUUID().toString();
@@ -220,18 +220,7 @@ public class JacksonEventTest {
         final EventKey eventKey = new JacksonEventKey(listKey);
         event.put(eventKey, listValue);
 
-        event.put(key, fooValue);
-
-        final String resultValue = event.get(key, String.class);
-        assertThat(resultValue, equalTo(fooValue));
-
-        final List<Map<String, Object>> listResult = event.get(listKey, List.class);
-
-        assertThat(listResult.size(), equalTo(4));
-        assertThat(listResult.get(0), notNullValue());
-        assertThat(listResult.get(1), nullValue());
-        assertThat(listResult.get(2), nullValue());
-        assertThat(listResult.get(3), notNullValue());
+        assertThrows(IndexOutOfBoundsException.class, () -> event.put(key, fooValue));
     }
 
     @Test
