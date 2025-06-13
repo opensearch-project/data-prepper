@@ -57,7 +57,7 @@ public class AtlassianRestClient {
             } catch (HttpClientErrorException ex) {
                 HttpStatus statusCode = ex.getStatusCode();
                 String statusMessage = ex.getMessage();
-                log.error("HTTP client error while getting response from search API. Status: {}, Message: {}", statusCode, statusMessage);
+                log.error(NOISY, "HTTP client error while getting response from search API. Status: {}", statusCode, ex);
                 if (statusCode == HttpStatus.FORBIDDEN) {
                     throw new UnauthorizedException(statusMessage);
                 } else if (statusCode == HttpStatus.UNAUTHORIZED) {
@@ -73,7 +73,7 @@ public class AtlassianRestClient {
                     throw new RuntimeException("Sleep in the retry attempt got interrupted", e);
                 }
             } catch (RestClientException ex) {
-                log.error("REST client error while getting response from search API: {}", ex.getMessage());
+                log.error(NOISY, "REST client error while getting response from search API: ", ex);
                 try {
                     Thread.sleep((long) RETRY_ATTEMPT_SLEEP_TIME.get(retryCount) * sleepTimeMultiplier);
                 } catch (InterruptedException e) {
