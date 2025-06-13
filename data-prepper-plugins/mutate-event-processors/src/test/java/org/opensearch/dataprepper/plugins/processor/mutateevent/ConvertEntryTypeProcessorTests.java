@@ -470,4 +470,33 @@ public class ConvertEntryTypeProcessorTests {
         assertThat(processedRecords.size(), equalTo(1));
         assertThat(processedRecords.get(0).getData().toMap(), equalTo(expectedData));
     }
+
+    @Test
+    void iterate_on_with_key_that_is_not_list_of_map_does_not_update() {
+        final String iterateOn = "list-key";
+        final String keyToConvert = "key-to-convert";
+
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("long"));
+        when(mockConfig.getKey()).thenReturn(keyToConvert);
+        when(mockConfig.getIterateOn()).thenReturn(iterateOn);
+
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final String nonListValue = UUID.randomUUID().toString();
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put(iterateOn, nonListValue);
+
+        final Map<String, Object> expectedData = new HashMap<>();
+
+        expectedData.put(iterateOn, nonListValue);
+
+        final Event event = JacksonEvent.builder()
+                .withData(eventData)
+                .withEventType("event")
+                .build();
+
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) typeConversionProcessor.doExecute(Collections.singletonList(new Record<>(event)));
+        assertThat(processedRecords.size(), equalTo(1));
+        assertThat(processedRecords.get(0).getData().toMap(), equalTo(expectedData));
+    }
 }

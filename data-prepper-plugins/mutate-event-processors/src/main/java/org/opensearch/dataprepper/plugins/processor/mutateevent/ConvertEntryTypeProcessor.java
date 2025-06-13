@@ -146,7 +146,15 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
 
     private void handleWithIterateOn(final Event recordEvent,
                                      final String key) {
-        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+
+        final List<Map<String, Object>> iterateOnList;
+        try {
+            iterateOnList = recordEvent.get(iterateOn, List.class);
+        } catch (final Exception e) {
+            throw new IllegalArgumentException(
+                    String.format("The value of '%s' must be a List of Map<String, Object>, but was incompatible: %s",
+                            iterateOn, e.getMessage()), e);
+        }
         if (iterateOnList != null) {
             int listIndex = 0;
             for (final Map<String, Object> item : iterateOnList) {

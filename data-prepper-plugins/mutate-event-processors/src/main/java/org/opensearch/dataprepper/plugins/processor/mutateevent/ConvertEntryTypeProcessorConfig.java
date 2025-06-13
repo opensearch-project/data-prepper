@@ -82,7 +82,7 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
 
     @JsonProperty("iterate_on")
     @JsonPropertyDescription(
-            "Specifies the key of a list of objects to iterate over and convert types.")
+            "Specifies the key of a list of map objects to iterate over and convert types.")
     private String iterateOn;
 
     public String getKey() {
