@@ -80,6 +80,11 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     })
     private String convertWhen;
 
+    @JsonProperty("iterate_on")
+    @JsonPropertyDescription(
+            "Specifies the key of a list of objects to iterate over and convert types.")
+    private String iterateOn;
+
     public String getKey() {
         return key;
     }
@@ -100,4 +105,6 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
     }
+
+    public String getIterateOn() { return iterateOn; }
 }

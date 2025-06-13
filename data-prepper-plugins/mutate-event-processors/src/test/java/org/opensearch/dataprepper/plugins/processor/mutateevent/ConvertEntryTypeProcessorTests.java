@@ -425,4 +425,49 @@ public class ConvertEntryTypeProcessorTests {
 
         assertThat(resultEventData, equalTo(expectedEventData));
     }
+
+    @Test
+    void iterate_on_converts_elements_of_array() {
+        final String iterateOn = "list-key";
+        final String keyToConvert = "key-to-convert";
+
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("long"));
+        when(mockConfig.getKey()).thenReturn(keyToConvert);
+        when(mockConfig.getIterateOn()).thenReturn(iterateOn);
+
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+
+        final Map<String, Object> eventData = new HashMap<>();
+
+        final String keyDoesNotExist = UUID.randomUUID().toString();
+        final String valueForKeyThatDoesNotExist = UUID.randomUUID().toString();
+        final String nonConvertableValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listElement = new ArrayList<>();
+        listElement.add(Map.of(keyToConvert, 10.0));
+        listElement.add(Map.of(keyToConvert, 20.0));
+        listElement.add(Map.of(keyToConvert, nonConvertableValue));
+        listElement.add(Map.of(keyDoesNotExist, valueForKeyThatDoesNotExist));
+
+        eventData.put(iterateOn, listElement);
+
+        final Map<String, Object> expectedData = new HashMap<>();
+
+        final List<Map<String, Object>> expectedListElement = new ArrayList<>();
+        expectedListElement.add(Map.of(keyToConvert, 10L));
+        expectedListElement.add(Map.of(keyToConvert, 20L));
+        expectedListElement.add(Map.of(keyToConvert, nonConvertableValue));
+        expectedListElement.add(Map.of(keyDoesNotExist, valueForKeyThatDoesNotExist));
+
+        expectedData.put(iterateOn, expectedListElement);
+
+        final Event event = JacksonEvent.builder()
+                .withData(eventData)
+                .withEventType("event")
+                .build();
+
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) typeConversionProcessor.doExecute(Collections.singletonList(new Record<>(event)));
+        assertThat(processedRecords.size(), equalTo(1));
+        assertThat(processedRecords.get(0).getData().toMap(), equalTo(expectedData));
+    }
 }
