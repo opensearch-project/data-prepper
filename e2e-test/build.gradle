@@ -27,6 +27,10 @@ subprojects {
         targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : 'docker'
         targetOpenTelemetryVersion = project.hasProperty('openTelemetryVersion') ? project.getProperty('openTelemetryVersion') : "${libs.versions.opentelemetry.get()}"
         dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre"
+        dataPrepperDefinedDockerImage =
+                project.hasProperty('endToEndDataPrepperImage') && project.hasProperty('endToEndDataPrepperTag') ?
+                        "${project.getProperty('endToEndDataPrepperImage')}:${project.getProperty('endToEndDataPrepperTag')}" :
+                        null;
     }
 
     sourceSets {
@@ -75,9 +79,16 @@ subprojects {
         images.add('e2e-test-data-prepper')
     }
 
+    tasks.register('pullDataPrepperDockerImage', DockerPullImage) {
+        image = "${dataPrepperDefinedDockerImage}"
+    }
 
     tasks.register('dataPrepperDockerImage', DockerProviderTask) {
-        if(targetJavaVersion == 'docker') {
+        if(dataPrepperDefinedDockerImage != null) {
+            dependsOn 'pullDataPrepperDockerImage'
+            imageId = "${dataPrepperDefinedDockerImage}"
+        }
+        else if(targetJavaVersion == 'docker') {
             dependsOn ':release:docker:docker'
             imageId = "${project.rootProject.name}:${project.version}"
         }

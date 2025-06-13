@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.apache.kafka.common.errors.RecordBatchTooLargeException;
+import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.buffer.serialization.BufferSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
@@ -75,9 +76,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig,
                        final AcknowledgementSetManager acknowledgementSetManager,
                        final ByteDecoder byteDecoder, final AwsCredentialsSupplier awsCredentialsSupplier,
-                       final CircuitBreaker circuitBreaker) {
+                       final CircuitBreaker circuitBreaker,
+                       final EncryptionSupplier encryptionSupplier) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
-        final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory());
+        final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory(), encryptionSupplier);
         final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory(), kafkaBufferConfig.getCompressionEnabled());
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());

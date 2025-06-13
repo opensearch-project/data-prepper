@@ -8,6 +8,7 @@ log-pipeline :
         schema:
           type: aws_glue
           registry_url: http://fake-glue-registry
+          override_endpoint: true
         topics:
         - name: "quickstart-events"
           group_id: "groupdID1"

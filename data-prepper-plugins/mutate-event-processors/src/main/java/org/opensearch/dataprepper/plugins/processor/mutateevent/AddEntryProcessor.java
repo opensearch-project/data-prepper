@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -47,6 +48,12 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new InvalidPluginConfigurationException(
                         String.format("add_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
             }
+
+            if (entry.getAddToElementWhen() != null
+                    && !expressionEvaluator.isValidExpressionStatement(entry.getAddToElementWhen())) {
+                throw new InvalidPluginConfigurationException(
+                        String.format("add_to_element_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
+            }
         });
     }
 
@@ -65,38 +72,20 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     try {
                         final String key = (entry.getKey() == null) ? null : recordEvent.formatString(entry.getKey(), expressionEvaluator);
                         final String metadataKey = entry.getMetadataKey();
-                        Object value;
-                        if (!Objects.isNull(entry.getValueExpression())) {
-                            value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
-                        } else if (!Objects.isNull(entry.getFormat())) {
-                            try {
-                                value = recordEvent.formatString(entry.getFormat());
-                            } catch (final EventKeyNotFoundException e) {
-                                value = null;
-                            }
-                        } else {
-                            value = entry.getValue();
-                        }
-                        if (!Objects.isNull(key)) {
-                            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                                recordEvent.put(key, value);
-                            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
-                                mergeValueToEvent(recordEvent, key, value);
-                            }
-                        } else {
-                            Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
-                            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
-                                recordEvent.getMetadata().setAttribute(metadataKey, value);
-                            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
-                                mergeValueToEventMetadata(recordEvent, metadataKey, value);
-                            }
+                        final String iterateOn = entry.getIterateOn();
+                        if (Objects.isNull(iterateOn)) {
+                            handleWithoutIterateOn(entry, recordEvent, key, metadataKey);
+                        } else if (!Objects.isNull(key)) {
+                            handleWithIterateOn(entry, recordEvent, iterateOn, key);
                         }
                     } catch (Exception e) {
                         LOG.atError()
                                 .addMarker(EVENT)
                                 .addMarker(NOISY)
-                                .setMessage("Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]")
+                                .setMessage("Error adding entry to record [{}] with iterate_on [{}], add_to_element_when [{}], key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]")
                                 .addArgument(recordEvent)
+                                .addArgument(entry.getIterateOn())
+                                .addArgument(entry.getAddToElementWhen())
                                 .addArgument(entry.getKey())
                                 .addArgument(entry.getMetadataKey())
                                 .addArgument(entry.getValueExpression())
@@ -132,12 +121,81 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     public void shutdown() {
     }
 
+    private void handleWithoutIterateOn(final AddEntryProcessorConfig.Entry entry,
+                                        final Event recordEvent,
+                                        final String key,
+                                        final String metadataKey) {
+        final Object value = retrieveValue(entry, recordEvent);
+        if (!Objects.isNull(key)) {
+            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                recordEvent.put(key, value);
+            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+                mergeValueToEvent(recordEvent, key, value);
+            }
+        } else {
+            Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
+            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+                recordEvent.getMetadata().setAttribute(metadataKey, value);
+            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+                mergeValueToEventMetadata(recordEvent, metadataKey, value);
+            }
+        }
+    }
+
+    private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
+                                     final Event recordEvent,
+                                     final String iterateOn,
+                                     final String key) {
+        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+        if (iterateOnList != null) {
+            for (final Map<String, Object> item : iterateOnList) {
+                final Object value;
+                final Event context = JacksonEvent.builder()
+                        .withEventMetadata(recordEvent.getMetadata())
+                        .withData(item)
+                        .build();
+                if (entry.getAddToElementWhen() != null && !expressionEvaluator.evaluateConditional(entry.getAddToElementWhen(), recordEvent)) {
+                    continue;
+                }
+
+                value = retrieveValue(entry, context);
+                if (!item.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                    item.put(key, value);
+                } else if (item.containsKey(key) && entry.getAppendIfKeyExists()) {
+                    mergeValueToMap(item, key, value);
+                }
+            }
+            recordEvent.put(iterateOn, iterateOnList);
+        }
+    }
+
+    private Object retrieveValue(final AddEntryProcessorConfig.Entry entry,
+                                 final Event context) {
+        Object value;
+        if (!Objects.isNull(entry.getValueExpression())) {
+            value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
+        } else if (!Objects.isNull(entry.getFormat())) {
+            try {
+                value = context.formatString(entry.getFormat());
+            } catch (final EventKeyNotFoundException e) {
+                value = null;
+            }
+        } else {
+            value = entry.getValue();
+        }
+        return value;
+    }
+
     private void mergeValueToEvent(final Event recordEvent, final String key, final Object value) {
         mergeValue(value, () -> recordEvent.get(key, Object.class), newValue -> recordEvent.put(key, newValue));
     }
 
     private void mergeValueToEventMetadata(final Event recordEvent, final String key, final Object value) {
         mergeValue(value, () -> recordEvent.getMetadata().getAttribute(key), newValue -> recordEvent.getMetadata().setAttribute(key, newValue));
+    }
+
+    private void mergeValueToMap(final Map<String, Object> item, final String key, final Object value) {
+        mergeValue(value, () -> item.get(key), newValue -> item.put(key, newValue));
     }
 
     private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {

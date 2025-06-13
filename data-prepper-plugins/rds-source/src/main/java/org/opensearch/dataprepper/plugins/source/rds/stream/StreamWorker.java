@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
+import org.opensearch.dataprepper.plugins.source.rds.utils.ServerIdGenerator;
 import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,7 @@ public class StreamWorker {
 
         if (replicationLogClient instanceof BinlogClientWrapper) {
             setStartBinlogPosition(streamPartition);
+            setServerId();
         } else {
             setStartLsn(streamPartition);
         }
@@ -108,6 +110,12 @@ public class StreamWorker {
             binaryLogClient.setBinlogFilename(binlogFilename);
             binaryLogClient.setBinlogPosition(binlogPosition);
         }
+    }
+
+    private void setServerId() {
+        final int serverId = ServerIdGenerator.generateServerId();
+        LOG.info("Binary log client server id is {}", serverId);
+        ((BinlogClientWrapper) replicationLogClient).getBinlogClient().setServerId(serverId);
     }
 
     private void setStartLsn(final StreamPartition streamPartition) {

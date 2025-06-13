@@ -95,9 +95,11 @@ public class PaginationCrawler implements Crawler<PaginationCrawlerWorkerProgres
 
     private void updateLeaderProgressState(LeaderPartition leaderPartition, Instant updatedPollTime, EnhancedSourceCoordinator coordinator) {
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
+        Instant oldPollTime = leaderProgressState.getLastPollTime();
         leaderProgressState.setLastPollTime(updatedPollTime);
         leaderPartition.setLeaderProgressState(leaderProgressState);
         coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
+        log.debug("Updated leader progress state: old lastPollTime={}, new lastPollTime={}", oldPollTime, updatedPollTime);
     }
 
     private void createPartition(List<ItemInfo> itemInfoList, EnhancedSourceCoordinator coordinator) {
