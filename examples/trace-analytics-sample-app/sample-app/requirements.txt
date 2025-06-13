@@ -6,7 +6,7 @@ opentelemetry-instrumentation-mysql==0.46b0
 opentelemetry-instrumentation-requests==0.46b0
 opentelemetry-sdk==1.25.0
 protobuf==3.20.3
-requests==2.32.0
+requests==2.32.4
 setuptools==70.0.0
 urllib3==2.2.2
 werkzeug==3.0.6
