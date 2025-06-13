@@ -27,6 +27,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.ConfluenceNextLinkValidator.validateAndSanitizeURL;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.CQL_FIELD;
 import static org.opensearch.dataprepper.plugins.source.confluence.utils.CqlConstants.EXPAND_FIELD;
@@ -114,7 +115,7 @@ public class ConfluenceRestClient extends AtlassianRestClient {
                     try {
                         return invokeRestApi(uri, ConfluenceSearchResults.class).getBody();
                     } catch (Exception e) {
-                        log.error("Error while fetching content with cql {}", cql);
+                        log.error(NOISY, "Error while fetching content with cql {}", cql, e);
                         searchRequestsFailedCounter.increment();
                         throw e;
                     }
