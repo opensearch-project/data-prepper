@@ -96,16 +96,7 @@ public class KafkaCustomProducerFactory {
         final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
-            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService);
-    }
-
-    public KafkaCustomProducer createCompressedProducer(final KafkaProducerConfig kafkaProducerConfig,
-                                                        final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
-                                                        final DLQSink dlqSink,
-                                                        final boolean topicNameInMetrics) {
-        KafkaCustomProducer kafkaCustomProducer = createProducer(kafkaProducerConfig, expressionEvaluator, sinkContext, pluginMetrics, dlqSink, topicNameInMetrics);
-        kafkaCustomProducer.setCompressionEnabled(compressionEnabled);
-        return kafkaCustomProducer;
+            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, compressionEnabled);
     }
 
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {

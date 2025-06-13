@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdBufferDecompressingStream;
 import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.annotations.VisibleForTesting;
@@ -562,6 +563,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                     InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
                     InputStream inputStream;
                     if (compressionEnabled) {
+                        inputStream = new ZstdInputStream(byteInputStream);
                     } else {
                         inputStream = byteInputStream;
                     }
