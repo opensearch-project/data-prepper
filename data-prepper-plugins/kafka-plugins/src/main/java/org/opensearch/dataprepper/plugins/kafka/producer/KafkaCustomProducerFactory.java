@@ -43,6 +43,7 @@ public class KafkaCustomProducerFactory {
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final TopicServiceFactory topicServiceFactory;
+    private boolean compressionEnabled = false;
 
     public KafkaCustomProducerFactory(
             final SerializationFactory serializationFactory,
@@ -51,6 +52,15 @@ public class KafkaCustomProducerFactory {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.topicServiceFactory = topicServiceFactory;
+    }
+
+    public KafkaCustomProducerFactory(
+            final SerializationFactory serializationFactory,
+            final AwsCredentialsSupplier awsCredentialsSupplier,
+            final TopicServiceFactory topicServiceFactory,
+            final boolean compressionEnabled) {
+        this(serializationFactory, awsCredentialsSupplier, topicServiceFactory);
+        this.compressionEnabled = compressionEnabled;
     }
 
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
@@ -86,7 +96,7 @@ public class KafkaCustomProducerFactory {
         final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
-            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService);
+            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, compressionEnabled);
     }
 
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {
