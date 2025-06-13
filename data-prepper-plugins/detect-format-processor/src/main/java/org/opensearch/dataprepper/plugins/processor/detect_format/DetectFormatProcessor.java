@@ -66,14 +66,15 @@ public class DetectFormatProcessor extends AbstractProcessor<Record<Event>, Reco
                 if (lines.length > 1) {
                     long expectedCommas = lines[0].chars().filter(ch -> ch == ',').count();
     
+                    int maxMatches = Math.min(lines.length, 10);
                     int numMatches = 0;
                     // Limit to the check to max of 10 lines
-                    for (int i = 1; i < Math.min(lines.length, 10); i++) {
+                    for (int i = 1; i < maxMatches; i++) {
                         long commas = lines[i].chars().filter(ch -> ch == ',').count();
                         if (commas == expectedCommas)
                             numMatches++;
                     }
-                    if (numMatches >= lines.length/2) {
+                    if (numMatches >= maxMatches/2) {
                         format = "csv";
                     }
                 } 
