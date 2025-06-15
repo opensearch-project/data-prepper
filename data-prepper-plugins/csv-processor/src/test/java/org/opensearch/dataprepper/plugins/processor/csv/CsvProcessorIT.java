@@ -68,7 +68,44 @@ public class CsvProcessorIT {
         for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
             final Event parsedEvent = parsedRecords.get(recordNumber).getData();
             final String originalString = parsedEvent.get("message", String.class);
-            assertThat(eventHasKnownLogSnippet(parsedEvent, originalString), equalTo(true));
+            assertThat(eventHasKnownLogSnippet(parsedEvent, originalString, "column"), equalTo(true));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10})
+    void when_processSpaceSeparatedVpcFlowLogs_inMultiLine_then_parsesCorrectly(final int numberOfRecords) {
+        try {
+            setField(CsvProcessorConfig.class, CsvProcessorIT.this.csvProcessorConfig, "multiLine", true);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        final List<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < numberOfRecords; i++) {
+            final Event thisEvent = vpcFlowLogTypeGenerator.generateEvent();
+            String message = thisEvent.get("message", String.class);
+            
+            String[] fields = message.split(DELIMITER);
+            String header = "";
+            for (int h = 1; h < fields.length; h++) {
+                header += "key"+h+DELIMITER;
+            }
+            header += "key"+fields.length;
+            message = header+"\n"+message+"\n"+message;
+            thisEvent.put("message", message);
+            final Record<Event> asRecord = new Record<>(thisEvent);
+            records.add(asRecord);
+        }
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) csvProcessor.doExecute(records);
+
+        assertThat(2*records.size(), equalTo(parsedRecords.size()));
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            final String[] lines = originalString.split("[\r\n]+");
+            assertThat(eventHasKnownLogSnippet(parsedEvent, lines[1], "key"), equalTo(true));
         }
     }
 
@@ -78,11 +115,12 @@ public class CsvProcessorIT {
      * @param knownLogSnippet
      * @return
      */
-    private boolean eventHasKnownLogSnippet(final Event event, final String knownLogSnippet) {
+    private boolean eventHasKnownLogSnippet(final Event event, final String knownLogSnippet, final String columnPrefix) {
         final String[] logSplitOnSpace = knownLogSnippet.split(DELIMITER);
         for (int columnIndex = 0; columnIndex < logSplitOnSpace.length; columnIndex++) {
             final String field = logSplitOnSpace[columnIndex];
-            final String expectedColumnName = "column" + (columnIndex+1);
+            final String expectedColumnName = columnPrefix + (columnIndex+1);
+
             if (!event.containsKey(expectedColumnName)) {
                 return false;
             }
