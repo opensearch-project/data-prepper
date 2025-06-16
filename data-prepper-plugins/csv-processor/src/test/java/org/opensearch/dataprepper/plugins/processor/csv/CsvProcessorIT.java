@@ -8,9 +8,16 @@ package org.opensearch.dataprepper.plugins.processor.csv;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -80,10 +87,12 @@ public class CsvProcessorIT {
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
+        AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final List<Record<Event>> records = new ArrayList<>();
         for (int i = 0; i < numberOfRecords; i++) {
             final Event thisEvent = vpcFlowLogTypeGenerator.generateEvent();
             String message = thisEvent.get("message", String.class);
+            ((InternalEventHandle)thisEvent.getEventHandle()).addAcknowledgementSet(acknowledgementSet);
             
             String[] fields = message.split(DELIMITER);
             String header = "";
@@ -101,12 +110,13 @@ public class CsvProcessorIT {
 
         assertThat(2*records.size(), equalTo(parsedRecords.size()));
 
-        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
             final Event parsedEvent = parsedRecords.get(recordNumber).getData();
             final String originalString = parsedEvent.get("message", String.class);
             final String[] lines = originalString.split("[\r\n]+");
             assertThat(eventHasKnownLogSnippet(parsedEvent, lines[1], "key"), equalTo(true));
         }
+        verify(acknowledgementSet, times(2*numberOfRecords)).add(any(EventHandle.class));
     }
 
     /**

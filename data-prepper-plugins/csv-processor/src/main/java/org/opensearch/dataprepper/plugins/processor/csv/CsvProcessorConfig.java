@@ -42,7 +42,7 @@ public class CsvProcessorConfig {
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
-    @JsonProperty(value = "multi_line", defaultValue = "false")
+    @JsonProperty(value = "multiline", defaultValue = "false")
     @JsonPropertyDescription("If specified, the source key has multiple lines, including header line")
     private Boolean multiLine = false;
 

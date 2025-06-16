@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -100,6 +101,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                             Event clonedEvent = JacksonEvent.fromEvent(event);
                             final List<String> row = messageIterator.nextValue();
                             putDataInEvent(clonedEvent, header, row);
+                            addToAcknowledgementSetFromOriginEvent(clonedEvent, event);
                             recordsOut.add(new Record<Event>(clonedEvent));
                         }
                     }
@@ -138,6 +140,13 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
             }
         }
         return (config.isMultiLine()) ? recordsOut : records;
+    }
+
+    protected void addToAcknowledgementSetFromOriginEvent(Event recordEvent, Event originRecordEvent) {
+        DefaultEventHandle eventHandle = (DefaultEventHandle) originRecordEvent.getEventHandle();
+        if (eventHandle != null) {
+            eventHandle.addEventHandle(recordEvent.getEventHandle());
+        }
     }
 
     @Override
