@@ -449,11 +449,12 @@ public class ConvertEntryTypeProcessorTests {
 
         Instant now = Instant.now();
         ZonedDateTime zonedDateTime = now.atZone(ZoneId.systemDefault());
+        ZonedDateTime zonedDateTimePST = now.atZone(ZoneId.of("America/Los_Angeles"));
 
         String t1 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(0)));
-        String t2 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(1)));
+        String t2 = zonedDateTimePST.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(1)));
         String t3 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(2)));
-        String t4 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(3)));
+        String t4 = zonedDateTimePST.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(3)));
 
         final Map<String, Object> testData1 = new HashMap<>();
         testData1.put("s2", s2);
