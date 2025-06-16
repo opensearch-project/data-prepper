@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.luben.zstd.Zstd;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -320,7 +321,7 @@ public class KafkaBufferIT {
 
         final byte[] innerData = bufferData.getData().toByteArray();
 
-        final Map<String, Object> actualEventData = objectMapper.readValue(innerData, Map.class);
+        final Map<String, Object> actualEventData = objectMapper.readValue(decompress(innerData), Map.class);
         assertThat(actualEventData, notNullValue());
         assertThat(actualEventData, hasKey("message"));
         assertThat(actualEventData.get("message"), equalTo(record.getData().get("message", String.class)));
@@ -360,7 +361,7 @@ public class KafkaBufferIT {
 
         final byte[] innerData = bufferData.getData().toByteArray();
 
-        assertThat(innerData, equalTo(writtenBytes));
+        assertThat(decompress(innerData), equalTo(writtenBytes));
     }
 
     @Nested
@@ -446,8 +447,8 @@ public class KafkaBufferIT {
 
             byte[] innerData = bufferData.getData().toByteArray();
 
-            assertThat(innerData, notNullValue());
-            assertThrows(JsonParseException.class, () -> objectMapper.readValue(innerData, Map.class));
+            assertThat(decompress(innerData), notNullValue());
+            assertThrows(JsonParseException.class, () -> objectMapper.readValue(decompress(innerData), Map.class));
 
             final byte[] deserializedBytes = decryptCipher.doFinal(innerData);
 
@@ -492,10 +493,10 @@ public class KafkaBufferIT {
 
             final byte[] innerData = bufferData.getData().toByteArray();
 
-            assertThat(innerData, notNullValue());
-            assertThat(innerData, not(equalTo(writtenBytes)));
+            assertThat(decompress(innerData), notNullValue());
+            assertThat(decompress(innerData), not(equalTo(writtenBytes)));
 
-            final byte[] decryptedBytes = decryptCipher.doFinal(innerData);
+            final byte[] decryptedBytes = decryptCipher.doFinal(decompress(innerData));
 
             assertThat(decryptedBytes, equalTo(writtenBytes));
         }
@@ -552,5 +553,9 @@ public class KafkaBufferIT {
     private Record<Event> createRecord() {
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         return new Record<>(event);
+    }
+
+    private byte[] decompress(byte[] input) {
+        return Zstd.decompress(input, (int) Zstd.getFrameContentSize(input));
     }
 }
