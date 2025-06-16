@@ -497,31 +497,31 @@ public class ConvertEntryTypeProcessorTests {
         assertThat((String)event.get("s1", Object.class), equalTo(s1));
         assertThat((Integer)event.get("i1", Object.class), equalTo(i1));
         assertThat((Long)event.get("l1", Object.class), equalTo(l1));
-        assertThat((double)(float)event.get("f1", Object.class), closeTo(f1, MAX_ERROR));
-        assertThat((Double)event.get("d1", Object.class), closeTo(d1, (double)MAX_ERROR));
+        assertThat((Double)event.get("f1", Object.class), closeTo(f1, MAX_ERROR));
+        assertThat((Double)event.get("d1", Object.class), closeTo(d1, MAX_ERROR));
         assertThat((Boolean)event.get("b1", Object.class), equalTo(true));
         assertThat((Long)event.get("t1", Object.class), equalTo(now.getEpochSecond()*1000));
 
         assertThat((Integer)event.get("m1/i2", Object.class), equalTo(i2));
         assertThat(event.get("m1/s2", Object.class), equalTo(s2));
         assertThat((Long)event.get("m1/l2", Object.class), equalTo(l2));
-        assertThat((double)(float)event.get("m1/f2", Float.class), closeTo(f2, MAX_ERROR));
-        assertThat((Double)event.get("m1/d2", Object.class), closeTo(d2, (double)MAX_ERROR));
+        assertThat((Double)event.get("m1/f2", Object.class), closeTo(f2, MAX_ERROR));
+        assertThat((Double)event.get("m1/d2", Object.class), closeTo(d2, MAX_ERROR));
         assertThat((Boolean)event.get("m1/b2", Object.class), equalTo(false));
         assertThat((Long)event.get("m1/t2", Object.class), equalTo(now.toEpochMilli()));
 
         assertThat((Integer)event.get("a1/0/i3", Object.class), equalTo(i3));
         assertThat(event.get("a1/0/s3", Object.class), equalTo(s3));
         assertThat((Long)event.get("a1/0/l3", Object.class), equalTo(l3));
-        assertThat((double)(float)event.get("a1/0/f3", Float.class), closeTo(f3, MAX_ERROR));
-        assertThat((Double)event.get("a1/0/d3", Object.class), closeTo(d3, (double)MAX_ERROR));
+        assertThat((Double)event.get("a1/0/f3", Object.class), closeTo(f3, MAX_ERROR));
+        assertThat((Double)event.get("a1/0/d3", Object.class), closeTo(d3, MAX_ERROR));
         assertThat((Boolean)event.get("a1/0/b3", Object.class), equalTo(true));
         assertThat((Long)event.get("a1/0/t3", Object.class), equalTo(now.toEpochMilli()));
 
         assertThat((Integer)event.get("a1/1", Object.class), equalTo(i4));
         assertThat(event.get("a1/2", Object.class), equalTo(l4));
-        assertThat((double)(float)event.get("a1/3", Object.class), closeTo(f4, MAX_ERROR));
-        assertThat((Double)event.get("a1/4", Object.class), closeTo(d4, (double)MAX_ERROR));
+        assertThat((Double)event.get("a1/3", Object.class), closeTo(f4, MAX_ERROR));
+        assertThat((Double)event.get("a1/4", Object.class), closeTo(d4, MAX_ERROR));
         assertThat((Boolean)event.get("a1/5", Object.class), equalTo(false));
         assertThat((Long)event.get("a1/6", Object.class), equalTo(now.getEpochSecond()*1000));
     }

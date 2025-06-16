@@ -143,9 +143,6 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 return null;
             } else if (lstr.contains(".") || lstr.contains("e")) {
                 Double d = Double.parseDouble(lstr);
-                if (d <= Float.MAX_VALUE && d >= Float.MIN_VALUE) {
-                     return (Float)d.floatValue();
-                }
                 return d;
             } else if (Character.isDigit(firstChar) || firstChar == '-' || firstChar == '+') {
                 Long l = Long.parseLong(str);
