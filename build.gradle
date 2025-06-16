@@ -72,7 +72,6 @@ subprojects {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.17.2')
         implementation platform('org.eclipse.jetty:jetty-bom:9.4.53.v20231009')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
-//        implementation 'com.github.luben:zstd-jni:1.5.7-3'
         implementation libs.guava.core
         implementation libs.slf4j.api
         testImplementation testLibs.bundles.junit
