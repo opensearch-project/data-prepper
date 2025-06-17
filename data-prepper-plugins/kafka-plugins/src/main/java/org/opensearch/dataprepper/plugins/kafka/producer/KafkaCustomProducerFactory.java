@@ -53,7 +53,6 @@ public class KafkaCustomProducerFactory {
         this.topicServiceFactory = topicServiceFactory;
     }
 
-
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
                                               final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext, final PluginMetrics pluginMetrics,
                                               final DLQSink dlqSink,

@@ -92,6 +92,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size(), KafkaPluginThreadFactory.defaultExecutorThreadFactory(MDC_KAFKA_PLUGIN_VALUE));
         consumers.forEach(this.executorService::submit);
+
         this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
     }
 

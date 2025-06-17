@@ -233,4 +233,5 @@ public class KafkaCustomProducer<T> {
         });
         return JacksonLog.builder().withData(eventData).build();
     }
+    
 }
