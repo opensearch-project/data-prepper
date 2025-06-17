@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +16,8 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 
 public class CloudWatchLogsSinkConfig {
-    public static final String DEFAULT_BUFFER_TYPE = "in_memory";
+    public static final int DEFAULT_RETRY_COUNT = 5;
+    public static final int DEFAULT_NUM_WORKERS = 10;
 
     @JsonProperty("aws")
     @Valid
@@ -26,9 +29,6 @@ public class CloudWatchLogsSinkConfig {
     @JsonProperty("threshold")
     private ThresholdConfig thresholdConfig = new ThresholdConfig();
 
-    @JsonProperty("buffer_type")
-    private String bufferType = DEFAULT_BUFFER_TYPE;
-
     @JsonProperty("log_group")
     @NotEmpty
     @NotNull
@@ -38,6 +38,16 @@ public class CloudWatchLogsSinkConfig {
     @NotEmpty
     @NotNull
     private String logStream;
+
+    @JsonProperty(value = "max_retries", defaultValue = "5")
+    @Min(1)
+    @Max(15)
+    private int maxRetries = DEFAULT_RETRY_COUNT;
+
+    @JsonProperty(value = "workers", defaultValue = "10")
+    @Min(1)
+    @Max(50)
+    private int workers = DEFAULT_NUM_WORKERS;
 
     public AwsConfig getAwsConfig() {
         return awsConfig;
@@ -51,10 +61,6 @@ public class CloudWatchLogsSinkConfig {
         return dlq;
     }
 
-    public String getBufferType() {
-        return bufferType;
-    }
-
     public String getLogGroup() {
         return logGroup;
     }
@@ -62,4 +68,13 @@ public class CloudWatchLogsSinkConfig {
     public String getLogStream() {
         return logStream;
     }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    public int getWorkers() {
+        return workers;
+    }
+
 }

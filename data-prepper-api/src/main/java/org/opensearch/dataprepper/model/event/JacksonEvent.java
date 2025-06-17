@@ -61,6 +61,8 @@ public class JacksonEvent implements Event {
 
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
 
+    private static final int FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT = 0;
+
     private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = JsonMapper.builder()
@@ -195,8 +197,31 @@ public class JacksonEvent implements Event {
         JsonNode childNode = node.get(key);
         if (childNode == null) {
             childNode = mapper.createObjectNode();
-            ((ObjectNode) node).set(key, childNode);
+            if (node.isArray()) {
+                int index = Integer.parseInt(key);
+                ArrayNode arrayNode = (ArrayNode) node;
+
+                int distanceFromArrayEnd = index - arrayNode.size();
+                if (distanceFromArrayEnd >= FILL_OUT_OF_BOUNDS_ELEMENTS_LIMIT + 1) {
+                    throw new IndexOutOfBoundsException(
+                            String.format("Cannot expand array past the limit of size %s to reach index %s", arrayNode.size(), index));
+                }
+                while (arrayNode.size() <= index) {
+                    arrayNode.addNull();
+                }
+
+                JsonNode existing = arrayNode.get(index);
+                if (existing == null || !existing.isObject()) {
+                    childNode = mapper.createObjectNode();
+                    arrayNode.set(index, childNode);
+                } else {
+                    childNode = existing;
+                }
+            } else {
+                ((ObjectNode) node).set(key, childNode);
+            }
         }
+
         return childNode;
     }
 

@@ -34,6 +34,10 @@ public class OpenSearchSinkConfig {
     private String username = null;
 
     @Getter
+    @JsonProperty("api_token")
+    private String apitoken = null;
+
+    @Getter
     @JsonProperty("authentication")
     private AuthConfig authConfig;
 

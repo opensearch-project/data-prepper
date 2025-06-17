@@ -31,8 +31,14 @@ public interface AwsCredentialsSupplier {
     Optional<Region> getDefaultRegion();
 
     /**
-     * Gets the default       if configured. Otherwise returns empty Optional
+     * Gets the default STS header overrides if configured. Otherwise returns empty Optional
      * @return Optional containing Map of STS header overrides
      */
     Optional<Map<String, String>> getDefaultStsHeaderOverrides();
+
+    /**
+     * Gets the default STS role ARN if it is configured. Otherwise returns empty Optional
+     * @return Default STS role ARN as String
+     */
+    Optional<String> getDefaultStsRoleArn();
 }

@@ -325,4 +325,15 @@ public class JiraServiceTest {
         return issue1;
     }
 
+    @Test
+    public void testCreateContentFilterCriteria() throws JsonProcessingException {
+        JiraSourceConfig jiraSourceConfig = createJiraConfiguration(BASIC, List.of(), List.of(), List.of());
+        JiraService jiraService = new JiraService(jiraSourceConfig, jiraRestClient, pluginMetrics);
+        Instant pollingTime = Instant.now();
+        StringBuilder contentFilterCriteria = jiraService.createIssueFilterCriteria(jiraSourceConfig, pollingTime);
+        assertNotNull(contentFilterCriteria);
+        String cqlToAssert = "updated>" + pollingTime.toEpochMilli() + " order by updated asc ";
+        assertEquals(cqlToAssert, contentFilterCriteria.toString());
+    }
+
 }

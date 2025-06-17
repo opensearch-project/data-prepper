@@ -116,7 +116,7 @@ public interface Metric extends Event {
     Integer getFlags();
 
     /**
-     * Gets the scope of this log event.
+     * Gets the scope of this metric event.
      *
      * @return the scope
      * @since 2.11
@@ -124,7 +124,15 @@ public interface Metric extends Event {
     Map<String, Object> getScope();
 
     /**
-     * Gets the resource of this log event.
+     * Gets the metadata of this metric event.
+     *
+     * @return the metadata
+     * @since 2.11
+     */
+    Map<String, Object> getMetricMetadata();
+
+    /**
+     * Gets the resource of this metric event.
      *
      * @return the resource
      * @since 2.11

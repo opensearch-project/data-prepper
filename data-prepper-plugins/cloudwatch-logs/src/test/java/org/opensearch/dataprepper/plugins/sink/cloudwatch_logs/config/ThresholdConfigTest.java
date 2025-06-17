@@ -31,12 +31,10 @@ class ThresholdConfigTest {
     void GIVEN_new_threshold_config_SHOULD_return_valid_default_values() {
         final ThresholdConfig thresholdConfig = new ThresholdConfig();
 
-        assertThat(thresholdConfig.getBackOffTime(), equalTo(ThresholdConfig.DEFAULT_BACKOFF_TIME));
-        assertThat(thresholdConfig.getRetryCount(), equalTo(ThresholdConfig.DEFAULT_RETRY_COUNT));
         assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
         assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_EVENT_SIZE).getBytes()));
         assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST).getBytes()));
-        assertThat(thresholdConfig.getLogSendInterval(), equalTo(ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME));
+        assertThat(thresholdConfig.getFlushInterval(), equalTo(ThresholdConfig.DEFAULT_FLUSH_INTERVAL));
     }
 
     @ParameterizedTest
@@ -64,26 +62,11 @@ class ThresholdConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 10, 15})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_retry_count(final int retry_count) {
-        final Map<String, Integer> jsonMap = Map.of("retry_count", retry_count);
-        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getRetryCount(), equalTo(retry_count));
-    }
-
-    @ParameterizedTest
     @ValueSource(ints = {5, 10, 300})
     void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_log_send_interval(final int log_send_interval) throws NoSuchFieldException, IllegalAccessException {
         ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "logSendInterval", Duration.ofSeconds(log_send_interval));
-        assertThat(sampleThresholdConfig.getLogSendInterval(), equalTo(Duration.ofSeconds(log_send_interval).getSeconds())) ;
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "flushInterval", Duration.ofSeconds(log_send_interval));
+        assertThat(sampleThresholdConfig.getFlushInterval(), equalTo(Duration.ofSeconds(log_send_interval).getSeconds())) ;
     }
 
-    @ParameterizedTest
-    @ValueSource(longs = {0, 500, 1000})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_back_off_time(final long back_off_time) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "backOffTime", Duration.ofMillis(back_off_time));
-        assertThat(sampleThresholdConfig.getBackOffTime(), equalTo(back_off_time));
-    }
 }

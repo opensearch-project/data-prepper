@@ -135,9 +135,12 @@ class MySqlSchemaManagerTest {
     @Test
     void test_getCurrentBinaryLogPosition_returns_binlog_coords() throws SQLException {
         final Statement statement = mock(Statement.class);
+        final DatabaseMetaData databaseMetaData = mock(DatabaseMetaData.class);
         final String binlogFile = UUID.randomUUID().toString();
         final long binlogPosition = 123L;
         when(connectionManager.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(databaseMetaData);
+        when(databaseMetaData.getDatabaseProductVersion()).thenReturn("8.0");
         when(connection.createStatement()).thenReturn(statement);
         when(statement.executeQuery(BINLOG_STATUS_QUERY)).thenReturn(resultSet);
         when(resultSet.next()).thenReturn(true);

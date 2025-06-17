@@ -42,6 +42,10 @@ public class CsvProcessorConfig {
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
+    @JsonProperty(value = "multiline", defaultValue = "false")
+    @JsonPropertyDescription("If specified, the source key has multiple lines, including header line")
+    private Boolean multiLine = false;
+
     @JsonProperty(value = "quote_character", defaultValue = DEFAULT_QUOTE_CHARACTER)
     @JsonPropertyDescription("The character used as a text qualifier for a single column of data. " +
             "Default value is <code>\"</code>.")
@@ -139,6 +143,8 @@ public class CsvProcessorConfig {
     public String getCsvWhen() { return csvWhen; }
 
     public Boolean isDeleteSource() { return deleteSource; }
+
+    public Boolean isMultiLine() { return multiLine; }
 
     @AssertTrue(message = "delimiter must be exactly one character.")
     boolean isValidDelimiter() {

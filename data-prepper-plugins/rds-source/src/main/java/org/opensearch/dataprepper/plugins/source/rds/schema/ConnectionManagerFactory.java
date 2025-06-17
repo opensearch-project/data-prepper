@@ -38,6 +38,6 @@ public class ConnectionManagerFactory {
                 sourceConfig.getAuthenticationConfig().getUsername(),
                 sourceConfig.getAuthenticationConfig().getPassword(),
                 sourceConfig.isTlsEnabled(),
-                sourceConfig.getTables().getDatabase());
+                sourceConfig.getDatabase());
     }
 }

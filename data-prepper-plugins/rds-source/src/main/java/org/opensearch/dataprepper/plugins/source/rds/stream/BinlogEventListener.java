@@ -35,6 +35,7 @@ import org.opensearch.dataprepper.plugins.source.rds.datatype.mysql.MySQLDataTyp
 import org.opensearch.dataprepper.plugins.source.rds.model.BinlogCoordinate;
 import org.opensearch.dataprepper.plugins.source.rds.model.DbTableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.model.ParentTable;
+import org.opensearch.dataprepper.plugins.source.rds.model.StreamEventType;
 import org.opensearch.dataprepper.plugins.source.rds.model.TableMetadata;
 import org.opensearch.dataprepper.plugins.source.rds.resync.CascadingActionDetector;
 import org.slf4j.Logger;
@@ -200,6 +201,10 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         }
     }
 
+    public void stopCheckpointManager() {
+        streamCheckpointManager.stop();
+    }
+
     void handleRotateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
         final RotateEventData data = event.getData();
         currentBinlogCoordinate = new BinlogCoordinate(data.getBinlogFilename(), data.getBinlogPosition());
@@ -283,7 +288,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             return;
         }
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX));
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.INDEX), StreamEventType.INSERT);
     }
 
     void handleUpdateEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -319,7 +324,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
             bulkActions.add(OpenSearchBulkActions.INDEX);
         }
 
-        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions);
+        handleRowChangeEvent(event, data.getTableId(), rows, bulkActions, StreamEventType.UPDATE);
     }
 
     void handleDeleteEvent(com.github.shyiko.mysql.binlog.event.Event event) {
@@ -333,7 +338,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         // Check if a cascade action is involved
         cascadeActionDetector.detectCascadingDeletes(event, parentTableMap, tableMetadataMap.get(data.getTableId()));
 
-        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE));
+        handleRowChangeEvent(event, data.getTableId(), data.getRows(), Collections.nCopies(data.getRows().size(), OpenSearchBulkActions.DELETE), StreamEventType.DELETE);
     }
 
     // Visible For Testing
@@ -355,7 +360,8 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
     void handleRowChangeEvent(com.github.shyiko.mysql.binlog.event.Event event,
                               long tableId,
                               List<Serializable[]> rows,
-                              List<OpenSearchBulkActions> bulkActions) {
+                              List<OpenSearchBulkActions> bulkActions,
+                              StreamEventType streamEventType) {
 
         // Update binlog coordinate after it's first assigned in rotate event handler
         if (currentBinlogCoordinate != null) {
@@ -407,7 +413,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
                     primaryKeys,
                     eventTimestampMillis,
                     eventTimestampMillis,
-                    event.getHeader().getEventType());
+                    streamEventType);
             pipelineEvents.add(pipelineEvent);
         }
 
@@ -441,7 +447,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         try {
             bufferAccumulator.add(record);
         } catch (Exception e) {
-            LOG.error("Failed to add event to buffer", e);
+            LOG.error(NOISY, "Failed to add event to buffer", e);
         }
     }
 
@@ -452,7 +458,7 @@ public class BinlogEventListener implements BinaryLogClient.EventListener {
         } catch (Exception e) {
             // this will only happen if writing to buffer gets interrupted from shutdown,
             // otherwise bufferAccumulator will keep retrying with backoff
-            LOG.error("Failed to flush buffer", e);
+            LOG.error(NOISY, "Failed to flush buffer", e);
             changeEventErrorCounter.increment(eventCount);
         }
     }

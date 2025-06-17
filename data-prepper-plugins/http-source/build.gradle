@@ -14,6 +14,7 @@ dependencies {
     implementation project(':data-prepper-plugins:http-source-common')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:armeria-common')
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.armeria.core
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
@@ -22,6 +23,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.27.0'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
 }
 
 jacocoTestCoverageVerification {

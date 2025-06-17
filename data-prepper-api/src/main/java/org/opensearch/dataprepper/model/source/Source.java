@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.codec.HasByteDecoder;
 
@@ -13,6 +14,7 @@ import org.opensearch.dataprepper.model.codec.HasByteDecoder;
  * Data Prepper source interface. Source acts as receiver of the events that flow
  * through the transformation pipeline.
  */
+@PluginComponentType("source")
 public interface Source<T extends Record<?>> extends HasByteDecoder {
 
     /**

@@ -1,0 +1,8 @@
+simple-pipeline:
+  workers: 1
+  source:
+    random:
+  buffer:
+    zero:
+  sink:
+    - stdout:

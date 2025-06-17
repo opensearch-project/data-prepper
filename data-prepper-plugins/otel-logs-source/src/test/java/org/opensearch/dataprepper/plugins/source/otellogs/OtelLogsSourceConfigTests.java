@@ -43,6 +43,7 @@ import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceC
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.THREAD_COUNT;
 import static org.hamcrest.MatcherAssert.assertThat;
+import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import static org.hamcrest.Matchers.equalTo;
 
 class OtelLogsSourceConfigTests {

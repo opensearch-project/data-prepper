@@ -21,8 +21,6 @@ import java.util.List;
 @Getter
 public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
 
-    private static final int DEFAULT_BATCH_SIZE = 50;
-
     /**
      * Jira account url
      */
@@ -35,12 +33,6 @@ public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
     @JsonProperty("authentication")
     @Valid
     protected AuthenticationConfig authenticationConfig;
-
-    /**
-     * Batch size for fetching tickets
-     */
-    @JsonProperty("batch_size")
-    protected int batchSize = DEFAULT_BATCH_SIZE;
 
 
     /**
@@ -58,4 +50,9 @@ public abstract class AtlassianSourceConfig implements CrawlerSourceConfig {
     }
 
     public abstract String getOauth2UrlContext();
+
+    @Override
+    public int getNumberOfWorkers() {
+        return DEFAULT_NUMBER_OF_WORKERS;
+    }
 }

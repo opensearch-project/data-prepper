@@ -25,11 +25,10 @@ public class JsonInputCodec extends JsonDecoder implements InputCodec {
 
     @DataPrepperPluginConstructor
     public JsonInputCodec(final JsonInputCodecConfig config) {
-        super(Objects.requireNonNull(config).getKeyName(), config.getIncludeKeys(), config.getIncludeKeysMetadata());
+        super(Objects.requireNonNull(config).getKeyName(), config.getIncludeKeys(), config.getIncludeKeysMetadata(), config.getMaxEventLength());
     }
 
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
         parse(inputStream, null, eventConsumer);
     }
-
 }

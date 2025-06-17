@@ -88,6 +88,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         for (Record<Span> record : records) {
             final Span span = record.getData();
             processSpan(span, processedSpans);
+            fillInServiceName(span);
         }
 
         processedSpans.addAll(getTracesToFlushByGarbageCollection());
@@ -197,6 +198,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                             if (traceGroup != null) {
                                 spans.forEach(span -> {
                                     fillInTraceGroupInfo(span, traceGroup);
+                                    fillInServiceName(span);
                                     recordsToFlush.add(span);
                                 });
                             } else {
@@ -224,6 +226,11 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     private void fillInTraceGroupInfo(final Span span, final TraceGroup traceGroup) {
         span.setTraceGroup(traceGroup.getTraceGroup());
         span.setTraceGroupFields(traceGroup.getTraceGroupFields());
+    }
+
+    private void fillInServiceName(final Span span) {
+        // For standard OTEL getServiceName() returns service name from metadata
+        span.setServiceName(span.getServiceName());
     }
 
     private boolean shouldGarbageCollect() {

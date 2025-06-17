@@ -128,6 +128,20 @@ class CsvProcessorTest {
     }
 
     @Test
+    void test_when_multLine_then_parsedCorrectly() {
+        when(processorConfig.isMultiLine()).thenReturn(true);
+        when(processorConfig.getDelimiter()).thenReturn(",");
+        csvProcessor = createObjectUnderTest();
+
+        Record<Event> eventUnderTest = createMessageEvent("key1,key2,key3\n1,2,3");
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+        assertThatKeyEquals(parsedEvent, "key1", "1");
+        assertThatKeyEquals(parsedEvent, "key2", "2");
+        assertThatKeyEquals(parsedEvent, "key3", "3");
+    }
+
+    @Test
     void test_when_deleteHeaderAndHeaderSourceDefined_then_headerIsDeleted() {
         when(processorConfig.isDeleteHeader()).thenReturn(true);
         when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");

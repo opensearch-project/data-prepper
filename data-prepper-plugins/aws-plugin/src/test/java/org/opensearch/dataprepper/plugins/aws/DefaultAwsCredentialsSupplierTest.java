@@ -103,6 +103,21 @@ class DefaultAwsCredentialsSupplierTest {
         assertThat(createObjectUnderTest().getDefaultStsHeaderOverrides(), equalTo(Optional.empty()));
     }
 
+    @Test
+    void getDefaultStsRoleArn_returns_default_sts_role_arn() {
+        final String roleArn = "arn:aws:iam::123456789012:role/test-role";
+        when(credentialsProviderFactory.getDefaultStsRoleArn()).thenReturn(roleArn);
+
+        assertThat(createObjectUnderTest().getDefaultStsRoleArn(), equalTo(Optional.of(roleArn)));
+    }
+
+    @Test
+    void no_default_sts_role_arn_returns_empty_optional() {
+        when(credentialsProviderFactory.getDefaultStsRoleArn()).thenReturn(null);
+
+        assertThat(createObjectUnderTest().getDefaultStsRoleArn(), equalTo(Optional.empty()));
+    }
+
     private static List<Region> getRegions() {
         return Region.regions();
     }

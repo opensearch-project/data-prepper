@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,6 +39,8 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
     private final List<String> nullValues;
     private final String type;
     private final List<String> tagsOnFailure;
+
+    private final String iterateOn;
     private int scale = 0;
 
     private final ExpressionEvaluator expressionEvaluator;
@@ -59,7 +62,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 .orElse(List.of());
         this.expressionEvaluator = expressionEvaluator;
         this.tagsOnFailure = convertEntryTypeProcessorConfig.getTagsOnFailure();
-
+        this.iterateOn = convertEntryTypeProcessorConfig.getIterateOn();
         if (convertWhen != null
                 && !expressionEvaluator.isValidExpressionStatement(convertWhen)) {
             throw new InvalidPluginConfigurationException(
@@ -79,28 +82,21 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 }
 
                 for (final String key : convertEntryKeys) {
-                    Object keyVal = recordEvent.get(key, Object.class);
-                    if (keyVal != null) {
-                        if (!nullValues.contains(keyVal.toString())) {
-                            try {
-                                if (keyVal instanceof List || keyVal.getClass().isArray()) {
-                                    Stream<Object> inputStream;
-                                    if (keyVal.getClass().isArray()) {
-                                        inputStream = Arrays.stream((Object[])keyVal);
-                                    } else {
-                                        inputStream = ((List<Object>)keyVal).stream();
-                                    }
-                                    List<?> replacementList = inputStream.map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList());
-                                    recordEvent.put(key, replacementList);
-                                } else {
-                                    recordEvent.put(key, converter.convert(keyVal, converterArguments));
+                    if (iterateOn != null) {
+                        handleWithIterateOn(recordEvent, key);
+                    } else {
+                        Object keyVal = recordEvent.get(key, Object.class);
+                        if (keyVal != null) {
+                            if (!nullValues.contains(keyVal.toString())) {
+                                try {
+                                    handleWithoutIterateOn(keyVal, recordEvent, key);
+                                } catch (final RuntimeException e) {
+                                    LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
+                                    recordEvent.getMetadata().addTags(tagsOnFailure);
                                 }
-                            } catch (final RuntimeException e) {
-                                LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
-                                recordEvent.getMetadata().addTags(tagsOnFailure);
+                            } else {
+                                recordEvent.delete(key);
                             }
-                        } else {
-                            recordEvent.delete(key);
                         }
                     }
                 }
@@ -129,6 +125,54 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
 
     @Override
     public void shutdown() {
+    }
+
+    private void handleWithoutIterateOn(final Object keyVal,
+                                        final Event recordEvent,
+                                        final String key) {
+        if (keyVal instanceof List || keyVal.getClass().isArray()) {
+            Stream<Object> inputStream;
+            if (keyVal.getClass().isArray()) {
+                inputStream = Arrays.stream((Object[])keyVal);
+            } else {
+                inputStream = ((List<Object>)keyVal).stream();
+            }
+            List<?> replacementList = inputStream.map(i -> converter.convert(i, converterArguments)).collect(Collectors.toList());
+            recordEvent.put(key, replacementList);
+        } else {
+            recordEvent.put(key, converter.convert(keyVal, converterArguments));
+        }
+    }
+
+    private void handleWithIterateOn(final Event recordEvent,
+                                     final String key) {
+
+        final List<Map<String, Object>> iterateOnList;
+        try {
+            iterateOnList = recordEvent.get(iterateOn, List.class);
+        } catch (final Exception e) {
+            throw new IllegalArgumentException(
+                    String.format("The value of '%s' must be a List of Map<String, Object>, but was incompatible: %s",
+                            iterateOn, e.getMessage()), e);
+        }
+        if (iterateOnList != null) {
+            int listIndex = 0;
+            for (final Map<String, Object> item : iterateOnList) {
+                Object value = null;
+                try {
+                    value = item.get(key);
+                    if (value != null) {
+                        item.put(key, converter.convert(value, converterArguments));
+                    }
+                } catch (final RuntimeException e) {
+                    LOG.error(EVENT, "Unable to convert element {} with key: {} with value: {} to {}", listIndex, key, value, type, e);
+                }
+
+                listIndex++;
+            }
+
+            recordEvent.put(iterateOn, iterateOnList);
+        }
     }
 
     private List<String> getKeysToConvert(final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig) {

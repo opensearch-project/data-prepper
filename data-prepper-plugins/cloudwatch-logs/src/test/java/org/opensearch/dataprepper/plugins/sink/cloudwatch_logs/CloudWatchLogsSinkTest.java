@@ -67,7 +67,8 @@ class CloudWatchLogsSinkTest {
         when(mockCloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
         when(mockCloudWatchLogsSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
         when(mockCloudWatchLogsSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
-        when(mockCloudWatchLogsSinkConfig.getBufferType()).thenReturn(TEST_BUFFER_TYPE);
+        when(mockCloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
+        when(mockCloudWatchLogsSinkConfig.getWorkers()).thenReturn(10);
 
         when(mockPluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
         when(mockPluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);

@@ -61,7 +61,7 @@ dependencyResolutionManagement {
             library('commons-io', 'commons-io', 'commons-io').version('2.15.1')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
             library('commons-compress', 'org.apache.commons', 'commons-compress').version('1.24.0')
-            version('parquet', '1.14.1')
+            version('parquet', '1.15.1')
             library('parquet-common', 'org.apache.parquet', 'parquet-common').versionRef('parquet')
             library('parquet-avro', 'org.apache.parquet', 'parquet-avro').versionRef('parquet')
             library('parquet-column', 'org.apache.parquet', 'parquet-column').versionRef('parquet')
@@ -69,7 +69,7 @@ dependencyResolutionManagement {
             version('hadoop', '3.4.0')
             library('hadoop-common', 'org.apache.hadoop', 'hadoop-common').versionRef('hadoop')
             library('hadoop-mapreduce', 'org.apache.hadoop', 'hadoop-mapreduce-client-core').versionRef('hadoop')
-            version('avro', '1.11.3')
+            version('avro', '1.11.4')
             library('avro-core', 'org.apache.avro', 'avro').versionRef('avro')
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.8')
         }
@@ -109,6 +109,7 @@ include 'data-prepper-plugin-schema-cli'
 include 'data-prepper-plugins:common'
 include 'data-prepper-plugins:armeria-common'
 include 'data-prepper-plugins:anomaly-detector-processor'
+include 'data-prepper-plugins:detect-format-processor'
 include 'data-prepper-plugins:opensearch'
 include 'data-prepper-plugins:ocsf'
 include 'data-prepper-plugins:service-map-stateful'
@@ -170,6 +171,7 @@ include 'data-prepper-plugins:buffer-common'
 include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:sqs-common'
 include 'data-prepper-plugins:cloudwatch-logs'
+include 'data-prepper-plugins:sqs-sink'
 //include 'data-prepper-plugins:http-sink'
 //include 'data-prepper-plugins:sns-sink'
 //include 'data-prepper-plugins:prometheus-sink'
@@ -184,6 +186,7 @@ include 'data-prepper-plugins:rds-source'
 include 'data-prepper-plugins:http-source-common'
 include 'data-prepper-plugins:http-common'
 include 'data-prepper-plugins:aws-lambda'
+include 'data-prepper-plugins:ml-inference-processor'
 //include 'data-prepper-plugins:dummy-plugin'
 include 'data-prepper-plugin-schema'
 include 'data-prepper-plugins:kinesis-source'
@@ -191,6 +194,9 @@ include 'data-prepper-plugins:opensearch-api-source'
 include 'data-prepper-plugins:saas-source-plugins'
 include 'data-prepper-plugins:saas-source-plugins:source-crawler'
 include 'data-prepper-plugins:saas-source-plugins:jira-source'
+include 'data-prepper-plugins:encryption-plugin'
 include 'data-prepper-plugins:saas-source-plugins:confluence-source'
 include 'data-prepper-plugins:saas-source-plugins:atlassian-commons'
-
+include 'data-prepper-plugins:saas-source-plugins:crowdstrike-source'
+include 'data-prepper-plugins:saas-source-plugins:microsoft-office365-source'
+include 'data-prepper-plugins:otlp-sink'

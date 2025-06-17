@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.source.rds.leader;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.rds.RdsSourceConfig;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.ExportPartition;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.GlobalState;
 import org.opensearch.dataprepper.plugins.source.rds.coordination.partition.LeaderPartition;
@@ -47,6 +46,7 @@ public class LeaderScheduler implements Runnable {
     private final String s3Prefix;
     private final SchemaManager schemaManager;
     private final DbTableMetadata dbTableMetadata;
+    private final String pipelineName;
 
     private LeaderPartition leaderPartition;
     private List<String> tableNames;
@@ -57,12 +57,14 @@ public class LeaderScheduler implements Runnable {
                            final RdsSourceConfig sourceConfig,
                            final String s3Prefix,
                            final SchemaManager schemaManager,
-                           final DbTableMetadata dbTableMetadata) {
+                           final DbTableMetadata dbTableMetadata,
+                           final String pipelineName) {
         this.sourceCoordinator = sourceCoordinator;
         this.sourceConfig = sourceConfig;
         this.s3Prefix = s3Prefix;
         this.schemaManager = schemaManager;
         this.dbTableMetadata = dbTableMetadata;
+        this.pipelineName = pipelineName;
         tableNames = new ArrayList<>(dbTableMetadata.getTableColumnDataTypeMap().keySet());
     }
 
@@ -116,21 +118,6 @@ public class LeaderScheduler implements Runnable {
 
     public void shutdown() {
         shutdownRequested = true;
-
-        // Clean up publication and replication slot for Postgres
-        if (streamPartition != null) {
-            streamPartition.getProgressState().ifPresent(progressState -> {
-                if (EngineType.fromString(progressState.getEngineType()).isPostgres()) {
-                    final PostgresStreamState postgresStreamState = progressState.getPostgresStreamState();
-                    final String publicationName = postgresStreamState.getPublicationName();
-                    final String replicationSlotName = postgresStreamState.getReplicationSlotName();
-                    LOG.info("Cleaned up logical replication slot {} and publication {}",
-                            replicationSlotName, publicationName);
-                    ((PostgresSchemaManager) schemaManager).deleteLogicalReplicationSlot(
-                            publicationName, replicationSlotName);
-                }
-            });
-        }
     }
 
     private void init() {
@@ -172,7 +159,7 @@ public class LeaderScheduler implements Runnable {
     }
 
     private String getS3PrefixForExport(final String givenS3Prefix) {
-        return givenS3Prefix + S3_PATH_DELIMITER + S3_EXPORT_PREFIX;
+        return givenS3Prefix.isEmpty() ? S3_EXPORT_PREFIX : givenS3Prefix + S3_PATH_DELIMITER + S3_EXPORT_PREFIX;
     }
 
     private Map<String, List<String>> getPrimaryKeyMap() {
@@ -196,8 +183,9 @@ public class LeaderScheduler implements Runnable {
         } else {
             // Postgres
             // Create replication slot, which will mark the starting point for stream
-            final String publicationName = generatePublicationName();
-            final String slotName = generateReplicationSlotName();
+            final String suffix = UUID.randomUUID().toString().substring(0, 8);
+            final String publicationName = generatePublicationName(suffix);
+            final String slotName = generateReplicationSlotName(suffix);
             ((PostgresSchemaManager)schemaManager).createLogicalReplicationSlot(tableNames, publicationName, slotName);
             final PostgresStreamState postgresStreamState = new PostgresStreamState();
             postgresStreamState.setPublicationName(publicationName);
@@ -215,11 +203,17 @@ public class LeaderScheduler implements Runnable {
         return binlogCoordinate;
     }
 
-    private String generatePublicationName() {
-        return "data_prepper_publication_" + UUID.randomUUID().toString().substring(0, 8);
+    private String generatePublicationName(final String suffix) {
+        return "data_prepper_" + getPipelineName() + "_pub_" + suffix;
     }
 
-    private String generateReplicationSlotName() {
-        return "data_prepper_slot_" + UUID.randomUUID().toString().substring(0, 8);
+    private String generateReplicationSlotName(final String suffix) {
+        return "data_prepper_" + getPipelineName() + "_slot_" + suffix;
+    }
+
+    private String getPipelineName() {
+        // Shorten the name (if needed) and replace any invalid characters with underscores
+        final String shortenedPipelineName = pipelineName.length() <= 16 ? pipelineName : pipelineName.substring(0, 16);
+        return shortenedPipelineName.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 }

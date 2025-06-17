@@ -17,13 +17,13 @@ import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.EngineType;
-import org.opensearch.dataprepper.plugins.source.rds.configuration.TableFilterConfig;
 import org.opensearch.dataprepper.plugins.source.rds.configuration.TlsConfig;
 import org.opensearch.dataprepper.plugins.source.rds.export.DataFileScheduler;
 import org.opensearch.dataprepper.plugins.source.rds.export.ExportScheduler;
@@ -95,6 +95,9 @@ class RdsServiceTest {
 
     @Mock
     private PluginConfigObservable pluginConfigObservable;
+
+    @Mock
+    private PipelineDescription pipelineDescription;
 
     @BeforeEach
     void setUp() {
@@ -196,19 +199,18 @@ class RdsServiceTest {
                                 .build())
                         .build())
                 .build();
-        final TableFilterConfig tableFilterConfig = mock(TableFilterConfig.class);
         final String databaseName = UUID.randomUUID().toString();
         final Set<String> tableNames = Set.of("database1.table1", "database2.table2");
 
         when(sourceConfig.getDbIdentifier()).thenReturn(dbIdentifier);
-        when(sourceConfig.getTables()).thenReturn(tableFilterConfig);
-        when(tableFilterConfig.getDatabase()).thenReturn(databaseName);
+        when(sourceConfig.getDatabase()).thenReturn(databaseName);
         when(schemaManager.getTableNames(databaseName)).thenReturn(tableNames);
         when(schemaManager.getColumnDataTypes(new ArrayList<>(tableNames))).thenReturn(mock(Map.class));
         when(rdsClient.describeDBInstances(any(DescribeDbInstancesRequest.class))).thenReturn(describeDbInstancesResponse);
     }
 
     private RdsService createObjectUnderTest() {
-        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics, acknowledgementSetManager, pluginConfigObservable);
+        return new RdsService(sourceCoordinator, sourceConfig, eventFactory, clientFactory, pluginMetrics,
+                acknowledgementSetManager, pluginConfigObservable, pipelineDescription);
     }
 }
