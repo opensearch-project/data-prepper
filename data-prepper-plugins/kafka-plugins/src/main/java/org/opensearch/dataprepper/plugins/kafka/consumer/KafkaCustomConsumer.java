@@ -105,7 +105,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
-    private boolean compressionEnabled;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -144,21 +143,6 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
-    }
-
-    public KafkaCustomConsumer(final KafkaConsumer consumer,
-                               final AtomicBoolean shutdownInProgress,
-                               final Buffer<Record<Event>> buffer,
-                               final KafkaConsumerConfig consumerConfig,
-                               final TopicConsumerConfig topicConfig,
-                               final String schemaType,
-                               final AcknowledgementSetManager acknowledgementSetManager,
-                               final ByteDecoder byteDecoder,
-                               final KafkaTopicConsumerMetrics topicMetrics,
-                               final PauseConsumePredicate pauseConsumePredicate,
-                               final boolean compressionEnabled) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate);
-        this.compressionEnabled = compressionEnabled;
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -561,20 +545,17 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 if (schema == MessageFormat.BYTES) {
                     InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-                    InputStream inputStream;
-                    if (compressionEnabled) {
-                        inputStream = new ZstdInputStream(byteInputStream);
-                    } else {
-                        inputStream = byteInputStream;
-                    }
+
+                    InputStream decompressedInputStream = new ZstdInputStream(byteInputStream);
+
                     if(byteDecoder != null) {
                         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
+                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {
-                        JsonNode jsonNode = objectMapper.readValue(inputStream, JsonNode.class);
+                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
 
                         Event event = JacksonLog.builder().withData(jsonNode).build();
                         Record<Event> record = new Record<>(event);

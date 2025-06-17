@@ -64,7 +64,6 @@ public class KafkaCustomConsumerFactory {
     private final StringDeserializer stringDeserializer = new StringDeserializer();
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
-    private boolean isCompressionEnabled = false;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
 
     public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
@@ -75,7 +74,6 @@ public class KafkaCustomConsumerFactory {
     public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier, boolean isCompressionEnabled) {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
-        this.isCompressionEnabled = isCompressionEnabled;
     }
 
 
@@ -114,7 +112,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, isCompressionEnabled));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate));
 
             });
         } catch (Exception e) {

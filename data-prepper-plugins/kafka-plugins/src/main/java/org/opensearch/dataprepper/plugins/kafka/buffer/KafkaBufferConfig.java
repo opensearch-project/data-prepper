@@ -147,9 +147,4 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
     }
-
-    @JsonIgnore
-    public Boolean getCompressionEnabled() {
-        return true;
-    }
 }
