@@ -20,6 +20,10 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -30,7 +34,8 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -40,6 +45,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ConvertEntryTypeProcessorTests {
+    private static final Float MAX_ERROR = 0.00001f;
     static final String TEST_KEY = UUID.randomUUID().toString();
     @Mock
     private PluginMetrics pluginMetrics;
@@ -51,6 +57,7 @@ public class ConvertEntryTypeProcessorTests {
     private ExpressionEvaluator expressionEvaluator;
 
     private ConvertEntryTypeProcessor typeConversionProcessor;
+    private Random random;
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
         return new Record<>(JacksonEvent.builder()
@@ -61,6 +68,7 @@ public class ConvertEntryTypeProcessorTests {
 
     @BeforeEach
     void setup() {
+        random = new Random();
         lenient().when(mockConfig.getKey()).thenReturn(TEST_KEY);
         lenient().when(mockConfig.getKeys()).thenReturn(null);
         lenient().when(mockConfig.getConvertWhen()).thenReturn(null);
@@ -390,40 +398,132 @@ public class ConvertEntryTypeProcessorTests {
         assertThrows(IllegalArgumentException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
     }
 
+    private Long getRandomLong() {
+        Long l = random.nextLong();
+        if (l < 0 && l >= Integer.MIN_VALUE)
+            return Long.MIN_VALUE + l;
+        if (l > 0 && l <= Integer.MAX_VALUE)
+            return Long.MAX_VALUE - l;
+        return l;
+    }
+
+    private Double getRandomDouble() {
+        Double d = random.nextDouble();
+        if (d < 0 && d >= Float.MIN_VALUE)
+            return Double.MIN_VALUE + d;
+        if (d > 0 && d <= Float.MAX_VALUE)
+            return Double.MAX_VALUE - d;
+        return d;
+    }
+
     @Test
-    void convert_type_on_value_in_array_element_converts_correctly() {
-        final String eventKey = "list-key/0/foo";
+    void testCoerceStrings() {
+        when(mockConfig.getKey()).thenReturn(null);
+        when(mockConfig.getKeys()).thenReturn(null);
+        when(mockConfig.getCoerceStrings()).thenReturn(new ConvertEntryTypeProcessorConfig.CoerceStringsConfig());
+        when(mockConfig.getConvertWhen()).thenReturn(null);
+        int i1 = random.nextInt();
+        int i2 = random.nextInt();
+        int i3 = random.nextInt();
+        int i4 = random.nextInt();
 
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("long"));
-        when(mockConfig.getKey()).thenReturn(eventKey);
+        long l1 = getRandomLong();
+        long l2 = getRandomLong();
+        long l3 = getRandomLong();
+        long l4 = getRandomLong();
 
+        float f1 = random.nextFloat();
+        float f2 = random.nextFloat();
+        float f3 = random.nextFloat();
+        float f4 = random.nextFloat();
+
+        double d1 = getRandomDouble();
+        double d2 = getRandomDouble();
+        double d3 = getRandomDouble();
+        double d4 = getRandomDouble();
+
+        String s1 = UUID.randomUUID().toString();
+        String s2 = UUID.randomUUID().toString();
+        String s3 = UUID.randomUUID().toString();
+        String s4 = UUID.randomUUID().toString();
+
+        Instant now = Instant.now();
+        ZonedDateTime zonedDateTime = now.atZone(ZoneId.systemDefault());
+        ZonedDateTime zonedDateTimePST = now.atZone(ZoneId.of("America/Los_Angeles"));
+
+        String t1 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(0)));
+        String t2 = zonedDateTimePST.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(1)));
+        String t3 = zonedDateTime.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(2)));
+        String t4 = zonedDateTimePST.format(DateTimeFormatter.ofPattern(ConvertEntryTypeProcessorConfig.DEFAULT_TIME_STRING_FORMATS.get(3)));
+
+        final Map<String, Object> testData1 = new HashMap<>();
+        testData1.put("s2", s2);
+        testData1.put("i2", Integer.toString(i2));
+        testData1.put("l2", Long.toString(l2));
+        testData1.put("f2", Float.toString(f2));
+        testData1.put("d2", Double.toString(d2));
+        testData1.put("b2", "false");
+        testData1.put("t2", t2);
+        final Map<String, Object> testData2 = new HashMap<>();
+        testData2.put("s3", s3);
+        testData2.put("i3", Integer.toString(i3));
+        testData2.put("l3", Long.toString(l3));
+        testData2.put("f3", Float.toString(f3));
+        testData2.put("d3", Double.toString(d3));
+        testData2.put("b3", "true");
+        testData2.put("t3", t3);
+        final List<Object> list = new ArrayList<>();
+        list.add((Object)testData2);
+        list.add((Object)Integer.toString(i4));
+        list.add((Object)Long.toString(l4));
+        list.add((Object)Float.toString(f4));
+        list.add((Object)Double.toString(d4));
+        list.add("false");
+        list.add((Object)t4);
+
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("s1", s1);
+        testData.put("i1", Integer.toString(i1));
+        testData.put("l1", Long.toString(l1));
+        testData.put("f1", Float.toString(f1));
+        testData.put("d1", Double.toString(d1));
+        testData.put("b1", "true");
+        testData.put("t1", t1);
+        testData.put("m1", testData1);
+        testData.put("a1", list);
+        Record<Event> record = buildRecordWithEvent(testData);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(record);
+        assertThat((String)event.get("s1", Object.class), equalTo(s1));
+        assertThat((Integer)event.get("i1", Object.class), equalTo(i1));
+        assertThat((Long)event.get("l1", Object.class), equalTo(l1));
+        assertThat((Double)event.get("f1", Object.class), closeTo(f1, MAX_ERROR));
+        assertThat((Double)event.get("d1", Object.class), closeTo(d1, MAX_ERROR));
+        assertThat((Boolean)event.get("b1", Object.class), equalTo(true));
+        assertThat((Long)event.get("t1", Object.class), equalTo(now.getEpochSecond()*1000));
 
-        final Map<String, Object> eventData = new HashMap<>();
+        assertThat((Integer)event.get("m1/i2", Object.class), equalTo(i2));
+        assertThat(event.get("m1/s2", Object.class), equalTo(s2));
+        assertThat((Long)event.get("m1/l2", Object.class), equalTo(l2));
+        assertThat((Double)event.get("m1/f2", Object.class), closeTo(f2, MAX_ERROR));
+        assertThat((Double)event.get("m1/d2", Object.class), closeTo(d2, MAX_ERROR));
+        assertThat((Boolean)event.get("m1/b2", Object.class), equalTo(false));
+        assertThat((Long)event.get("m1/t2", Object.class), equalTo(now.toEpochMilli()));
 
-        final List<Map<String, Object>> listElement = new ArrayList<>();
-        listElement.add(Map.of("foo", 10.0));
+        assertThat((Integer)event.get("a1/0/i3", Object.class), equalTo(i3));
+        assertThat(event.get("a1/0/s3", Object.class), equalTo(s3));
+        assertThat((Long)event.get("a1/0/l3", Object.class), equalTo(l3));
+        assertThat((Double)event.get("a1/0/f3", Object.class), closeTo(f3, MAX_ERROR));
+        assertThat((Double)event.get("a1/0/d3", Object.class), closeTo(d3, MAX_ERROR));
+        assertThat((Boolean)event.get("a1/0/b3", Object.class), equalTo(true));
+        assertThat((Long)event.get("a1/0/t3", Object.class), equalTo(now.toEpochMilli()));
 
-        eventData.put("list-key", listElement);
-
-        final Event event = JacksonEvent.builder()
-                .withData(eventData)
-                .withEventType("event")
-                .build();
-
-        final List<Record<Event>> processedRecords = (List<Record<Event>>) typeConversionProcessor.doExecute(Collections.singletonList(new Record<>(event)));
-        assertThat(processedRecords.size(), equalTo(1));
-
-        final Event resultEvent = processedRecords.get(0).getData();
-
-        final Map<String, Object> resultEventData = resultEvent.toMap();
-
-        final Map<String, Object> expectedEventData = new HashMap<>();
-        final List<Map<String, Object>> expectedListElement = new ArrayList<>();
-        expectedListElement.add(Map.of("foo", 10L));
-        expectedEventData.put("list-key", expectedListElement);
-
-        assertThat(resultEventData, equalTo(expectedEventData));
+        assertThat((Integer)event.get("a1/1", Object.class), equalTo(i4));
+        assertThat(event.get("a1/2", Object.class), equalTo(l4));
+        assertThat((Double)event.get("a1/3", Object.class), closeTo(f4, MAX_ERROR));
+        assertThat((Double)event.get("a1/4", Object.class), closeTo(d4, MAX_ERROR));
+        assertThat((Boolean)event.get("a1/5", Object.class), equalTo(false));
+        assertThat((Long)event.get("a1/6", Object.class), equalTo(now.getEpochSecond()*1000));
     }
 
     @Test
