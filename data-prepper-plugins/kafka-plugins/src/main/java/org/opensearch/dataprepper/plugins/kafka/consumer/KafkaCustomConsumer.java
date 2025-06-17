@@ -9,8 +9,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.luben.zstd.Zstd;
-import com.github.luben.zstd.ZstdBufferDecompressingStream;
 import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.generic.GenericRecord;
@@ -61,8 +59,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
 
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
