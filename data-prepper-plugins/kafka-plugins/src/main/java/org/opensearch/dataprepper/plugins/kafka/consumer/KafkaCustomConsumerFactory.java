@@ -70,13 +70,7 @@ public class KafkaCustomConsumerFactory {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
-
-    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier, boolean isCompressionEnabled) {
-        this.serializationFactory = serializationFactory;
-        this.awsCredentialsSupplier = awsCredentialsSupplier;
-    }
-
-
+    
     public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final TopicConsumerConfig topic,
                                                              final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics,
                                                              final AcknowledgementSetManager acknowledgementSetManager,
