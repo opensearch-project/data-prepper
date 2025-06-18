@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -23,11 +25,21 @@ import java.util.Optional;
 
 @ConditionalRequired(value = {
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "key", value = "null")},
+                ifFulfilled = {@SchemaProperty(field = "autoInferStringValues", value = "true")},
+                thenExpect = {}
+        ),
+        @IfThenElse(
+                ifFulfilled = {
+                    @SchemaProperty(field = "key", value = "null"),
+                    @SchemaProperty(field = "autoInferStringValues", value = "false")
+                },
                 thenExpect = {@SchemaProperty(field = "keys")}
         ),
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "keys", value = "null")},
+                ifFulfilled = {
+                    @SchemaProperty(field = "keys", value = "null"),
+                    @SchemaProperty(field = "autoInferStringValues", value = "false")
+                },
                 thenExpect = {@SchemaProperty(field = "key")}
         )
 })
@@ -35,6 +47,23 @@ import java.util.Optional;
 @JsonClassDescription("The <code>convert_type</code> processor converts a value associated with the specified key in " +
         "a event to the specified type. It is a casting processor that changes the types of specified fields in events.")
 public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
+    public static final List<String> DEFAULT_TIME_STRING_FORMATS = List.of("MMM d HH:mm:ss", /* RFC 3164 */
+                                                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",/* RFC 5424/ISO8601 */
+                                                "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX",/* high precision ISO 8601 */
+                                                "dd/MMM/yyyy:HH:mm:ss Z"); /* Apache logs */
+
+    public static class CoerceStringsConfig {
+
+        @JsonProperty("time_formats")
+        List<String> coerceStringTimeFormats = DEFAULT_TIME_STRING_FORMATS;
+
+        public List<String> getCoerceStringTimeFormats() {
+            return coerceStringTimeFormats;
+        }
+        public CoerceStringsConfig() {
+        }
+    }
+
     static final String KEY_KEY = "key";
     static final String KEYS_KEY = "keys";
 
@@ -61,6 +90,10 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     @JsonPropertyDescription("String representation of what constitutes a null value. If the field value equals one of these strings, then the value is considered null and is converted to null.")
     private List<String> nullValues;
 
+    @JsonProperty("coerce_strings")
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private CoerceStringsConfig coerceStrings = null;
+
     /**
      * Optional scale value used only in the case of BigDecimal converter
      */
@@ -79,6 +112,15 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
         @Example(value = "/some_key typeof integer", description = "Only runs the convert_type processor on the Event if the key some_key is an integer.")
     })
     private String convertWhen;
+
+    @JsonProperty("iterate_on")
+    @JsonPropertyDescription(
+            "Specifies the key of a list of map objects to iterate over and convert types.")
+    private String iterateOn;
+
+    public CoerceStringsConfig getCoerceStrings() {
+        return coerceStrings;
+    }
 
     public String getKey() {
         return key;
@@ -100,4 +142,6 @@ public class ConvertEntryTypeProcessorConfig implements ConverterArguments {
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
     }
+
+    public String getIterateOn() { return iterateOn; }
 }

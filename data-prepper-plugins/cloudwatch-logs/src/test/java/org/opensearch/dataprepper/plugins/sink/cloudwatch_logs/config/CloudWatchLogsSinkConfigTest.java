@@ -13,6 +13,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
+import java.util.Random;
+
 class CloudWatchLogsSinkConfigTest {
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private AwsConfig awsConfig;
@@ -43,8 +45,20 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
+    void GIVEN_new_sink_config_WHEN_get_num_threads_called_SHOULD_return_default_value() {
+        assertThat(new CloudWatchLogsSinkConfig().getWorkers(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_WORKERS));
+    }
+
+    @Test
     void GIVEN_new_sink_config_WHEN_get_log_stream_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getLogStream(), equalTo(null));
+    }
+
+    @Test
+    void GIVEN_num_threads_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        int testValue = (new Random()).nextInt();
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "workers", testValue);
+        assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(testValue));
     }
 
     @Test

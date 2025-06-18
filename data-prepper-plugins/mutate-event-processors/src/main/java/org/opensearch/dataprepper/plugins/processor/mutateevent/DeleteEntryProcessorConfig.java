@@ -58,6 +58,15 @@ public class DeleteEntryProcessorConfig {
         })
         private String deleteWhen;
 
+        @JsonPropertyDescription("Specifies the condition for when to delete the key from each element of a list when using iterate_on.")
+        @JsonProperty("delete_from_element_when")
+        private String deleteFromElementWhen;
+
+        @JsonPropertyDescription(
+                "Specifies the key of the list of object to iterate over and delete the keys specified in with_keys.")
+        @JsonProperty("iterate_on")
+        private String iterateOn;
+
         public List<EventKey> getWithKeys() {
             return withKeys;
         }
@@ -66,9 +75,20 @@ public class DeleteEntryProcessorConfig {
             return deleteWhen;
         }
 
-        public Entry(final List<EventKey> withKeys, final String deleteWhen) {
+        public String getIterateOn() { return  iterateOn; }
+
+        public String getDeleteFromElementWhen() {
+            return deleteFromElementWhen;
+        }
+
+        public Entry(final List<EventKey> withKeys,
+                     final String deleteWhen,
+                     final String iterateOn,
+                     final String deleteFromElementWhen) {
             this.withKeys = withKeys;
             this.deleteWhen = deleteWhen;
+            this.deleteFromElementWhen = deleteFromElementWhen;
+            this.iterateOn = iterateOn;
         }
 
         public Entry() {
@@ -99,6 +119,14 @@ public class DeleteEntryProcessorConfig {
     boolean hasBothConfigurations() {
         return entries != null && withKeys != null;
     }
+    @JsonPropertyDescription(
+            "Specifies the key of the list of object to iterate over and delete the keys specified in with_keys.")
+    @JsonProperty("iterate_on")
+    private String iterateOn;
+
+    @JsonPropertyDescription("Specifies the condition for when to delete the key from each element of a list when using iterate_on.")
+    @JsonProperty("delete_from_element_when")
+    private String deleteFromElementWhen;
 
     public List<EventKey> getWithKeys() {
         return withKeys;
@@ -110,5 +138,13 @@ public class DeleteEntryProcessorConfig {
 
     public List<Entry> getEntries() {
         return entries;
+    }
+
+    public String getIterateOn() {
+        return iterateOn;
+    }
+
+    public String getDeleteFromElementWhen() {
+        return deleteFromElementWhen;
     }
 }

@@ -47,6 +47,10 @@ class CredentialsProviderFactory {
         return defaultStsConfiguration.getAwsRegion();
     }
 
+    String getDefaultStsRoleArn() {
+        return defaultStsConfiguration.getAwsStsRoleArn();
+    }
+
     AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 

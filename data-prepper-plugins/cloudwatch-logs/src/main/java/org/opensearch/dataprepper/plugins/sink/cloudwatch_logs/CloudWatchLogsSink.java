@@ -74,7 +74,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
             dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, pluginMetrics, cloudWatchLogsSinkConfig.getDlq(), region, role, "cloudWatchLogs");
         }
 
-        Executor executor = Executors.newCachedThreadPool();
+        Executor executor = Executors.newFixedThreadPool(cloudWatchLogsSinkConfig.getWorkers());
 
         CloudWatchLogsDispatcher cloudWatchLogsDispatcher = CloudWatchLogsDispatcher.builder()
                 .cloudWatchLogsClient(cloudWatchLogsClient)
