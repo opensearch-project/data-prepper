@@ -31,14 +31,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.*;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
@@ -64,7 +57,7 @@ public class KafkaCustomConsumerFactory {
     private final StringDeserializer stringDeserializer = new StringDeserializer();
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
-    private boolean isCompressionEnabled = false;
+    private CompressionConfig compressionConfig;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
 
     public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
@@ -72,10 +65,10 @@ public class KafkaCustomConsumerFactory {
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
-    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier, boolean isCompressionEnabled) {
+    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier, CompressionConfig compressionConfig) {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
-        this.isCompressionEnabled = isCompressionEnabled;
+        this.compressionConfig = compressionConfig;
     }
 
 
@@ -114,7 +107,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, isCompressionEnabled));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig));
 
             });
         } catch (Exception e) {

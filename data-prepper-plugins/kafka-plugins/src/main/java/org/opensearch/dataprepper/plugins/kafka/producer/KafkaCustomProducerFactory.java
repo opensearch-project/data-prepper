@@ -18,10 +18,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicProducerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.*;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicService;
@@ -43,7 +40,7 @@ public class KafkaCustomProducerFactory {
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final TopicServiceFactory topicServiceFactory;
-    private boolean compressionEnabled = false;
+    private CompressionConfig compressionConfig;
 
     public KafkaCustomProducerFactory(
             final SerializationFactory serializationFactory,
@@ -58,9 +55,9 @@ public class KafkaCustomProducerFactory {
             final SerializationFactory serializationFactory,
             final AwsCredentialsSupplier awsCredentialsSupplier,
             final TopicServiceFactory topicServiceFactory,
-            final boolean compressionEnabled) {
+            final CompressionConfig compressionConfig) {
         this(serializationFactory, awsCredentialsSupplier, topicServiceFactory);
-        this.compressionEnabled = compressionEnabled;
+        this.compressionConfig = compressionConfig;
     }
 
     public KafkaCustomProducer createProducer(final KafkaProducerConfig kafkaProducerConfig,
@@ -96,7 +93,7 @@ public class KafkaCustomProducerFactory {
         final SchemaService schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
         return new KafkaCustomProducer(producer,
             kafkaProducerConfig, dlqSink,
-            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, compressionEnabled);
+            expressionEvaluator, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, topicMetrics, schemaService, compressionConfig);
     }
 
     private void prepareTopicAndSchema(final KafkaProducerConfig kafkaProducerConfig, final Integer maxRequestSize) {

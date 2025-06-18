@@ -26,6 +26,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
@@ -74,7 +76,7 @@ public class KafkaCustomProducer<T> {
 
     private final KafkaTopicProducerMetrics topicMetrics;
 
-    private boolean compressionEnabled;
+    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);;
 
     public KafkaCustomProducer(final KafkaProducer producer,
                                final KafkaProducerConfig kafkaProducerConfig,
@@ -95,7 +97,6 @@ public class KafkaCustomProducer<T> {
         this.schemaService = schemaService;
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(this.producer);
-        this.compressionEnabled = false;
     }
 
     public KafkaCustomProducer(final KafkaProducer producer,
@@ -105,10 +106,10 @@ public class KafkaCustomProducer<T> {
                                final String tagTargetKey,
                                final KafkaTopicProducerMetrics topicMetrics,
                                final SchemaService schemaService,
-                               final boolean compressionEnabled
+                               final CompressionConfig compressionConfig
     ) {
         this(producer, kafkaProducerConfig, dlqSink, expressionEvaluator, tagTargetKey, topicMetrics, schemaService);
-        this.compressionEnabled = compressionEnabled;
+        this.compressionConfig = compressionConfig;
     }
 
     KafkaTopicProducerMetrics getTopicMetrics() {
@@ -117,7 +118,7 @@ public class KafkaCustomProducer<T> {
 
     public void produceRawData(final byte[] bytes, final String key) throws Exception{
         try {
-            if (compressionEnabled) {
+            if (Objects.equals(compressionConfig.getType(), CompressionType.ZSTD)) {
                 send(topicName, key, Zstd.compress(bytes)).get();
             } else {
                 send(topicName, key, bytes).get();
@@ -171,7 +172,7 @@ public class KafkaCustomProducer<T> {
         JsonNode dataNode = record.getData().getJsonNode();
         byte[] bytes = objectMapper.writeValueAsBytes(dataNode);
         byte[] bytesToSend;
-        if (compressionEnabled) {
+        if (Objects.equals(compressionConfig.getType(), CompressionType.ZSTD)) {
             bytesToSend = Zstd.compress(bytes);
         } else {
             bytesToSend = bytes;
@@ -259,14 +260,5 @@ public class KafkaCustomProducer<T> {
         Map<String, Object> eventData = objectMapper.readValue(eventJsonString, new TypeReference<>() {
         });
         return JacksonLog.builder().withData(eventData).build();
-    }
-
-
-    public boolean isCompressionEnabled() {
-        return compressionEnabled;
-    }
-
-    public void setCompressionEnabled(boolean compressionEnabled) {
-        this.compressionEnabled = compressionEnabled;
     }
 }
