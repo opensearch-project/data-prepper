@@ -54,6 +54,10 @@ public class DissectProcessorConfig {
             "For example, <code>/some_value == \"log\"</code>.")
     private String dissectWhen;
 
+    @JsonProperty
+    @JsonPropertyDescription("If true, the configured fields in the <code>map</code>  will be deleted if the processor was successful.")
+    private boolean deleteSource;
+
     public String getDissectWhen(){
         return dissectWhen;
     }
@@ -63,6 +67,10 @@ public class DissectProcessorConfig {
     }
 
     public Map<String, TargetType> getTargetTypes() { return targetTypeMap; }
+
+    public boolean isDeleteSourceRequested() {
+        return deleteSource;
+    }
 
     @AssertTrue(message = "target_type must be a Map<String, TargetType>. Valid options include [ 'integer', 'string', 'double', 'boolean', 'long', and 'big_decimal' ]")
     boolean isTargetTypeValid() {
