@@ -7,24 +7,25 @@ package org.opensearch.dataprepper.core.pipeline.server;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.core.exception.DynamicPipelineConfigUpdateException;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.pipeline.parser.PipelineConfigurationFileReader;
 import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
-import org.opensearch.dataprepper.core.exception.DynamicPipelineConfigUpdateException;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class DynamicPipelineUpdateUtilTest {
 
-    private static final String VALID_SCENARIOS_BASE_PATH = "src/test/resources/dynamic-pipeline-config-update";
+    private static final String SCENARIOS_BASE_PATH = "src/test/resources/dynamic-pipeline-config-update";
     private static final String SOURCE_CONFIGURATION_ERROR = "Source configuration cannot be modified in pipeline: log-pipeline";
     private static final String SINKS_CONFIGURATION_ERROR = "Sinks configuration cannot be modified in pipeline: log-pipeline";
     private static final String SINGLE_THREADED_PROCESSOR_ERROR = "Cannot add new single-threaded processor: aggregate";
 
     @ParameterizedTest
     @ValueSource(strings = {
-            VALID_SCENARIOS_BASE_PATH + "/same-processor-source-sink",
-            VALID_SCENARIOS_BASE_PATH + "/same-processor-different-settings"
+            SCENARIOS_BASE_PATH + "/same-processor-source-sink",
+            SCENARIOS_BASE_PATH + "/same-processor-different-settings",
+            SCENARIOS_BASE_PATH + "/multi-pipelines"
     })
     public void test_valid_pipeline_updates_are_feasible(String scenarioFolder) {
         PipelinesDataFlowModel currentPipelinesDataFlowModel =
@@ -43,9 +44,8 @@ public class DynamicPipelineUpdateUtilTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            VALID_SCENARIOS_BASE_PATH + "/invalid-source-change",
-            VALID_SCENARIOS_BASE_PATH + "/invalid-sink-change",
-            VALID_SCENARIOS_BASE_PATH + "/invalid-new-processor-change"
+            
+            SCENARIOS_BASE_PATH + "/invalid-multi-pipelines"
     })
     public void test_invalid_pipeline_updates_throw_exceptions(String scenarioFolder) {
         PipelinesDataFlowModel currentPipelinesDataFlowModel =

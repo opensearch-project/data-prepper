@@ -54,6 +54,9 @@ public class DynamicPipelineUpdateUtil {
             List<PluginModel> currentProcessors = currentPipelineModel.getProcessors();
             List<PluginModel> targetProcessors = targetPipelineModel.getProcessors();
 
+            currentProcessors = currentProcessors == null ? List.of() : currentProcessors;
+            targetProcessors = targetProcessors == null ? List.of() : targetProcessors;
+
             // Collect single-threaded processors in current and target
             Set<String> currentSingleThreaded = currentProcessors.stream()
                     .map(PluginModel::getPluginName)

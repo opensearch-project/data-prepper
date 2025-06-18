@@ -28,7 +28,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -130,38 +129,13 @@ public class UpdatePipelineBaseHandlerTest {
 
         String errorMessage = "Failed to parse request body: Invalid region provided in the request body";
         String expectedResponse = String.format("{\"error\": \"%s\"}", errorMessage);
-        
+
         UpdatePipelineHandler updatePipelineHandler = new UpdatePipelineHandler(pipelinesProvider);
         updatePipelineHandler.handle(httpExchange);
 
         verify(outputStream).write(eq(expectedResponse.getBytes(StandardCharsets.UTF_8)));
-        verify(httpExchange).sendResponseHeaders(eq(HttpURLConnection.HTTP_BAD_REQUEST), eq((long)expectedResponse.length()));
+        verify(httpExchange).sendResponseHeaders(eq(HttpURLConnection.HTTP_BAD_REQUEST), eq((long) expectedResponse.length()));
         verify(httpExchange.getResponseHeaders()).add(eq("Content-Type"), eq("application/json; charset=UTF-8"));
         verify(outputStream).close();
     }
-
-
-    /*@Test
-    void testMultipleValidS3Paths() throws IOException {
-        // Setup mock responses for S3 client
-
-        String testRegion = "us-east-1";
-
-        // Setup HTTP exchange
-        when(httpExchange.getRequestMethod()).thenReturn(HttpMethod.PUT);
-        when(httpExchange.getRequestURI()).thenReturn(URI.create("/pipeline123"));
-        String payload = "{\"s3paths\": [\"s3://bucket1/path1\", \"s3://bucket2/path2\"], \"s3region\": \"" + testRegion + "\"}";
-        when(httpExchange.getRequestBody()).thenReturn(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
-
-        // Execute request
-        UpdatePipelineHandler updatePipelineHandler = new UpdatePipelineHandler(pipelinesProvider);
-        updatePipelineHandler.handle(httpExchange);
-
-        // Verify response
-        String expectedResponse = "{\"message\": \"Pipeline configuration updated successfully\", \"pipeline\": \"pipeline123\"}";
-        verify(outputStream).write(expectedResponse.getBytes(StandardCharsets.UTF_8));
-        verify(httpExchange).sendResponseHeaders(eq(HttpURLConnection.HTTP_OK), eq(Long.valueOf(expectedResponse.getBytes(StandardCharsets.UTF_8).length)));
-        verify(httpExchange.getResponseHeaders()).add(eq("Content-Type"), eq("application/json; charset=UTF-8"));
-        verify(outputStream).close();
-    }*/
 }
