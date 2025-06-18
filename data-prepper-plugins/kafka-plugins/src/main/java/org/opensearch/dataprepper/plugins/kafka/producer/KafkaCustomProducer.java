@@ -95,7 +95,7 @@ public class KafkaCustomProducer<T> {
         this.schemaService = schemaService;
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(this.producer);
-        this.compressionEnabled = true;
+        this.compressionEnabled = false;
     }
 
     public KafkaCustomProducer(final KafkaProducer producer,

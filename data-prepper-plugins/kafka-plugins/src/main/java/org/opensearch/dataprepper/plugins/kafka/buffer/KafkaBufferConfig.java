@@ -28,6 +28,7 @@ import java.util.Optional;
 
 class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     private static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(30);
+    private static final Boolean DEFAULT_COMPRESSION_ENABLED = true;
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
@@ -56,6 +57,10 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
+
+
+    @JsonProperty("compression")
+    private boolean compressionEnabled = DEFAULT_COMPRESSION_ENABLED;
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
@@ -148,8 +153,7 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
         return Optional.ofNullable(customMetricPrefix);
     }
 
-    @JsonIgnore
     public Boolean getCompressionEnabled() {
-        return true;
+        return compressionEnabled;
     }
 }
