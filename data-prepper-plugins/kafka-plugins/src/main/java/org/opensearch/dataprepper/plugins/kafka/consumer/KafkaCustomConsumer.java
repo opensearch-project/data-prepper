@@ -33,7 +33,11 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.*;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -99,7 +103,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
-    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);;
+    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,

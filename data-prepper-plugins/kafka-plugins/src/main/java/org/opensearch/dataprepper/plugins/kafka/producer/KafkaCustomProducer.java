@@ -76,7 +76,7 @@ public class KafkaCustomProducer<T> {
 
     private final KafkaTopicProducerMetrics topicMetrics;
 
-    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);;
+    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);
 
     public KafkaCustomProducer(final KafkaProducer producer,
                                final KafkaProducerConfig kafkaProducerConfig,
