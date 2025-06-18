@@ -78,12 +78,12 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final EncryptionSupplier encryptionSupplier) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory(), encryptionSupplier);
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory(), kafkaBufferConfig.getCompressionEnabled());
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
         producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false);
-        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
+        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier, kafkaBufferConfig.getCompressionEnabled());
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
@@ -92,7 +92,6 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size(), KafkaPluginThreadFactory.defaultExecutorThreadFactory(MDC_KAFKA_PLUGIN_VALUE));
         consumers.forEach(this.executorService::submit);
-
         this.drainTimeout = kafkaBufferConfig.getDrainTimeout();
     }
 

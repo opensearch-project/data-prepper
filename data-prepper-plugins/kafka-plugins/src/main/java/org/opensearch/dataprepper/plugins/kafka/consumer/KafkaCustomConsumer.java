@@ -9,6 +9,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdBufferDecompressingStream;
 import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.generic.GenericRecord;
@@ -59,6 +61,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
@@ -101,6 +105,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
+    private boolean compressionEnabled;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -139,6 +144,21 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+    }
+
+    public KafkaCustomConsumer(final KafkaConsumer consumer,
+                               final AtomicBoolean shutdownInProgress,
+                               final Buffer<Record<Event>> buffer,
+                               final KafkaConsumerConfig consumerConfig,
+                               final TopicConsumerConfig topicConfig,
+                               final String schemaType,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final ByteDecoder byteDecoder,
+                               final KafkaTopicConsumerMetrics topicMetrics,
+                               final PauseConsumePredicate pauseConsumePredicate,
+                               final boolean compressionEnabled) {
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate);
+        this.compressionEnabled = compressionEnabled;
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -541,17 +561,20 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 if (schema == MessageFormat.BYTES) {
                     InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-
-                    InputStream decompressedInputStream = new ZstdInputStream(byteInputStream);
-
+                    InputStream inputStream;
+                    if (compressionEnabled) {
+                        inputStream = new ZstdInputStream(byteInputStream);
+                    } else {
+                        inputStream = byteInputStream;
+                    }
                     if(byteDecoder != null) {
                         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
+                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {
-                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
+                        JsonNode jsonNode = objectMapper.readValue(inputStream, JsonNode.class);
 
                         Event event = JacksonLog.builder().withData(jsonNode).build();
                         Record<Event> record = new Record<>(event);

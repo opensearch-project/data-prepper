@@ -64,12 +64,20 @@ public class KafkaCustomConsumerFactory {
     private final StringDeserializer stringDeserializer = new StringDeserializer();
     private final SerializationFactory serializationFactory;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
+    private boolean isCompressionEnabled = false;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
 
     public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier) {
         this.serializationFactory = serializationFactory;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
+
+    public KafkaCustomConsumerFactory(SerializationFactory serializationFactory, AwsCredentialsSupplier awsCredentialsSupplier, boolean isCompressionEnabled) {
+        this.serializationFactory = serializationFactory;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.isCompressionEnabled = isCompressionEnabled;
+    }
+
 
     public List<KafkaCustomConsumer> createConsumersForTopic(final KafkaConsumerConfig kafkaConsumerConfig, final TopicConsumerConfig topic,
                                                              final Buffer<Record<Event>> buffer, final PluginMetrics pluginMetrics,
@@ -106,7 +114,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, isCompressionEnabled));
 
             });
         } catch (Exception e) {

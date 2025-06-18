@@ -57,7 +57,6 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
 
-
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
             return bootstrapServers;
@@ -147,5 +146,10 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     @JsonIgnore
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
+    }
+
+    @JsonIgnore
+    public Boolean getCompressionEnabled() {
+        return true;
     }
 }
