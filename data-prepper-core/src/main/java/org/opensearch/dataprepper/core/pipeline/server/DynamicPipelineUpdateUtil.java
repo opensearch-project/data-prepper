@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import org.reflections.Reflections;
 import org.reflections.scanners.TypeAnnotationsScanner;
 
@@ -79,6 +80,12 @@ public class DynamicPipelineUpdateUtil {
         return true;
     }
 
+    public static void executeDynamicUpdateOfPipelineConfig(final PipelinesDataFlowModel currentPipelineDataFlowMode,
+                                                            final PipelinesDataFlowModel targetDataPipelineDataFlowMode) {
+
+
+    }
+
     public static void checkIfSamePipelineExists(final PipelinesDataFlowModel currentPipelineDataFlowMode,
                                                  final PipelinesDataFlowModel targetDataPipelineDataFlowMode) {
 
@@ -111,7 +118,7 @@ public class DynamicPipelineUpdateUtil {
         Set<String> singleThreadedProcessorNames = new HashSet<>();
 
         for (Class<?> clazz : dataPrepperPlugins) {
-            if (clazz.isAnnotationPresent(SingleThread.class)) {
+            if (clazz.isAnnotationPresent(SingleThread.class) || RequiresPeerForwarding.class.isAssignableFrom(clazz)) {
                 DataPrepperPlugin pluginAnnotation = clazz.getAnnotation(DataPrepperPlugin.class);
                 String name = pluginAnnotation.name();
                 singleThreadedProcessorNames.add(name);

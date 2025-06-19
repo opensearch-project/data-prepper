@@ -80,17 +80,28 @@ public abstract class UpdatePipelineBaseHandler {
                 return;
             }
 
-            // TODO: Validate and update pipeline configuration
-            // For now, we'll just log the contents and return success
-            LOG.debug("Number of pipelines found : {}", targetPipelinesDataFlowModel.getPipelines().size());
+            if (!executeUpdate) {
+                exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
+                final String successMessage = "{\"dynamicUpdateFeasible\": true," +
+                        " \"message\": \"Dynamic update feasible for pipeline configuration\", \"pipeline\": \"" + pipelineName + "\"}";
+                final byte[] response = successMessage.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+            } else {
 
-            // Send success response
-            final String successMessage = "{\"message\": \"Pipeline configuration updated successfully\", \"pipeline\": \"" + pipelineName + "\"}";
-            final byte[] response = successMessage.getBytes(StandardCharsets.UTF_8);
+                DynamicPipelineUpdateUtil.executeDynamicUpdateOfPipelineConfig(
+                        currentPipelinesDataFlowModel, targetPipelinesDataFlowModel);
+                // For now, we'll just log the contents and return success
+                LOG.debug("Number of pipelines found : {}", targetPipelinesDataFlowModel.getPipelines().size());
 
-            exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
-            exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
-            exchange.getResponseBody().write(response);
+                // Send success response
+                final String successMessage = "{\"message\": \"Pipeline configuration updated successfully\", \"pipeline\": \"" + pipelineName + "\"}";
+                final byte[] response = successMessage.getBytes(StandardCharsets.UTF_8);
+
+                exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+            }
 
         } catch (final IllegalArgumentException e) {
             LOG.warn("Invalid request parameters: {}", e.getMessage());
