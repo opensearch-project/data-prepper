@@ -103,7 +103,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
-    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);
+    private final CompressionConfig compressionConfig;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -114,7 +114,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
-                               final PauseConsumePredicate pauseConsumePredicate) {
+                               final PauseConsumePredicate pauseConsumePredicate,
+                               final CompressionConfig compressionConfig) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -142,6 +143,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
+        this.compressionConfig = (compressionConfig == null) ? CompressionConfig.getCompressionConfig(CompressionType.NONE) : compressionConfig;
     }
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
@@ -153,10 +155,8 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final AcknowledgementSetManager acknowledgementSetManager,
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
-                               final PauseConsumePredicate pauseConsumePredicate,
-                               final CompressionConfig compressionConfig) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate);
-        this.compressionConfig = compressionConfig;
+                               final PauseConsumePredicate pauseConsumePredicate) {
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionConfig.getCompressionConfig(CompressionType.NONE));
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {

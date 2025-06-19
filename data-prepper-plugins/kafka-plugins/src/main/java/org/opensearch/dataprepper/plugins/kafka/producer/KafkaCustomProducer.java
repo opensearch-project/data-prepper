@@ -76,7 +76,7 @@ public class KafkaCustomProducer<T> {
 
     private final KafkaTopicProducerMetrics topicMetrics;
 
-    private CompressionConfig compressionConfig = CompressionConfig.getCompressionConfig(CompressionType.NONE);
+    private final CompressionConfig compressionConfig;
 
     public KafkaCustomProducer(final KafkaProducer producer,
                                final KafkaProducerConfig kafkaProducerConfig,
@@ -84,7 +84,8 @@ public class KafkaCustomProducer<T> {
                                final ExpressionEvaluator expressionEvaluator,
                                final String tagTargetKey,
                                final KafkaTopicProducerMetrics topicMetrics,
-                               final SchemaService schemaService
+                               final SchemaService schemaService,
+                               final CompressionConfig compressionConfig
     ) {
         this.producer = producer;
         this.kafkaProducerConfig = kafkaProducerConfig;
@@ -97,6 +98,7 @@ public class KafkaCustomProducer<T> {
         this.schemaService = schemaService;
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(this.producer);
+        this.compressionConfig = (compressionConfig == null) ? CompressionConfig.getCompressionConfig(CompressionType.NONE) : compressionConfig;
     }
 
     public KafkaCustomProducer(final KafkaProducer producer,
@@ -105,11 +107,9 @@ public class KafkaCustomProducer<T> {
                                final ExpressionEvaluator expressionEvaluator,
                                final String tagTargetKey,
                                final KafkaTopicProducerMetrics topicMetrics,
-                               final SchemaService schemaService,
-                               final CompressionConfig compressionConfig
+                               final SchemaService schemaService
     ) {
-        this(producer, kafkaProducerConfig, dlqSink, expressionEvaluator, tagTargetKey, topicMetrics, schemaService);
-        this.compressionConfig = compressionConfig;
+        this(producer, kafkaProducerConfig, dlqSink, expressionEvaluator, tagTargetKey, topicMetrics, schemaService, null);
     }
 
     KafkaTopicProducerMetrics getTopicMetrics() {

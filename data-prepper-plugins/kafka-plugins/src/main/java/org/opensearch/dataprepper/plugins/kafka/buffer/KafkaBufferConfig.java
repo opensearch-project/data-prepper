@@ -154,9 +154,6 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     }
 
     public CompressionConfig getCompressionConfig() {
-        if (Objects.isNull(compressionConfig)) {
-            return new CompressionConfig();
-        }
         return compressionConfig;
     }
 
