@@ -16,7 +16,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
     testImplementation libs.commons.io
 }

@@ -18,7 +18,7 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
     implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
 

@@ -37,7 +37,7 @@ dependencies {
     implementation libs.armeria.core
     implementation 'org.projectlombok:lombok:1.18.26'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 }
 

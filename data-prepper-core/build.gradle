@@ -61,8 +61,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.lang3
-    testImplementation project(':data-prepper-test-event')
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-event')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 
