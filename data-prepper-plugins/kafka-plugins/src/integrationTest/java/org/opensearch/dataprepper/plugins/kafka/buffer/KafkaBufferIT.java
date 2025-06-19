@@ -119,7 +119,8 @@ public class KafkaBufferIT {
         final Map<String, Object> bufferConfigMap = Map.of(
                 "topics", List.of(topicConfigMap),
                 "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
-                "encryption", Map.of("type", "none")
+                "encryption", Map.of("type", "none"),
+                "compression", Map.of("type", "zstd")
         );
         kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
 
