@@ -6,6 +6,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.processor.Processor;
+
+import java.time.Duration;
+import java.util.List;
 
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
@@ -13,12 +18,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.processor.Processor;
-
-import java.time.Duration;
-import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 public class ProcessWorkerTest {
@@ -43,10 +42,10 @@ public class ProcessWorkerTest {
     }
 
     private ProcessWorker createObjectUnderTest() {
-        try(final MockedConstruction<PipelineRunnerImpl> ignored = mockConstruction(PipelineRunnerImpl.class, (mock, context) -> {
+        try (final MockedConstruction<PipelineRunnerImpl> ignored = mockConstruction(PipelineRunnerImpl.class, (mock, context) -> {
             pipelineRunner = mock;
         })) {
-            return new ProcessWorker(buffer, processors, pipeline);
+            return new ProcessWorker(buffer, pipeline);
         }
     }
 
