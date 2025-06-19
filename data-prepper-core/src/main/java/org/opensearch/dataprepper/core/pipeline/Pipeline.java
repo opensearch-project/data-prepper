@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
@@ -141,10 +140,6 @@ public class Pipeline {
         this.processorRegistry = new ProcessorRegistry(List.of());
     }
 
-    AcknowledgementSetManager getAcknowledgementSetManager() {
-        return acknowledgementSetManager;
-    }
-
     /**
      * @return Unique name of this pipeline.
      */
@@ -195,15 +190,8 @@ public class Pipeline {
         return processorSets;
     }
 
-    /**
-     * @return a flat list of {@link Processor} of this pipeline or an empty list.
-     */
-    @VisibleForTesting
-    public List<Processor> getProcessors() {
-        return getProcessorSets().stream().flatMap(Collection::stream).collect(Collectors.toList());
-    }
 
-    public ProcessorRegistry getProcessorRegistry() {
+    public ProcessorProvider getProcessorProvider() {
         return processorRegistry;
     }
 

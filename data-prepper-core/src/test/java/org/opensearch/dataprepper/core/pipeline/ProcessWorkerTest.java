@@ -25,6 +25,9 @@ public class ProcessWorkerTest {
     private Pipeline pipeline;
 
     @Mock
+    private ProcessorProvider processorProvider;
+
+    @Mock
     private Processor processor;
 
     @Mock
@@ -39,6 +42,7 @@ public class ProcessWorkerTest {
         when(pipeline.isStopRequested()).thenReturn(false).thenReturn(true);
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(100));
         when(buffer.isEmpty()).thenReturn(true);
+        when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
     }
 
     private ProcessWorker createObjectUnderTest() {
@@ -51,25 +55,16 @@ public class ProcessWorkerTest {
 
     @Test
     void testProcessWorkerHappyPath() {
-        when(processor.isReadyForShutdown()).thenReturn(true);
-        processors = List.of(processor);
-
         final ProcessWorker processWorker = createObjectUnderTest();
         doNothing().when(pipelineRunner).runAllProcessorsAndPublishToSinks();
-
         processWorker.run();
-
         verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();
     }
 
     @Test
     void testProcessWorkerInitializesPipelineRunnerCorrectly() {
-        when(processor.isReadyForShutdown()).thenReturn(true);
-        processors = List.of(processor);
-
         final ProcessWorker processWorker = createObjectUnderTest();
         processWorker.run();
-
         verify(pipelineRunner, atLeastOnce()).runAllProcessorsAndPublishToSinks();
     }
 
@@ -80,6 +75,7 @@ public class ProcessWorkerTest {
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(1));
         when(buffer.isEmpty()).thenReturn(true);
         when(processor.isReadyForShutdown()).thenReturn(true);
+        when(processorProvider.getProcessors()).thenReturn(processors);
 
         final ProcessWorker processWorker = createObjectUnderTest();
 
@@ -98,6 +94,7 @@ public class ProcessWorkerTest {
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(1));
         when(buffer.isEmpty()).thenReturn(false, true);
         when(processor.isReadyForShutdown()).thenReturn(true);
+        when(processorProvider.getProcessors()).thenReturn(processors);
 
         final ProcessWorker processWorker = createObjectUnderTest();
 
@@ -116,6 +113,7 @@ public class ProcessWorkerTest {
         when(buffer.isEmpty()).thenReturn(false);
         when(pipeline.isForceStopReadingBuffers()).thenReturn(true);
         when(processor.isReadyForShutdown()).thenReturn(true);
+        when(processorProvider.getProcessors()).thenReturn(processors);
 
         final ProcessWorker processWorker = createObjectUnderTest();
 

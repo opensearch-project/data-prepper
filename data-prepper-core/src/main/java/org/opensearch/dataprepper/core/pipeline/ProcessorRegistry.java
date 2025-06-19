@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 
 @SuppressWarnings({"rawtypes"})
-public class ProcessorRegistry {
+public class ProcessorRegistry implements ProcessorProvider {
     private volatile List<Processor> processors;
 
     public ProcessorRegistry(List<Processor> initialProcessors) {
@@ -21,6 +21,7 @@ public class ProcessorRegistry {
     }
 
     // Get current processors for execution
+    @Override
     public List<Processor> getProcessors() {
         return processors;
     }

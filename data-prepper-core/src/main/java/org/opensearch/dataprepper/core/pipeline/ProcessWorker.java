@@ -26,7 +26,7 @@ public class ProcessWorker implements Runnable {
             final Buffer readBuffer,
             final Pipeline pipeline) {
         this.readBuffer = readBuffer;
-        this.processors = pipeline.getProcessorRegistry().getProcessors();
+        this.processors = pipeline.getProcessorProvider().getProcessors();
         this.pipeline = pipeline;
         this.pipelineRunner = new PipelineRunnerImpl(pipeline);
     }

@@ -49,7 +49,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         final Map.Entry<Collection, CheckpointState> recordsReadFromBuffer = readFromBuffer(getBuffer(), getPipeline());
         Collection records = recordsReadFromBuffer.getKey();
         final CheckpointState checkpointState = recordsReadFromBuffer.getValue();
-        List<Processor> currentProcessors = pipeline.getProcessorRegistry().getProcessors();
+        List<Processor> currentProcessors = pipeline.getProcessorProvider().getProcessors();
         records = runProcessorsAndProcessAcknowledgements(currentProcessors, records);
         postToSink(getPipeline(), records);
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.

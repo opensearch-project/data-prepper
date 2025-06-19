@@ -65,6 +65,8 @@ class PipelineRunnerTest {
     @Mock
     Pipeline pipeline;
     @Mock
+    ProcessorProvider processorProvider;
+    @Mock
     Buffer buffer;
     @Mock
     Source source;
@@ -377,6 +379,8 @@ class PipelineRunnerTest {
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
+            when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
+            when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =
                     new AbstractMap.SimpleEntry<>(recordsList, checkpointState);
@@ -401,6 +405,8 @@ class PipelineRunnerTest {
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
+            when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
+            when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =
                     new AbstractMap.SimpleEntry<>(recordsList, checkpointState);
