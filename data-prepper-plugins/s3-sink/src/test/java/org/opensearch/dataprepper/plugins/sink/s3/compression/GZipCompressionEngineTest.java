@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.compression;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.codec.GZipCompressionEngine;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

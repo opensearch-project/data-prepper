@@ -53,6 +53,7 @@ dependencies {
     implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
+    implementation 'com.github.luben:zstd-jni:1.5.7-3'
 
     testImplementation 'org.yaml:snakeyaml:2.2'
     testImplementation testLibs.spring.test
