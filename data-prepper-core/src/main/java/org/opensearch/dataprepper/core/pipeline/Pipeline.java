@@ -195,6 +195,10 @@ public class Pipeline {
         return processorRegistry;
     }
 
+    public ProcessorRegistry getProcessorRegistry() {
+        return processorRegistry;
+    }
+
     public int getReadBatchTimeoutInMillis() {
         return readBatchTimeoutInMillis;
     }

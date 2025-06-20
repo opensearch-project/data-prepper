@@ -102,6 +102,10 @@ public class DataPrepper implements PipelinesProvider {
         shutdownServers();
     }
 
+    public Pipeline getPipeline(String pipelineName) {
+        return transformationPipelines.get(pipelineName);
+    }
+
     private void shutdownPipelines() {
         shutdownPipelines(DataPrepperShutdownOptions.defaultOptions());
     }

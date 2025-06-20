@@ -27,6 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @FixMethodOrder()
@@ -52,7 +53,7 @@ class PipelinesWithAcksIT {
                 .withPipelinesDirectoryOrFile(configFile)
                 .build();
 
-	LOG.info("PipelinesWithAcksIT with config file {} started at {}", configFile, Instant.now());
+        LOG.info("PipelinesWithAcksIT with config file {} started at {}", configFile, Instant.now());
         dataPrepperTestRunner.start();
         inMemorySourceAccessor = dataPrepperTestRunner.getInMemorySourceAccessor();
         inMemorySinkAccessor = dataPrepperTestRunner.getInMemorySinkAccessor();
@@ -60,7 +61,7 @@ class PipelinesWithAcksIT {
 
     @AfterEach
     void tearDown() {
-	LOG.info("PipelinesWithAcksIT with stopped at {}", Instant.now());
+        LOG.info("PipelinesWithAcksIT with stopped at {}", Instant.now());
         dataPrepperTestRunner.stop();
     }
 
@@ -133,8 +134,8 @@ class PipelinesWithAcksIT {
 
         await().atMost(40000, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
-            assertTrue(inMemorySourceAccessor != null);
-            assertTrue(inMemorySourceAccessor.getAckReceived() != null);
+                    assertNotNull(inMemorySourceAccessor);
+                    assertNotNull(inMemorySourceAccessor.getAckReceived());
         });
         List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
         assertThat(outputRecords.size(), equalTo(0));
