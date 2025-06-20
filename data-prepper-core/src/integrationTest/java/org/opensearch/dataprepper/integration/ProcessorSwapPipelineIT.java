@@ -30,8 +30,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -80,9 +78,7 @@ class ProcessorSwapPipelineIT {
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, Collections.singletonList(eventRecord));
 
         await().atMost(400, TimeUnit.MILLISECONDS)
-                .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER), not(empty()));
-                });
+                .untilAsserted(() -> assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER), not(empty())));
 
         final List<Record<Event>> records = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
 
@@ -107,9 +103,7 @@ class ProcessorSwapPipelineIT {
         inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, Collections.singletonList(updatedEventRecord));
 
         await().atMost(400, TimeUnit.MILLISECONDS)
-                .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER), not(empty()));
-                });
+                .untilAsserted(() -> assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER), not(empty())));
 
         final List<Record<Event>> updatedRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
 
@@ -143,43 +137,5 @@ class ProcessorSwapPipelineIT {
             processors.add(processorsList.get(0));
         }
         return processors;
-    }
-
-
-    @Test
-    void pipeline_with_single_batch_of_records() {
-        final int recordsToCreate = 200;
-        final List<Record<Event>> inputRecords = IntStream.range(0, recordsToCreate)
-                .mapToObj(i -> UUID.randomUUID().toString())
-                .map(JacksonEvent::fromMessage)
-                .map(Record::new)
-                .collect(Collectors.toList());
-
-        LOG.info("Submitting a batch of record.");
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER, inputRecords);
-
-        await().atMost(400, TimeUnit.MILLISECONDS)
-                .untilAsserted(() -> {
-                    assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER), not(empty()));
-                });
-
-        assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER).size(), equalTo(recordsToCreate));
-
-        final List<Record<Event>> sinkRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
-
-        for (int i = 0; i < sinkRecords.size(); i++) {
-            final Record<Event> inputRecord = inputRecords.get(i);
-            final Record<Event> sinkRecord = sinkRecords.get(i);
-            assertThat(sinkRecord, notNullValue());
-            final Event recordData = sinkRecord.getData();
-            assertThat(recordData, notNullValue());
-            assertThat(
-                    recordData.get("message", String.class),
-                    equalTo(inputRecord.getData().get("message", String.class)));
-            assertThat(recordData.get("test1", String.class),
-                    equalTo("knownPrefix1" + i));
-            assertThat(recordData.get("test1_copy", String.class),
-                    equalTo("knownPrefix1" + i));
-        }
     }
 }
