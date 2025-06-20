@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.opensearch.dataprepper.model.codec.OutputCodec;
-import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import org.opensearch.dataprepper.plugins.sink.s3.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 

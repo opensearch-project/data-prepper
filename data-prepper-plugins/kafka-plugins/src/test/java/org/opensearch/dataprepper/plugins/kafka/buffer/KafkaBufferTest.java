@@ -151,7 +151,7 @@ class KafkaBufferTest {
             final MockedConstruction<KafkaCustomConsumerFactory> consumerFactoryMock =
                 mockConstruction(KafkaCustomConsumerFactory.class, (mock, context) -> {
                 consumerFactory = mock;
-                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any())).thenReturn(consumers);
+                when(consumerFactory.createConsumersForTopic(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(consumers);
             });
             final MockedConstruction<KafkaAdminAccessor> adminAccessorMock =
                 mockConstruction(KafkaAdminAccessor.class, (mock, context) -> kafkaAdminAccessor = mock);

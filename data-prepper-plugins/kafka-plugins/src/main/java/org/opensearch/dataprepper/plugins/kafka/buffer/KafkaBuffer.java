@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.apache.kafka.common.errors.RecordBatchTooLargeException;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.buffer.serialization.BufferSerializationFactory;
@@ -29,6 +30,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
@@ -40,10 +42,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -77,18 +76,26 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final CircuitBreaker circuitBreaker,
                        final EncryptionSupplier encryptionSupplier) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
+
+        CompressionOption manualCompressionConfig = CompressionOption.NONE;
+        if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
+            // If encryption is enabled, disable Kafka built-in compression and do it manually.
+            manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
+            kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
+        }
+
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory(), encryptionSupplier);
-        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory(), kafkaBufferConfig.getCompressionConfig());
+        final KafkaCustomProducerFactory kafkaCustomProducerFactory = new KafkaCustomProducerFactory(serializationFactory, awsCredentialsSupplier, new TopicServiceFactory());
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false);
-        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier, kafkaBufferConfig.getCompressionConfig());
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false, manualCompressionConfig);
+        final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         this.consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-            innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker);
+            innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker, manualCompressionConfig);
         this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size(), KafkaPluginThreadFactory.defaultExecutorThreadFactory(MDC_KAFKA_PLUGIN_VALUE));
         consumers.forEach(this.executorService::submit);

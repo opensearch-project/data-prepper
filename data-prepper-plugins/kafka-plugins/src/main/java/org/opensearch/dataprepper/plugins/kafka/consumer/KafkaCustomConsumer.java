@@ -9,7 +9,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.Range;
@@ -33,11 +32,10 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
 import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -103,7 +101,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
-    private final CompressionConfig compressionConfig;
+    private final CompressionOption compressionConfig;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
                                final AtomicBoolean shutdownInProgress,
@@ -115,7 +113,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate,
-                               final CompressionConfig compressionConfig) {
+                               final CompressionOption compressionConfig) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
@@ -143,7 +141,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
-        this.compressionConfig = (compressionConfig == null) ? CompressionConfig.getCompressionConfig(CompressionType.NONE) : compressionConfig;
+        this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
     }
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
@@ -156,7 +154,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionConfig.getCompressionConfig(CompressionType.NONE));
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE);
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -559,20 +557,16 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 if (schema == MessageFormat.BYTES) {
                     InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
-                    InputStream inputStream;
-                    if (Objects.equals(compressionConfig.getType(), CompressionType.ZSTD)) {
-                        inputStream = new ZstdInputStream(byteInputStream);
-                    } else {
-                        inputStream = byteInputStream;
-                    }
+                    InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
+
                     if(byteDecoder != null) {
                         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
+                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {
-                        JsonNode jsonNode = objectMapper.readValue(inputStream, JsonNode.class);
+                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
 
                         Event event = JacksonLog.builder().withData(jsonNode).build();
                         Record<Event> record = new Record<>(event);

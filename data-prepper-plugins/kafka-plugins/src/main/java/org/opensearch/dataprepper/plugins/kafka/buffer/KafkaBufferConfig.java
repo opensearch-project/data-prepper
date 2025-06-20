@@ -20,7 +20,6 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.CompressionConfig;
 
 
 import java.time.Duration;
@@ -58,9 +57,6 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
-
-    @JsonProperty("compression")
-    private CompressionConfig compressionConfig;
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
@@ -151,10 +147,6 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     @JsonIgnore
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
-    }
-
-    public CompressionConfig getCompressionConfig() {
-        return compressionConfig;
     }
 
 }
