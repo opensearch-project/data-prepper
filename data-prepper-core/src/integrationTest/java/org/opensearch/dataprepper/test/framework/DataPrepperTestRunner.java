@@ -74,7 +74,6 @@ public class DataPrepperTestRunner {
     public void swapProcessors(String pipelineName, List<Processor> newProcessors) {
         contextManager.getDataPrepperBean()
                 .getPipeline(pipelineName)
-                .getProcessorRegistry()
                 .swapProcessors(newProcessors);
     }
 

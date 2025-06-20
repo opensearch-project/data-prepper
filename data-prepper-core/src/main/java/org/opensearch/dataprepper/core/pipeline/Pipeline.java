@@ -195,8 +195,8 @@ public class Pipeline {
         return processorRegistry;
     }
 
-    public ProcessorRegistry getProcessorRegistry() {
-        return processorRegistry;
+    public void swapProcessors(List<Processor> newProcessors) {
+        processorRegistry.swapProcessors(newProcessors);
     }
 
     public int getReadBatchTimeoutInMillis() {
