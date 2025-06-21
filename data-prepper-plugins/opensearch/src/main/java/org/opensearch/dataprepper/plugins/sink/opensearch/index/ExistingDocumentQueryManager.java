@@ -134,12 +134,15 @@ public class ExistingDocumentQueryManager implements Runnable {
         lockWaitingForQuery.lock();
         final String termValue = bulkOperationWrapper.getTermValue();
         try {
-            bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(),
+            final QueryManagerBulkOperation queryManagerBulkOperation = bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(),
                     k -> new ConcurrentHashMap<>()).put(termValue, new QueryManagerBulkOperation(bulkOperationWrapper, Instant.now(), termValue));
+            // Only increment if this is a new document
+            if (queryManagerBulkOperation == null) {
+                documentsCurrentlyBeingQueriedGauge.incrementAndGet();
+            }
         } finally {
             lockWaitingForQuery.unlock();
         }
-        documentsCurrentlyBeingQueriedGauge.incrementAndGet();
         eventsAddedForQuerying.increment();
     }
 
@@ -168,7 +171,7 @@ public class ExistingDocumentQueryManager implements Runnable {
             for (final Map.Entry<String, Map<String, QueryManagerBulkOperation>> entry : bulkOperationsWaitingForQuery.entrySet()) {
                 final String index = entry.getKey();
                 final List<FieldValue> values = getTermValues(entry.getValue().values());
-
+                LOG.debug("Creating search request for {} query term values", values.size());
                 m.searches(s -> s
                         .header(h -> h.index(index))
                         .body(b -> b
