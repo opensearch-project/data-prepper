@@ -339,6 +339,7 @@ public final class BulkRetryStrategy {
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
             final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response, final Exception previousException) {
         if (shouldSendAllForQuerying(previousException)) {
+                LOG.error("Sending all {} documents to query manager due to exception: ", request.getOperations().size(), previousException);
                 for (final BulkOperationWrapper bulkOperationWrapper : request.getOperations()) {
                     existingDocumentQueryManager.addBulkOperation(bulkOperationWrapper);
                 }
@@ -357,6 +358,7 @@ public final class BulkRetryStrategy {
                     (BulkOperationWrapper)request.getOperationAt(index);
                 if (isItemInError(bulkItemResponse)) {
                     if (existingDocumentQueryManager != null && POTENTIAL_DUPLICATES_ERRORS.contains(bulkItemResponse.status())) {
+                        LOG.error("Received exception on document with query_term value {} with bulk item response {}", bulkOperation.getTermValue(), bulkItemResponse);
                         existingDocumentQueryManager.addBulkOperation(bulkOperation);
                         index++;
                         continue;

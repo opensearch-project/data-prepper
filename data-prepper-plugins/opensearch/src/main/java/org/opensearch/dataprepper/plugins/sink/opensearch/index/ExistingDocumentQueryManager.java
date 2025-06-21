@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class ExistingDocumentQueryManager implements Runnable {
 
@@ -134,13 +135,19 @@ public class ExistingDocumentQueryManager implements Runnable {
         lockWaitingForQuery.lock();
         final String termValue = bulkOperationWrapper.getTermValue();
         try {
-            bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(),
-                    k -> new ConcurrentHashMap<>()).put(termValue, new QueryManagerBulkOperation(bulkOperationWrapper, Instant.now(), termValue));
+            final Map<String, QueryManagerBulkOperation> termMap =
+                    bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(), k -> new ConcurrentHashMap<>());
+
+            final QueryManagerBulkOperation previous = termMap.put(termValue, new QueryManagerBulkOperation(bulkOperationWrapper, Instant.now(), termValue));
+            LOG.debug("Added document with termValue {} for querying", termValue);
+
+            if (previous == null) {
+                documentsCurrentlyBeingQueriedGauge.incrementAndGet();
+            }
+            eventsAddedForQuerying.increment();
         } finally {
             lockWaitingForQuery.unlock();
         }
-        documentsCurrentlyBeingQueriedGauge.incrementAndGet();
-        eventsAddedForQuerying.increment();
     }
 
     public Set<BulkOperationWrapper> getAndClearBulkOperationsReadyToIndex() {
@@ -155,6 +162,7 @@ public class ExistingDocumentQueryManager implements Runnable {
         lockReadyToIngest.lock();
         try {
             final Set<BulkOperationWrapper> copyOfBulkOperations = bulkOperationsReadyToIngest;
+            LOG.debug("Return query term values for indexing: {}", copyOfBulkOperations.stream().map(BulkOperationWrapper::getTermValue).collect(Collectors.toList()));
             bulkOperationsReadyToIngest = ConcurrentHashMap.newKeySet();
             eventsReturnedForIndexing.increment(copyOfBulkOperations.size());
             return copyOfBulkOperations;
