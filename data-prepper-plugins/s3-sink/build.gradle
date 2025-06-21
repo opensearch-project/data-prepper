@@ -12,7 +12,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation libs.commons.compress
     implementation 'joda-time:joda-time:2.13.0'
-    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:9.0.1.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'software.amazon.awssdk:s3'
