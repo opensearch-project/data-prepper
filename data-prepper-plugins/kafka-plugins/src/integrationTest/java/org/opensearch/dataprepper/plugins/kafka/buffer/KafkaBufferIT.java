@@ -59,6 +59,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -74,6 +75,7 @@ public class KafkaBufferIT {
     private PluginSetting pluginSetting;
 
     private KafkaBufferConfig kafkaBufferConfig;
+    private KafkaBufferConfig kafkaBufferCompressionConfig;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
@@ -112,7 +114,15 @@ public class KafkaBufferIT {
 
         topicConfig = objectMapper.convertValue(topicConfigMap, BufferTopicConfig.class);
 
+        final Map<String, Object> topicConfigMapCompression = Map.of(
+                "name", topicName,
+                "group_id", "buffergroup-" + RandomStringUtils.randomAlphabetic(6),
+                "create_topic", true,
+                "encryption_key", "6fib8P/ML7Lh7lUEHCFYCt+bschigjNwmEZUctkP5dw=" // sample key
+        );
+
         bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
+        bootstrapServersCommaDelimited = "localhost:9092";
 
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
 
@@ -123,6 +133,15 @@ public class KafkaBufferIT {
                 "compression", Map.of("type", "zstd")
         );
         kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
+
+        final Map<String, Object> bufferCompressionConfigMap = Map.of(
+                "topics", List.of(topicConfigMapCompression),
+                "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
+                "encryption", Map.of("type", "none"),
+                "producer_properties", Map.of("compression_type", "zstd")
+        );
+
+        kafkaBufferCompressionConfig = objectMapper.convertValue(bufferCompressionConfigMap, KafkaBufferConfig.class);
 
         byteDecoder = null;
     }
@@ -135,9 +154,40 @@ public class KafkaBufferIT {
         return new KafkaBuffer(pluginSetting, kafkaBufferConfig, acknowledgementSetManager, null, null, null, encryptionSupplier);
     }
 
+    private KafkaBuffer createObjectUnderTestWithCompression() {
+        return new KafkaBuffer(pluginSetting, kafkaBufferCompressionConfig, acknowledgementSetManager, null, null, null, encryptionSupplier);
+    }
+
     @Test
     void write_and_read() throws TimeoutException {
         KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        Record<Event> record = createRecord();
+        objectUnderTest.write(record, 1_000);
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(record.getData().toMap()));
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(1));
+        objectUnderTest.checkpoint(readResult.getValue());
+        assertThat(objectUnderTest.getRecordsInFlight(), equalTo(0));
+        assertThat(objectUnderTest.getInnerBufferRecordsInFlight(), equalTo(0));
+    }
+
+    @Test
+    void write_and_read_compression() throws TimeoutException {
+        KafkaBuffer objectUnderTest = createObjectUnderTestWithCompression();
 
         Record<Event> record = createRecord();
         objectUnderTest.write(record, 1_000);
@@ -267,6 +317,32 @@ public class KafkaBufferIT {
         byteDecoder = new JsonDecoder();
 
         final KafkaBuffer objectUnderTest = createObjectUnderTest();
+
+        final Map<String, String> inputDataMap = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final byte[] bytes = objectMapper.writeValueAsBytes(inputDataMap);
+        final String key = UUID.randomUUID().toString();
+        objectUnderTest.writeBytes(bytes, key, 1_000);
+
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = awaitRead(objectUnderTest);
+
+        assertThat(readResult, notNullValue());
+        assertThat(readResult.getKey(), notNullValue());
+        assertThat(readResult.getKey().size(), equalTo(1));
+
+        Record<Event> onlyResult = readResult.getKey().stream().iterator().next();
+
+        assertThat(onlyResult, notNullValue());
+        assertThat(onlyResult.getData(), notNullValue());
+        // TODO: The metadata is not included. It needs to be included in the Buffer, though not in the Sink. This may be something we make configurable in the consumer/producer - whether to serialize the metadata or not.
+        //assertThat(onlyResult.getData().getMetadata(), equalTo(record.getData().getMetadata()));
+        assertThat(onlyResult.getData().toMap(), equalTo(inputDataMap));
+    }
+
+    @Test
+    void writeBytes_and_read_with_compression() throws Exception {
+        byteDecoder = new JsonDecoder();
+
+        final KafkaBuffer objectUnderTest = createObjectUnderTestWithCompression();
 
         final Map<String, String> inputDataMap = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final byte[] bytes = objectMapper.writeValueAsBytes(inputDataMap);
