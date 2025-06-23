@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.keyvalue;
+package org.opensearch.dataprepper.common;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -39,7 +39,7 @@ public enum TransformOption {
         return transformName;
     }
 
-    Function<String, String> getTransformFunction() {
+    public Function<String, String> getTransformFunction() {
         return transformFunction;
     }
 

@@ -11,6 +11,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -32,13 +33,23 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
     private final List<RenameKeyProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
+    private final TransformOption transformOption;
 
     @DataPrepperPluginConstructor
     public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
+        this.transformOption = config.getTransformOption();
 
+        boolean entriesProvided = config.getEntries() != null;
+        boolean transformOptionProvided = (transformOption != null && transformOption != TransformOption.NONE);
+        if ((!entriesProvided ^ transformOptionProvided)) {
+            throw new InvalidPluginConfigurationException("Only one of 'entries' or 'transform_key' should be specified.");
+        }
+        if (config.getEntries() == null || config.getEntries().size() == 0) {
+            return;
+        }
         config.getEntries().forEach(entry -> {
             if (entry.getRenameWhen() != null
                     && !expressionEvaluator.isValidExpressionStatement(entry.getRenameWhen())) {
@@ -55,12 +66,31 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
         });
     }
 
+    private void transformEvent(final Event event, Map<String, Object> map, final String keyPrefix) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            Object result = null;
+            try {
+                if (entry.getValue() instanceof Map) {
+                    transformEvent(event, (Map<String, Object>)entry.getValue(), keyPrefix+entry.getKey()+"/");
+                }
+                Object value = event.get(keyPrefix+entry.getKey(), Object.class);
+                event.delete(keyPrefix+entry.getKey());
+                event.put(keyPrefix+transformOption.getTransformFunction().apply(entry.getKey()), value);
+            } catch (Exception ignored) {}
+        }
+    }
+
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
             try {
+
+                if (transformOption != null && transformOption != TransformOption.NONE) {
+                    transformEvent(recordEvent, recordEvent.toMap(), "");
+                    continue;
+                }
 
                 for (RenameKeyProcessorConfig.Entry entry : entries) {
                     if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluateConditional(entry.getRenameWhen(), recordEvent)) {

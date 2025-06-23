@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
@@ -224,7 +225,53 @@ public class RenameKeyProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
+    @Test
+    public void test_transformKey_converting_allkeys_lowercase() {
+        Map<String, Object> data = Map.of("KeY1", 1, "kEy2", Map.of("keY3", Map.of("key4", "value4", "KEY5", 5.555)));
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.LOWERCASE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey("key1"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("key2/key3"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("key2/key3/key4"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("key2/key3/key5"), is(true));
+    }
 
+    @Test
+    public void test_transformKey_converting_allkeys_uppercase() {
+        Map<String, Object> data = Map.of("KeY1", 1, "kEy2", Map.of("keY3", Map.of("key4", "value4", "KEY5", 5.555)));
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.UPPERCASE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey("KEY1"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("KEY2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("KEY2/KEY3"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("KEY2/KEY3/KEY4"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("KEY2/KEY3/KEY5"), is(true));
+    }
+
+    @Test
+    public void test_transformKey_converting_allkeys_capitalize() {
+        Map<String, Object> data = Map.of("key1", 1, "key2", Map.of("key3", Map.of("key4", "value4", "Key5", 5.555)));
+        when(mockConfig.getEntries()).thenReturn(null);
+        when(mockConfig.getTransformOption()).thenReturn(TransformOption.CAPITALIZE);
+        Record<Event> record = buildRecordWithEvent(data);
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0).getData().containsKey("Key1"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3/Key4"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("Key2/Key3/Key5"), is(true));
+    }
 
     private RenameKeyProcessor createObjectUnderTest() {
         return new RenameKeyProcessor(pluginMetrics, mockConfig, expressionEvaluator);
