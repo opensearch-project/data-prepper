@@ -60,7 +60,6 @@ public class PipelineTransformer {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
@@ -75,7 +74,7 @@ public class PipelineTransformer {
 
     private final ExpressionEvaluator expressionEvaluator;
 
-    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+    public PipelineTransformer(
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
                                final RouterFactory routerFactory,
@@ -87,7 +86,6 @@ public class PipelineTransformer {
                                final PluginErrorCollector pluginErrorCollector,
                                final PluginErrorsHandler pluginErrorsHandler,
                                final ExpressionEvaluator expressionEvaluator) {
-        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
@@ -101,7 +99,7 @@ public class PipelineTransformer {
         this.expressionEvaluator = expressionEvaluator;
     }
 
-    public Map<String, Pipeline> transformConfiguration() {
+    public Map<String, Pipeline> transformConfiguration(final PipelinesDataFlowModel pipelinesDataFlowModel) {
         final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -420,10 +418,6 @@ public class PipelineTransformer {
                 .map(circuitBreaker -> new CircuitBreakingBuffer<>(buffer, circuitBreaker))
                 .map(b -> (Buffer) b)
                 .orElseGet(() -> buffer);
-    }
-
-    public PipelinesDataFlowModel getPipelinesDataFlowModel() {
-        return pipelinesDataFlowModel;
     }
 
     private static class IdentifiedComponent<T> {
