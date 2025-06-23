@@ -42,6 +42,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -112,7 +113,7 @@ public class KafkaCustomProducerTest {
         final ArgumentCaptor<ProducerRecord> recordArgumentCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaProducer).send(recordArgumentCaptor.capture(), any(Callback.class));
         assertEquals(recordArgumentCaptor.getValue().topic(), kafkaSinkConfig.getTopic().getName());
-        assertEquals(recordArgumentCaptor.getValue().value(), byteData);
+        assertArrayEquals((byte[]) recordArgumentCaptor.getValue().value(), byteData);
         assertEquals(recordArgumentCaptor.getValue().key(), key);
         verifyNoInteractions(numberOfRecordSendErrors);
     }
@@ -133,7 +134,7 @@ public class KafkaCustomProducerTest {
         final ArgumentCaptor<ProducerRecord> recordArgumentCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaProducer).send(recordArgumentCaptor.capture(), any(Callback.class));
         assertEquals(recordArgumentCaptor.getValue().topic(), kafkaSinkConfig.getTopic().getName());
-        assertEquals(recordArgumentCaptor.getValue().value(), byteData);
+        assertArrayEquals((byte[]) recordArgumentCaptor.getValue().value(), byteData);
         assertEquals(recordArgumentCaptor.getValue().key(), key);
         verify(numberOfRawDataSendErrors).increment();
     }

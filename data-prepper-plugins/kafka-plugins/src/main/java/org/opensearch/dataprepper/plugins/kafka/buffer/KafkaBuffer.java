@@ -5,23 +5,23 @@
 
 package org.opensearch.dataprepper.plugins.kafka.buffer;
 
-import org.apache.kafka.common.errors.RecordBatchTooLargeException;
-import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.errors.RecordBatchTooLargeException;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
@@ -30,11 +30,11 @@ import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.CommonSerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.service.TopicServiceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,8 +82,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         CompressionOption manualCompressionConfig = CompressionOption.NONE;
         if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
             // If encryption is enabled, disable Kafka built-in compression and do it manually.
-            manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
-            kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
+            if (kafkaBufferConfig.getKafkaProducerProperties() != null) {
+                manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
+                kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
+            }
         }
 
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory(), encryptionSupplier);
