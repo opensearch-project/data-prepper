@@ -9,6 +9,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdOutputStream;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -40,6 +42,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -56,9 +59,7 @@ import java.util.concurrent.TimeoutException;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -119,8 +120,7 @@ public class KafkaBufferIT {
         final Map<String, Object> bufferConfigMap = Map.of(
                 "topics", List.of(topicConfigMap),
                 "bootstrap_servers", List.of(bootstrapServersCommaDelimited),
-                "encryption", Map.of("type", "none"),
-                "compression", Map.of("type", "zstd")
+                "encryption", Map.of("type", "none")
         );
         kafkaBufferConfig = objectMapper.convertValue(bufferConfigMap, KafkaBufferConfig.class);
 
@@ -322,7 +322,7 @@ public class KafkaBufferIT {
 
         final byte[] innerData = bufferData.getData().toByteArray();
 
-        final Map<String, Object> actualEventData = objectMapper.readValue(decompress(innerData), Map.class);
+        final Map<String, Object> actualEventData = objectMapper.readValue(innerData, Map.class);
         assertThat(actualEventData, notNullValue());
         assertThat(actualEventData, hasKey("message"));
         assertThat(actualEventData.get("message"), equalTo(record.getData().get("message", String.class)));
@@ -362,7 +362,7 @@ public class KafkaBufferIT {
 
         final byte[] innerData = bufferData.getData().toByteArray();
 
-        assertThat(decompress(innerData), equalTo(writtenBytes));
+        assertThat(innerData, equalTo(writtenBytes));
     }
 
     @Nested
@@ -448,8 +448,8 @@ public class KafkaBufferIT {
 
             byte[] innerData = bufferData.getData().toByteArray();
 
-            assertThat(decompress(innerData), notNullValue());
-            assertThrows(JsonParseException.class, () -> objectMapper.readValue(decompress(innerData), Map.class));
+            assertThat(innerData, notNullValue());
+            assertThrows(JsonParseException.class, () -> objectMapper.readValue(innerData, Map.class));
 
             final byte[] deserializedBytes = decryptCipher.doFinal(innerData);
 
@@ -494,10 +494,10 @@ public class KafkaBufferIT {
 
             final byte[] innerData = bufferData.getData().toByteArray();
 
-            assertThat(decompress(innerData), notNullValue());
-            assertThat(decompress(innerData), not(equalTo(writtenBytes)));
+            assertThat(innerData, notNullValue());
+            assertThat(innerData, not(equalTo(writtenBytes)));
 
-            final byte[] decryptedBytes = decryptCipher.doFinal(decompress(innerData));
+            final byte[] decryptedBytes = decryptCipher.doFinal(innerData);
 
             assertThat(decryptedBytes, equalTo(writtenBytes));
         }
@@ -556,7 +556,4 @@ public class KafkaBufferIT {
         return new Record<>(event);
     }
 
-    private byte[] decompress(byte[] input) {
-        return Zstd.decompress(input, (int) Zstd.getFrameContentSize(input));
-    }
 }

@@ -82,8 +82,10 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         CompressionOption manualCompressionConfig = CompressionOption.NONE;
         if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
             // If encryption is enabled, disable Kafka built-in compression and do it manually.
-            manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
-            kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
+            if (kafkaBufferConfig.getKafkaProducerProperties() != null) {
+                manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
+                kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
+            }
         }
 
         final SerializationFactory serializationFactory = new BufferSerializationFactory(new CommonSerializationFactory(), encryptionSupplier);
