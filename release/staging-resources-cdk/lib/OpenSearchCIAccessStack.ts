@@ -8,7 +8,7 @@
  */
 
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { Role, ArnPrincipal, PolicyStatement, Effect, PolicyDocument } from 'aws-cdk-lib/aws-iam';
+import { Role, ArnPrincipal, PolicyStatement, Effect, PolicyDocument, CompositePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 /**
@@ -24,7 +24,10 @@ export class OpenSearchCIAccessStack extends Stack {
     const ciAccountId: string = scope.node.tryGetContext('ciAccountId');
 
     new Role(this, 'OpenSearchCIAccessRole', {
-      assumedBy: new ArnPrincipal(`arn:aws:iam::${ciAccountId}:root`),
+      assumedBy: new CompositePrincipal(
+        new ArnPrincipal(`arn:aws:iam::${ciAccountId}:role/OpenSearch-CI-MainNodeRole`),
+        new ArnPrincipal(`arn:aws:iam::${ciAccountId}:role/OpenSearch-CI-AgentNodeRole`)
+      ),
       inlinePolicies: {
         S3Access: new PolicyDocument({
           statements: [new PolicyStatement({

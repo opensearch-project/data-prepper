@@ -29,13 +29,22 @@ test('Creates IAM role with correct assume role policy', () => {
 
   template.hasResourceProperties('AWS::IAM::Role', {
     AssumeRolePolicyDocument: {
-      Statement: [{
-        Effect: 'Allow',
-        Principal: {
-          AWS: 'arn:aws:iam::123456789012:root'
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::123456789012:role/OpenSearch-CI-MainNodeRole'
+          },
+          Action: 'sts:AssumeRole'
         },
-        Action: 'sts:AssumeRole'
-      }]
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::123456789012:role/OpenSearch-CI-AgentNodeRole'
+          },
+          Action: 'sts:AssumeRole'
+        }
+      ]
     }
   });
 });
