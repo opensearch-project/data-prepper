@@ -343,7 +343,7 @@ public class IndexConfigurationTests {
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals(2, indexConfiguration.getMaxLocalCompressionsForEstimation());
-        assertEquals("${spanId}", indexConfiguration.getDocumentId());
+        assertEquals("${traceId}/${spanId}", indexConfiguration.getDocumentId());
     }
 
     @Test
