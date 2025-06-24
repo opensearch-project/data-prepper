@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
