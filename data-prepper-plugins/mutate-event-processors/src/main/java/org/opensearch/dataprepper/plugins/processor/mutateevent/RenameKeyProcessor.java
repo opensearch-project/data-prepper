@@ -42,33 +42,26 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
         this.expressionEvaluator = expressionEvaluator;
         this.transformOption = config.getTransformOption();
 
-        boolean entriesProvided = config.getEntries() != null;
-        boolean transformOptionProvided = (transformOption != null && transformOption != TransformOption.NONE);
-        if ((!entriesProvided ^ transformOptionProvided)) {
-            throw new InvalidPluginConfigurationException("Only one of 'entries' or 'transform_key' should be specified.");
-        }
-        if (config.getEntries() == null || config.getEntries().size() == 0) {
-            return;
-        }
-        config.getEntries().forEach(entry -> {
-            if (entry.getRenameWhen() != null
+        if (config.getEntries() != null) {
+            config.getEntries().forEach(entry -> {
+                if (entry.getRenameWhen() != null
                     && !expressionEvaluator.isValidExpressionStatement(entry.getRenameWhen())) {
                 throw new InvalidPluginConfigurationException(
                         String.format("rename_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                                 entry.getRenameWhen()));
-            }
-            if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
-                throw new InvalidPluginConfigurationException("Either from_key or from_key_regex must be specified. ");
-            }
-            if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
-                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_regex should be specified.");
-            }
-        });
+                }
+                if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
+                    throw new InvalidPluginConfigurationException("Either from_key or from_key_regex must be specified. ");
+                }
+                if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
+                    throw new InvalidPluginConfigurationException("Only one of from_key or from_key_regex should be specified.");
+                }
+            });
+        }
     }
 
     private void transformEvent(final Event event, Map<String, Object> map, final String keyPrefix) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-            Object result = null;
             try {
                 if (entry.getValue() instanceof Map) {
                     transformEvent(event, (Map<String, Object>)entry.getValue(), keyPrefix+entry.getKey()+"/");

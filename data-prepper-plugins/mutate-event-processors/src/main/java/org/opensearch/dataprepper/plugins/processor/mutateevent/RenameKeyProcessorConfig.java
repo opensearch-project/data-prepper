@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -137,5 +138,11 @@ public class RenameKeyProcessorConfig {
     public TransformOption getTransformOption() {
         return transformOption;
     }
+
+    @AssertTrue(message = "entries and transform_key are mutually exclusive options. entries or transform_key is required.")
+    boolean isValidConfig() {
+        return (transformOption != null && transformOption != TransformOption.NONE)  ^ entries != null;
+    }
+
 
 }
