@@ -65,7 +65,7 @@ public class RenameKeyProcessorTests {
     }
 
     @Test
-    void invalid_config_tests_with_entries_and_transform_options() throws NoSuchFieldException, IllegalAccessException {
+    void invalid_config_tests_with_entries_and_transform_options_both_present() throws NoSuchFieldException, IllegalAccessException {
         final String renameWhen = UUID.randomUUID().toString();
         List<RenameKeyProcessorConfig.Entry> entries = createListOfEntries(createEntry("message", null,"newMessage", true, renameWhen));
 
@@ -74,13 +74,32 @@ public class RenameKeyProcessorTests {
         ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", entries);
         ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.LOWERCASE);
         assertFalse(renameKeyProcessorConfig.isValidConfig());
-        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.NONE);
-        assertTrue(renameKeyProcessorConfig.isValidConfig());
-        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.LOWERCASE);
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_both_not_present() throws NoSuchFieldException, IllegalAccessException {
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
         ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", null);
-        assertTrue(renameKeyProcessorConfig.isValidConfig());
         ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.NONE);
         assertFalse(renameKeyProcessorConfig.isValidConfig());
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_valid_entries() throws NoSuchFieldException, IllegalAccessException {
+        final String renameWhen = UUID.randomUUID().toString();
+        List<RenameKeyProcessorConfig.Entry> entries = createListOfEntries(createEntry("message", null,"newMessage", true, renameWhen));
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", entries);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.NONE);
+        assertTrue(renameKeyProcessorConfig.isValidConfig());
+    }
+
+    @Test
+    void invalid_config_tests_with_entries_and_transform_options_valid_transformation() throws NoSuchFieldException, IllegalAccessException {
+        RenameKeyProcessorConfig renameKeyProcessorConfig = new RenameKeyProcessorConfig();
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "entries", null);
+        ReflectivelySetField.setField(RenameKeyProcessorConfig.class, renameKeyProcessorConfig, "transformOption", TransformOption.UPPERCASE);
+        assertTrue(renameKeyProcessorConfig.isValidConfig());
     }
 
     @Test
