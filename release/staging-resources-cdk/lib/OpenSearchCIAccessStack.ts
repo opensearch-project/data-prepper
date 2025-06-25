@@ -21,13 +21,27 @@ export class OpenSearchCIAccessStack extends Stack {
     super(scope, id, props);
 
     const archivesBucketName: string = scope.node.tryGetContext('archivesBucketName');
-    const ciAccountId: string = scope.node.tryGetContext('ciAccountId');
+    const ciAccountIds: string = scope.node.tryGetContext('ciAccountIds');
+
+    const trustedAccountIds = ciAccountIds.split(',')
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    
+    if (trustedAccountIds.length === 0) {
+      throw new Error('At least one account ID must be provided in ciAccountIds');
+    }
+    
+    const principals = [];
+    
+    for (const accountId of trustedAccountIds) {
+      principals.push(
+        new ArnPrincipal(`arn:aws:iam::${accountId}:role/OpenSearch-CI-MainNodeRole`),
+        new ArnPrincipal(`arn:aws:iam::${accountId}:role/OpenSearch-CI-AgentNodeRole`)
+      );
+    }
 
     new Role(this, 'OpenSearchCIAccessRole', {
-      assumedBy: new CompositePrincipal(
-        new ArnPrincipal(`arn:aws:iam::${ciAccountId}:role/OpenSearch-CI-MainNodeRole`),
-        new ArnPrincipal(`arn:aws:iam::${ciAccountId}:role/OpenSearch-CI-AgentNodeRole`)
-      ),
+      assumedBy: new CompositePrincipal(...principals),
       inlinePolicies: {
         S3Access: new PolicyDocument({
           statements: [new PolicyStatement({

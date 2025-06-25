@@ -17,7 +17,7 @@ beforeEach(() => {
   app = new App({
     context: {
       archivesBucketName: 'test-archives-bucket',
-      ciAccountId: '123456789012'
+      ciAccountIds: '123456789012'
     }
   });
 });
@@ -69,4 +69,65 @@ test('Creates IAM role with S3 access policy', () => {
       }
     }]
   });
+});
+
+test('Creates IAM role with assume role policy for multiple CI accounts', () => {
+  const appWithMultipleAccounts = new App({
+    context: {
+      archivesBucketName: 'test-archives-bucket',
+      ciAccountIds: '123456789012,210987654321'
+    }
+  });
+
+  const stackUnderTest = new OpenSearchCIAccessStack(appWithMultipleAccounts, 'TestStack');
+
+  const template = Template.fromStack(stackUnderTest);
+
+  template.hasResourceProperties('AWS::IAM::Role', {
+    AssumeRolePolicyDocument: {
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::123456789012:role/OpenSearch-CI-MainNodeRole'
+          },
+          Action: 'sts:AssumeRole'
+        },
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::123456789012:role/OpenSearch-CI-AgentNodeRole'
+          },
+          Action: 'sts:AssumeRole'
+        },
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::210987654321:role/OpenSearch-CI-MainNodeRole'
+          },
+          Action: 'sts:AssumeRole'
+        },
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::210987654321:role/OpenSearch-CI-AgentNodeRole'
+          },
+          Action: 'sts:AssumeRole'
+        }
+      ]
+    }
+  });
+});
+
+test('Throws error when no account IDs are provided', () => {
+  const appWithNoAccounts = new App({
+    context: {
+      archivesBucketName: 'test-archives-bucket',
+      ciAccountIds: ''
+    }
+  });
+
+  expect(() => {
+    new OpenSearchCIAccessStack(appWithNoAccounts, 'TestStack');
+  }).toThrow('At least one account ID must be provided in ciAccountIds');
 });
