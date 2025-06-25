@@ -240,8 +240,8 @@ pipeline {
                                 string(credentialsId: 'data-prepper-s3-role', variable: 'DP_S3_ROLE_NAME'),
                                 string(credentialsId: 'data-prepper-aws-account-number', variable: 'DP_AWS_ACCOUNT_NUMBER'),
                                 string(credentialsId: 'data-prepper-s3-bucket-name', variable: 'DP_S3_BUCKET_NAME'),]) {
-                                    echo 'Downloading artifacts from S3...'
-                                    withAWS(role: "${DP_S3_ROLE_NAME}", roleAccount: "${DP_AWS_ACCOUNT_NUMBER}", duration: 900, roleSessionName: 'dp-jenkins-session', region: "${region}") {
+                                    echo 'Downloading artifacts from S3'
+                                    withAWS(role: "${DP_S3_ROLE_NAME}", roleAccount: "${DP_AWS_ACCOUNT_NUMBER}", duration: 900, roleSessionName: 'dp-jenkins-session', region: 'us-east-1') {
                                         s3Download(file: "${WORKSPACE}/maven", bucket: "${DP_S3_BUCKET_NAME}", path: "${downloadPath}", force: true)
                                     }
                                 }
