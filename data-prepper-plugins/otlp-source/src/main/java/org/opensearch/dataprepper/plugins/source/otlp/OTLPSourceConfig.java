@@ -20,11 +20,13 @@ import org.hibernate.validator.constraints.time.DurationMin;
 import java.time.Duration;
 
 public class OTLPSourceConfig {
+  static final String REQUEST_TIMEOUT = "request_timeout";
   static final String PORT = "port";
   static final String LOGS_PATH = "logs_path";
   static final String METRICS_PATH = "metrics_path";
   static final String TRACES_PATH = "traces_path";
   static final String SSL = "ssl";
+  static final String OUTPUT_FORMAT = "output_format";
   static final String LOGS_OUTPUT_FORMAT = "logs_output_format";
   static final String METRICS_OUTPUT_FORMAT = "metrics_output_format";
   static final String TRACES_OUTPUT_FORMAT = "traces_output_format";
@@ -42,7 +44,6 @@ public class OTLPSourceConfig {
   static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
   static final String COMPRESSION = "compression";
   static final String RETRY_INFO = "retry_info";
-  static final String OUTPUT_FORMAT = "output_format";
   static final int DEFAULT_REQUEST_TIMEOUT = 10; // in seconds
   static final int DEFAULT_PORT = 21893;
   static final int DEFAULT_THREAD_COUNT = 200;
@@ -56,7 +57,7 @@ public class OTLPSourceConfig {
   private static final String S3_PREFIX = "s3://";
   static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
 
-  @JsonProperty("flush_interval")
+  @JsonProperty(REQUEST_TIMEOUT)
   @DurationMin(seconds = 5)
   @DurationMax(seconds = 3600)
   private Duration requestTimeout = Duration.ofSeconds(DEFAULT_REQUEST_TIMEOUT);
@@ -103,7 +104,7 @@ public class OTLPSourceConfig {
   @JsonProperty(USE_ACM_CERT_FOR_SSL)
   private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
 
-  @JsonProperty("flush_interval")
+  @JsonProperty(ACM_CERT_ISSUE_TIME_OUT_MILLIS)
   @DurationMin(seconds = 5)
   @DurationMax(seconds = 3600)
   private Duration acmCertIssueTimeOutMillis = Duration.ofSeconds(DEFAULT_ACM_CERT_ISSUE_TIME_OUT);
