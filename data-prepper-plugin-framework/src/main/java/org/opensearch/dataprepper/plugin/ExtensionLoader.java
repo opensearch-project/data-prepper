@@ -42,6 +42,8 @@ public class ExtensionLoader {
         }
     }
 
+    private Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator;
+
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator extensionPluginCreator;
@@ -62,8 +64,23 @@ public class ExtensionLoader {
         this.pluginErrorsHandler = pluginErrorsHandler;
     }
 
+    ExtensionLoader(
+            final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
+            final ExtensionClassProvider extensionClassProvider,
+            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
+            final PluginErrorCollector pluginErrorCollector,
+            final PluginErrorsHandler pluginErrorsHandler,
+            final Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator) {
+        this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
+        this.extensionClassProvider = extensionClassProvider;
+        this.extensionPluginCreator = extensionPluginCreator;
+        this.pluginErrorCollector = pluginErrorCollector;
+        this.pluginErrorsHandler = pluginErrorsHandler;
+        this.extensionsLoaderComparator = extensionsLoaderComparator;
+    }
+
     public List<? extends ExtensionPlugin> loadExtensions() {
-        final List<? extends ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
+        final List<ExtensionPluginWithContext> extensionPluginsWithContext = extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
                 .map(extensionClass -> {
                     final String pluginName = convertClassToName(extensionClass);
@@ -82,9 +99,21 @@ public class ExtensionLoader {
                         return null;
                     }
                 })
-                .sorted(Comparator.comparing(ExtensionPluginWithContext::isConfigured).reversed())
+                .filter(pluginWithContext -> pluginWithContext != null)
+                .collect(Collectors.toList());
+
+        List<? extends ExtensionPlugin> result = null;
+        if (extensionPluginsWithContext != null && extensionPluginsWithContext.size() > 1 &&
+                extensionsLoaderComparator != null) {
+            result = extensionPluginsWithContext.stream()
+                .sorted(extensionsLoaderComparator)
                 .map(extensionPluginWithContext -> extensionPluginWithContext.getExtensionPlugin())
                 .collect(Collectors.toList());
+        } else {
+            result = extensionPluginsWithContext.stream()
+                .map(extensionPluginWithContext -> extensionPluginWithContext.getExtensionPlugin())
+                .collect(Collectors.toList());
+        }
         final List<PluginError> extensionPluginErrors = pluginErrorCollector.getPluginErrors()
                 .stream().filter(pluginError -> PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE
                         .equals(pluginError.getComponentType()))

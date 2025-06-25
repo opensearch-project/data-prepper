@@ -12,17 +12,16 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Objects;
-import java.util.Optional;
 
 @Named
 public class DataPrepperExtensionPoints implements ExtensionPoints {
     private static final ExtensionProvider.Context EMPTY_CONTEXT = new EmptyContext();
     private final GenericApplicationContext sharedApplicationContext;
     private final GenericApplicationContext coreApplicationContext;
-    private Map<Class, Optional<Object>> providers;
+    private Set<Class> providerClassesSet;
 
     @Inject
     public DataPrepperExtensionPoints(
@@ -32,12 +31,12 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
         Objects.requireNonNull(pluginBeanFactoryProvider.getSharedPluginApplicationContext());
         this.sharedApplicationContext = pluginBeanFactoryProvider.getSharedPluginApplicationContext();
         this.coreApplicationContext = pluginBeanFactoryProvider.getCoreApplicationContext();
-        this.providers = new HashMap<>();
+        this.providerClassesSet = new HashSet<>();
     }
 
     @Override
     public void addExtensionProvider(final ExtensionProvider extensionProvider) {
-        if (providers.get(extensionProvider.supportedClass()) != null) {
+        if (providerClassesSet.contains(extensionProvider.supportedClass())) {
             return;
         }
         coreApplicationContext.registerBean(
@@ -48,7 +47,7 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
                 extensionProvider.supportedClass(),
                 () -> extensionProvider.provideInstance(EMPTY_CONTEXT),
                 b -> b.setScope(BeanDefinition.SCOPE_PROTOTYPE));
-        providers.put(extensionProvider.supportedClass(), extensionProvider.provideInstance(EMPTY_CONTEXT));
+        providerClassesSet.add(extensionProvider.supportedClass());
     }
 
     private static class EmptyContext implements ExtensionProvider.Context {

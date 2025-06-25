@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 import org.opensearch.dataprepper.validation.PluginError;
@@ -31,6 +32,7 @@ import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
@@ -67,14 +69,21 @@ class ExtensionLoaderTest {
     private ArgumentCaptor<Collection<PluginError>> pluginErrorsArgumentCaptor;
     private PluginErrorCollector pluginErrorCollector;
 
+    private PluginCreatorContext pluginCreatorContext;
+
+    @Mock
+    private Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator;
+
     private ExtensionLoader createObjectUnderTest() {
         return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider,
-                extensionPluginCreator, pluginErrorCollector, pluginErrorsHandler);
+                extensionPluginCreator, pluginErrorCollector, pluginErrorsHandler, extensionsLoaderComparator);
     }
 
     @BeforeEach
     void setUp() {
         pluginErrorCollector = new PluginErrorCollector();
+        pluginCreatorContext = new PluginCreatorContext();
+        extensionsLoaderComparator = pluginCreatorContext.extensionsLoaderComparator();
     }
 
     @Test
@@ -106,6 +115,39 @@ class ExtensionLoaderTest {
         assertThat(extensionPlugins, notNullValue());
         assertThat(extensionPlugins.size(), equalTo(1));
         assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+        assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
+    }
+
+    @Test
+    void loadExtensions_returns_single_extension_with_config_for_multiple_plugin_class() {
+        when(extensionClassProvider.loadExtensionPluginClasses())
+                .thenReturn(List.of(TestExtension.class, TestExtensionWithConfig.class));
+
+        final TestExtensionWithConfig expectedPlugin = mock(TestExtensionWithConfig.class);
+        final TestExtension testPlugin = mock(TestExtension.class);
+        final String expectedPluginName = "test_extension_with_config";
+        when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtensionConfig.class),
+                anyString())).thenReturn(new TestExtensionConfig());
+        //when(extensionPluginConfigurationConverter.convert(eq(true), eq(TestExtension.class),
+        //        eq("/test_extension"))).thenReturn(testPlugin);
+        when(extensionPluginCreator.newPluginInstance(
+                eq(TestExtensionWithConfig.class),
+                any(PluginArgumentsContext.class),
+                eq(expectedPluginName)))
+                .thenReturn(expectedPlugin);
+
+        when(extensionPluginCreator.newPluginInstance(
+                eq(TestExtension.class),
+                any(PluginArgumentsContext.class),
+                anyString()))
+                .thenReturn(testPlugin);
+
+        final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
+
+        assertThat(extensionPlugins, notNullValue());
+        assertThat(extensionPlugins.size(), equalTo(2));
+        assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+        assertThat(extensionPlugins.get(1), equalTo(testPlugin));
         assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
     }
 
