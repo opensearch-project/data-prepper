@@ -64,6 +64,13 @@ public interface CommonParseConfig {
     boolean isDeleteSourceRequested();
 
     /**
+     * An optional setting to normalize keys by replacing invalid key characters with underscore
+     * Defaults to false
+     * @return returns normalize keys flag
+     */
+    Boolean getNormalizeKeys();
+
+    /**
      * An optional setting used to determine how to handle parsing errors. Default is skip, which includes logging the error
      * and passing the failed Event downstream to the next processor.
      * @return returns handle failed events option

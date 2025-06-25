@@ -38,6 +38,7 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
     private final Counter parseErrorsCounter;
 
     private final int depth;
+    private final Boolean normalizeKeys;
 
     @DataPrepperPluginConstructor
     public ParseJsonProcessor(final PluginMetrics pluginMetrics,
@@ -47,6 +48,7 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
         super(pluginMetrics, parseJsonProcessorConfig, expressionEvaluator, eventKeyFactory);
         this.handleFailedEventsOption = parseJsonProcessorConfig.getHandleFailedEventsOption();
         this.depth = parseJsonProcessorConfig.getDepth();
+        this.normalizeKeys = parseJsonProcessorConfig.getNormalizeKeys();
         parseErrorsCounter = pluginMetrics.counter(PARSE_ERRORS);
     }
 
@@ -54,6 +56,9 @@ public class ParseJsonProcessor extends AbstractParseProcessor {
     protected Optional<Map<String, Object>> readValue(String message, Event context) {
         try {
             final HashMap<String, Object> map = objectMapper.readValue(message, new TypeReference<>() {});
+            if (normalizeKeys) {
+                replaceInvalidChars(map);
+            }
             if (depth == 0) {
                 return Optional.of(map);
             }

@@ -261,6 +261,11 @@ public class JacksonEvent implements Event {
         return get(jacksonEventKey, clazz);
     }
 
+
+    public static String replaceInvalidKeyChars(final String key) {
+        return JacksonEventKey.replaceInvalidCharacters(key);
+    }
+
     private JsonNode getNode(final String key) {
         final JsonPointer jsonPointer = toJsonPointer(key);
         return jsonNode.at(jsonPointer);

@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -113,6 +114,25 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                         .log();
         }
         return resultMap;
+    }
+
+    protected void replaceInvalidChars(Map<String, Object> map) {
+        Map<String, Object> toAdd = new HashMap<>();
+        Iterator<Map.Entry<String, Object>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            final String newKey = JacksonEvent.replaceInvalidKeyChars(key);
+            if (value instanceof Map) {
+                replaceInvalidChars((Map<String, Object>)value);
+            }
+            if (newKey != key) {
+                toAdd.put(newKey, value);
+                iterator.remove();
+            }
+        }
+        map.putAll(toAdd);
     }
 
     @Override

@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.common.TransformOption;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -64,6 +65,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
     private final String keyPrefix;
+    private final Boolean normalizeKeys;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -75,6 +77,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
+
+        this.normalizeKeys = keyValueProcessorConfig.getNormalizeKeys();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -606,6 +610,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
             }
 
+            if (normalizeKeys) {
+                key = JacksonEvent.replaceInvalidKeyChars(key);
+            }
             addKeyValueToMap(processed, key, value);
         }
 
@@ -615,7 +622,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
             if (validKeyAndValue(pair.getKey(), pair.getValue())) {
-                processed.put(pair.getKey(), pair.getValue());
+                String key = pair.getKey();
+                if (normalizeKeys) {
+                    key = JacksonEvent.replaceInvalidKeyChars(key);
+                }
+                processed.put(key, pair.getValue());
             }
         }
 

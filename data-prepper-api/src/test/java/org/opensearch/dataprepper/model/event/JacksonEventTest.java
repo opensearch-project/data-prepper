@@ -229,6 +229,14 @@ public class JacksonEventTest {
         assertThat(exception.getMessage(), containsStringIgnoringCase("key cannot be an empty string"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1"})
+    public void testReplaceInvalidKeyChars(final String key) {
+        assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo("key_1"));
+        assertThat(JacksonEvent.replaceInvalidKeyChars(key.substring(0,3)), equalTo("key"));
+        assertThat(JacksonEvent.replaceInvalidKeyChars(null), equalTo(null));
+    }
+
     @Test
     public void testPutAndGet_withMultiLevelKey() {
         final String key = "foo/bar";
