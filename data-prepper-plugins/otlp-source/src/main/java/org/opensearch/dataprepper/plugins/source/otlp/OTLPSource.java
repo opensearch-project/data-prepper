@@ -134,7 +134,7 @@ public class OTLPSource implements Source<Record<Object>> {
       Thread.currentThread().interrupt();
       throw new RuntimeException(ex);
     }
-    LOG.info("Started otlp_source on port " + otlpSourceConfig.getPort() + "...");
+    LOG.info("Started otlp source on port {}.", otlpSourceConfig.getPort());
   }
 
   @Override
@@ -153,7 +153,7 @@ public class OTLPSource implements Source<Record<Object>> {
         throw new RuntimeException(ex);
       }
     }
-    LOG.info("Stopped otlp_source.");
+    LOG.info("Stopped otlp source.");
   }
 
   private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
@@ -161,7 +161,7 @@ public class OTLPSource implements Source<Record<Object>> {
 
     if (authenticationConfiguration == null || authenticationConfiguration.getPluginName()
         .equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
-      LOG.warn("Creating otlp-source without authentication. This is not secure.");
+      LOG.warn("Creating otlp source without authentication. This is not secure.");
       LOG.warn(
           "In order to set up Http Basic authentication for otlp source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otlp-source#authentication-configurations");
     }

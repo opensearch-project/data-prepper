@@ -34,8 +34,8 @@ public class CertificateProviderFactoryTest {
     settingsMap.put("useAcmCertForSSL", true);
     settingsMap.put("awsRegion", "us-east-1");
     settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-    settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+    settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");
@@ -53,8 +53,8 @@ public class CertificateProviderFactoryTest {
     final Map<String, Object> settingsMap = new HashMap<>();
     settingsMap.put("ssl", true);
     settingsMap.put("awsRegion", "us-east-1");
-    settingsMap.put("sslKeyCertChainFile", "s3://data/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "s3://data/certificate/test_decrypted_key.key");
+    settingsMap.put("sslKeyCertChainFile", "s3://src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("sslKeyFile", "s3://src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");
@@ -72,8 +72,8 @@ public class CertificateProviderFactoryTest {
   public void getCertificateProviderFileProviderSuccess() {
     final Map<String, Object> settingsMap = new HashMap<>();
     settingsMap.put("ssl", true);
-    settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+    settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");

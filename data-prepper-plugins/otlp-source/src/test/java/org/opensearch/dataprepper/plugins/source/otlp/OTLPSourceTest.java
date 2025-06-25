@@ -344,8 +344,8 @@ class OTLPSourceTest {
         settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, true);
         settingsMap.put("useAcmCertForSSL", false);
-        settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-        settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+        settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+        settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
         pluginSetting = new PluginSetting("otlp-source", settingsMap);
         pluginSetting.setPipelineName("pipeline");
 
@@ -848,8 +848,8 @@ class OTLPSourceTest {
     @Test
     void testHttpWithoutSslFailsWhenSslIsEnabled() throws InvalidProtocolBufferException {
         when(otlpSourceConfig.isSsl()).thenReturn(true);
-        when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-        when(otlpSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+        when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("src/test/resources/certificate/test_cert.crt");
+        when(otlpSourceConfig.getSslKeyFile()).thenReturn("src/test/resources/certificate/test_decrypted_key.key");
         configureObjectUnderTest();
         SOURCE.start(buffer);
 
@@ -902,8 +902,8 @@ class OTLPSourceTest {
     @Test
     void testGrpcFailsIfSslIsEnabledAndNoTls() {
         when(otlpSourceConfig.isSsl()).thenReturn(true);
-        when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("data/certificate/test_cert.crt");
-        when(otlpSourceConfig.getSslKeyFile()).thenReturn("data/certificate/test_decrypted_key.key");
+        when(otlpSourceConfig.getSslKeyCertChainFile()).thenReturn("src/test/resources/certificate/test_cert.crt");
+        when(otlpSourceConfig.getSslKeyFile()).thenReturn("src/test/resources/certificate/test_decrypted_key.key");
         configureObjectUnderTest();
         SOURCE.start(buffer);
 
@@ -940,16 +940,16 @@ class OTLPSourceTest {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
 
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
 
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
             settingsMap.put("useAcmCertForSSL", false);
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -977,8 +977,8 @@ class OTLPSourceTest {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
@@ -991,8 +991,8 @@ class OTLPSourceTest {
             settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -1026,8 +1026,8 @@ class OTLPSourceTest {
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
@@ -1040,8 +1040,8 @@ class OTLPSourceTest {
             settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "true");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
@@ -1072,8 +1072,8 @@ class OTLPSourceTest {
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
@@ -1086,8 +1086,8 @@ class OTLPSourceTest {
             settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "true");
             settingsMap.put("unframed_requests", "true");
 
@@ -1119,8 +1119,8 @@ class OTLPSourceTest {
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
@@ -1133,8 +1133,8 @@ class OTLPSourceTest {
             settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "false");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
@@ -1165,8 +1165,8 @@ class OTLPSourceTest {
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
-            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
-            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final Path certFilePath = Path.of("src/test/resources/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("src/test/resources/certificate/test_decrypted_key.key");
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
@@ -1179,8 +1179,8 @@ class OTLPSourceTest {
             settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "false");
             settingsMap.put("unframed_requests", "true");
 
