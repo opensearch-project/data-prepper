@@ -22,7 +22,7 @@ allprojects {
     apply plugin: 'com.github.jk1.dependency-license-report'
 
     ext {
-        mavenPublicationRootFile = file("${rootProject.buildDir}/m2")
+        mavenPublicationRootFile = file(rootProject.layout.buildDirectory.dir('m2'))
     }
 
     spotless {

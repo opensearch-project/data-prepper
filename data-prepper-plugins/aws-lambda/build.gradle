@@ -27,7 +27,7 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok:1.18.20'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
     testImplementation testLibs.slf4j.simple
 }
 

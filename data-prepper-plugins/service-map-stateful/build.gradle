@@ -19,7 +19,7 @@ dependencies {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
     implementation libs.protobuf.core
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 }
 
 jacocoTestCoverageVerification {

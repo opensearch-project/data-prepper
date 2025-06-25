@@ -553,4 +553,5 @@ public class KafkaBufferIT {
         Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         return new Record<>(event);
     }
+
 }

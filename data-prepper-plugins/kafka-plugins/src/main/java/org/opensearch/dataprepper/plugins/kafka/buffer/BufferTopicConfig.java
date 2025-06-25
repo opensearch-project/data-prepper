@@ -257,4 +257,8 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
         }
         return true;
     }
+
+    public boolean encryptionAtRestEnabled() {
+        return encryptionId != null || encryptionKey != null || kmsConfig != null;
+    }
 }

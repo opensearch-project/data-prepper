@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.s3.compression;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.codec.NoneCompressionEngine;
 
 import java.io.OutputStream;
 

@@ -45,7 +45,7 @@ jobs:
       run: ./gradlew --parallel --max-workers 2 :release:archives:buildArchives
 
     - name: Build Maven Artifacts
-      run: ./gradlew publish
+      run: ./gradlew publishAllPublicationsToMavenRepository
 
     - name: Build Docker Image
       run: ./gradlew :release:docker:docker
