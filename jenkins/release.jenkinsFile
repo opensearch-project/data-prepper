@@ -235,7 +235,7 @@ pipeline {
                 stage('Download Maven Artifacts') {
                     steps {
                         script {
-                            downloadPath = "${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven"
+                            def downloadPath = "${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven/"
                             withCredentials([
                                 string(credentialsId: 'data-prepper-s3-role', variable: 'DP_S3_ROLE_NAME'),
                                 string(credentialsId: 'data-prepper-aws-account-number', variable: 'DP_AWS_ACCOUNT_NUMBER'),
@@ -252,8 +252,8 @@ pipeline {
                     steps {
                         script {
                             publishToMaven(
-                                signingArtifactsPath: "${WORKSPACE}/maven",
-                                mavenArtifactsPath: "${WORKSPACE}/maven",
+                                signingArtifactsPath: "${WORKSPACE}/maven/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven",
+                                mavenArtifactsPath: "${WORKSPACE}/maven/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven",
                                 autoPublish: true
                             )
                         }
