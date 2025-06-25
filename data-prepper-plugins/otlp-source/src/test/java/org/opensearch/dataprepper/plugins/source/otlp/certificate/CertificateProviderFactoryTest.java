@@ -31,11 +31,11 @@ public class CertificateProviderFactoryTest {
   @Test
   public void getCertificateProviderAcmProviderSuccess() {
     final Map<String, Object> settingsMap = new HashMap<>();
-    settingsMap.put("useAcmCertForSSL", true);
-    settingsMap.put("awsRegion", "us-east-1");
-    settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-    settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+    settingsMap.put("use_acm_certificate_for_ssl", true);
+    settingsMap.put("aws_region", "us-east-1");
+    settingsMap.put("acm_certificate_arn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+    settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");
@@ -52,9 +52,9 @@ public class CertificateProviderFactoryTest {
   public void getCertificateProviderS3ProviderSuccess() {
     final Map<String, Object> settingsMap = new HashMap<>();
     settingsMap.put("ssl", true);
-    settingsMap.put("awsRegion", "us-east-1");
-    settingsMap.put("sslKeyCertChainFile", "s3://src/test/resources/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "s3://src/test/resources/certificate/test_decrypted_key.key");
+    settingsMap.put("aws_region", "us-east-1");
+    settingsMap.put("ssl_certificate_file", "s3://src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("ssl_key_file", "s3://src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");
@@ -72,8 +72,8 @@ public class CertificateProviderFactoryTest {
   public void getCertificateProviderFileProviderSuccess() {
     final Map<String, Object> settingsMap = new HashMap<>();
     settingsMap.put("ssl", true);
-    settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-    settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+    settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+    settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
 
     final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
     pluginSetting.setPipelineName("pipeline");

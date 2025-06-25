@@ -343,9 +343,9 @@ class OTLPSourceTest {
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, true);
-        settingsMap.put("useAcmCertForSSL", false);
-        settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-        settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+        settingsMap.put("use_acm_certificate_for_ssl", false);
+        settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+        settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
         pluginSetting = new PluginSetting("otlp-source", settingsMap);
         pluginSetting.setPipelineName("pipeline");
 
@@ -947,9 +947,9 @@ class OTLPSourceTest {
 
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", false);
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("use_acm_certificate_for_ssl", false);
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -987,12 +987,12 @@ class OTLPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn",
+            settingsMap.put("use_acm_certificate_for_ssl", true);
+            settingsMap.put("aws_region", "us-east-1");
+            settingsMap.put("acm_certificate_arn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -1036,12 +1036,12 @@ class OTLPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn",
+            settingsMap.put("use_acm_certificate_for_ssl", true);
+            settingsMap.put("aws_region", "us-east-1");
+            settingsMap.put("acm_certificate_arn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "true");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
@@ -1082,12 +1082,12 @@ class OTLPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn",
+            settingsMap.put("use_acm_certificate_for_ssl", true);
+            settingsMap.put("aws_region", "us-east-1");
+            settingsMap.put("acm_certificate_arn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "true");
             settingsMap.put("unframed_requests", "true");
 
@@ -1129,12 +1129,12 @@ class OTLPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn",
+            settingsMap.put("use_acm_certificate_for_ssl", true);
+            settingsMap.put("aws_region", "us-east-1");
+            settingsMap.put("acm_certificate_arn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "false");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
@@ -1175,12 +1175,12 @@ class OTLPSourceTest {
             when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
-            settingsMap.put("useAcmCertForSSL", true);
-            settingsMap.put("awsRegion", "us-east-1");
-            settingsMap.put("acmCertificateArn",
+            settingsMap.put("use_acm_certificate_for_ssl", true);
+            settingsMap.put("aws_region", "us-east-1");
+            settingsMap.put("acm_certificate_arn",
                     "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
-            settingsMap.put("sslKeyCertChainFile", "src/test/resources/certificate/test_cert.crt");
-            settingsMap.put("sslKeyFile", "src/test/resources/certificate/test_decrypted_key.key");
+            settingsMap.put("ssl_certificate_file", "src/test/resources/certificate/test_cert.crt");
+            settingsMap.put("ssl_key_file", "src/test/resources/certificate/test_decrypted_key.key");
             settingsMap.put("health_check_service", "false");
             settingsMap.put("unframed_requests", "true");
 
