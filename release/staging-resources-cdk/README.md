@@ -52,13 +52,13 @@ The following CDK commands all require defining context. The context variables a
 
 * `archivesBucketName` - The name of the S3 bucket you will use to deploy. This bucket must be in the same region as your stack.
 * `dataPrepperOrganization` - The name of the GitHub organization which has the `data-prepper` repository. This allows you to create staging environments for forks. The default value is `opensearch-project`.
-* `ciAccountId` - The AWS account Id of the OpenSearch CI release/build server.
+* `ciAccountIds` - The AWS account Ids of the OpenSearch CI release/build server and test environments. This is a comma-delimited value and requires at least one account.
 
 The following command will deploy the CDK stack and create a new S3 bucket. If you'd like to use an existing S3 bucket, see the section below
 for deploying individual stacks.
 
 ```
-cdk deploy --all --context archivesBucketName={s3-bucket-name} --context dataPrepperOrganization={data-prepper-organization-name} --context ciAccountId={opensearch-ci-account-id}
+cdk deploy --all --context archivesBucketName={s3-bucket-name} --context dataPrepperOrganization={data-prepper-organization-name} --context ciAccountIds={opensearch-ci-account-id}
 ```
 
 #### Deploy to Use an Existing S3 Bucket
