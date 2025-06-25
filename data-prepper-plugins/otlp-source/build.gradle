@@ -33,6 +33,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 

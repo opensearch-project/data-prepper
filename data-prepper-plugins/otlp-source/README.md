@@ -47,6 +47,9 @@ otel-telemetry-pipeline:
 - compression(Optional) => The compression type applied on the client request payload. Defaults to `none`. Supported values are:
   - `none`: no compression
   - `gzip`: apply GZip de-compression on the incoming request.
+- output_format(Optional) => Specifies the decoded output format for all signals (logs, metrics, traces) if individual output format options are not set. Supported values are:
+  - `otel`: OpenTelemetry format (default).
+  - `opensearch`: OpenSearch format.
 - logs_output_format(Optional) => Specifies the decoded output format for logs. Supported values are:
   - `otel`: OpenTelemetry format (default).
   - `opensearch`: OpenSearch format.
@@ -56,6 +59,8 @@ otel-telemetry-pipeline:
 - traces_output_format(Optional) => Specifies the decoded output format for traces. Supported values are:
   - `otel`: OpenTelemetry format (default).
   - `opensearch`: OpenSearch format.
+
+> **Note:** If an individual output format (e.g., `logs_output_format`) is set, it takes precedence over the generic `output_format` for that signal type. If neither is set, the default is `otel`.
 
 ### Retry Information
 
@@ -95,7 +100,6 @@ source:
 
 This plugin uses pluggable authentication for GRPC servers. To provide custom authentication,
 create a plugin which implements [`GrpcAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/GrpcAuthenticationProvider.java)
-
 
 ### SSL
 

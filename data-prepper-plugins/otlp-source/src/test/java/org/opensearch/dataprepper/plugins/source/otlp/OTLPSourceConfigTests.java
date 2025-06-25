@@ -37,7 +37,6 @@ class OTLPSourceConfigTests {
   private static final String TEST_KEY_CERT_S3 = "s3://test.crt";
   private static final String TEST_KEY_S3 = "s3://test.key";
   private static final String TEST_REGION = "us-east-1";
-  private static final int TEST_REQUEST_TIMEOUT_MS = 777;
   private static final int TEST_PORT = 45600;
   private static final int TEST_THREAD_COUNT = 888;
   private static final int TEST_MAX_CONNECTION_COUNT = 999;
@@ -50,7 +49,8 @@ class OTLPSourceConfigTests {
   void testDefault() {
     final OTLPSourceConfig config = new OTLPSourceConfig();
 
-    assertEquals(OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, config.getRequestTimeoutInMillis());
+    assertEquals((int) Duration.ofSeconds(OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT).toMillis(),
+        config.getRequestTimeoutInMillis());
     assertEquals(OTLPSourceConfig.DEFAULT_PORT, config.getPort());
     assertEquals(OTLPSourceConfig.DEFAULT_THREAD_COUNT, config.getThreadCount());
     assertEquals(OTLPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, config.getMaxConnectionCount());
@@ -80,14 +80,13 @@ class OTLPSourceConfigTests {
   @Test
   void testValidConfigWithoutS3CertAndKey() {
     final PluginSetting validPluginSetting = completePluginSetting(
-        TEST_REQUEST_TIMEOUT_MS, TEST_PORT, null, true, true, false, true,
+        TEST_PORT, null, true, true, false, true,
         TEST_KEY_CERT, TEST_KEY, TEST_THREAD_COUNT, TEST_MAX_CONNECTION_COUNT);
 
     final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(validPluginSetting.getSettings(),
         OTLPSourceConfig.class);
     config.validateAndInitializeCertAndKeyFileInS3();
 
-    assertEquals(TEST_REQUEST_TIMEOUT_MS, config.getRequestTimeoutInMillis());
     assertEquals(TEST_PORT, config.getPort());
     assertEquals(TEST_THREAD_COUNT, config.getThreadCount());
     assertEquals(TEST_MAX_CONNECTION_COUNT, config.getMaxConnectionCount());
@@ -102,8 +101,8 @@ class OTLPSourceConfigTests {
 
   @Test
   void testValidConfigWithS3CertAndKey() {
-    final PluginSetting validPluginSettingWithS3CertAndKey = completePluginSetting(
-        TEST_REQUEST_TIMEOUT_MS, TEST_PORT, null, false, false, false, true,
+    final PluginSetting validPluginSettingWithS3CertAndKey = completePluginSetting(TEST_PORT, null, false, false, false,
+        true,
         TEST_KEY_CERT_S3, TEST_KEY_S3, TEST_THREAD_COUNT, TEST_MAX_CONNECTION_COUNT);
 
     validPluginSettingWithS3CertAndKey.getSettings().put(OTLPSourceConfig.AWS_REGION, TEST_REGION);
@@ -112,7 +111,6 @@ class OTLPSourceConfigTests {
         .convertValue(validPluginSettingWithS3CertAndKey.getSettings(), OTLPSourceConfig.class);
     config.validateAndInitializeCertAndKeyFileInS3();
 
-    assertEquals(TEST_REQUEST_TIMEOUT_MS, config.getRequestTimeoutInMillis());
     assertEquals(TEST_PORT, config.getPort());
     assertEquals(TEST_THREAD_COUNT, config.getThreadCount());
     assertEquals(TEST_MAX_CONNECTION_COUNT, config.getMaxConnectionCount());
@@ -128,7 +126,7 @@ class OTLPSourceConfigTests {
   @Test
   void testInvalidConfigWithNullKeyCert() {
     final PluginSetting sslNullKeyCertPluginSetting = completePluginSetting(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, OTLPSourceConfig.DEFAULT_PORT,
+        OTLPSourceConfig.DEFAULT_PORT,
         null, false, false, false, true, null, TEST_KEY,
         OTLPSourceConfig.DEFAULT_THREAD_COUNT, OTLPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -141,7 +139,7 @@ class OTLPSourceConfigTests {
   @Test
   void testRetryInfoConfig() {
     final PluginSetting pluginSetting = completePluginSetting(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, OTLPSourceConfig.DEFAULT_PORT,
+        OTLPSourceConfig.DEFAULT_PORT,
         null, false, false, false, true, TEST_KEY_CERT, "",
         OTLPSourceConfig.DEFAULT_THREAD_COUNT, OTLPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -189,7 +187,7 @@ class OTLPSourceConfigTests {
   @Test
   void testInvalidConfigWithEmptyKeyCert() {
     final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         null,
         false,
@@ -210,7 +208,7 @@ class OTLPSourceConfigTests {
   @Test
   void testInvalidConfigWithEmptyKeyFile() {
     final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         null,
         false,
@@ -232,7 +230,7 @@ class OTLPSourceConfigTests {
   void testValidConfigWithCustomPath() {
     final String testPath = "/testPath";
     final PluginSetting customPathPluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         testPath,
         false,
@@ -255,7 +253,7 @@ class OTLPSourceConfigTests {
   void testInValidConfigWithCustomPath() {
     final String testPath = "invalidPath";
     final PluginSetting customPathPluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         testPath,
         false,
@@ -277,7 +275,7 @@ class OTLPSourceConfigTests {
   @Test
   void testPathsAreDistinct() {
     final PluginSetting pluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         "/logs",
         false,
@@ -300,7 +298,7 @@ class OTLPSourceConfigTests {
   @Test
   void testPathsAreNotDistinct() {
     final PluginSetting pluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         "/logs",
         false,
@@ -323,7 +321,7 @@ class OTLPSourceConfigTests {
   @Test
   void testValidPathsStartWithSlash() {
     final PluginSetting pluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         "/logs",
         false,
@@ -348,7 +346,7 @@ class OTLPSourceConfigTests {
   @Test
   void testInvalidPathsDoNotStartWithSlash() {
     final PluginSetting pluginSetting = completePluginSettingForOtelTelemetrySource(
-        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS,
+        OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT,
         OTLPSourceConfig.DEFAULT_PORT,
         "logs",
         false,
@@ -380,6 +378,19 @@ class OTLPSourceConfigTests {
   }
 
   @Test
+  void testGenericOutputFormats() {
+    final Map<String, Object> settings = new HashMap<>();
+    settings.put(OTLPSourceConfig.OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+
+    final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+    final OTLPSourceConfig config = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTLPSourceConfig.class);
+
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
+  }
+
+  @Test
   void testCustomOutputFormats() {
     final Map<String, Object> settings = new HashMap<>();
     settings.put(OTLPSourceConfig.LOGS_OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
@@ -394,13 +405,12 @@ class OTLPSourceConfigTests {
     assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
   }
 
-  private PluginSetting completePluginSetting(final int requestTimeoutInMillis, final int port, final String path,
+  private PluginSetting completePluginSetting(final int port, final String path,
       final boolean healthCheck, final boolean protoReflectionService,
       final boolean enableUnframedRequests, final boolean isSSL,
       final String sslKeyCertChainFile, final String sslKeyFile,
       final int threadCount, final int maxConnectionCount) {
     final Map<String, Object> settings = new HashMap<>();
-    settings.put(OTLPSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
     settings.put(OTLPSourceConfig.PORT, port);
     settings.put(OTLPSourceConfig.LOGS_PATH, path);
     settings.put(OTLPSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
@@ -428,7 +438,6 @@ class OTLPSourceConfigTests {
       final int threadCount,
       final int maxConnectionCount) {
     final Map<String, Object> settings = new HashMap<>();
-    settings.put(OTLPSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
     settings.put(OTLPSourceConfig.PORT, port);
     settings.put(OTLPSourceConfig.LOGS_PATH, path);
     settings.put(OTLPSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);

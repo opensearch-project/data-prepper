@@ -14,9 +14,12 @@ import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelOutputFormat;
 import org.opensearch.dataprepper.plugins.server.RetryInfoConfig;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
+
+import java.time.Duration;
 
 public class OTLPSourceConfig {
-  static final String REQUEST_TIMEOUT = "request_timeout";
   static final String PORT = "port";
   static final String LOGS_PATH = "logs_path";
   static final String METRICS_PATH = "metrics_path";
@@ -39,7 +42,8 @@ public class OTLPSourceConfig {
   static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
   static final String COMPRESSION = "compression";
   static final String RETRY_INFO = "retry_info";
-  static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+  static final String OUTPUT_FORMAT = "output_format";
+  static final int DEFAULT_REQUEST_TIMEOUT = 10; // in seconds
   static final int DEFAULT_PORT = 21893;
   static final int DEFAULT_THREAD_COUNT = 200;
   static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
@@ -48,12 +52,14 @@ public class OTLPSourceConfig {
   static final boolean DEFAULT_HEALTH_CHECK = false;
   static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
   static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-  static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+  static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT = 120; // in seconds
   private static final String S3_PREFIX = "s3://";
   static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
 
-  @JsonProperty(REQUEST_TIMEOUT)
-  private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
+  @JsonProperty("flush_interval")
+  @DurationMin(seconds = 5)
+  @DurationMax(seconds = 3600)
+  private Duration requestTimeout = Duration.ofSeconds(DEFAULT_REQUEST_TIMEOUT);
 
   @JsonProperty(PORT)
   private int port = DEFAULT_PORT;
@@ -82,9 +88,12 @@ public class OTLPSourceConfig {
   @JsonProperty(SSL)
   private boolean ssl = DEFAULT_SSL;
 
+  @JsonProperty(OUTPUT_FORMAT)
+  private OTelOutputFormat outputFormat = OTelOutputFormat.OTEL;
+
   @JsonProperty(LOGS_OUTPUT_FORMAT)
   private OTelOutputFormat logsOutputFormat = OTelOutputFormat.OTEL;
- 
+
   @JsonProperty(METRICS_OUTPUT_FORMAT)
   private OTelOutputFormat metricsOutputFormat = OTelOutputFormat.OTEL;
 
@@ -94,8 +103,10 @@ public class OTLPSourceConfig {
   @JsonProperty(USE_ACM_CERT_FOR_SSL)
   private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
 
-  @JsonProperty(ACM_CERT_ISSUE_TIME_OUT_MILLIS)
-  private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
+  @JsonProperty("flush_interval")
+  @DurationMin(seconds = 5)
+  @DurationMax(seconds = 3600)
+  private Duration acmCertIssueTimeOutMillis = Duration.ofSeconds(DEFAULT_ACM_CERT_ISSUE_TIME_OUT);
 
   @JsonProperty(SSL_KEY_CERT_FILE)
   private String sslKeyCertChainFile;
@@ -190,20 +201,27 @@ public class OTLPSourceConfig {
         sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
   }
 
+  /**
+   * Note: The value is cast to int since the maximum allowed duration
+   * (1 hour = 3,600,000 ms) is well within the int range.
+   * Validation via @DurationMax ensures this is safe.
+   * Casting to int is necessary because ServerConfiguration method signature
+   * requires it.
+   */
   public int getRequestTimeoutInMillis() {
-    return requestTimeoutInMillis;
+    return (int) requestTimeout.toMillis();
   }
 
   public OTelOutputFormat getLogsOutputFormat() {
-    return logsOutputFormat;
+    return logsOutputFormat != OTelOutputFormat.OTEL ? logsOutputFormat : outputFormat;
   }
 
   public OTelOutputFormat getMetricsOutputFormat() {
-    return metricsOutputFormat;
+    return metricsOutputFormat != OTelOutputFormat.OTEL ? metricsOutputFormat : outputFormat;
   }
 
   public OTelOutputFormat getTracesOutputFormat() {
-    return tracesOutputFormat;
+    return tracesOutputFormat != OTelOutputFormat.OTEL ? tracesOutputFormat : outputFormat;
   }
 
   public int getPort() {
@@ -247,7 +265,7 @@ public class OTLPSourceConfig {
   }
 
   public long getAcmCertIssueTimeOutMillis() {
-    return acmCertIssueTimeOutMillis;
+    return acmCertIssueTimeOutMillis.toMillis();
   }
 
   public String getSslKeyCertChainFile() {

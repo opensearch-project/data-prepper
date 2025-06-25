@@ -55,6 +55,8 @@ import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 
+import static org.opensearch.dataprepper.plugins.source.otlp.OTLPSourceConfig.DEFAULT_REQUEST_TIMEOUT;
+
 @ExtendWith(MockitoExtension.class)
 public class OTLPSource_RetryInfoTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21893/";
@@ -83,7 +85,8 @@ public class OTLPSource_RetryInfoTest {
 
         when(otlpSourceConfig.getPort()).thenReturn(21893);
         when(otlpSourceConfig.isSsl()).thenReturn(false);
-        when(otlpSourceConfig.getRequestTimeoutInMillis()).thenReturn(1000);
+        when(otlpSourceConfig.getRequestTimeoutInMillis())
+                .thenReturn((int) Duration.ofSeconds(DEFAULT_REQUEST_TIMEOUT).toMillis());
         when(otlpSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(otlpSourceConfig.getThreadCount()).thenReturn(5);
         when(otlpSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
