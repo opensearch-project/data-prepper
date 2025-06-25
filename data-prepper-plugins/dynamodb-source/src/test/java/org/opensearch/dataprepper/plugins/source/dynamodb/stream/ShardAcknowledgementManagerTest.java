@@ -16,10 +16,13 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ShardAcknowledgementManagerTest {
@@ -49,13 +52,13 @@ class ShardAcknowledgementManagerTest {
 
     @BeforeEach
     void setUp() {
-        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
         shardAcknowledgementManager = new ShardAcknowledgementManager(
             acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig);
     }
 
     @Test
     void testCreateAcknowledgmentSet() {
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
         when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
             .thenReturn(acknowledgementSet);
 

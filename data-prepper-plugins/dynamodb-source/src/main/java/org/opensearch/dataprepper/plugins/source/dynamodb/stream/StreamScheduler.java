@@ -159,7 +159,9 @@ public class StreamScheduler implements Runnable {
             shardsInProcessing.decrementAndGet();
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
-                coordinator.completePartition(streamPartition);
+                if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
+                    coordinator.completePartition(streamPartition);
+                }
             } else {
                 LOG.error("Received an exception while processing shard {}, giving up shard: {}", streamPartition.getShardId(), ex);
                 coordinator.giveUpPartition(streamPartition);
