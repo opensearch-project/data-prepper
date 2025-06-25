@@ -406,6 +406,42 @@ class OTLPSourceConfigTests {
     assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
   }
 
+  @Test
+  void testOutputFormatFallbackAndOverride() {
+    // Default: all specific formats are null, should fallback to outputFormat
+    // (OTEL)
+    OTLPSourceConfig config = new OTLPSourceConfig();
+    assertEquals(OTelOutputFormat.OTEL, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OTEL, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OTEL, config.getTracesOutputFormat());
+
+    // Set generic outputFormat to OPENSEARCH, specific formats still null
+    Map<String, Object> settings = new HashMap<>();
+    settings.put(OTLPSourceConfig.OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+    PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+    config = new ObjectMapper().convertValue(pluginSetting.getSettings(), OTLPSourceConfig.class);
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
+
+    // Set specific logs output format, others remain null
+    settings.put(OTLPSourceConfig.LOGS_OUTPUT_FORMAT, OTelOutputFormat.OTEL.getFormatName());
+    pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+    config = new ObjectMapper().convertValue(pluginSetting.getSettings(), OTLPSourceConfig.class);
+    assertEquals(OTelOutputFormat.OTEL, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
+
+    // Set all specific formats
+    settings.put(OTLPSourceConfig.METRICS_OUTPUT_FORMAT, OTelOutputFormat.OTEL.getFormatName());
+    settings.put(OTLPSourceConfig.TRACES_OUTPUT_FORMAT, OTelOutputFormat.OPENSEARCH.getFormatName());
+    pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+    config = new ObjectMapper().convertValue(pluginSetting.getSettings(), OTLPSourceConfig.class);
+    assertEquals(OTelOutputFormat.OTEL, config.getLogsOutputFormat());
+    assertEquals(OTelOutputFormat.OTEL, config.getMetricsOutputFormat());
+    assertEquals(OTelOutputFormat.OPENSEARCH, config.getTracesOutputFormat());
+  }
+
   private PluginSetting completePluginSetting(final int requestTimeoutInMillis,
       final int port, final String path,
       final boolean healthCheck, final boolean protoReflectionService,

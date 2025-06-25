@@ -93,13 +93,13 @@ public class OTLPSourceConfig {
   private OTelOutputFormat outputFormat = OTelOutputFormat.OTEL;
 
   @JsonProperty(LOGS_OUTPUT_FORMAT)
-  private OTelOutputFormat logsOutputFormat = OTelOutputFormat.OTEL;
+  private OTelOutputFormat logsOutputFormat = null;
 
   @JsonProperty(METRICS_OUTPUT_FORMAT)
-  private OTelOutputFormat metricsOutputFormat = OTelOutputFormat.OTEL;
+  private OTelOutputFormat metricsOutputFormat = null;
 
   @JsonProperty(TRACES_OUTPUT_FORMAT)
-  private OTelOutputFormat tracesOutputFormat = OTelOutputFormat.OTEL;
+  private OTelOutputFormat tracesOutputFormat = null;
 
   @JsonProperty(USE_ACM_CERT_FOR_SSL)
   private boolean useAcmCertForSSL = DEFAULT_USE_ACM_CERT_FOR_SSL;
@@ -214,15 +214,15 @@ public class OTLPSourceConfig {
   }
 
   public OTelOutputFormat getLogsOutputFormat() {
-    return logsOutputFormat != OTelOutputFormat.OTEL ? logsOutputFormat : outputFormat;
+    return logsOutputFormat != null ? logsOutputFormat : outputFormat;
   }
 
   public OTelOutputFormat getMetricsOutputFormat() {
-    return metricsOutputFormat != OTelOutputFormat.OTEL ? metricsOutputFormat : outputFormat;
+    return metricsOutputFormat != null ? metricsOutputFormat : outputFormat;
   }
 
   public OTelOutputFormat getTracesOutputFormat() {
-    return tracesOutputFormat != OTelOutputFormat.OTEL ? tracesOutputFormat : outputFormat;
+    return tracesOutputFormat != null ? tracesOutputFormat : outputFormat;
   }
 
   public int getPort() {
