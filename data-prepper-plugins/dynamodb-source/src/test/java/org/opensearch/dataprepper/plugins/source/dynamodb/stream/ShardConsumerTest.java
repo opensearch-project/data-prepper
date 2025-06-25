@@ -52,7 +52,6 @@ import java.util.function.Consumer;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -171,7 +170,10 @@ class ShardConsumerTest {
         given(pluginMetrics.counter("changeEventsProcessingErrors")).willReturn(testCounter);
         given(pluginMetrics.summary(anyString())).willReturn(testSummary);
 
-        when(aggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
+        lenient().when(aggregateMetrics.getStreamApiInvocations()).thenReturn(streamApiInvocations);
+
+
+        lenient().when(shardAcknowledgementManager.isExportDone(any(StreamPartition.class))).thenReturn(true);
     }
 
     @Test
@@ -244,7 +246,6 @@ class ShardConsumerTest {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
 
-        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
 
         ShardConsumer shardConsumer;
@@ -279,7 +280,6 @@ class ShardConsumerTest {
     @Test
     void test_run_shardConsumer_catches_5xx_exception_and_increments_metric() {
         ShardConsumer shardConsumer;
-        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
         try (
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
@@ -294,6 +294,7 @@ class ShardConsumerTest {
         }
 
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
+        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
 
         assertThrows(RuntimeException.class, shardConsumer::run);
 
@@ -304,7 +305,6 @@ class ShardConsumerTest {
     @Test
     void test_run_shardConsumer_catches_4xx_exception_and_increments_metric() {
         ShardConsumer shardConsumer;
-        when(aggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
         try (
                 final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
@@ -319,6 +319,7 @@ class ShardConsumerTest {
         }
 
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(DynamoDbException.class);
+        when(aggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
 
         assertThrows(RuntimeException.class, shardConsumer::run);
 
