@@ -65,7 +65,8 @@ public class ShardConsumerFactory {
 
     public Runnable createConsumer(final StreamPartition streamPartition,
                                    final AcknowledgementSet acknowledgementSet,
-                                   final Duration shardAcknowledgmentTimeout) {
+                                   final Duration shardAcknowledgmentTimeout,
+                                   final ShardAcknowledgementManager shardAcknowledgementManager) {
 
         LOG.info("Starting to consume shard " + streamPartition.getShardId());
 
@@ -95,7 +96,7 @@ public class ShardConsumerFactory {
             return null;
         }
 
-        StreamCheckpointer checkpointer = new StreamCheckpointer(enhancedSourceCoordinator, streamPartition);
+
         String tableArn = TableUtil.getTableArnFromStreamArn(streamPartition.getStreamArn());
         TableInfo tableInfo = getTableInfo(tableArn);
 
@@ -103,7 +104,8 @@ public class ShardConsumerFactory {
         LOG.debug("Create shard consumer for {} with lastShardIter {}", streamPartition.getShardId(), lastShardIterator);
         ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig)
                 .tableInfo(tableInfo)
-                .checkpointer(checkpointer)
+                .shardAcknowledgementManager(shardAcknowledgementManager)
+                .streamPartition(streamPartition)
                 .shardIterator(shardIterator)
                 .shardId(streamPartition.getShardId())
                 .lastShardIterator(lastShardIterator)

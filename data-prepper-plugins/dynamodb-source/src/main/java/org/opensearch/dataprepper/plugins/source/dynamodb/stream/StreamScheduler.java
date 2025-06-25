@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +24,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
-
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 /**
  * A scheduler to manage all the stream related work in one place
@@ -58,6 +57,8 @@ public class StreamScheduler implements Runnable {
     private final BackoffCalculator backoffCalculator;
     private int noAvailableShardsCount = 0;
 
+    private final ShardAcknowledgementManager shardAcknowledgementManager;
+
 
     public StreamScheduler(final EnhancedSourceCoordinator coordinator,
                            final ShardConsumerFactory consumerFactory,
@@ -71,6 +72,8 @@ public class StreamScheduler implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.backoffCalculator = backoffCalculator;
+        this.shardAcknowledgementManager = new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig);
+        this.shardAcknowledgementManager.init(coordinator::giveUpPartition);
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
@@ -80,40 +83,17 @@ public class StreamScheduler implements Runnable {
     private void processStreamPartition(StreamPartition streamPartition) {
         final boolean acknowledgmentsEnabled = dynamoDBSourceConfig.isAcknowledgmentsEnabled();
         AcknowledgementSet acknowledgementSet = null;
-
         if (acknowledgmentsEnabled) {
-            acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                if (result) {
-                    LOG.info("Received acknowledgment of completion from sink for shard {}", streamPartition.getShardId());
-                    completeConsumer(streamPartition).accept(null, null);
-                } else {
-                    LOG.warn("Negative acknowledgment received for shard {}, it will be retried", streamPartition.getShardId());
-                    coordinator.giveUpPartition(streamPartition);
-                }
-            }, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+            final StreamProgressState lastProgressState = streamPartition.getProgressState().orElseThrow();
+            final String endingSequenceNumber = lastProgressState.getEndingSequenceNumber();
+            acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, lastProgressState.getSequenceNumber(), endingSequenceNumber == null || endingSequenceNumber.isEmpty());
         }
 
-        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, dynamoDBSourceConfig.getShardAcknowledgmentTimeout(), shardAcknowledgementManager);
         if (shardConsumer != null) {
 
             CompletableFuture runConsumer = CompletableFuture.runAsync(shardConsumer, executor);
-
-            if (acknowledgmentsEnabled) {
-                runConsumer.whenComplete((v, ex) -> {
-                    numOfWorkers.decrementAndGet();
-                    if (ex != null) {
-                        LOG.error(NOISY, "Received exception while processing shard {}, giving up this shard for reprocessing: {}",
-                                streamPartition.getShardId(), ex);
-                        coordinator.giveUpPartition(streamPartition);
-                    }
-                    if (numOfWorkers.get() == 0) {
-                        activeChangeEventConsumers.decrementAndGet();
-                    }
-                    shardsInProcessing.decrementAndGet();
-                });
-            } else {
-                runConsumer.whenComplete(completeConsumer(streamPartition));
-            }
+            runConsumer.whenComplete(completeConsumer(streamPartition));
             numOfWorkers.incrementAndGet();
             if (numOfWorkers.get() % 10 == 0) {
                 SHARD_COUNT_LOGGER.info("Actively processing {} shards", numOfWorkers.get());
@@ -172,23 +152,18 @@ public class StreamScheduler implements Runnable {
 
     private BiConsumer completeConsumer(StreamPartition streamPartition) {
         return (v, ex) -> {
-            if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
-                numOfWorkers.decrementAndGet();
-                if (numOfWorkers.get() == 0) {
-                    activeChangeEventConsumers.decrementAndGet();
-                }
-                shardsInProcessing.decrementAndGet();
+            numOfWorkers.decrementAndGet();
+            if (numOfWorkers.get() == 0) {
+                activeChangeEventConsumers.decrementAndGet();
             }
+            shardsInProcessing.decrementAndGet();
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
                 coordinator.completePartition(streamPartition);
             } else {
-                // Do nothing
-                // The consumer must have already done one last checkpointing.
                 LOG.error("Received an exception while processing shard {}, giving up shard: {}", streamPartition.getShardId(), ex);
                 coordinator.giveUpPartition(streamPartition);
             }
         };
     }
-
 }
