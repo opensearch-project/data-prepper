@@ -63,11 +63,11 @@ public class ExtensionLoader {
         this.extensionPluginCreator = extensionPluginCreator;
         this.pluginErrorCollector = pluginErrorCollector;
         this.pluginErrorsHandler = pluginErrorsHandler;
-        this.extensionsLoaderComparator = extensionsLoaderComparator;
+        this.extensionsLoaderComparator = Objects.requireNonNull(extensionsLoaderComparator);
     }
 
     public List<? extends ExtensionPlugin> loadExtensions() {
-        final List<ExtensionPluginWithContext> extensionPluginsWithContext = extensionClassProvider.loadExtensionPluginClasses()
+        final List<ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
                 .map(extensionClass -> {
                     final String pluginName = convertClassToName(extensionClass);
@@ -87,20 +87,10 @@ public class ExtensionLoader {
                     }
                 })
                 .filter(pluginWithContext -> pluginWithContext != null)
-                .collect(Collectors.toList());
-
-        List<? extends ExtensionPlugin> result = null;
-        if (extensionPluginsWithContext != null && extensionPluginsWithContext.size() > 1 &&
-                extensionsLoaderComparator != null) {
-            result = extensionPluginsWithContext.stream()
                 .sorted(extensionsLoaderComparator)
                 .map(extensionPluginWithContext -> extensionPluginWithContext.getExtensionPlugin())
                 .collect(Collectors.toList());
-        } else {
-            result = extensionPluginsWithContext.stream()
-                .map(extensionPluginWithContext -> extensionPluginWithContext.getExtensionPlugin())
-                .collect(Collectors.toList());
-        }
+
         final List<PluginError> extensionPluginErrors = pluginErrorCollector.getPluginErrors()
                 .stream().filter(pluginError -> PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE
                         .equals(pluginError.getComponentType()))
