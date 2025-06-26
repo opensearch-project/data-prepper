@@ -69,9 +69,6 @@ class ExtensionLoaderTest {
     private ArgumentCaptor<Collection<PluginError>> pluginErrorsArgumentCaptor;
     private PluginErrorCollector pluginErrorCollector;
 
-    private PluginCreatorContext pluginCreatorContext;
-
-    @Mock
     private Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator;
 
     private ExtensionLoader createObjectUnderTest() {
@@ -82,7 +79,7 @@ class ExtensionLoaderTest {
     @BeforeEach
     void setUp() {
         pluginErrorCollector = new PluginErrorCollector();
-        pluginCreatorContext = new PluginCreatorContext();
+        PluginCreatorContext pluginCreatorContext = new PluginCreatorContext();
         extensionsLoaderComparator = pluginCreatorContext.extensionsLoaderComparator();
     }
 

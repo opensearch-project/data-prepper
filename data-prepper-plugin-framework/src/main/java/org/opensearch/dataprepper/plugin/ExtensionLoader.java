@@ -56,21 +56,8 @@ public class ExtensionLoader {
             final ExtensionClassProvider extensionClassProvider,
             @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
             final PluginErrorCollector pluginErrorCollector,
-            final PluginErrorsHandler pluginErrorsHandler) {
-        this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
-        this.extensionClassProvider = extensionClassProvider;
-        this.extensionPluginCreator = extensionPluginCreator;
-        this.pluginErrorCollector = pluginErrorCollector;
-        this.pluginErrorsHandler = pluginErrorsHandler;
-    }
-
-    ExtensionLoader(
-            final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
-            final ExtensionClassProvider extensionClassProvider,
-            @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
-            final PluginErrorCollector pluginErrorCollector,
             final PluginErrorsHandler pluginErrorsHandler,
-            final Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator) {
+            @Named("extensionsLoaderComparator") final Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;
