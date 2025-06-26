@@ -52,7 +52,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
     private final CsvMapper mapper;
     private final CsvSchema schema;
 
-    private final Boolean normalizeKeys;
+    private final boolean normalizeKeys;
 
     @DataPrepperPluginConstructor
     public CsvProcessor(final PluginMetrics pluginMetrics,

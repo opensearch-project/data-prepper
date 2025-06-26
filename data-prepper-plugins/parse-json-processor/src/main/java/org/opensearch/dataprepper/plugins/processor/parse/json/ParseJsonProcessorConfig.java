@@ -74,7 +74,7 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
 
     @JsonProperty("normalize_keys")
     @JsonPropertyDescription("If specified, replaces invalid characters with underscore character")
-    private Boolean normalizeKeys;
+    private Boolean normalizeKeys = false;
 
     @JsonProperty("parse_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
