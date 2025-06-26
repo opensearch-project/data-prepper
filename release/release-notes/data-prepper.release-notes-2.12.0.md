@@ -7,6 +7,7 @@
 
 ### Features
 
+* OTel telemetry unified source ([#5596](https://github.com/opensearch-project/data-prepper/issues/5596))
 * Add SQS sink to Data Prepper ([#5634](https://github.com/opensearch-project/data-prepper/issues/5634))
 * KDS cross account stream ([#5687](https://github.com/opensearch-project/data-prepper/pull/5687))
 * Add otlp sink (for AWS X-Ray) ([#5663](https://github.com/opensearch-project/data-prepper/issues/5663))
