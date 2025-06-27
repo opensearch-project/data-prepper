@@ -41,7 +41,6 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.MDC;
 
 import java.time.Duration;
