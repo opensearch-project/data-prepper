@@ -80,8 +80,9 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
 
         CompressionOption manualCompressionConfig = CompressionOption.NONE;
+        // If encryption at rest is enabled, disable Kafka built-in compression and do it manually (manualCompressionConfig)
         if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
-            // If encryption is enabled, disable Kafka built-in compression and do it manually.
+            // If the user specifies a CompressionType, we use that type as our manualCompressionConfig and disable the builtin-Kafka compression by setting compressionType to NONE.
             if (kafkaBufferConfig.getKafkaProducerProperties() != null && kafkaBufferConfig.getKafkaProducerProperties().getCompressionType() != null) {
                 manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
                 kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
