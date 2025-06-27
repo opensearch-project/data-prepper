@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadF
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
@@ -40,6 +41,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.MDC;
 
 import java.time.Duration;
@@ -136,6 +138,9 @@ class KafkaBufferTest {
     @Mock
     private EncryptionSupplier encryptionSupplier;
 
+    @Mock
+    private KafkaProducerProperties kafkaProducerProperties;
+
     public KafkaBuffer createObjectUnderTest() {
         return createObjectUnderTest(List.of(consumer));
     }
@@ -203,6 +208,7 @@ class KafkaBufferTest {
         executorService = mock(ExecutorService.class);
         when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
 
+        when(bufferConfig.getKafkaProducerProperties()).thenReturn(kafkaProducerProperties);
     }
 
     @Test
@@ -442,5 +448,70 @@ class KafkaBufferTest {
             mdcMockedStatic.verify(() -> MDC.put(KafkaMdc.MDC_KAFKA_PLUGIN_KEY, "buffer"));
             mdcMockedStatic.verify(() -> MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY));
         }
+    }
+
+    @Test
+    void test_kafkaBuffer_with_null_compressionType() throws Exception {
+        when(kafkaProducerProperties.getCompressionType()).thenReturn(null);
+        kafkaBuffer = createObjectUnderTest();
+        
+        Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));
+        kafkaBuffer.doWrite(record, 10000);
+        
+        verify(producer).produceRecords(record);
+    }
+
+    @Test
+    void test_kafkaBuffer_with_null_producerProperties() throws Exception {
+        when(bufferConfig.getKafkaProducerProperties()).thenReturn(null);
+        kafkaBuffer = createObjectUnderTest();
+        
+        Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));
+        kafkaBuffer.doWrite(record, 10000);
+        
+        verify(producer).produceRecords(record);
+    }
+
+    @Test
+    void test_kafkaBuffer_with_zstd_compressionType() throws Exception {
+        when(kafkaProducerProperties.getCompressionType()).thenReturn("zstd");
+        kafkaBuffer = createObjectUnderTest();
+        
+        Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));
+        kafkaBuffer.doWrite(record, 10000);
+        
+        verify(producer).produceRecords(record);
+    }
+
+    @Test
+    void test_kafkaBuffer_with_encryption_and_null_compressionType() throws Exception {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(true);
+        when(kafkaProducerProperties.getCompressionType()).thenReturn(null);
+        kafkaBuffer = createObjectUnderTest();
+        
+        Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));
+        kafkaBuffer.doWrite(record, 10000);
+        
+        verify(producer).produceRecords(record);
+    }
+
+    @Test
+    void test_customCompressionOption_with_encryption_enabled_and_gzip_compression() {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(true);
+        when(kafkaProducerProperties.getCompressionType()).thenReturn("gzip");
+        
+        kafkaBuffer = createObjectUnderTest();
+        
+        assertThat(kafkaBuffer.getCustomCompressionOption().name(), equalTo("GZIP"));
+        verify(kafkaProducerProperties).setCompressionType("none");
+    }
+
+    @Test
+    void test_customCompressionOption_with_encryption_disabled() {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(false);
+        
+        kafkaBuffer = createObjectUnderTest();
+        
+        assertThat(kafkaBuffer.getCustomCompressionOption().name(), equalTo("NONE"));
     }
 }
