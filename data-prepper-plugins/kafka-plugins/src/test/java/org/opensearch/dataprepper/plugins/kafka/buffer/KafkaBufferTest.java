@@ -481,4 +481,16 @@ class KafkaBufferTest {
         
         verify(producer).produceRecords(record);
     }
+
+    @Test
+    void test_kafkaBuffer_with_encryption_and_null_compressionType() throws Exception {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(true);
+        when(kafkaProducerProperties.getCompressionType()).thenReturn(null);
+        kafkaBuffer = createObjectUnderTest();
+        
+        Record<Event> record = new Record<Event>(JacksonEvent.fromMessage(UUID.randomUUID().toString()));
+        kafkaBuffer.doWrite(record, 10000);
+        
+        verify(producer).produceRecords(record);
+    }
 }
