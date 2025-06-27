@@ -121,6 +121,7 @@ public class KafkaCustomProducer<T> {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             OutputStream compressedOutputStream = compressionConfig.getCompressionEngine().createOutputStream(byteArrayOutputStream);
             compressedOutputStream.write(bytes);
+            compressedOutputStream.close();
             send(topicName, key, byteArrayOutputStream.toByteArray()).get();
 
             topicMetrics.update(producer);
@@ -175,6 +176,7 @@ public class KafkaCustomProducer<T> {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         OutputStream compressedOutputStream = compressionConfig.getCompressionEngine().createOutputStream(byteArrayOutputStream);
         compressedOutputStream.write(bytes);
+        compressedOutputStream.close();
 
         send(topicName, key, byteArrayOutputStream.toByteArray());
     }
