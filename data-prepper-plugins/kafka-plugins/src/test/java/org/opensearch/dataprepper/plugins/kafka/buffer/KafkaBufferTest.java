@@ -41,6 +41,7 @@ import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaCustomProducerFactory;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.slf4j.MDC;
 
 import java.time.Duration;
@@ -492,5 +493,25 @@ class KafkaBufferTest {
         kafkaBuffer.doWrite(record, 10000);
         
         verify(producer).produceRecords(record);
+    }
+
+    @Test
+    void test_customCompressionOption_with_encryption_enabled_and_gzip_compression() {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(true);
+        when(kafkaProducerProperties.getCompressionType()).thenReturn("gzip");
+        
+        kafkaBuffer = createObjectUnderTest();
+        
+        assertThat(kafkaBuffer.getCustomCompressionOption().name(), equalTo("GZIP"));
+        verify(kafkaProducerProperties).setCompressionType("none");
+    }
+
+    @Test
+    void test_customCompressionOption_with_encryption_disabled() {
+        when(bufferConfig.getTopic().encryptionAtRestEnabled()).thenReturn(false);
+        
+        kafkaBuffer = createObjectUnderTest();
+        
+        assertThat(kafkaBuffer.getCustomCompressionOption().name(), equalTo("NONE"));
     }
 }

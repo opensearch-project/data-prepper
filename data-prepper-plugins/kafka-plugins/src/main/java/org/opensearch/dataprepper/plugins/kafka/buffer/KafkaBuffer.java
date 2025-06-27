@@ -71,6 +71,8 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
     private AtomicBoolean shutdownInProgress;
     private ByteDecoder byteDecoder;
 
+    private CompressionOption customCompressionOption;
+
     @DataPrepperPluginConstructor
     public KafkaBuffer(final PluginSetting pluginSetting, final KafkaBufferConfig kafkaBufferConfig,
                        final AcknowledgementSetManager acknowledgementSetManager,
@@ -79,7 +81,7 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final EncryptionSupplier encryptionSupplier) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
 
-        CompressionOption customCompressionOption = CompressionOption.NONE;
+        customCompressionOption = CompressionOption.NONE;
         // If encryption at rest is enabled, disable Kafka built-in compression and do it manually (customCompressionOption)
         if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
             // If the user specifies a CompressionType, we use that type as our customCompressionOption and disable the builtin-Kafka compression by setting compressionType to NONE.
@@ -263,5 +265,9 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
 
     private static void resetMdc() {
         MDC.remove(KafkaMdc.MDC_KAFKA_PLUGIN_KEY);
+    }
+
+    public CompressionOption getCustomCompressionOption() {
+        return customCompressionOption;
     }
 }
