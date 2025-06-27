@@ -79,12 +79,12 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
                        final EncryptionSupplier encryptionSupplier) {
         super(kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName()+"buffer"), pluginSetting.getPipelineName());
 
-        CompressionOption manualCompressionConfig = CompressionOption.NONE;
-        // If encryption at rest is enabled, disable Kafka built-in compression and do it manually (manualCompressionConfig)
+        CompressionOption customCompressionOption = CompressionOption.NONE;
+        // If encryption at rest is enabled, disable Kafka built-in compression and do it manually (customCompressionOption)
         if (kafkaBufferConfig.getTopic().encryptionAtRestEnabled()) {
-            // If the user specifies a CompressionType, we use that type as our manualCompressionConfig and disable the builtin-Kafka compression by setting compressionType to NONE.
+            // If the user specifies a CompressionType, we use that type as our customCompressionOption and disable the builtin-Kafka compression by setting compressionType to NONE.
             if (kafkaBufferConfig.getKafkaProducerProperties() != null && kafkaBufferConfig.getKafkaProducerProperties().getCompressionType() != null) {
-                manualCompressionConfig = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
+                customCompressionOption = CompressionOption.fromOptionValue(kafkaBufferConfig.getKafkaProducerProperties().getCompressionType());
                 kafkaBufferConfig.getKafkaProducerProperties().setCompressionType(CompressionOption.NONE.name().toLowerCase());
             }
         }
@@ -94,13 +94,13 @@ public class KafkaBuffer extends AbstractBuffer<Record<Event>> {
         this.byteDecoder = byteDecoder;
         final String metricPrefixName = kafkaBufferConfig.getCustomMetricPrefix().orElse(pluginSetting.getName());
         final PluginMetrics producerMetrics = PluginMetrics.fromNames(metricPrefixName + WRITE, pluginSetting.getPipelineName());
-        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false, manualCompressionConfig);
+        producer = kafkaCustomProducerFactory.createProducer(kafkaBufferConfig, null, null, producerMetrics, null, false, customCompressionOption);
         final KafkaCustomConsumerFactory kafkaCustomConsumerFactory = new KafkaCustomConsumerFactory(serializationFactory, awsCredentialsSupplier);
         innerBuffer = new BlockingBuffer<>(INNER_BUFFER_CAPACITY, INNER_BUFFER_BATCH_SIZE, pluginSetting.getPipelineName());
         this.shutdownInProgress = new AtomicBoolean(false);
         final PluginMetrics consumerMetrics = PluginMetrics.fromNames(metricPrefixName + READ, pluginSetting.getPipelineName());
         this.consumers = kafkaCustomConsumerFactory.createConsumersForTopic(kafkaBufferConfig, kafkaBufferConfig.getTopic(),
-            innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker, manualCompressionConfig);
+            innerBuffer, consumerMetrics, acknowledgementSetManager, byteDecoder, shutdownInProgress, false, circuitBreaker, customCompressionOption);
         this.kafkaAdminAccessor = new KafkaAdminAccessor(kafkaBufferConfig, List.of(kafkaBufferConfig.getTopic().getGroupId()));
         this.executorService = Executors.newFixedThreadPool(consumers.size(), KafkaPluginThreadFactory.defaultExecutorThreadFactory(MDC_KAFKA_PLUGIN_VALUE));
         consumers.forEach(this.executorService::submit);
