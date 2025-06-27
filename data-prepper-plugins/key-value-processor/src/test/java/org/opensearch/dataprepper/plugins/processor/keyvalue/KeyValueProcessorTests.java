@@ -68,6 +68,7 @@ public class KeyValueProcessorTests {
     @BeforeEach
     void setup() {
         final KeyValueProcessorConfig defaultConfig = new KeyValueProcessorConfig();
+        lenient().when(mockConfig.getNormalizeKeys()).thenReturn(false);
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getStringLiteralCharacter()).thenReturn(null);
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
@@ -293,6 +294,20 @@ public class KeyValueProcessorTests {
         assertThat(event.containsKey("key2"), is(true));
         assertThat(event.get("key1", Object.class), is("value1"));
         assertThat(event.get("key2", Object.class), is("value2"));
+    }
+
+    @Test
+    void testInvalidKeyCharsReplacement() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        when(mockConfig.getNormalizeKeys()).thenReturn(true);
+        final Record<Event> record = getMessage("key 1=value1&key^2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("key_1"), is(true));
+        assertThat(event.containsKey("key_2"), is(true));
+        assertThat(event.get("key_1", Object.class), is("value1"));
+        assertThat(event.get("key_2", Object.class), is("value2"));
     }
 
     @Test

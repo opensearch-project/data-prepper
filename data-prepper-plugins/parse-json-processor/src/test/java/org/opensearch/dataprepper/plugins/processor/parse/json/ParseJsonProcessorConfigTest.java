@@ -28,6 +28,7 @@ public class ParseJsonProcessorConfigTest {
         assertThat(objectUnderTest.getSource(), equalTo(ParseJsonProcessorConfig.DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDestination(), equalTo(null));
         assertThat(objectUnderTest.getPointer(), equalTo(null));
+        assertThat(objectUnderTest.getNormalizeKeys(), equalTo(false));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
         assertThat(objectUnderTest.getOverwriteIfDestinationExists(), equalTo(true));
         assertThat(objectUnderTest.isDeleteSourceRequested(), equalTo(false));
@@ -64,6 +65,8 @@ public class ParseJsonProcessorConfigTest {
 
             setField(ParseJsonProcessorConfig.class, config, "deleteSource", true);
             assertThat(config.isDeleteSourceRequested(), equalTo(true));
+            setField(ParseJsonProcessorConfig.class, config, "normalizeKeys", true);
+            assertThat(config.getNormalizeKeys(), equalTo(true));
         }
 
         @Test

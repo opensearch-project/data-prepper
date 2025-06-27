@@ -100,6 +100,12 @@ public class ParseXmlProcessorConfig implements CommonParseConfig {
         return overwriteIfDestinationExists;
     }
 
+    @Override
+    public Boolean getNormalizeKeys() {
+        return false;
+    }
+
+
     @AssertTrue(message = "destination cannot be empty, whitespace, or a front slash (/)")
     boolean isValidDestination() {
         if (Objects.isNull(destination)) return true;
