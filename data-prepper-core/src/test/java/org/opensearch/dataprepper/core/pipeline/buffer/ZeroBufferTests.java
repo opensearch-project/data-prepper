@@ -211,6 +211,19 @@ public class ZeroBufferTests {
             assertTrue(readRecordsMap.getKey().isEmpty());
             verify(pipelineRunner, never()).runAllProcessorsAndPublishToSinks();
         }
+
+        @Test
+        public void testReadFromEmptyBufferCallsThreadSleep() {
+            ZeroBuffer<Record<String>> zeroBuffer = createObjectUnderTest();
+            
+            long startTime = System.currentTimeMillis();
+            Map.Entry<Collection<Record<String>>, CheckpointState> readRecordsMap = zeroBuffer.read(READ_TIMEOUT);
+            long endTime = System.currentTimeMillis();
+            
+            assertTrue(readRecordsMap.getKey().isEmpty());
+            assertEquals(ZeroBuffer.EMPTY_CHECKPOINT, readRecordsMap.getValue());
+            assertTrue(endTime - startTime >= ZeroBuffer.DEFAULT_READ_SLEEP_MILLIS, "Thread.sleep should have been called for " + ZeroBuffer.DEFAULT_READ_SLEEP_MILLIS + "ms");
+        }
     }
 
     @Nested
