@@ -82,8 +82,6 @@ public class ZeroBuffer<T extends Record<?>> implements Buffer<T>, SupportsPipel
             try {
                 Thread.sleep(DEFAULT_READ_SLEEP_MILLIS);
             } catch (InterruptedException e) {
-                // Restore the interrupted status
-                Thread.currentThread().interrupt();
                 LOG.debug("Thread interrupted while waiting for data in empty buffer, returning empty result");
             }
             return Map.entry(Collections.emptySet(), EMPTY_CHECKPOINT);

@@ -223,10 +223,6 @@ public class ZeroBufferTests {
             
             assertTrue(result.getKey().isEmpty());
             assertEquals(ZeroBuffer.EMPTY_CHECKPOINT, result.getValue());
-            assertTrue(Thread.currentThread().isInterrupted());
-            
-            // Clear the interrupted status
-            Thread.interrupted();
         }
     }
 
