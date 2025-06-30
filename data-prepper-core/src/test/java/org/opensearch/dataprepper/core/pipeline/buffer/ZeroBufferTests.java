@@ -218,10 +218,12 @@ public class ZeroBufferTests {
 
             // Interrupt the current thread to test the InterruptedException handling and Thread.sleep() call indirectly
             Thread.currentThread().interrupt();
+
+            Map.Entry<Collection<Record<String>>, CheckpointState> result = zeroBuffer.read(READ_TIMEOUT);
             
-            assertThrows(RuntimeException.class, () -> {
-                zeroBuffer.read(READ_TIMEOUT);
-            });
+            assertTrue(result.getKey().isEmpty());
+            assertEquals(ZeroBuffer.EMPTY_CHECKPOINT, result.getValue());
+            assertTrue(Thread.currentThread().isInterrupted());
             
             // Clear the interrupted status
             Thread.interrupted();
