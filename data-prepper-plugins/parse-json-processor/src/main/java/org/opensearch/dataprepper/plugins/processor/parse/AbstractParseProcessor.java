@@ -127,7 +127,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
             if (value instanceof Map) {
                 replaceInvalidChars((Map<String, Object>)value);
             }
-            if (newKey != key) {
+            if (!newKey.equals(key)) {
                 toAdd.put(newKey, value);
                 iterator.remove();
             }

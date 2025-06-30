@@ -230,11 +230,28 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1"})
+    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1", "key_1"})
     public void testReplaceInvalidKeyChars(final String key) {
         assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo("key_1"));
         assertThat(JacksonEvent.replaceInvalidKeyChars(key.substring(0,3)), equalTo("key"));
         assertThat(JacksonEvent.replaceInvalidKeyChars(null), equalTo(null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1", "key_1"})
+    public void testPutWithReplaceInvalidKeyChars(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value, true);
+        assertThat(event.get("key_1", String.class), equalTo(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1"})
+    public void testPutWithoutReplaceInvalidKeyChars(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value, false));
     }
 
     @Test
@@ -1104,7 +1121,7 @@ public class JacksonEventTest {
 
 
     }
-    
+
     @Test
     void testJsonStringBuilderWithExcludeKeys() {
         final String jsonString = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";

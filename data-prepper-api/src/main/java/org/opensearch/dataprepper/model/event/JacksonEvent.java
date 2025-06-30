@@ -166,6 +166,14 @@ public class JacksonEvent implements Event {
         }
     }
 
+    @Override
+    public void put(String key, final Object value, final boolean replaceInvalidCharacters) {
+        if (replaceInvalidCharacters) {
+            key = JacksonEventKey.replaceInvalidCharacters(key);
+        }
+        put(key, value);
+    }
+
     /**
      * Adds or updates the key with a given value in the Event.
      *
@@ -260,7 +268,6 @@ public class JacksonEvent implements Event {
         final JacksonEventKey jacksonEventKey = new JacksonEventKey(key, true, EventKeyFactory.EventAction.GET);
         return get(jacksonEventKey, clazz);
     }
-
 
     public static String replaceInvalidKeyChars(final String key) {
         return JacksonEventKey.replaceInvalidCharacters(key);

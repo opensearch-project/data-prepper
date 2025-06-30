@@ -214,10 +214,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
         int providedHeaderColIdx = 0;
         for (; providedHeaderColIdx < header.size() && providedHeaderColIdx < data.size(); providedHeaderColIdx++) {
             String key = header.get(providedHeaderColIdx);
-            if (normalizeKeys) {
-                key = JacksonEvent.replaceInvalidKeyChars(key);
-            }
-            event.put(key, data.get(providedHeaderColIdx));
+            event.put(key, data.get(providedHeaderColIdx), normalizeKeys);
         }
         for (int remainingColIdx = providedHeaderColIdx; remainingColIdx < data.size(); remainingColIdx++) {
             event.put(generateColumnHeader(remainingColIdx), data.get(remainingColIdx));

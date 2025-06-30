@@ -43,7 +43,7 @@ public class CsvProcessorConfig {
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
     @JsonProperty(value = "normalize_keys", defaultValue = "false")
-    @JsonPropertyDescription("If specified, replaces invalid characters with underscore character")
+    @JsonPropertyDescription("If set to true, replaces invalid characters with underscore character")
     private Boolean normalizeKeys = false;
 
 
