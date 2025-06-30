@@ -40,7 +40,7 @@ public interface Event extends Serializable {
      *
      * @param key where the value will be set
      * @param value value to set the key to
-     * @param repalceInvalidCharacters flag indicating if invalid characters should be replaced or not
+     * @param replaceInvalidCharacters flag indicating if invalid characters should be replaced or not
      * @since 2.13
      */
     void put(String key, Object value, boolean replaceInvalidCharacters);
