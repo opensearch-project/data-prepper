@@ -65,7 +65,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
     private final String keyPrefix;
-    private final Boolean normalizeKeys;
+    private final boolean normalizeKeys;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -393,7 +393,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 } else {
                     if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
                             !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
-                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap, normalizeKeys);
                     }
                 }
             } catch (final Exception e) {
@@ -610,9 +610,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
             }
 
-            if (normalizeKeys) {
-                key = JacksonEvent.replaceInvalidKeyChars(key);
-            }
             addKeyValueToMap(processed, key, value);
         }
 
@@ -623,9 +620,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             }
             if (validKeyAndValue(pair.getKey(), pair.getValue())) {
                 String key = pair.getKey();
-                if (normalizeKeys) {
-                    key = JacksonEvent.replaceInvalidKeyChars(key);
-                }
                 processed.put(key, pair.getValue());
             }
         }
@@ -699,7 +693,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
             try {
                 if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
-                    event.put(entry.getKey(), entry.getValue());
+                    event.put(entry.getKey(), entry.getValue(), normalizeKeys);
                 }
             } catch (IllegalArgumentException e) {
                 LOG.warn("Failed to put key: "+entry.getKey()+" value : "+entry.getValue()+" into event. ", e);

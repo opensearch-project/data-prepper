@@ -43,6 +43,16 @@ public interface Event extends Serializable {
      * @param replaceInvalidCharacters flag indicating if invalid characters should be replaced or not
      * @since 2.13
      */
+    void put(EventKey key, Object value, boolean replaceInvalidCharacters);
+
+    /**
+     * Adds or updates the key with a given value in the Event
+     *
+     * @param key where the value will be set
+     * @param value value to set the key to
+     * @param replaceInvalidCharacters flag indicating if invalid characters should be replaced or not
+     * @since 2.13
+     */
     void put(String key, Object value, boolean replaceInvalidCharacters);
 
     /**

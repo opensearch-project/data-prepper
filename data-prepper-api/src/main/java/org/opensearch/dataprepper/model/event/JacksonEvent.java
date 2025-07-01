@@ -142,6 +142,33 @@ public class JacksonEvent implements Event {
         return jsonNode;
     }
 
+    void normalizeKeys(Map<String, Object> map) {
+        Map<String, Object> toAdd = new HashMap<>();
+        Iterator<Map.Entry<String, Object>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Object> entry = iterator.next();
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            final String newKey = JacksonEventKey.replaceInvalidCharacters(key);
+            if (value instanceof Map) {
+                normalizeKeys((Map<String, Object>)value);
+            }
+            if (!newKey.equals(key)) {
+                toAdd.put(newKey, value);
+                iterator.remove();
+            }
+        }
+        map.putAll(toAdd);
+    }
+
+    @Override
+    public void put(EventKey key, Object value, boolean replaceInvalidCharacters) {
+        if (replaceInvalidCharacters && (value instanceof Map)) {
+            normalizeKeys((Map<String, Object>)value);
+        }
+        put(key, value);
+    }
+
     @Override
     public void put(EventKey key, Object value) {
         final JacksonEventKey jacksonEventKey = asJacksonEventKey(key);
@@ -170,6 +197,9 @@ public class JacksonEvent implements Event {
     public void put(String key, final Object value, final boolean replaceInvalidCharacters) {
         if (replaceInvalidCharacters) {
             key = JacksonEventKey.replaceInvalidCharacters(key);
+            if (value instanceof Map) {
+                normalizeKeys((Map<String, Object>)value);
+            }
         }
         put(key, value);
     }
