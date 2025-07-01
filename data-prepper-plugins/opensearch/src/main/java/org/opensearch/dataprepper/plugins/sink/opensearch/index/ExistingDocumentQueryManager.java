@@ -48,7 +48,7 @@ public class ExistingDocumentQueryManager implements Runnable {
 
     static final String QUERY_TIME = "queryDuplicatesTime";
 
-    static final String POTENTIAL_DUPLICATES_DELETED = "potentialDuplicatesDeleted";
+    static final String POTENTIAL_DUPLICATES = "potentialDuplicates";
 
     private final Counter eventsDroppedAndReleasedCounter;
 
@@ -101,7 +101,7 @@ public class ExistingDocumentQueryManager implements Runnable {
         this.documentsCurrentlyBeingQueriedGauge = pluginMetrics.gauge(DOCUMENTS_CURRENTLY_BEING_QUERIED, documentsCurrentlyBeingQueried, AtomicInteger::get);
         this.duplicateEventsInQueryManager = pluginMetrics.counter(DUPLICATE_EVENTS_IN_QUERY_MANAGER);
         this.queryTimePerLoop = pluginMetrics.timer(QUERY_TIME);
-        this.potentialDuplicatesDeleted = pluginMetrics.counter(POTENTIAL_DUPLICATES_DELETED);
+        this.potentialDuplicatesDeleted = pluginMetrics.counter(POTENTIAL_DUPLICATES);
         this.lockReadyToIngest = new ReentrantLock();
         this.lockWaitingForQuery = new ReentrantLock();
     }
@@ -272,14 +272,14 @@ public class ExistingDocumentQueryManager implements Runnable {
                         final Map<String, QueryManagerBulkOperation> bulkOperationsForIndex = bulkOperationsWaitingForQuery.get(indexForHit);
                         final QueryManagerBulkOperation bulkOperationToRelease = bulkOperationsForIndex.get(queryTermValue);
                         if (bulkOperationToRelease == null) {
-                            // Delete duplicate document
-                            LOG.warn("Bulk operation for term value {} with id {} is null, potentially a duplicate document, deleting", queryTermValue, hit.id());
+                            // Means two documents with the same query term value were found
+                            LOG.warn("Bulk operation for term value {} with id {} is null, potentially a duplicate document", queryTermValue, hit.id());
                             potentialDuplicatesDeleted.increment();
-                            deleteDuplicateDocument(hit.index(), hit.id());
                         } else {
                             LOG.debug("Found document with query term {}, dropping and releasing Event handle", queryTermValue);
                             bulkOperationToRelease.getBulkOperationWrapper().releaseEventHandle(true);
                             eventsDroppedAndReleasedCounter.increment();
+                            documentsCurrentlyBeingQueriedGauge.decrementAndGet();
                             bulkOperationsForIndex.remove(queryTermValue);
                         }
                     } finally {
@@ -288,17 +288,5 @@ public class ExistingDocumentQueryManager implements Runnable {
                 });
             }
         });
-    }
-
-    private void deleteDuplicateDocument(final String index, final String documentId) {
-        try {
-            openSearchClient.delete(d -> d
-                    .index(index)
-                    .id(documentId)
-            );
-            LOG.warn("Deleted duplicate document with ID {} from index {}", documentId, index);
-        } catch (Exception e) {
-            LOG.error("Failed to delete duplicate document with ID {} from index {}: {}", documentId, index, e.getMessage(), e);
-        }
     }
 }

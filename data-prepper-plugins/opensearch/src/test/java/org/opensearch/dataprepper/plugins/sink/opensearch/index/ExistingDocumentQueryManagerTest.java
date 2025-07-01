@@ -10,15 +10,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch.core.DeleteRequest;
-import org.opensearch.client.opensearch.core.DeleteResponse;
 import org.opensearch.client.opensearch.core.MsearchRequest;
 import org.opensearch.client.opensearch.core.MsearchResponse;
 import org.opensearch.client.opensearch.core.msearch.MultiSearchItem;
 import org.opensearch.client.opensearch.core.msearch.MultiSearchResponseItem;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.opensearch.client.opensearch.core.search.HitsMetadata;
-import org.opensearch.client.util.ObjectBuilder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
@@ -30,7 +27,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -46,7 +42,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingD
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_ADDED_FOR_QUERYING;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_DROPPED_AND_RELEASED;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.EVENTS_RETURNED_FOR_INDEXING;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.POTENTIAL_DUPLICATES_DELETED;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.ExistingDocumentQueryManager.POTENTIAL_DUPLICATES;
 
 @ExtendWith(MockitoExtension.class)
 public class ExistingDocumentQueryManagerTest {
@@ -73,7 +69,7 @@ public class ExistingDocumentQueryManagerTest {
     private Counter duplicateEventsAddedToQueryManager;
 
     @Mock
-    private Counter potentialDuplicatesDeleted;
+    private Counter potentialDuplicates;
 
     @Mock
     private AtomicInteger documentsCurrentlyQueried;
@@ -87,7 +83,7 @@ public class ExistingDocumentQueryManagerTest {
         when(pluginMetrics.counter(EVENTS_RETURNED_FOR_INDEXING)).thenReturn(eventsReturnedForIndexing);
         when(pluginMetrics.counter(DUPLICATE_EVENTS_IN_QUERY_MANAGER)).thenReturn(duplicateEventsAddedToQueryManager);
         when(pluginMetrics.gauge(eq(DOCUMENTS_CURRENTLY_BEING_QUERIED), any(AtomicInteger.class), any())).thenReturn(documentsCurrentlyQueried);
-        when(pluginMetrics.counter(POTENTIAL_DUPLICATES_DELETED)).thenReturn(potentialDuplicatesDeleted);
+        when(pluginMetrics.counter(POTENTIAL_DUPLICATES)).thenReturn(potentialDuplicates);
         queryTerm = UUID.randomUUID().toString();
         when(indexConfiguration.getQueryTerm()).thenReturn(queryTerm);
     }
@@ -138,6 +134,7 @@ public class ExistingDocumentQueryManagerTest {
         verify(eventsDroppedAndReleased).increment();
         verify(eventsAddedForQuerying).increment();
         verify(documentsCurrentlyQueried).incrementAndGet();
+        verify(documentsCurrentlyQueried).decrementAndGet();
         verify(bulkOperationWrapper).releaseEventHandle(true);
 
         verifyNoMoreInteractions(indexConfiguration);
@@ -247,7 +244,7 @@ public class ExistingDocumentQueryManagerTest {
     }
 
     @Test
-    void query_response_with_two_documents_with_same_term_value_deletes_duplicate_document() throws IOException {
+    void query_response_with_two_documents_with_same_term_value_tracks_duplicate_document() throws IOException {
         final BulkOperationWrapper bulkOperationWrapper = mock(BulkOperationWrapper.class);
         final String index = UUID.randomUUID().toString();
         final String termValue = UUID.randomUUID().toString();
@@ -287,27 +284,15 @@ public class ExistingDocumentQueryManagerTest {
         when(openSearchClient.msearch(any(MsearchRequest.class), eq(ObjectNode.class)))
                 .thenReturn(msearchResponse);
 
-        when(openSearchClient.delete(any(Function.class))).thenReturn(mock(DeleteResponse.class));
-
         final ExistingDocumentQueryManager objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.addBulkOperation(bulkOperationWrapper);
 
         objectUnderTest.runQueryLoop();
 
-        final ArgumentCaptor<Function> deleteRequestArgumentCaptor = ArgumentCaptor.forClass(Function.class);
-
         verify(openSearchClient).msearch(any(MsearchRequest.class), eq(ObjectNode.class));
-        verify(openSearchClient).delete(deleteRequestArgumentCaptor.capture());
-        verify(potentialDuplicatesDeleted).increment();
-
-        assertThat(deleteRequestArgumentCaptor.getAllValues().size(), equalTo(1));
-        final Function<DeleteRequest.Builder, ObjectBuilder<DeleteRequest>> deleteRequestFunction = deleteRequestArgumentCaptor.getValue();
-
-        DeleteRequest actualRequest = deleteRequestFunction.apply(new DeleteRequest.Builder()).build();
-        assertThat(actualRequest, notNullValue());
-        assertThat(actualRequest.id(), equalTo(duplicateHit.id()));
-        assertThat(actualRequest.index(), equalTo(index));
+        verify(potentialDuplicates).increment();
+        verifyNoMoreInteractions(openSearchClient);
 
     }
 }
