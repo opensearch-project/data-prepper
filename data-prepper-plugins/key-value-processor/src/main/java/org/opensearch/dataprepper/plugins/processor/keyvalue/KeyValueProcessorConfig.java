@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
@@ -126,6 +127,10 @@ public class KeyValueProcessorConfig {
         @Example(value = "none", description = "key1value1&key2=value2 parses into {\"key1value1\": \"none\", \"key2\": \"value2\"}.")
     })
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
+
+    @JsonProperty("normalize_keys")
+    @JsonPropertyDescription("If specified, replaces invalid characters with underscore character")
+    private Boolean normalizeKeys = false;
 
     @JsonProperty("include_keys")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
@@ -293,6 +298,10 @@ public class KeyValueProcessorConfig {
 
     public boolean isStrictGroupingEnabled() {
         return strictGrouping;
+    }
+
+    public Boolean getNormalizeKeys() {
+        return normalizeKeys;
     }
 
     public String getDestination() {

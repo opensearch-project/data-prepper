@@ -13,10 +13,12 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 class JacksonEventKey implements EventKey {
+    private static final String INVALID_KEY_REPLACEMENT = "_";
     private static final String SEPARATOR = "/";
     private static final int MAX_KEY_LENGTH = 2048;
     private final String key;
@@ -25,6 +27,8 @@ class JacksonEventKey implements EventKey {
     private List<String> keyPathList;
     private JsonPointer jsonPointer;
     private final Set<EventKeyFactory.EventAction> supportedActions;
+    private static final Pattern INVALID_KEY_CHARS_PATTERN =
+            Pattern.compile("[^A-Za-z0-9._~@/\\[\\]-]");
 
     /**
      * Constructor for the JacksonEventKey which should only be used by implementation
@@ -149,6 +153,16 @@ class JacksonEventKey implements EventKey {
 
     static String trimTrailingSlashInKey(final String key) {
         return key.length() > 1 && key.endsWith(SEPARATOR) ? key.substring(0, key.length() - 1) : key;
+    }
+
+    static String replaceInvalidCharacters(final String key) {
+        if (key == null) {
+            return null;
+        }
+        if (isValidKey(key)) {
+            return key;
+        }
+        return INVALID_KEY_CHARS_PATTERN.matcher(key).replaceAll(INVALID_KEY_REPLACEMENT);
     }
 
     private static boolean isValidKey(final String key) {

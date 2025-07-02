@@ -235,13 +235,16 @@ pipeline {
                 stage('Download Maven Artifacts') {
                     steps {
                         script {
-                            mavenPath = "${DATA_PREPPER_ARTIFACT_STAGING_SITE}/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven"
-                            group = 'org/opensearch/dataprepper'
-                            artifacts = ['data-prepper-api']
-                            fileTypes = ['-javadoc.jar', '.jar', '.pom', '-sources.jar', '.module']
-                            checksums = ['', '.md5', '.sha1', '.sha256', '.sha512']
-
-                            downloadArtifacts("$VERSION")
+                            def downloadPath = "${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven/"
+                            withCredentials([
+                                string(credentialsId: 'data-prepper-s3-role', variable: 'DP_S3_ROLE_NAME'),
+                                string(credentialsId: 'data-prepper-aws-account-number', variable: 'DP_AWS_ACCOUNT_NUMBER'),
+                                string(credentialsId: 'data-prepper-s3-bucket-name', variable: 'DP_S3_BUCKET_NAME'),]) {
+                                    echo 'Downloading artifacts from S3'
+                                    withAWS(role: "${DP_S3_ROLE_NAME}", roleAccount: "${DP_AWS_ACCOUNT_NUMBER}", duration: 900, roleSessionName: 'dp-jenkins-session', region: 'us-east-1') {
+                                        s3Download(file: "${WORKSPACE}/maven", bucket: "${DP_S3_BUCKET_NAME}", path: "${downloadPath}", force: true)
+                                    }
+                                }
                         }
                     }
                 }
@@ -249,8 +252,8 @@ pipeline {
                     steps {
                         script {
                             publishToMaven(
-                                signingArtifactsPath: "${WORKSPACE}/maven",
-                                mavenArtifactsPath: "${WORKSPACE}/maven",
+                                signingArtifactsPath: "${WORKSPACE}/maven/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven",
+                                mavenArtifactsPath: "${WORKSPACE}/maven/${VERSION}/${DATA_PREPPER_BUILD_NUMBER}/maven",
                                 autoPublish: true
                             )
                         }
@@ -275,19 +278,6 @@ pipeline {
                             sh "curl -X PATCH -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer ${GITHUB_TOKEN}' ${release_url} -d '{\"tag_name\":\"${TAG}\",\"draft\":false,\"prerelease\":false}'"
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-def downloadArtifacts(version) {
-    dir('maven') {
-        for (artifact in artifacts) {
-            sh "mkdir -p ${group}/${artifact}/${version}"
-            for (fileType in fileTypes) {
-                for (checksum in checksums) {
-                    sh "curl -sSL ${mavenPath}/${group}/${artifact}/${version}/${artifact}-${version}${fileType}${checksum} -o ${group}/${artifact}/${version}/${artifact}-${version}${fileType}${checksum}"
                 }
             }
         }

@@ -25,4 +25,5 @@ dependencies {
     testImplementation project(':data-prepper-test:test-event')
     testImplementation testLibs.slf4j.simple
     testImplementation testLibs.spring.test
+    testImplementation project(':data-prepper-test:test-common')
 }

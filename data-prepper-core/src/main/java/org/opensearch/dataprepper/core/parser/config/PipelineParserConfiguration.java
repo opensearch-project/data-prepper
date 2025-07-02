@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.core.parser.config;
 
-import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.core.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.core.parser.PipelineTransformer;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
@@ -13,7 +12,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
-import org.opensearch.dataprepper.validation.PluginErrorsHandler;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -24,6 +23,7 @@ import org.opensearch.dataprepper.pipeline.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.pipeline.parser.rule.RuleEvaluator;
 import org.opensearch.dataprepper.pipeline.parser.transformer.DynamicConfigTransformer;
 import org.opensearch.dataprepper.pipeline.parser.transformer.PipelineConfigurationTransformer;
+import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -39,7 +39,6 @@ public class PipelineParserConfiguration {
 
     @Bean
     public PipelineTransformer pipelineParser(
-            final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
@@ -52,8 +51,7 @@ public class PipelineParserConfiguration {
             final PluginErrorsHandler pluginErrorsHandler,
             final ExpressionEvaluator expressionEvaluator
             ) {
-        return new PipelineTransformer(pipelinesDataFlowModel,
-                pluginFactory,
+        return new PipelineTransformer(pluginFactory,
                 peerForwarderProvider,
                 routerFactory,
                 dataPrepperConfiguration,
