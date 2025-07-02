@@ -43,8 +43,8 @@ dependencies {
     }
     testImplementation testLibs.junit.vintage
     testImplementation libs.commons.io
-    testImplementation 'net.bytebuddy:byte-buddy:1.15.11'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.15.11'
+    testImplementation 'net.bytebuddy:byte-buddy:1.17.6'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.17.6'
     testImplementation testLibs.slf4j.simple
     testImplementation project(path: ':data-prepper-test:test-common')
 }
