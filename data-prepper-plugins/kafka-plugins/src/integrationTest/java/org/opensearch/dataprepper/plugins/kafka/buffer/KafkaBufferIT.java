@@ -56,14 +56,10 @@ import java.util.concurrent.TimeoutException;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.opensearch.dataprepper.plugins.kafka.buffer.ReadBufferHelper.awaitRead;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
@@ -121,7 +117,6 @@ public class KafkaBufferIT {
         );
 
         bootstrapServersCommaDelimited = System.getProperty("tests.kafka.bootstrap_servers");
-        bootstrapServersCommaDelimited = "localhost:9092";
 
         LOG.info("Using Kafka bootstrap servers: {}", bootstrapServersCommaDelimited);
 
