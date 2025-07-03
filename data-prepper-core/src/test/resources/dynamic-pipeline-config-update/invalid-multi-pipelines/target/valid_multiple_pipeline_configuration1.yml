@@ -1,0 +1,13 @@
+# this configuration file is solely for testing formatting
+test-pipeline-1:
+  source:
+    file:
+      path: "/tmp/file-source.tmp"
+  buffer:
+    bounded_blocking: #to check non object nodes for plugins
+  processor:
+    - parse_json:
+        delete_source: false
+  sink:
+    - pipeline:
+        name: "test-pipeline-2"

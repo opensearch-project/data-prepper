@@ -1,0 +1,18 @@
+version: "2"
+log-pipeline:
+  source:
+    http:
+      path: "/log-pipeline/logs"
+  processor:
+    - parse_json:
+        delete_source: false
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch-host.com" ]
+        index: "sample-index"
+        document_id: '${/id}'
+        flush_timeout: -1
+        aws:
+          sts_role_arn: "arn:aws:iam::123456789012:role/sample-role"
+          region: "us-west-2"
+          serverless: true
