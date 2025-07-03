@@ -19,7 +19,7 @@ dependencies {
     testImplementation project(':data-prepper-test:test-common')
     testImplementation project(':data-prepper-plugins:common')
     testImplementation project(':data-prepper-test:test-event')
-    implementation 'com.opencsv:opencsv:5.9'
+    implementation 'com.opencsv:opencsv:5.11.2'
 }
 
 test {
