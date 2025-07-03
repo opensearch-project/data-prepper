@@ -10,7 +10,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.event.LogEventBuilder;
+import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.BufferedReader;
@@ -27,11 +28,13 @@ public class NewlineDelimitedInputCodec implements InputCodec {
     private static final String MESSAGE_FIELD_NAME = "message";
     private final int skipLines;
     private final String headerDestination;
+    private final EventFactory eventFactory;
 
     @DataPrepperPluginConstructor
     public NewlineDelimitedInputCodec(
             final NewlineDelimitedInputConfig config,
             final EventFactory eventFactory) {
+        this.eventFactory = eventFactory;
         Objects.requireNonNull(config);
         skipLines = config.getSkipLines();
 
@@ -77,7 +80,9 @@ public class NewlineDelimitedInputCodec implements InputCodec {
             }
             eventData.put(MESSAGE_FIELD_NAME, line);
 
-            final Event event = JacksonLog.builder().withData(eventData).build();
+            final Log event = eventFactory.eventBuilder(LogEventBuilder.class)
+                    .withData(eventData)
+                    .build();
             eventConsumer.accept(new Record<>(event));
         }
     }
