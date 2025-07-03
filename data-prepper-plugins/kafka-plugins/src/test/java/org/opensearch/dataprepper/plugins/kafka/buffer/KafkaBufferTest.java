@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.encryption.EncryptionSupplier;
 import org.opensearch.dataprepper.plugins.kafka.admin.KafkaAdminAccessor;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
@@ -512,5 +513,16 @@ class KafkaBufferTest {
         kafkaBuffer = createObjectUnderTest();
         
         assertThat(kafkaBuffer.getCustomCompressionOption().name(), equalTo("NONE"));
+    }
+
+    @Test
+    void test_compressionOption_supports_all_kafka_compression_types() {
+        String[] kafkaCompressionTypes = {"none", "gzip", "snappy", "zstd"};
+        
+        for (String compressionType : kafkaCompressionTypes) {
+            CompressionOption option = CompressionOption.fromOptionValue(compressionType);
+            assertThat("CompressionOption should support Kafka compression type to ensure that KafkaBuffer compresses data properly when encryption is enabled: " + compressionType,
+                      option, org.hamcrest.Matchers.notNullValue());
+        }
     }
 }
