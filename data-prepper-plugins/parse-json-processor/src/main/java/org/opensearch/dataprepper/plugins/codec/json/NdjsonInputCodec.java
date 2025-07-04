@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,15 +52,31 @@ public class NdjsonInputCodec implements InputCodec {
 
         final JsonParser parser = jsonFactory.createParser(inputStream);
 
-        final MappingIterator<Map<String, Object>> mapMappingIterator = objectMapper.readValues(parser, MAP_TYPE_REFERENCE);
-        while (mapMappingIterator.hasNext()) {
-            final Map<String, Object> json = mapMappingIterator.next();
+        if (parser.nextToken() == JsonToken.START_ARRAY) {
+            // Handle JSON array
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                final Map<String, Object> json = objectMapper.readValue(parser, MAP_TYPE_REFERENCE);
 
-            if(!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty())
-                continue;
+                if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
+                    continue;
+                }
 
-            final Record<Event> record = createRecord(json);
-            eventConsumer.accept(record);
+                final Record<Event> record = createRecord(json);
+                eventConsumer.accept(record);
+            }
+        } else {
+            // Handle single JSON object
+            final MappingIterator<Map<String, Object>> mapMappingIterator = objectMapper.readValues(parser, MAP_TYPE_REFERENCE);
+            while (mapMappingIterator.hasNext()) {
+                final Map<String, Object> json = mapMappingIterator.next();
+
+                if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
+                    continue;
+                }
+
+                final Record<Event> record = createRecord(json);
+                eventConsumer.accept(record);
+            }
         }
     }
 

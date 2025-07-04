@@ -42,6 +42,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.mock;
@@ -201,6 +202,51 @@ class NdjsonInputCodecTest {
 
             final Map<String, Object> actualEventMap = actualEvent.toMap();
             assertThat(actualEventMap, equalTo(expectedObject));
+        }
+    }
+
+    @Test
+    void parse_with_array_of_objects_asserts_number_of_objects() throws IOException {
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(2, processedRecords.size());
+    }
+
+    @Test
+    void parse_with_array_of_empty_objects_excludes_objects_by_default() throws IOException {
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{},{}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(0, processedRecords.size());
+    }
+
+    @Test
+    void parse_with_array_of_empty_objects_includes_objects_when_configured() throws IOException {
+        when(config.isIncludeEmptyObjects()).thenReturn(true);
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{},{}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(2, processedRecords.size());
+
+        for (Record<Event> record : processedRecords) {
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().toMap().size(), equalTo(0));
         }
     }
 
