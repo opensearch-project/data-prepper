@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.aws;
+package org.opensearch.dataprepper.aws.common;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.slf4j.Logger;
@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-class CredentialsProviderFactory {
+public class CredentialsProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CredentialsProviderFactory.class);
     private static final String AWS_IAM = "iam";
     private static final String AWS_IAM_ROLE = "role";
@@ -43,15 +43,15 @@ class CredentialsProviderFactory {
         this.defaultStsConfiguration = defaultStsConfiguration;
     }
 
-    Region getDefaultRegion() {
+    public Region getDefaultRegion() {
         return defaultStsConfiguration.getAwsRegion();
     }
 
-    String getDefaultStsRoleArn() {
+    public String getDefaultStsRoleArn() {
         return defaultStsConfiguration.getAwsStsRoleArn();
     }
 
-    AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
+    public AwsCredentialsProvider providerFromOptions(final AwsCredentialsOptions credentialsOptions) {
         Objects.requireNonNull(credentialsOptions);
 
         if (credentialsOptions.isUseDefaultCredentialsProvider()) {
