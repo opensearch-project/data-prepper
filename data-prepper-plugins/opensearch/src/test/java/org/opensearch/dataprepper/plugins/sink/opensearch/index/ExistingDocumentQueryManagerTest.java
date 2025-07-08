@@ -128,6 +128,7 @@ public class ExistingDocumentQueryManagerTest {
         final ExistingDocumentQueryManager objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.addBulkOperation(bulkOperationWrapper);
+        when(documentsCurrentlyQueried.get()).thenReturn(1);
 
         objectUnderTest.runQueryLoop();
 
@@ -180,6 +181,8 @@ public class ExistingDocumentQueryManagerTest {
         ReflectivelySetField.setField(ExistingDocumentQueryManager.class, objectUnderTest, "lastQueryTime", Instant.now().plusMillis(100));
 
         objectUnderTest.addBulkOperation(bulkOperationWrapper);
+
+        when(documentsCurrentlyQueried.get()).thenReturn(1);
 
         Thread.sleep(20);
 
@@ -287,6 +290,7 @@ public class ExistingDocumentQueryManagerTest {
         final ExistingDocumentQueryManager objectUnderTest = createObjectUnderTest();
 
         objectUnderTest.addBulkOperation(bulkOperationWrapper);
+        when(documentsCurrentlyQueried.get()).thenReturn(1);
 
         objectUnderTest.runQueryLoop();
 

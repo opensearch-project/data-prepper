@@ -452,6 +452,7 @@ public final class BulkRetryStrategy {
 
     private boolean shouldSendAllForQuerying(final Exception exception) {
         if (exception != null && existingDocumentQueryManager != null) {
+            LOG.warn("Received exception that may result in querying for duplicate documents", exception);
             if (SOCKET_TIMEOUT_EXCEPTIONS.contains(exception.getClass())) {
                 return true;
             }
