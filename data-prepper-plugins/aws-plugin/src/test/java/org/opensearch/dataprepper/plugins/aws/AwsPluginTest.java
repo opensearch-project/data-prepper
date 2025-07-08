@@ -12,6 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
+import org.opensearch.dataprepper.aws.common.AwsStsConfiguration;
+import org.opensearch.dataprepper.aws.common.AwsExtensionProvider;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
