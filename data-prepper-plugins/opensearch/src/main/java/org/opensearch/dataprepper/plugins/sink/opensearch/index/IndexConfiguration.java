@@ -165,7 +165,7 @@ public class IndexConfiguration {
         String documentIdField = builder.documentIdField;
         String documentId = builder.documentId;
         if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW) || indexType.equals(IndexType.TRACE_ANALYTICS_RAW_PLAIN)) {
-            documentId = "${spanId}";
+            documentId = "${traceId}/${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentId = "${hashId}";
         }

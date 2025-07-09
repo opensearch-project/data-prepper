@@ -15,6 +15,14 @@ afterEvaluate {
             maven {
                 url "file://${mavenPublicationRootFile.absolutePath}"
             }
+            maven {
+                name = 'snapshots'
+                url = 'https://aws.oss.sonatype.org/content/repositories/snapshots'
+                credentials {
+                    username "$System.env.SONATYPE_USERNAME"
+                    password "$System.env.SONATYPE_PASSWORD"
+                }
+            }
         }
         publications {
             mavenJava(MavenPublication) {

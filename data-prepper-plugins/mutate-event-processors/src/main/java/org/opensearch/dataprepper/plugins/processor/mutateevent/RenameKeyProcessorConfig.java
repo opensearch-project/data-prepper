@@ -10,9 +10,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
@@ -116,12 +118,31 @@ public class RenameKeyProcessorConfig {
         }
     }
 
-    @NotEmpty
-    @NotNull
     @Valid
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = "transform_key", allowedValues = {"null", "none"})
+    })
     private List<Entry> entries;
+
+    @JsonProperty(value = "transform_key", defaultValue = "none")
+    @JsonPropertyDescription("Allows transforming the key's name such as making the name all lowercase.")
+    @AlsoRequired(values = {
+            @AlsoRequired.Required(name = "entries", allowedValues = {"null"})
+    })
+    private TransformOption transformOption = TransformOption.NONE;
 
     public List<Entry> getEntries() {
         return entries;
     }
+
+    public TransformOption getTransformOption() {
+        return transformOption;
+    }
+
+    @AssertTrue(message = "entries and transform_key are mutually exclusive options. entries or transform_key is required.")
+    boolean isValidConfig() {
+        return (transformOption != null && transformOption != TransformOption.NONE)  ^ entries != null;
+    }
+
+
 }

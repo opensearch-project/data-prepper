@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
-import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
 
 import java.io.IOException;
 import java.io.OutputStream;

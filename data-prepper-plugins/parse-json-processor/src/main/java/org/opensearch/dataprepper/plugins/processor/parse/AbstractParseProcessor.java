@@ -56,6 +56,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
 
     private final ExpressionEvaluator expressionEvaluator;
     private final EventKeyFactory eventKeyFactory;
+    private final boolean normalizeKeys;
 
     protected AbstractParseProcessor(final PluginMetrics pluginMetrics,
                                      final CommonParseConfig commonParseConfig,
@@ -72,6 +73,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
         deleteSourceRequested = commonParseConfig.isDeleteSourceRequested();
         handleFailedEventsOption = commonParseConfig.getHandleFailedEventsOption();
         processingFailuresCounter = pluginMetrics.counter(PROCESSING_FAILURES);
+        normalizeKeys = commonParseConfig.getNormalizeKeys();
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
 
@@ -148,7 +150,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                 if (doWriteToRoot) {
                     writeToRoot(event, parsedValue);
                 } else if (overwriteIfDestinationExists || !event.containsKey(destination)) {
-                    event.put(destination, parsedValue);
+                    event.put(destination, parsedValue, normalizeKeys);
                 }
 
                 if(deleteSourceRequested) {
@@ -187,7 +189,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
                                                   final boolean doWriteToRoot) {
         final Event temporaryEvent = JacksonEvent.builder().withEventType("event").build();
         final EventKey temporaryPutKey = eventKeyFactory.createEventKey(source.getKey(), EventKeyFactory.EventAction.PUT);
-        temporaryEvent.put(temporaryPutKey, parsedJson);
+        temporaryEvent.put(temporaryPutKey, parsedJson, normalizeKeys);
 
         final String trimmedPointer = trimPointer(pointer);
         final String actualPointer = source + "/" + trimmedPointer;
@@ -239,7 +241,7 @@ public abstract class AbstractParseProcessor extends AbstractProcessor<Record<Ev
     private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
         for (final Map.Entry<String, Object> entry : parsedJson.entrySet()) {
             if (overwriteIfDestinationExists || !event.containsKey(entry.getKey())) {
-                event.put(eventKeyFactory.createEventKey(entry.getKey(), EventKeyFactory.EventAction.PUT), entry.getValue());
+                event.put(eventKeyFactory.createEventKey(entry.getKey(), EventKeyFactory.EventAction.PUT), entry.getValue(), normalizeKeys);
             }
         }
     }

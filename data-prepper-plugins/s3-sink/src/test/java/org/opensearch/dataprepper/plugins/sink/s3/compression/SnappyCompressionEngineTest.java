@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.compression;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.codec.SnappyCompressionEngine;
 import org.xerial.snappy.SnappyCodec;
 import org.xerial.snappy.SnappyInputStream;
 import org.xerial.snappy.SnappyOutputStream;

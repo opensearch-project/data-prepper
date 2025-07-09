@@ -14,7 +14,7 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
     implementation 'software.amazon.awssdk:s3'
-    testImplementation project(':data-prepper-test-event')
+    testImplementation project(':data-prepper-test:test-event')
     testImplementation testLibs.slf4j.simple
 }
 

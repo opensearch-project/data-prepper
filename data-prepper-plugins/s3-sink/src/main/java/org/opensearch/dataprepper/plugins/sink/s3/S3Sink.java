@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CodecBufferFactory
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.CodecFactory;
-import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupIdentifierFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.grouping.S3GroupManager;

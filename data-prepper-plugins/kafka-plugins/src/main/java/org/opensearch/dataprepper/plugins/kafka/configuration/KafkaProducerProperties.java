@@ -127,6 +127,10 @@ public class KafkaProducerProperties {
         return compressionType;
     }
 
+    public void setCompressionType(String compressionType) {
+        this.compressionType = compressionType;
+    }
+
     public int getRetries() {
         if (retries == 0) {
             retries = 5;

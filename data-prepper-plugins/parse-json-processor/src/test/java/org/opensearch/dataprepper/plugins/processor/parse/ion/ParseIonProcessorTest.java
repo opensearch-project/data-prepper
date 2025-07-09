@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -62,6 +63,21 @@ class ParseIonProcessorTest extends ParseJsonProcessorTest {
         when(expressionEvaluator.isValidExpressionStatement(parseWhen)).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void test_replace_invalid_key_characters() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(0);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+        final String serializedMessage = "{bare Key: 1, sym$bol: SYMBOL, time%stamp: 2023-11-30T21:05:23.383Z, attr^ibute: dollars::100.0 }";
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        // Currently doesn't support invalid keys replacement
+        Object rootSourceObject = parsedEvent.get(source, Object.class);
+        assertTrue(rootSourceObject instanceof String);
+
     }
 
     @Test

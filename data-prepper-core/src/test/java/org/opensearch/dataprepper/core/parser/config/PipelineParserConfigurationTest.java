@@ -18,7 +18,6 @@ import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFacto
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.validation.PluginErrorsHandler;
@@ -30,9 +29,6 @@ import static org.hamcrest.Matchers.notNullValue;
 @ExtendWith(MockitoExtension.class)
 class PipelineParserConfigurationTest {
     private static final PipelineParserConfiguration pipelineParserConfiguration = new PipelineParserConfiguration();
-
-    @Mock
-    private PipelinesDataFlowModel pipelinesDataFlowModel;
 
     @Mock
     private PluginFactory pluginFactory;
@@ -70,7 +66,7 @@ class PipelineParserConfigurationTest {
     @Test
     void pipelineParser() {
         final PipelineTransformer pipelineTransformer = pipelineParserConfiguration.pipelineParser(
-                pipelinesDataFlowModel, pluginFactory, peerForwarderProvider, routerFactory,
+                pluginFactory, peerForwarderProvider, routerFactory,
                 dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager,
                 sourceCoordinatorFactory, pluginErrorCollector, pluginErrorsHandler, expressionEvaluator);
 

@@ -69,6 +69,7 @@
       delete_s3_objects_on_read: true
       disable_s3_metadata_in_event: true
       scan:
+        acknowledgment_timeout: "PT10M"
         folder_partitions:
           depth: "<<FUNCTION_NAME:calculateDepthForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"
           max_objects_per_ownership: 50
@@ -78,7 +79,7 @@
               filter:
                 include_prefix: ["<<FUNCTION_NAME:getIncludePrefixForRdsSource,PARAMETER:$.<<pipeline-name>>.source.rds.s3_prefix>>"]
         scheduling:
-          interval: "60s"
+          interval: "20s"
   processor: "<<$.<<pipeline-name>>.processor>>"
   sink: "<<$.<<pipeline-name>>.sink>>"
   routes: "<<$.<<pipeline-name>>.routes>>" # In placeholder, routes or route (defined as alias) will be transformed to route in json as route will be primarily picked in pipelineModel.

@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -63,6 +64,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final List<String> tagsOnFailure;
     private final Character stringLiteralCharacter;
     private final String keyPrefix;
+    private final boolean normalizeKeys;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics,
@@ -74,6 +76,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.stringLiteralCharacter = keyValueProcessorConfig.getStringLiteralCharacter();
 
         tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
+
+        this.normalizeKeys = keyValueProcessorConfig.getNormalizeKeys();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -388,7 +392,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 } else {
                     if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
                             !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
-                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+                        recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap, normalizeKeys);
                     }
                 }
             } catch (final Exception e) {
@@ -614,7 +618,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
             if (validKeyAndValue(pair.getKey(), pair.getValue())) {
-                processed.put(pair.getKey(), pair.getValue());
+                String key = pair.getKey();
+                processed.put(key, pair.getValue());
             }
         }
 
@@ -687,7 +692,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
             try {
                 if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
-                    event.put(entry.getKey(), entry.getValue());
+                    event.put(entry.getKey(), entry.getValue(), normalizeKeys);
                 }
             } catch (IllegalArgumentException e) {
                 LOG.warn("Failed to put key: "+entry.getKey()+" value : "+entry.getValue()+" into event. ", e);

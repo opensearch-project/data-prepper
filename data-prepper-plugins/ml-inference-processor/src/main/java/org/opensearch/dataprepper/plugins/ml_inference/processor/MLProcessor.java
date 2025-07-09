@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.expression.ExpressionParsingException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
-@Experimental
 @DataPrepperPlugin(name = "ml_inference", pluginType = Processor.class, pluginConfigurationType = MLProcessorConfig.class)
 public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);

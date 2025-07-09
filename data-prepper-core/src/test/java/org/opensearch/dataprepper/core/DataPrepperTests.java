@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.core.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineObserver;
 import org.opensearch.dataprepper.core.pipeline.server.DataPrepperServer;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 
 import java.lang.reflect.Field;
@@ -40,6 +41,8 @@ import static org.mockito.Mockito.when;
 public class DataPrepperTests {
     private Map<String, Pipeline> parseConfigurationFixture;
     @Mock
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
+    @Mock
     private PipelineTransformer pipelineTransformer;
     @Mock
     private Pipeline pipeline;
@@ -59,12 +62,13 @@ public class DataPrepperTests {
         lenient().when(pipeline.getName()).thenReturn("testKey");
         lenient().when(pipeline.isReady()).thenReturn(true);
 
-        lenient().when(pipelineTransformer.transformConfiguration())
+        lenient().when(pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel))
                 .thenReturn(parseConfigurationFixture);
     }
 
     private DataPrepper createObjectUnderTest() throws NoSuchFieldException, IllegalAccessException {
-        final DataPrepper dataPrepper = new DataPrepper(pipelineTransformer, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate);
+        final DataPrepper dataPrepper = new DataPrepper(pipelinesDataFlowModel, pipelineTransformer, pluginFactory,
+                peerForwarderServer, shouldShutdownOnPipelineFailurePredicate);
         final Field dataPrepperServerField = dataPrepper.getClass().getDeclaredField("dataPrepperServer");
         dataPrepperServerField.setAccessible(true);
         dataPrepperServerField.set(dataPrepper, dataPrepperServer);
@@ -87,7 +91,8 @@ public class DataPrepperTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> new DataPrepper(pipelineTransformer, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate),
+                () -> new DataPrepper(pipelinesDataFlowModel, pipelineTransformer, pluginFactory,
+                        peerForwarderServer, shouldShutdownOnPipelineFailurePredicate),
                 "Exception should be thrown if pipeline parser has no pipeline configuration");
     }
 

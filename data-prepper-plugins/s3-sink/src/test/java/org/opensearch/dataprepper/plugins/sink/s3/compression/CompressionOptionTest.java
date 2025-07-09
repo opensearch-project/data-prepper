@@ -11,6 +11,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.GZipCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.NoneCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.SnappyCompressionEngine;
 
 import java.util.Optional;
 import java.util.stream.Stream;

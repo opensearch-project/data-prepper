@@ -55,13 +55,11 @@ import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
 public class PipelineTransformer {
-    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
-
     static final String CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT = "Route %s contains an invalid conditional expression '%s'. " +
             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.";
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
@@ -76,7 +74,7 @@ public class PipelineTransformer {
 
     private final ExpressionEvaluator expressionEvaluator;
 
-    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+    public PipelineTransformer(
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
                                final RouterFactory routerFactory,
@@ -88,7 +86,6 @@ public class PipelineTransformer {
                                final PluginErrorCollector pluginErrorCollector,
                                final PluginErrorsHandler pluginErrorsHandler,
                                final ExpressionEvaluator expressionEvaluator) {
-        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
@@ -102,7 +99,7 @@ public class PipelineTransformer {
         this.expressionEvaluator = expressionEvaluator;
     }
 
-    public Map<String, Pipeline> transformConfiguration() {
+    public Map<String, Pipeline> transformConfiguration(final PipelinesDataFlowModel pipelinesDataFlowModel) {
         final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -207,7 +204,7 @@ public class PipelineTransformer {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
                                     processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(),
                                     dataPrepperConfiguration.getPeerForwarderConfiguration() != null ?
-                                        dataPrepperConfiguration.getPeerForwarderConfiguration().getExcludeIdentificationKeys() : null,
+                                            dataPrepperConfiguration.getPeerForwarderConfiguration().getExcludeIdentificationKeys() : null,
                                     pipelineConfiguration.getWorkers()
                             );
                         }
@@ -233,24 +230,24 @@ public class PipelineTransformer {
             if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
                 // Check if there are any processors with @SingleThread annotation
                 boolean hasSingleThreadedProcessors = processorSets.stream()
-                    .flatMap(List::stream)
-                    .map(IdentifiedComponent::getComponent)
-                    .map(Object::getClass)
-                    .anyMatch(processorClass -> processorClass.isAnnotationPresent(SingleThread.class));
+                        .flatMap(List::stream)
+                        .map(IdentifiedComponent::getComponent)
+                        .map(Object::getClass)
+                        .anyMatch(processorClass -> processorClass.isAnnotationPresent(SingleThread.class));
 
                 // Only allow ZeroBuffer for single-threaded pipelines with no @SingleThread processors
                 if (processorThreads == 1 && !hasSingleThreadedProcessors) {
                     ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(
-                        new PipelineRunnerImpl(pipeline, pipeline.getProcessors()));
+                            new PipelineRunnerImpl(pipeline));
                 } else {
                     if (hasSingleThreadedProcessors) {
                         throw new IllegalStateException(
-                            "ZeroBuffer cannot be used with @SingleThread processors. " +
-                            "Pipeline [" + pipelineName + "] contains one or more @SingleThread processors.");
+                                "ZeroBuffer cannot be used with @SingleThread processors. " +
+                                        "Pipeline [" + pipelineName + "] contains one or more @SingleThread processors.");
                     } else {
                         throw new IllegalStateException(
-                            "ZeroBuffer cannot be used with multiple processor threads. " +
-                            "Pipeline [" + pipelineName + "] is configured with " + processorThreads + " threads.");
+                                "ZeroBuffer cannot be used with multiple processor threads. " +
+                                        "Pipeline [" + pipelineName + "] is configured with " + processorThreads + " threads.");
                     }
                 }
             }
@@ -396,24 +393,6 @@ public class PipelineTransformer {
         }
     }
 
-    private static class IdentifiedComponent<T> {
-        private final T component;
-        private final String name;
-
-        private IdentifiedComponent(final T component, final String name) {
-            this.component = component;
-            this.name = name;
-        }
-
-        T getComponent() {
-            return component;
-        }
-
-        String getName() {
-            return name;
-        }
-    }
-
     Duration getPeerForwarderDrainTimeout(final DataPrepperConfiguration dataPrepperConfiguration) {
         return Optional.ofNullable(dataPrepperConfiguration)
                 .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
@@ -432,7 +411,7 @@ public class PipelineTransformer {
         if (source instanceof PipelineConnector)
             return buffer;
 
-        if(buffer.isWrittenOffHeapOnly())
+        if (buffer.isWrittenOffHeapOnly())
             return buffer;
 
         return circuitBreakerManager.getGlobalCircuitBreaker()
@@ -441,7 +420,21 @@ public class PipelineTransformer {
                 .orElseGet(() -> buffer);
     }
 
-    public PipelinesDataFlowModel getPipelinesDataFlowModel() {
-        return pipelinesDataFlowModel;
+    private static class IdentifiedComponent<T> {
+        private final T component;
+        private final String name;
+
+        private IdentifiedComponent(final T component, final String name) {
+            this.component = component;
+            this.name = name;
+        }
+
+        T getComponent() {
+            return component;
+        }
+
+        String getName() {
+            return name;
+        }
     }
 }

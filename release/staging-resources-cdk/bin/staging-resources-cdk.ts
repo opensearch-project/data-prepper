@@ -11,6 +11,7 @@ import {GitHubAccessStack} from '../lib/GitHubAccessStack';
 import {ArchivesBucketStack} from '../lib/ArchivesBucketStack';
 import {StagingResourcesStack} from '../lib/StagingResourcesStack';
 import {GitHubActionsReleaseAccessStack} from '../lib/GitHubActionsReleaseAccessStack';
+import { OpenSearchCIAccessStack } from '../lib/OpenSearchCIAccessStack';
 
 
 const app = new App();
@@ -25,6 +26,10 @@ new ArchivesBucketStack(app, 'ArchivesBucketStack', {
 
 const stagingResourcesStack = new StagingResourcesStack(app, 'StagingResourcesStack', {
   stackName: 'StagingResources'
+});
+
+new OpenSearchCIAccessStack(app, 'OpenSearchCIAccessStack', {
+  stackName: 'DataPrepperStagingResources-OpenSearchCIAccess'
 });
 
 new GitHubActionsReleaseAccessStack(app, 'GitHubActionsReleaseAccessStack', {

@@ -72,6 +72,10 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @NotNull
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
+    @JsonProperty("normalize_keys")
+    @JsonPropertyDescription("If specified, replaces invalid characters with underscore character")
+    private Boolean normalizeKeys = false;
+
     @JsonProperty("parse_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a> such as <code>/some_key == \"test\"</code>. " +
             "If specified, the <code>parse_json</code> processor will only run on events when the expression evaluates to true. ")
@@ -121,6 +125,11 @@ public class ParseJsonProcessorConfig implements CommonParseConfig {
     @Override
     public HandleFailedEventsOption getHandleFailedEventsOption() {
         return handleFailedEventsOption;
+    }
+
+    @Override
+    public Boolean getNormalizeKeys() {
+        return normalizeKeys;
     }
 
     @AssertTrue(message = "destination cannot be empty, whitespace, or a front slash (/)")

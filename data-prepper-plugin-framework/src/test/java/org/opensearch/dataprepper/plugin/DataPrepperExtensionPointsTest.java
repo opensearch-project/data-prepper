@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,6 +96,19 @@ class DataPrepperExtensionPointsTest {
 
         verify(sharedApplicationContext).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
         verify(coreApplicationContext).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+    }
+
+    @Test
+    void addExtensionProvider_should_not_registerBean_for_the_sameClass() {
+        DataPrepperExtensionPoints dataPrepperExtensionPoints = createObjectUnderTest();
+        dataPrepperExtensionPoints.addExtensionProvider(extensionProvider);
+
+        verify(sharedApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+        verify(coreApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+
+        dataPrepperExtensionPoints.addExtensionProvider(extensionProvider);
+        verify(sharedApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+        verify(coreApplicationContext, times(1)).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
     }
 
     @Test

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.model.codec.CompressionEngine;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;

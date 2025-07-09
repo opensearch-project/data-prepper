@@ -11,6 +11,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.common.TransformOption;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -32,27 +33,44 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
     private final List<RenameKeyProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
+    private final TransformOption transformOption;
 
     @DataPrepperPluginConstructor
     public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
+        this.transformOption = config.getTransformOption();
 
-        config.getEntries().forEach(entry -> {
-            if (entry.getRenameWhen() != null
+        if (config.getEntries() != null) {
+            config.getEntries().forEach(entry -> {
+                if (entry.getRenameWhen() != null
                     && !expressionEvaluator.isValidExpressionStatement(entry.getRenameWhen())) {
                 throw new InvalidPluginConfigurationException(
                         String.format("rename_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                                 entry.getRenameWhen()));
-            }
-            if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
-                throw new InvalidPluginConfigurationException("Either from_key or from_key_regex must be specified. ");
-            }
-            if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
-                throw new InvalidPluginConfigurationException("Only one of from_key or from_key_regex should be specified.");
-            }
-        });
+                }
+                if (entry.getFromKey() == null && entry.getFromKeyPattern() == null) {
+                    throw new InvalidPluginConfigurationException("Either from_key or from_key_regex must be specified. ");
+                }
+                if (entry.getFromKey() != null && entry.getFromKeyPattern()  != null) {
+                    throw new InvalidPluginConfigurationException("Only one of from_key or from_key_regex should be specified.");
+                }
+            });
+        }
+    }
+
+    private void transformEvent(final Event event, Map<String, Object> map, final String keyPrefix) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            try {
+                if (entry.getValue() instanceof Map) {
+                    transformEvent(event, (Map<String, Object>)entry.getValue(), keyPrefix+entry.getKey()+"/");
+                }
+                Object value = event.get(keyPrefix+entry.getKey(), Object.class);
+                event.delete(keyPrefix+entry.getKey());
+                event.put(keyPrefix+transformOption.getTransformFunction().apply(entry.getKey()), value);
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override
@@ -61,6 +79,11 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event recordEvent = record.getData();
 
             try {
+
+                if (transformOption != null && transformOption != TransformOption.NONE) {
+                    transformEvent(recordEvent, recordEvent.toMap(), "");
+                    continue;
+                }
 
                 for (RenameKeyProcessorConfig.Entry entry : entries) {
                     if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluateConditional(entry.getRenameWhen(), recordEvent)) {

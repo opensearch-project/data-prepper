@@ -197,6 +197,13 @@ class JacksonEventKeyTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1", "key_1"})
+    public void testReplaceInvalidKeyChars(final String key) {
+        assertThat(JacksonEventKey.replaceInvalidCharacters(key), equalTo("key_1"));
+        assertThat(JacksonEventKey.replaceInvalidCharacters(null), equalTo(null));
+    }
+
+    @ParameterizedTest
     @EnumSource(EventKeyFactory.EventAction.class)
     void equals_returns_true_for_same_key_and_actions(final EventKeyFactory.EventAction eventAction) {
         final String testKey = UUID.randomUUID().toString();

@@ -28,7 +28,7 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 
     implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
