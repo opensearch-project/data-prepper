@@ -45,8 +45,8 @@ public class ClientFactory {
                 .credentialsProvider(awsCredentialsProvider)
                 .region(awsAuthenticationConfig.getAwsRegion());
 
-        if (awsAuthenticationConfig.getEndpointUrl() != null && !awsAuthenticationConfig.getEndpointUrl().isEmpty()) {
-            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointUrl()));
+        if (awsAuthenticationConfig.getEndpointOverride() != null && !awsAuthenticationConfig.getEndpointOverride().isEmpty()) {
+            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointOverride()));
         }
 
         return clientBuilder.build();
@@ -58,8 +58,8 @@ public class ClientFactory {
                 .region(awsAuthenticationConfig.getAwsRegion())
                 .credentialsProvider(awsCredentialsProvider);
 
-        if (awsAuthenticationConfig.getEndpointUrl() != null && !awsAuthenticationConfig.getEndpointUrl().isEmpty()) {
-            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointUrl()));
+        if (awsAuthenticationConfig.getEndpointOverride() != null && !awsAuthenticationConfig.getEndpointOverride().isEmpty()) {
+            clientBuilder.endpointOverride(URI.create(awsAuthenticationConfig.getEndpointOverride()));
         }
 
         return clientBuilder.build();
