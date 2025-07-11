@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
+import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
@@ -94,7 +95,11 @@ public class ShardConsumer implements Runnable {
 
     private final StreamRecordConverter recordConverter;
 
-    private final StreamCheckpointer checkpointer;
+//    private final StreamCheckpointer checkpointer;
+
+    private final ShardAcknowledgementManager shardAcknowledgementManager;
+
+    private final StreamPartition streamPartition;
 
     private String shardIterator;
 
@@ -119,7 +124,9 @@ public class ShardConsumer implements Runnable {
     private ShardConsumer(Builder builder) {
         this.shardProgress = builder.pluginMetrics.counter(SHARD_PROGRESS);
         this.dynamoDbStreamsClient = builder.dynamoDbStreamsClient;
-        this.checkpointer = builder.checkpointer;
+//        this.checkpointer = builder.checkpointer;
+        this.shardAcknowledgementManager = builder.shardAcknowledgementManager;
+        this.streamPartition = builder.streamPartition;
         this.shardIterator = builder.shardIterator;
         this.lastShardIterator = builder.lastShardIterator;
         // Introduce an overlap
@@ -155,7 +162,11 @@ public class ShardConsumer implements Runnable {
 
         private TableInfo tableInfo;
 
-        private StreamCheckpointer checkpointer;
+//        private StreamCheckpointer checkpointer;
+
+        private ShardAcknowledgementManager shardAcknowledgementManager;
+
+        private StreamPartition streamPartition;
 
         private String shardIterator;
 
@@ -194,8 +205,18 @@ public class ShardConsumer implements Runnable {
             return this;
         }
 
-        public Builder checkpointer(StreamCheckpointer checkpointer) {
-            this.checkpointer = checkpointer;
+//        public Builder checkpointer(StreamCheckpointer checkpointer) {
+//            this.checkpointer = checkpointer;
+//            return this;
+//        }
+
+        public Builder shardAcknowledgementManager(ShardAcknowledgementManager shardAcknowledgementManager) {
+            this.shardAcknowledgementManager = shardAcknowledgementManager;
+            return this;
+        }
+
+        public Builder streamPartition(StreamPartition streamPartition) {
+            this.streamPartition = streamPartition;
             return this;
         }
 
@@ -243,7 +264,6 @@ public class ShardConsumer implements Runnable {
         if (shouldSkip()) {
             shardProgress.increment();
             if (acknowledgementSet != null) {
-                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
                 acknowledgementSet.complete();
             }
             return;
@@ -263,17 +283,11 @@ public class ShardConsumer implements Runnable {
                 if (shardIterator == null) {
                     // End of Shard
                     LOG.debug("Reached end of shard");
-                    checkpointer.checkpoint(sequenceNumber);
                     break;
                 }
 
                 if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
                     LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
-                    if (acknowledgementSet != null) {
-                        checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
-                    } else {
-                        checkpointer.checkpoint(sequenceNumber);
-                    }
                     lastCheckpointTime = System.currentTimeMillis();
                 }
 
@@ -289,7 +303,6 @@ public class ShardConsumer implements Runnable {
                         continue;
                     }
                     if (waitForExport) {
-                        checkpointer.checkpoint(sequenceNumber);
                         waitForExport();
                         waitForExport = false;
                     }
@@ -319,12 +332,10 @@ public class ShardConsumer implements Runnable {
             if (shouldStop) {
                 // Do last checkpoint and then quit
                 LOG.warn("Processing for shard {} was interrupted by a shutdown signal, giving up shard", shardId);
-                checkpointer.checkpoint(sequenceNumber);
                 throw new RuntimeException("Consuming shard was interrupted from shutdown");
             }
 
             if (acknowledgementSet != null) {
-                checkpointer.updateShardForAcknowledgmentWait(shardAcknowledgmentTimeout);
                 acknowledgementSet.complete();
             }
 
@@ -366,7 +377,7 @@ public class ShardConsumer implements Runnable {
     private void waitForExport() {
         LOG.debug("Start waiting for export to be done and loaded");
         int numberOfWaits = 0;
-        while (!checkpointer.isExportDone()) {
+        while (!shardAcknowledgementManager.isExportDone(streamPartition)) {
             LOG.debug("Export is in progress, wait...");
             try {
                 shardProgress.increment();
@@ -377,7 +388,6 @@ public class ShardConsumer implements Runnable {
                 numberOfWaits++;
                 if (numberOfWaits % DEFAULT_WAIT_COUNT_TO_CHECKPOINT == 0) {
                     // To extend the timeout of lease
-                    checkpointer.checkpoint(null);
                 }
             } catch (InterruptedException e) {
                 LOG.error("Wait for export is interrupted ({})", e.getMessage());
