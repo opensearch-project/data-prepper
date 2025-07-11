@@ -10,9 +10,6 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
-import org.opensearch.dataprepper.aws.common.CredentialsProviderFactory;
-import org.opensearch.dataprepper.aws.common.CredentialsCache;
-
 import java.util.Optional;
 
 class DefaultAwsCredentialsSupplier implements AwsCredentialsSupplier {

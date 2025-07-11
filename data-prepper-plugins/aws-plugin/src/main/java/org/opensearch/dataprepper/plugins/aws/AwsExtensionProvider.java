@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.aws.common;
+package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;
 
-public class AwsExtensionProvider implements ExtensionProvider<AwsCredentialsSupplier> {
+class AwsExtensionProvider implements ExtensionProvider<AwsCredentialsSupplier> {
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
-    public AwsExtensionProvider(final AwsCredentialsSupplier awsCredentialsSupplier) {
+    AwsExtensionProvider(final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 

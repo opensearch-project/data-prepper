@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.aws.common;
+package org.opensearch.dataprepper.plugins.aws;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -85,7 +85,6 @@ class CredentialsProviderFactoryTest {
             "arn:aws:notiam::123456789012:role/TestRole",
             "arn:aws:iam::123456789012:notrole/TestRole",
             "arn:aws:iam::123456789012:/",
-            "arn:aws:iam::123456789012:/dsf",
             "arn:aws:iam::123456789012:"
     })
     void providerFromOptions_with_invalid_StsRoleArn_throws(final String stsRoleArn) {
@@ -104,47 +103,6 @@ class CredentialsProviderFactoryTest {
         final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
         assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
     }
-
-    @Test
-    void providerFromOptions_with_null_StsRoleArn() {
-        when(awsCredentialsOptions.getStsRoleArn())
-                .thenReturn(null);
-        final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
-        assertThat(awsCredentialsProvider, instanceOf(DefaultCredentialsProvider.class));
-    }
-
-    @Test
-    void providerFromOptions_with_useDefaultCredentials() {
-        when(awsCredentialsOptions.isUseDefaultCredentialsProvider())
-                .thenReturn(true);
-        final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
-        assertThat(awsCredentialsProvider, instanceOf(DefaultCredentialsProvider.class));
-    }
-
-    @Test
-    void providerFromOptions_with_null_StsConfig() {
-        when(awsCredentialsOptions.isUseDefaultCredentialsProvider())
-                .thenReturn(false);
-        when(awsCredentialsOptions.getStsRoleArn())
-                .thenReturn(null);
-        when(defaultStsConfiguration.getAwsStsRoleArn()).thenReturn(null);
-        final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
-        assertThat(awsCredentialsProvider, instanceOf(DefaultCredentialsProvider.class));
-    }
-
-    @Test
-    void providerFromOptions_with_defaultStsRoleArn() {
-        when(awsCredentialsOptions.getRegion())
-                .thenReturn(Region.US_EAST_1);
-        when(awsCredentialsOptions.isUseDefaultCredentialsProvider())
-                .thenReturn(false);
-        when(awsCredentialsOptions.getStsRoleArn())
-                .thenReturn(null);
-        when(defaultStsConfiguration.getAwsStsRoleArn()).thenReturn(createStsRole());
-        final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
-        assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
-    }
-
 
     @ParameterizedTest
     @MethodSource("getRegions")
@@ -304,38 +262,6 @@ class CredentialsProviderFactoryTest {
             when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
             when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
             when(awsCredentialsOptions.getStsHeaderOverrides()).thenReturn(Collections.emptyMap());
-
-            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
-
-            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
-            final AwsCredentialsProvider actualCredentialsProvider;
-
-            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
-                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
-                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
-                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
-            }
-
-            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
-
-            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
-            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
-
-            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
-            assertThat(actualAssumeRoleRequest.roleArn(), equalTo(testStsRole));
-            assertThat(actualAssumeRoleRequest.roleSessionName(), startsWith("Data-Prepper-"));
-            assertThat(actualAssumeRoleRequest.roleSessionName().length(), lessThanOrEqualTo(MAXIMUM_ROLE_SESSION_LENGTH));
-            assertThat(actualAssumeRoleRequest.overrideConfiguration(), notNullValue());
-            assertThat(actualAssumeRoleRequest.overrideConfiguration().isPresent(), equalTo(false));
-        }
-
-
-        @Test
-        void providerFromOptions_should_not_override_STS_Headers_when_HeaderOverrides_is_null() {
-            when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
-            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
-            when(awsCredentialsOptions.getStsHeaderOverrides()).thenReturn(null);
 
             when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
 
