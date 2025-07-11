@@ -9,10 +9,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
-import org.opensearch.dataprepper.aws.common.AwsStsConfiguration;
-import org.opensearch.dataprepper.aws.common.CredentialsProviderFactory;
-import org.opensearch.dataprepper.aws.common.CredentialsCache;
-import org.opensearch.dataprepper.aws.common.AwsExtensionProvider;
 
 /**
  * The {@link ExtensionPlugin} class which adds the AWS Plugin to

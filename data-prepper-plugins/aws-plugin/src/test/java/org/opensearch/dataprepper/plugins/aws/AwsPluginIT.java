@@ -20,8 +20,6 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
-import org.opensearch.dataprepper.aws.common.AwsStsConfiguration;
-
 import java.util.Optional;
 import java.util.UUID;
 

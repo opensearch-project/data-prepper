@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.aws.common;
+package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import software.amazon.awssdk.regions.Region;
@@ -12,16 +12,16 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Class to identify credentials. This is a distinct class from
+ * Internal class to identify credentials. This is a distinct class from
  * {@link AwsCredentialsOptions} in order to ensure that the internal caching
  * is distinct from the external model.
  */
-public class CredentialsIdentifier {
+class CredentialsIdentifier {
     private final String stsRoleArn;
     private final Region region;
     private final Map<String, String> stsHeaderOverrides;
 
-    public CredentialsIdentifier(
+    private CredentialsIdentifier(
             final String stsRoleArn,
             final Region region,
             final Map<String, String> stsHeaderOverrides) {
