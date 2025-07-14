@@ -205,4 +205,3 @@ Steps:
 ### Further details
 
 For more details on the release build, or to setup your own GitHub repository, see [release/README.md](release/README.md).
-
