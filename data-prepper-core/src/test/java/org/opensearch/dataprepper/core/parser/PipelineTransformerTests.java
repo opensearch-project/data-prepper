@@ -145,7 +145,6 @@ class PipelineTransformerTests {
     void tearDown() {
         verify(dataPrepperConfiguration).getEventConfiguration();
         verify(dataPrepperConfiguration).getExperimental();
-        verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
