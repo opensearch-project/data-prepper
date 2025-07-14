@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.buffer;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -138,4 +139,24 @@ public interface Buffer<T extends Record<?>> {
      */
     default void shutdown() {
     }
+
+    /**
+     * Sets default failure pipeline of a source
+
+     * @param failurePipeline failure pipeline
+     * @since 2.12
+     */
+    default void setFailurePipeline(final FailurePipeline failurePipeline) {
+    }
+
+    /**
+     * Returns default failure pipeline of a source
+
+     * @return FailurePipeline returns failure pipeline
+     * @since 2.12
+     */
+    default FailurePipeline getFailurePipeline() {
+        return null;
+    }
+
 }

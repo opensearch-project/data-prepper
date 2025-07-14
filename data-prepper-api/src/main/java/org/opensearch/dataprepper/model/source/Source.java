@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.source;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 import org.opensearch.dataprepper.model.codec.HasByteDecoder;
 
 /**
@@ -37,6 +38,25 @@ public interface Source<T extends Record<?>> extends HasByteDecoder {
      */
     default boolean areAcknowledgementsEnabled() {
         return false;
+    }
+
+    /**
+     * Sets default failure pipeline of a source
+
+     * @param failurePipeline failure pipeline
+     * @since 2.12
+     */
+    default void setFailurePipeline(final FailurePipeline failurePipeline) {
+    }
+
+    /**
+     * Returns default failure pipeline of a source
+
+     * @return FailurePipeline returns failure pipeline
+     * @since 2.12
+     */
+    default FailurePipeline getFailurePipeline() {
+        return null;
     }
 
 }
