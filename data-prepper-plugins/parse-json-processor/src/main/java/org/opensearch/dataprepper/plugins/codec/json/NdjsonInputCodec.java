@@ -52,31 +52,40 @@ public class NdjsonInputCodec implements InputCodec {
 
         final JsonParser parser = jsonFactory.createParser(inputStream);
 
-        if (parser.nextToken() == JsonToken.START_ARRAY) {
-            // Handle JSON array
-            while (parser.nextToken() != JsonToken.END_ARRAY) {
-                final Map<String, Object> json = objectMapper.readValue(parser, MAP_TYPE_REFERENCE);
+        JsonToken token = parser.nextToken();
 
-                if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
-                    continue;
+        // Continue parsing as long as we have tokens
+        while (token != null) {
+            if (token == JsonToken.START_ARRAY) {
+                // Handle JSON array
+                while (parser.nextToken() != JsonToken.END_ARRAY) {
+                    final Map<String, Object> json = objectMapper.readValue(parser, MAP_TYPE_REFERENCE);
+
+                    if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
+                        continue;
+                    }
+
+                    final Record<Event> record = createRecord(json);
+                    eventConsumer.accept(record);
                 }
+            } else {
+                // Handle single JSON object
+                final MappingIterator<Map<String, Object>> mapMappingIterator = objectMapper.readValues(parser, MAP_TYPE_REFERENCE);
+                while (mapMappingIterator.hasNext()) {
+                    final Map<String, Object> json = mapMappingIterator.next();
 
-                final Record<Event> record = createRecord(json);
-                eventConsumer.accept(record);
-            }
-        } else {
-            // Handle single JSON object
-            final MappingIterator<Map<String, Object>> mapMappingIterator = objectMapper.readValues(parser, MAP_TYPE_REFERENCE);
-            while (mapMappingIterator.hasNext()) {
-                final Map<String, Object> json = mapMappingIterator.next();
+                    if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
+                        continue;
+                    }
 
-                if (!ndjsonInputConfig.isIncludeEmptyObjects() && json.isEmpty()) {
-                    continue;
+                    final Record<Event> record = createRecord(json);
+                    eventConsumer.accept(record);
                 }
-
-                final Record<Event> record = createRecord(json);
-                eventConsumer.accept(record);
+                break;
             }
+
+            // Check for next token after the end of the array or object
+            token = parser.nextToken();
         }
     }
 

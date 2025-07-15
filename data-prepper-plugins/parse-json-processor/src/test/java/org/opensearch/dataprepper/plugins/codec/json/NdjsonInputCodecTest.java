@@ -219,6 +219,66 @@ class NdjsonInputCodecTest {
     }
 
     @Test
+    void parse_with_multiple_array_of_objects_asserts_number_of_objects() throws IOException {
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]\n" +
+                "[{\"key3\":\"value3\"},{\"key4\":\"value4\"}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(4, processedRecords.size());
+    }
+
+    @Test
+    void parse_with_multiple_array_with_empty_array() throws IOException {
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]\n" +
+                "[]\n" +
+                "[{\"key3\":\"value3\"},{\"key4\":\"value4\"}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(4, processedRecords.size());
+    }
+
+    @Test
+    void parse_with_multiple_array_with_exclude_empty_object() throws IOException {
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]\n" +
+                "[{}, {\"key1\":\"value3\"}]\n" +
+                "[{\"key3\":\"value3\"},{\"key4\":\"value4\"}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(5, processedRecords.size());
+    }
+
+    @Test
+    void parse_with_multiple_array_with_include_empty_object() throws IOException {
+        when(config.isIncludeEmptyObjects()).thenReturn(true);
+        final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final String jsonArray = "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]\n" +
+                "[{}, {\"key1\":\"value3\"}]\n" +
+                "[{\"key3\":\"value3\"},{\"key4\":\"value4\"}]";
+        final InputStream inputStream = new ByteArrayInputStream(jsonArray.getBytes());
+
+        final List<Record<Event>> processedRecords = new ArrayList<>();
+        Consumer<Record<Event>> eventConsumer = processedRecords::add;
+        objectUnderTest.parse(inputStream, eventConsumer);
+        assertEquals(6, processedRecords.size());
+    }
+
+    @Test
     void parse_with_array_of_empty_objects_excludes_objects_by_default() throws IOException {
         final NdjsonInputCodec objectUnderTest = createObjectUnderTest();
 
