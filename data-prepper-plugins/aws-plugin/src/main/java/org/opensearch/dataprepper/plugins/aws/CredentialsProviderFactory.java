@@ -117,7 +117,7 @@ class CredentialsProviderFactory {
         }
     }
 
-    private StsClient createStsClient(final Region region) {
+    protected StsClient createStsClient(final Region region) {
         final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
                 .baseDelay(Duration.ofMillis(STS_CLIENT_BASE_BACKOFF_MILLIS))
                 .maxBackoffTime(Duration.ofMillis(STS_CLIENT_MAX_BACKOFF_MILLIS))
