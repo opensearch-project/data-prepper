@@ -192,6 +192,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/should_drop", event("{\"should_drop\": true}"), true),
                 arguments("/should_drop", event("{\"should_drop\": false}"), false),
                 arguments("/logs/2/should_drop", event("{\"logs\": [{}, {}, {\"should_drop\": true}]}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/path/to/route\"}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/incorrect/path\"}"), false),
                 arguments(
                         escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
