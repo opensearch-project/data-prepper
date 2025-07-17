@@ -130,11 +130,14 @@ public class PipelineTransformer {
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
         final String failurePipelineName = dataPrepperConfiguration.getFailurePipelineName();
         try {
-            final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-            final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
-                    pipelineMap, pipelineConfigurationMap);
             Source source;
             if (!pipelineName.equals(failurePipelineName)) {
+                final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+                if (sourceSetting == null) {
+                    throw new InvalidPluginConfigurationException(String.format("Source is not configured for the pipeline: %s\n", pipelineName));
+                }
+                final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
+                        pipelineMap, pipelineConfigurationMap);
                 source = pipelineSource.orElseGet(() -> {
                     try {
                         return pluginFactory.loadPlugin(Source.class, sourceSetting);

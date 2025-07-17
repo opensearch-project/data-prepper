@@ -295,8 +295,8 @@ public class Pipeline implements FailurePipeline {
     }
 
     public void sendFailedEvents(Collection<Record<Event>> records) {
-        if (this.source instanceof FailurePipelineSource) {
-            ((FailurePipelineSource)this.source).sendFailedEvents(records);
+        if (this.getSource() instanceof FailurePipelineSource) {
+            ((FailurePipelineSource)this.getSource()).sendFailedEvents(records);
         }
     }
 

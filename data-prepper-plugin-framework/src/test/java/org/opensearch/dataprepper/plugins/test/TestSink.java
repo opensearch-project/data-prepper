@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.test;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public class TestSink implements Sink<Record<String>> {
     private final boolean failSinkForTest;
     private boolean ready;
     private Instant readyTime;
+    private FailurePipeline failurePipeline;
 
     public TestSink() {
         this.failSinkForTest = false;
@@ -41,6 +43,15 @@ public class TestSink implements Sink<Record<String>> {
         this.failSinkForTest = failSinkForTest;
         this.collectedRecords = new ArrayList<>();
         this.ready = false;
+    }
+
+    @Override
+    public void setFailurePipeline(final FailurePipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public FailurePipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     @Override

@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -66,6 +67,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -229,6 +231,35 @@ class PipelineTests {
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
         assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+    }
+
+    @Test
+    void testFailurePipeline() {
+        final Source<Record<String>> testSource = new TestSource(true);
+        final TestSink testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        final BlockingBuffer blockingBuffer = new BlockingBuffer(TEST_PIPELINE_NAME);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, blockingBuffer,
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router,
+                eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+        FailurePipelineSource failurePipelineSource = mock(FailurePipelineSource.class);
+        Pipeline failurePipeline = mock(Pipeline.class);
+        doCallRealMethod().when(failurePipeline).sendFailedEvents(any());
+        when(failurePipeline.getSource()).thenReturn(failurePipelineSource);
+        testPipeline.setFailurePipeline(failurePipeline);
+        assertThat(testPipeline.getFailurePipeline(), equalTo(failurePipeline));
+        assertThat(((TestSource)testSource).getFailurePipeline(), equalTo(failurePipeline));
+        testPipeline.getSinks().stream().forEach(sink -> {
+            assertThat(((TestSink)sink).getFailurePipeline(), equalTo(failurePipeline));
+        });
+        assertThat(blockingBuffer.getFailurePipeline(), equalTo(failurePipeline));
+        Record<Event> record = mock(Record.class);
+        Collection<Record<Event>>records = List.of(record);
+        failurePipeline.sendFailedEvents(records);
+        verify(failurePipelineSource).sendFailedEvents(records);
+
     }
 
     @Test

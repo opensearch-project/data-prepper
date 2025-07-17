@@ -12,6 +12,8 @@ import java.util.Set;
 public class TestDataProvider {
     public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
     public static final String VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE = "src/test/resources/single_pipeline_valid_empty_source_plugin_settings.yml";
+    public static final String VALID_SINGLE_PIPELINE_WITH_FAILURE_PIPELINE = "src/test/resources/valid_failure_pipeline.yml";
+    public static final String VALID_MULTIPLE_PIPELINE_WITH_FAILURE_PIPELINE = "src/test/resources/valid_multiple_pipelines_with_failure_pipeline.yml";
     public static final String VALID_OFF_HEAP_FILE = "src/test/resources/single_pipeline_valid_off_heap_buffer.yml";
     public static final String VALID_OFF_HEAP_FILE_WITH_ACKS = "src/test/resources/multiple_pipeline_valid_off_heap_buffer_with_acks.yml";
     public static final String DISCONNECTED_VALID_OFF_HEAP_FILE_WITH_ACKS = "src/test/resources/multiple_disconnected_pipeline_valid_off_heap_buffer_with_acks.yml";

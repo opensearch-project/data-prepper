@@ -1,0 +1,27 @@
+test-pipeline-1:
+  source:
+    random:
+  sink:
+    - pipeline:
+       name: "test-pipeline-2"
+test-pipeline-2:
+  source:
+    pipeline:
+       name: "test-pipeline-1"
+  sink:
+    - pipeline:
+       name: "test-pipeline-3"
+test-pipeline-3:
+  source:
+    pipeline:
+       name: "test-pipeline-2"
+  sink:
+    - stdout:
+        someProperty: "someValue1"
+dlq_pipeline:
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - stdout:
+        someProperty: "someValue2"

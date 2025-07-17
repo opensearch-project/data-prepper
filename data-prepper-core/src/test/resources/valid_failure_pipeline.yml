@@ -1,0 +1,13 @@
+entry-pipeline:
+  source:
+    random:
+  sink:
+    - stdout:
+        someProperty: "someValue1"
+dlq_pipeline:
+  processor:
+    - string_converter:
+        upper_case: true
+  sink:
+    - stdout:
+        someProperty: "someValue2"
