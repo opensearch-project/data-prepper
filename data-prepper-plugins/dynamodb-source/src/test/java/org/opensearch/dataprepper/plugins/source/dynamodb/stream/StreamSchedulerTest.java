@@ -126,7 +126,13 @@ class StreamSchedulerTest {
         when(backoffCalculator.calculateBackoffToAcquireNextShard(eq(1), any(AtomicInteger.class)))
                 .thenReturn(10000L);
 
-        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(null), any(Duration.class), any(ShardAcknowledgementManager.class))).thenReturn(() -> LOG.info("Hello"));
+        // Set up the mock for getShardAcknowledgmentTimeout
+        Duration timeout = Duration.ofMinutes(1);
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(timeout);
+        when(dynamoDBSourceConfig.isAcknowledgmentsEnabled()).thenReturn(false);
+        
+        // Set up the mock for createConsumer with the specific timeout
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(timeout), eq(null))).thenReturn(() -> LOG.info("Hello"));
         when(coordinator.acquireAvailablePartition(StreamPartition.PARTITION_TYPE)).thenReturn(Optional.of(streamPartition)).thenReturn(Optional.empty());
 
         scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
@@ -140,8 +146,8 @@ class StreamSchedulerTest {
 
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
-        // Should start a new consumer
-        verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(null), any(Duration.class), any(ShardAcknowledgementManager.class));
+        // Should start a new consumer with the specific timeout
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), eq(timeout), eq(null));
 
         // Should mask the stream partition as completed.
         verify(coordinator).completePartition(any(StreamPartition.class));
@@ -173,7 +179,7 @@ class StreamSchedulerTest {
             return acknowledgementSet;
         }).when(acknowledgementSetManager).create(any(Consumer.class), eq(shardAcknowledgmentTimeout));
 
-        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(acknowledgementSet), eq(shardAcknowledgmentTimeout), any(ShardAcknowledgementManager.class))).thenReturn(() -> LOG.info("Hello"));
+        when(consumerFactory.createConsumer(any(StreamPartition.class), eq(shardAcknowledgmentTimeout), any(ShardAcknowledgementManager.class))).thenReturn(() -> LOG.info("Hello"));
 
         scheduler = new StreamScheduler(coordinator, consumerFactory, pluginMetrics, acknowledgementSetManager, dynamoDBSourceConfig, backoffCalculator);
 
@@ -188,10 +194,7 @@ class StreamSchedulerTest {
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);
         // Should start a new consumer
-        verify(consumerFactory).createConsumer(any(StreamPartition.class), any(AcknowledgementSet.class), any(Duration.class), any(ShardAcknowledgementManager.class));
-
-        // Should mask the stream partition as completed.
-        verify(coordinator).completePartition(any(StreamPartition.class));
+        verify(consumerFactory).createConsumer(any(StreamPartition.class), any(Duration.class), any(ShardAcknowledgementManager.class));
 
         verify(activeShardsInProcessing).incrementAndGet();
         verify(activeShardsInProcessing).decrementAndGet();

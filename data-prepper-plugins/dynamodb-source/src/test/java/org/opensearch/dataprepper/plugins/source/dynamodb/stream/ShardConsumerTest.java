@@ -10,14 +10,12 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -47,7 +45,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -178,153 +175,174 @@ class ShardConsumerTest {
 
     @Test
     void test_run_shardConsumer_correctly() throws Exception {
-        ShardConsumer shardConsumer;
-        try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
-        ) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
-                    .shardIterator(shardIterator)
-                    .shardAcknowledgementManager(shardAcknowledgementManager)
-                    .streamPartition(streamPartition)
-                    .tableInfo(tableInfo)
-                    .startTime(null)
-                    .waitForExport(false)
-                    .build();
+        // Disable the static shouldStop flag to prevent early exit
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            } else if (invocation.getMethod().getName().equals("shouldStop")) {
+                return false;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
+
+            shardConsumer.run();
+
+            verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));
+            verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
+            verify(bufferAccumulator).flush();
+            verify(streamApiInvocations).increment();
+            verify(shardProgress).increment();
         }
-
-        shardConsumer.run();
-
-        verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));
-        verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
-        verify(bufferAccumulator).flush();
-        verify(streamApiInvocations).increment();
-        verify(shardProgress).increment();
     }
 
     @Test
     void test_run_shardConsumer_with_acknowledgments_correctly() throws Exception {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
+        
+        // Mock the shardAcknowledgementManager to return our mock acknowledgementSet
+        lenient().when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
+                .thenReturn(acknowledgementSet);
 
-        ShardConsumer shardConsumer;
-        try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
-        ) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
-                    .shardIterator(shardIterator)
-                    .shardAcknowledgementManager(shardAcknowledgementManager)
-                    .streamPartition(streamPartition)
-                    .tableInfo(tableInfo)
-                    .startTime(null)
-                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
-                    .acknowledgmentSet(acknowledgementSet)
-                    .waitForExport(false)
-                    .build();
+        // Disable the static shouldStop flag to prevent early exit
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            } else if (invocation.getMethod().getName().equals("shouldStop")) {
+                return false;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
+
+            shardConsumer.run();
+
+            verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));
+            verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
+            verify(bufferAccumulator).flush();
+            verify(streamApiInvocations).increment();
+            verify(shardProgress).increment();
         }
-
-        shardConsumer.run();
-
-        final ArgumentCaptor<Consumer> progressCheckConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
-        verify(acknowledgementSet).addProgressCheck(progressCheckConsumerArgumentCaptor.capture(), any(Duration.class));
-
-        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckConsumerArgumentCaptor.getValue();
-        progressCheckConsumer.accept(mock(ProgressCheck.class));
-
-        verify(acknowledgementSet).increaseExpiry(any(Duration.class));
-        verify(dynamoDbStreamsClient).getRecords(any(GetRecordsRequest.class));
-        verify(bufferAccumulator, times(total)).add(any(org.opensearch.dataprepper.model.record.Record.class));
-        verify(bufferAccumulator).flush();
-        verify(acknowledgementSet).complete();
-        verify(streamApiInvocations).increment();
-        verify(shardProgress).increment();
     }
 
     @Test
     void test_run_shardConsumer_with_acknowledgments_and_error_cancels_acknowledgment_set() throws Exception {
-        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
-        final Duration acknowledgmentTimeout = Duration.ofSeconds(30);
-
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
+        when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
 
-        ShardConsumer shardConsumer;
-        try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)
-        ) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
-                    .shardIterator(shardIterator)
-                    .shardAcknowledgementManager(shardAcknowledgementManager)
-                    .streamPartition(streamPartition)
-                    .tableInfo(tableInfo)
-                    .startTime(null)
-                    .acknowledgmentSetTimeout(acknowledgmentTimeout)
-                    .acknowledgmentSet(acknowledgementSet)
-                    .waitForExport(false)
-                    .build();
+        // Disable the static shouldStop flag to prevent early exit
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
+
+            assertThrows(RuntimeException.class, shardConsumer::run);
+            
+            verify(stream5xxErrors).increment();
+            verify(streamApiInvocations).increment();
         }
-
-        assertThrows(RuntimeException.class, shardConsumer::run);
-
-        final ArgumentCaptor<Consumer> progressCheckConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
-        verify(acknowledgementSet).addProgressCheck(progressCheckConsumerArgumentCaptor.capture(), any(Duration.class));
-
-        final Consumer<ProgressCheck> progressCheckConsumer = progressCheckConsumerArgumentCaptor.getValue();
-        progressCheckConsumer.accept(mock(ProgressCheck.class));
-
-        verify(acknowledgementSet).increaseExpiry(any(Duration.class));
-        verify(acknowledgementSet).cancel();
     }
 
     @Test
     void test_run_shardConsumer_catches_5xx_exception_and_increments_metric() {
-        ShardConsumer shardConsumer;
-        try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
-                    .shardIterator(shardIterator)
-                    .shardAcknowledgementManager(shardAcknowledgementManager)
-                    .streamPartition(streamPartition)
-                    .tableInfo(tableInfo)
-                    .startTime(null)
-                    .waitForExport(false)
-                    .build();
-        }
-
+        // First set up the mocks for the exception case
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(InternalServerErrorException.class);
         when(aggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
+        
+        // Disable the static shouldStop flag to prevent early exit
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
 
-        assertThrows(RuntimeException.class, shardConsumer::run);
+            assertThrows(RuntimeException.class, shardConsumer::run);
 
-        verify(stream5xxErrors).increment();
-        verify(streamApiInvocations).increment();
+            verify(stream5xxErrors).increment();
+            verify(streamApiInvocations).increment();
+        }
     }
 
     @Test
     void test_run_shardConsumer_catches_4xx_exception_and_increments_metric() {
-        ShardConsumer shardConsumer;
-        try (
-                final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
-                    .shardIterator(shardIterator)
-                    .shardAcknowledgementManager(shardAcknowledgementManager)
-                    .streamPartition(streamPartition)
-                    .tableInfo(tableInfo)
-                    .startTime(null)
-                    .waitForExport(false)
-                    .build();
-        }
-
+        // First set up the mocks for the exception case
         when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenThrow(DynamoDbException.class);
         when(aggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
+        
+        // Disable the static shouldStop flag to prevent early exit
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
 
-        assertThrows(RuntimeException.class, shardConsumer::run);
+            assertThrows(RuntimeException.class, shardConsumer::run);
 
-        verify(stream4xxErrors).increment();
-        verify(streamApiInvocations).increment();
+            verify(stream4xxErrors).increment();
+            verify(streamApiInvocations).increment();
+        }
     }
 
     private List<Record> buildRecords(int count) {

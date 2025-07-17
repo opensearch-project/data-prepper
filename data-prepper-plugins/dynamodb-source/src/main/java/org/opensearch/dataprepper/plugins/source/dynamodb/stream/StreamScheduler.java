@@ -6,13 +6,11 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.BackoffCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +47,8 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator coordinator;
     private final ShardConsumerFactory consumerFactory;
     private final ExecutorService executor;
-    private final PluginMetrics pluginMetrics;
     private final AtomicLong activeChangeEventConsumers;
     private final AtomicLong shardsInProcessing;
-    private final AcknowledgementSetManager acknowledgementSetManager;
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
     private final BackoffCalculator backoffCalculator;
     private int noAvailableShardsCount = 0;
@@ -68,12 +64,12 @@ public class StreamScheduler implements Runnable {
                            final BackoffCalculator backoffCalculator) {
         this.coordinator = coordinator;
         this.consumerFactory = consumerFactory;
-        this.pluginMetrics = pluginMetrics;
-        this.acknowledgementSetManager = acknowledgementSetManager;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.backoffCalculator = backoffCalculator;
-        this.shardAcknowledgementManager = new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig);
-        this.shardAcknowledgementManager.init(coordinator::giveUpPartition);
+        this.shardAcknowledgementManager = dynamoDBSourceConfig.isAcknowledgmentsEnabled() ? new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig) : null;
+        if (this.shardAcknowledgementManager != null) {
+            this.shardAcknowledgementManager.init(coordinator::giveUpPartition);
+        }
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
@@ -81,15 +77,8 @@ public class StreamScheduler implements Runnable {
     }
 
     private void processStreamPartition(StreamPartition streamPartition) {
-        final boolean acknowledgmentsEnabled = dynamoDBSourceConfig.isAcknowledgmentsEnabled();
-        AcknowledgementSet acknowledgementSet = null;
-        if (acknowledgmentsEnabled) {
-            final StreamProgressState lastProgressState = streamPartition.getProgressState().orElseThrow();
-            final String endingSequenceNumber = lastProgressState.getEndingSequenceNumber();
-            acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, lastProgressState.getSequenceNumber(), endingSequenceNumber == null || endingSequenceNumber.isEmpty());
-        }
 
-        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, dynamoDBSourceConfig.getShardAcknowledgmentTimeout(), shardAcknowledgementManager);
+        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout(), shardAcknowledgementManager);
         if (shardConsumer != null) {
 
             CompletableFuture runConsumer = CompletableFuture.runAsync(shardConsumer, executor);
