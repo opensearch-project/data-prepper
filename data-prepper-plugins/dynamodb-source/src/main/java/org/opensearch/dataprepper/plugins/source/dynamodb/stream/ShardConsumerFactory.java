@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -64,7 +63,6 @@ public class ShardConsumerFactory {
     }
 
     public Runnable createConsumer(final StreamPartition streamPartition,
-                                   final AcknowledgementSet acknowledgementSet,
                                    final Duration shardAcknowledgmentTimeout,
                                    final ShardAcknowledgementManager shardAcknowledgementManager) {
 
@@ -77,8 +75,7 @@ public class ShardConsumerFactory {
         Instant startTime = null;
         boolean waitForExport = false;
         if (progressState.isPresent()) {
-            // We can't checkpoint with acks yet
-            sequenceNumber = acknowledgementSet == null ? null : progressState.get().getSequenceNumber();
+            sequenceNumber = shardAcknowledgementManager == null ? null : progressState.get().getSequenceNumber();
             waitForExport = progressState.get().shouldWaitForExport();
             if (progressState.get().getStartTime() != 0) {
                 startTime = Instant.ofEpochMilli(progressState.get().getStartTime());
@@ -96,7 +93,7 @@ public class ShardConsumerFactory {
             return null;
         }
 
-
+        StreamCheckpointer checkpointer = new StreamCheckpointer(enhancedSourceCoordinator, streamPartition);
         String tableArn = TableUtil.getTableArnFromStreamArn(streamPartition.getStreamArn());
         TableInfo tableInfo = getTableInfo(tableArn);
 
@@ -104,6 +101,7 @@ public class ShardConsumerFactory {
         LOG.debug("Create shard consumer for {} with lastShardIter {}", streamPartition.getShardId(), lastShardIterator);
         ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig)
                 .tableInfo(tableInfo)
+                .checkpointer(checkpointer)
                 .shardAcknowledgementManager(shardAcknowledgementManager)
                 .streamPartition(streamPartition)
                 .shardIterator(shardIterator)
@@ -111,8 +109,6 @@ public class ShardConsumerFactory {
                 .lastShardIterator(lastShardIterator)
                 .startTime(startTime)
                 .waitForExport(waitForExport)
-                .acknowledgmentSet(acknowledgementSet)
-                .acknowledgmentSetTimeout(shardAcknowledgmentTimeout)
                 .build();
         return shardConsumer;
     }

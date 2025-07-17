@@ -3,7 +3,7 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
-
+import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
@@ -36,11 +36,11 @@ public class ShardAcknowledgementManager {
 
     private static final long WAIT_FOR_ACKNOWLEDGMENTS_TIMEOUT = 10L;
 
-    static final Duration CHECKPOINT_INTERVAL = Duration.ofSeconds(10);
+    static final Duration CHECKPOINT_INTERVAL = Duration.ofMinutes(2);
 
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
     private final Map<StreamPartition, ConcurrentLinkedQueue<ShardCheckpointStatus>> checkpoints = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<StreamPartition, ConcurrentHashMap<String, ShardCheckpointStatus>> ackStatus = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StreamPartition, ConcurrentHashMap<String, ShardCheckpointStatus>> ackStatuses = new ConcurrentHashMap<>();
 
     private final AcknowledgementSetManager acknowledgementSetManager;
 
@@ -59,11 +59,7 @@ public class ShardAcknowledgementManager {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinator = sourceCoordinator;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
-        this.executorService = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "dynamodb-shard-ack-monitor");
-            t.setDaemon(true);
-            return t;
-        });
+        this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
         this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
         this.lastCheckpointTime = Instant.now();
     }
@@ -97,7 +93,7 @@ public class ShardAcknowledgementManager {
                 ShardCheckpointStatus latestCheckpointForShard = null;
                 boolean gaveUpPartition = false;
                 while (!checkpointStatuses.isEmpty()) {
-                    updateOwnershipForAllSegmentPartitions();
+                    updateOwnershipForAllShardPartitions();
 
                     if (checkpointStatuses.peek().isPositiveAcknowledgement()) {
                         latestCheckpointForShard = checkpointStatuses.poll();
@@ -122,7 +118,7 @@ public class ShardAcknowledgementManager {
                 }
 
                 if (!gaveUpPartition) {
-                    updateOwnershipForAllSegmentPartitions();
+                    updateOwnershipForAllShardPartitions();
                 }
 
                 if (gaveUpPartition || latestCheckpointForShard == null) {
@@ -130,7 +126,7 @@ public class ShardAcknowledgementManager {
                 }
 
                 if (latestCheckpointForShard.isFinalAcknowledgmentForPartition()) {
-                    handleCompletedSegment(streamPartition);
+                    handleCompletedShard(streamPartition);
                 } else {
                     streamProgressState.setSequenceNumber(Objects.equals(latestCheckpointForShard.getSequenceNumber(), NULL_SEQUENCE_NUMBER) ? null : latestCheckpointForShard.getSequenceNumber());
                     sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
@@ -151,12 +147,12 @@ public class ShardAcknowledgementManager {
         final String sequenceNumberNoNull = sequenceNumber == null ? NULL_SEQUENCE_NUMBER : sequenceNumber;
         final ShardCheckpointStatus shardCheckpointStatus = new ShardCheckpointStatus(sequenceNumber, Instant.now().toEpochMilli(), isFinalSetForPartition);
         checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>()).add(shardCheckpointStatus);
-        ackStatus.computeIfAbsent(streamPartition, segment -> new ConcurrentHashMap<>());
-        ackStatus.get(streamPartition).put(sequenceNumberNoNull, shardCheckpointStatus);
+        ackStatuses.computeIfAbsent(streamPartition, segment -> new ConcurrentHashMap<>());
+        ackStatuses.get(streamPartition).put(sequenceNumberNoNull, shardCheckpointStatus);
 
         return acknowledgementSetManager.create((result) -> {
-            if (ackStatus.containsKey(streamPartition) && ackStatus.get(streamPartition).containsKey(sequenceNumberNoNull)) {
-                final ShardCheckpointStatus ackCheckpointStatus = ackStatus.get(streamPartition).get(sequenceNumberNoNull);
+            if (ackStatuses.containsKey(streamPartition) && ackStatuses.get(streamPartition).containsKey(sequenceNumberNoNull)) {
+                final ShardCheckpointStatus ackCheckpointStatus = ackStatuses.get(streamPartition).get(sequenceNumberNoNull);
 
                 ackCheckpointStatus.setAcknowledgedTimestamp(Instant.now().toEpochMilli());
 
@@ -173,7 +169,7 @@ public class ShardAcknowledgementManager {
         }, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
     }
 
-    void updateOwnershipForAllSegmentPartitions() {
+    void updateOwnershipForAllShardPartitions() {
         if (Duration.between(lastCheckpointTime, Instant.now()).compareTo(CHECKPOINT_INTERVAL) > 0) {
             for (final StreamPartition streamPartition : checkpoints.keySet()) {
                 if (!partitionsToRemove.contains(streamPartition)) {
@@ -196,7 +192,7 @@ public class ShardAcknowledgementManager {
         sourceCoordinator.giveUpPartition(streamPartition);
     }
 
-    private void handleCompletedSegment(final StreamPartition streamPartition) {
+    private void handleCompletedShard(final StreamPartition streamPartition) {
         sourceCoordinator.completePartition(streamPartition);
         partitionsToRemove.add(streamPartition);
         LOG.info("Received all acknowledgments for partition {}, marking partition as completed", streamPartition.getPartitionKey());
@@ -206,7 +202,7 @@ public class ShardAcknowledgementManager {
         shutdownTriggered = true;
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(WAIT_FOR_ACKNOWLEDGMENTS_TIMEOUT, TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(WAIT_FOR_ACKNOWLEDGMENTS_TIMEOUT, TimeUnit.MINUTES)) {
                 executorService.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -218,7 +214,7 @@ public class ShardAcknowledgementManager {
     private void removePartitions() {
         partitionsToRemove.forEach(streamPartition -> {
             checkpoints.remove(streamPartition);
-            ackStatus.remove(streamPartition);
+            ackStatuses.remove(streamPartition);
         });
 
         partitionsToRemove.clear();
