@@ -53,7 +53,7 @@ class ShardAcknowledgementManagerTest {
     @BeforeEach
     void setUp() {
         shardAcknowledgementManager = new ShardAcknowledgementManager(
-            acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig);
+            acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig, stopWorkerConsumer);
     }
 
     @Test
