@@ -66,10 +66,8 @@ public class StreamScheduler implements Runnable {
         this.consumerFactory = consumerFactory;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.backoffCalculator = backoffCalculator;
-        this.shardAcknowledgementManager = dynamoDBSourceConfig.isAcknowledgmentsEnabled() ? new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig) : null;
-        if (this.shardAcknowledgementManager != null) {
-            this.shardAcknowledgementManager.init(coordinator::giveUpPartition);
-        }
+        this.shardAcknowledgementManager = dynamoDBSourceConfig.isAcknowledgmentsEnabled() ? 
+            new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig, coordinator::giveUpPartition) : null;
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());

@@ -54,7 +54,8 @@ public class ShardAcknowledgementManager {
 
     public ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
                                        final EnhancedSourceCoordinator sourceCoordinator,
-                                       final DynamoDBSourceConfig dynamoDBSourceConfig
+                                       final DynamoDBSourceConfig dynamoDBSourceConfig,
+                                       final Consumer<StreamPartition> stopWorkerConsumer
     ) {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinator = sourceCoordinator;
@@ -62,9 +63,8 @@ public class ShardAcknowledgementManager {
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
         this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
         this.lastCheckpointTime = Instant.now();
-    }
-
-    public void init(final Consumer<StreamPartition> stopWorkerConsumer) {
+        
+        // Start monitoring acknowledgments in the constructor
         executorService.submit(() -> monitorAcknowledgments(stopWorkerConsumer));
     }
 
