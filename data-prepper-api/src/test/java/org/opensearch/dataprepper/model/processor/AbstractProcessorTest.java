@@ -9,11 +9,15 @@ import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.mock;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -57,6 +61,20 @@ class AbstractProcessorTest {
                 MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
                 0.1,
                 0.2));
+    }
+
+    @Test
+    void testGetAndSetFailurePipeline() {
+        final String processorName = "testProcessor";
+        final String pipelineName = "testPipeline";
+        MetricsTestUtil.initMetrics();
+
+        PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
+        pluginSetting.setPipelineName(pipelineName);
+        AbstractProcessor<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
+        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        processor.setFailurePipeline(failurePipeline);
+        assertThat(processor.getFailurePipeline(), sameInstance(failurePipeline));
     }
 
     @Test

@@ -84,6 +84,21 @@ public class InMemorySourceAccessor {
         submit(testingKey, records);
     }
 
+    public void submitWithFixedStatusValues(final String testingKey, int numRecords) {
+        if (eventFactory == null) {
+            return;
+        }
+        List<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < numRecords; i++) {
+            int status = (i < numRecords/2) ? 100 : 250;
+            Map<String, Object> eventMap = Map.of("message", UUID.randomUUID().toString(), "status", status);
+            EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withData(eventMap);
+            Event event = eventBuilder.build();
+            records.add(new Record<>(event));
+        }
+        submit(testingKey, records);
+    }
+
     /**
      * Submits records to the in_memory source. These will be available to the source
      * for reading.

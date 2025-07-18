@@ -347,6 +347,29 @@ class PipelineRunnerTest {
         }
 
         @Test
+        void testRunProcessorsAndProcessAcknowledgementsThrowsExceptionWithFailurePipeline() {
+            List<Record<Event>> inputRecords = new ArrayList<>();
+            final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+            defaultEventHandle.addAcknowledgementSet(acknowledgementSet);
+            inputRecords.add(record);
+            setupPipeline(false);
+            Pipeline failurePipeline = mock(Pipeline.class);
+            // Have the processor throw an exception
+            when(processor.execute(inputRecords)).thenThrow(new RuntimeException());
+            final Processor skippedProcessor = mock(Processor.class);
+            List<Processor> processors = List.of(processor, skippedProcessor);
+            when(pipeline.getFailurePipeline()).thenReturn(failurePipeline);
+            PipelineRunnerImpl pipelineRunner = createObjectUnderTest();
+            Collection<?> result = pipelineRunner.runProcessorsAndProcessAcknowledgements(
+                    processors, inputRecords);
+
+            verify(defaultEventHandle, never()).release(anyBoolean());
+            verify(skippedProcessor, never()).execute(inputRecords);
+            verify(failurePipeline).sendFailedEvents(inputRecords);
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
         void testRunProcessorsAndProcessAcknowledgementsThrowingExceptionWithAcknowledgmentsEnabledIsHandledProperly() {
             // Create an event with a DefaultEventHandle.
             when(event.getEventHandle()).thenReturn(defaultEventHandle);

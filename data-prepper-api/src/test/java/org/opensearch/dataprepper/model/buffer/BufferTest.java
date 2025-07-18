@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.model.buffer;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -55,6 +58,14 @@ class BufferTest {
 
         assertEquals(false, buffer.isByteBuffer());
         assertEquals(false, buffer.areAcknowledgementsEnabled());
+    }
+
+    @Test
+    public void testGetAndSetFailurePipeline() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
+        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        doCallRealMethod().when(buffer).setFailurePipeline(failurePipeline);
+        buffer.setFailurePipeline(failurePipeline);
     }
 
     @Test

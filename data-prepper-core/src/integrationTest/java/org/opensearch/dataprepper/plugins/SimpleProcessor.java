@@ -18,16 +18,21 @@ import java.util.Collection;
 public class SimpleProcessor implements Processor<Record<Event>, Record<Event>> {
     private final EventKey eventKey1;
     private final String valuePrefix1;
+    private final boolean executeShouldThrow;
     int count = 0;
 
     @DataPrepperPluginConstructor
     public SimpleProcessor(final SimpleProcessorConfig simpleProcessorConfig) {
         eventKey1 = simpleProcessorConfig.getKey1();
         valuePrefix1 = simpleProcessorConfig.getValuePrefix1();
+        executeShouldThrow = simpleProcessorConfig.shouldExecuteThrow();
     }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
+        if (records.size() > 0 && executeShouldThrow) {
+            throw new RuntimeException("execute throwing exception");
+        }
         for (final Record<Event> record : records) {
             record.getData().put(eventKey1, valuePrefix1 + count);
             count++;

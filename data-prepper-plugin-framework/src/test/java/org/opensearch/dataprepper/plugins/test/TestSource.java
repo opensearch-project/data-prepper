@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.util.Iterator;
 import java.util.List;
@@ -22,6 +23,7 @@ public class TestSource implements Source<Record<String>> {
             .map(Record::new).collect(Collectors.toList());
     private boolean isStopRequested;
     private boolean failSourceForTest;
+    private FailurePipeline failurePipeline;
 
     public TestSource() {
         this.isStopRequested = false;
@@ -31,6 +33,15 @@ public class TestSource implements Source<Record<String>> {
     public TestSource(final boolean failSourceForTest) {
         this.isStopRequested = false;
         this.failSourceForTest = failSourceForTest;
+    }
+
+    @Override
+    public void setFailurePipeline(final FailurePipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public FailurePipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     @Override

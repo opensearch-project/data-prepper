@@ -8,11 +8,14 @@ package org.opensearch.dataprepper.plugins;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class SimpleProcessorConfig {
     @EventKeyConfiguration(EventKeyFactory.EventAction.PUT)
     private EventKey key1;
     private String valuePrefix1;
+    @JsonProperty("execute_should_throw")
+    private boolean executeShouldThrow = false;
 
     public EventKey getKey1() {
         return key1;
@@ -20,5 +23,9 @@ public class SimpleProcessorConfig {
 
     public String getValuePrefix1() {
         return valuePrefix1;
+    }
+
+    public boolean shouldExecuteThrow() {
+        return executeShouldThrow;
     }
 }

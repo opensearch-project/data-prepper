@@ -154,6 +154,7 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.**"));
         assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags().size(), equalTo(1));
         assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags(), equalTo(Map.of("tag1", "value1")));
+        assertThat(dataPrepperConfiguration.getFailurePipelineName(), equalTo(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME));
     }
 
     @Test

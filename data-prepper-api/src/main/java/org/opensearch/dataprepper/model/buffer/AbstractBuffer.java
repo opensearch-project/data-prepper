@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.time.Instant;
 import java.time.Duration;
@@ -38,6 +39,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Timer latencyTimer;
     private final Timer readTimer;
     private final Timer checkpointTimer;
+    private FailurePipeline failurePipeline;
 
     public AbstractBuffer(final PluginSetting pluginSetting) {
         this(PluginMetrics.fromPluginSetting(pluginSetting), pluginSetting.getPipelineName());
@@ -60,6 +62,15 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
         this.latencyTimer = pluginMetrics.timer(MetricNames.READ_LATENCY);
         this.checkpointTimer = pluginMetrics.timer(MetricNames.CHECKPOINT_TIME_ELAPSED);
+    }
+
+    @Override
+    public void setFailurePipeline(final FailurePipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public FailurePipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     /**

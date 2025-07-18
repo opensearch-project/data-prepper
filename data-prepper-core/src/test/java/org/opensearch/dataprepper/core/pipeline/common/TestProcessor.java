@@ -17,11 +17,17 @@ import java.util.Collection;
 @DataPrepperPlugin(name = "test_processor", pluginType = Processor.class)
 public class TestProcessor implements Processor<Record<String>, Record<String>> {
     public boolean isShutdown = false;
+    private final PluginSetting pluginSetting;
 
-    public TestProcessor(final PluginSetting pluginSetting) {}
+    public TestProcessor(final PluginSetting pluginSetting) {
+        this.pluginSetting = pluginSetting;
+    }
 
     @Override
     public Collection<Record<String>> execute(Collection<Record<String>> records) {
+        if (pluginSetting.getSettings().containsKey("execute_should_throw")) {
+            throw new RuntimeException("throwing runtime exception");
+        }
         return records;
     }
 

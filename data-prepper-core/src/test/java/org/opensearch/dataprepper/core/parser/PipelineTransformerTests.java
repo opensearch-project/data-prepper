@@ -73,7 +73,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.core.parser.PipelineTransformer.CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT;
 
@@ -145,7 +144,6 @@ class PipelineTransformerTests {
     void tearDown() {
         verify(dataPrepperConfiguration).getEventConfiguration();
         verify(dataPrepperConfiguration).getExperimental();
-        verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
     private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
@@ -171,6 +169,40 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_with_valid_pipeline_and_failure_pipeline() {
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_WITH_FAILURE_PIPELINE);
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(actualPipelineMap.size(), equalTo(2));
+        assertThat(actualPipelineMap, hasKey("entry-pipeline"));
+        Pipeline entryPipeline = actualPipelineMap.get("entry-pipeline");
+        assertThat(entryPipeline, notNullValue());
+        assertThat(entryPipeline.getFailurePipeline(), notNullValue());
+    }
+
+    @Test
+    void parseConfiguration_with_valid_multiple_pipelines_and_failure_pipeline() {
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_WITH_FAILURE_PIPELINE);
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(actualPipelineMap.size(), equalTo(4));
+        assertThat(actualPipelineMap, hasKey("test-pipeline-1"));
+        Pipeline pipeline = actualPipelineMap.get("test-pipeline-1");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), notNullValue());
+        pipeline = actualPipelineMap.get("test-pipeline-2");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), notNullValue());
+        pipeline = actualPipelineMap.get("test-pipeline-3");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), notNullValue());
+    }
+
+    @Test
     void parseConfiguration_with_multiple_valid_pipelines_creates_the_correct_pipelineMap_with_acks() {
         mockDataPrepperConfigurationAccesses();
         final PipelineTransformer pipelineTransformer =
@@ -187,12 +219,15 @@ class PipelineTransformerTests {
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
         assertThat(pipeline.getBuffer().areAcknowledgementsEnabled(),equalTo(true));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         pipeline = actualPipelineMap.get("test-pipeline-2");
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(true));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         pipeline = actualPipelineMap.get("test-pipeline-3");
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(true));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
     }
 
     @Test
@@ -212,12 +247,15 @@ class PipelineTransformerTests {
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
         assertThat(pipeline.getBuffer().areAcknowledgementsEnabled(),equalTo(true));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         pipeline = actualPipelineMap.get("test-pipeline-2");
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(true));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         pipeline = actualPipelineMap.get("test-pipeline-3");
         assertThat(pipeline, notNullValue());
         assertThat(pipeline.getSource().areAcknowledgementsEnabled(),equalTo(false));
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
     }
 
     @Test
@@ -358,6 +396,9 @@ class PipelineTransformerTests {
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE);
         final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(pipelineMap.size(), equalTo(3));
+        for (Map.Entry<String, Pipeline> pipelineEntry: pipelineMap.entrySet()) {
+            assertThat(pipelineEntry.getValue().getFailurePipeline(), equalTo(null));
+        }
         verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
@@ -369,6 +410,9 @@ class PipelineTransformerTests {
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PROCESSERS_CONFIG_FILE);
         final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
         assertThat(pipelineMap.size(), equalTo(3));
+        for (Map.Entry<String, Pipeline> pipelineEntry: pipelineMap.entrySet()) {
+            assertThat(pipelineEntry.getValue().getFailurePipeline(), equalTo(null));
+        }
         verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
     }
@@ -384,6 +428,7 @@ class PipelineTransformerTests {
         verifyDataPrepperConfigurationAccesses(pipelineMap.size());
 
         final Pipeline entryPipeline = pipelineMap.get("entry-pipeline");
+        assertThat(entryPipeline.getFailurePipeline(), equalTo(null));
         assertThat(entryPipeline, notNullValue());
         assertThat(entryPipeline.getSinks(), notNullValue());
         assertThat(entryPipeline.getSinks().size(), equalTo(2));
@@ -460,6 +505,7 @@ class PipelineTransformerTests {
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
         assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         assertThat(pipeline.getBuffer(), instanceOf(CircuitBreakingBuffer.class));
 
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
@@ -479,6 +525,7 @@ class PipelineTransformerTests {
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
         assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         assertThat(pipeline.getBuffer(), notNullValue());
         assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
 
@@ -502,6 +549,7 @@ class PipelineTransformerTests {
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
         assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getFailurePipeline(), equalTo(null));
         assertThat(pipeline.getBuffer(), notNullValue());
         assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
 
@@ -524,11 +572,13 @@ class PipelineTransformerTests {
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline entryPipeline = pipelineMap.get("test-pipeline-1");
         assertThat(entryPipeline, notNullValue());
+        assertThat(entryPipeline.getFailurePipeline(), equalTo(null));
         assertThat(entryPipeline.getBuffer(), instanceOf(CircuitBreakingBuffer.class));
 
         assertThat(pipelineMap, hasKey("test-pipeline-2"));
         final Pipeline connectedPipeline = pipelineMap.get("test-pipeline-2");
         assertThat(connectedPipeline, notNullValue());
+        assertThat(connectedPipeline.getFailurePipeline(), equalTo(null));
         assertThat(connectedPipeline.getBuffer(), notNullValue());
         assertThat(connectedPipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
 

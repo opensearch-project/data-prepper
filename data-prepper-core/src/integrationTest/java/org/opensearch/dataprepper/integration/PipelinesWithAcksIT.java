@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PipelinesWithAcksIT {
     private static final Logger LOG = LoggerFactory.getLogger(PipelinesWithAcksIT.class);
     private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";
+    private static final String DLQ_IDENTIFIER = "PipelinesWithAcksDLQ";
     private static final String SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/simple-test.yaml";
     private static final String TWO_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-pipelines-test.yaml";
     private static final String TWO_PARALLEL_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-parallel-pipelines-test.yaml";
@@ -41,6 +42,7 @@ class PipelinesWithAcksIT {
     private static final String THREE_PIPELINES_WITH_ROUTE_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-route-test.yaml";
     private static final String THREE_PIPELINES_WITH_UNROUTED_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-unrouted-test.yaml";
     private static final String THREE_PIPELINES_WITH_DEFAULT_ROUTE_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipeline-route-default-test.yaml";
+    private static final String THREE_PIPELINES_WITH_FAILURE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipelines-with-failure-pipeline.yaml";
     private static final String THREE_PIPELINES_MULTI_SINK_CONFIGURATION_UNDER_TEST = "acknowledgements/three-pipelines-test-multi-sink.yaml";
     private static final String ONE_PIPELINE_THREE_SINKS_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-three-sinks.yaml";
     private static final String ONE_PIPELINE_ACK_EXPIRY_CONFIGURATION_UNDER_TEST = "acknowledgements/one-pipeline-ack-expiry-test.yaml";
@@ -169,6 +171,28 @@ class PipelinesWithAcksIT {
             List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(2*numRecords));
+        });
+        assertTrue(inMemorySourceAccessor.getAckReceived());
+    }
+
+    @Test
+    void three_pipelines_with_failure_pipeline_and_multiple_records() {
+        setUp(THREE_PIPELINES_WITH_FAILURE_PIPELINE_CONFIGURATION_UNDER_TEST);
+        final int numRecords = 10;
+
+        inMemorySourceAccessor.submitWithFixedStatusValues(IN_MEMORY_IDENTIFIER, numRecords);
+
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            List<Record<Event>> outputRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER);
+            assertThat(outputRecords, not(empty()));
+            assertThat(outputRecords.size(), equalTo(15));
+        });
+        await().atMost(40000, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+            List<Record<Event>> outputRecords = inMemorySinkAccessor.get(DLQ_IDENTIFIER);
+            assertThat(outputRecords, not(empty()));
+            assertThat(outputRecords.size(), equalTo(5));
         });
         assertTrue(inMemorySourceAccessor.getAckReceived());
     }

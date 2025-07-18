@@ -191,6 +191,7 @@ public class PipelineConnectorTest {
         assertTrue(eut.isReady());
 
         eut.output(eventRecordList);
+        eut.setFailurePipeline(null);
 
         Map.Entry<Collection<Record<Event>>, CheckpointState> ent = eventBuffer.read(1);
         ArrayList<Record<Event>> records = new ArrayList<>(ent.getKey());
