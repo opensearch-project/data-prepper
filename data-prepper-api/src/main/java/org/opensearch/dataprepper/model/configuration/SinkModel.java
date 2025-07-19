@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Represents an extension of the {@link PluginModel} which is specific to Sink
@@ -118,11 +119,10 @@ public class SinkModel extends PluginModel {
         private SinkInternalJsonModel(final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
             super(pluginSettings);
             this.routes = routes != null ? routes : Collections.emptyList();
-            this.includeKeys = includeKeys != null ? includeKeys : Collections.emptyList();
-            this.excludeKeys = excludeKeys != null ? excludeKeys : Collections.emptyList();
+            this.includeKeys = includeKeys != null ? validateKeys(includeKeys) : Collections.emptyList();
+            this.excludeKeys = excludeKeys != null ? validateKeys(excludeKeys): Collections.emptyList();
             this.tagsTargetKey = tagsTargetKey;
             validateConfiguration();
-            validateKeys();
         }
 
         void validateConfiguration() {
@@ -134,15 +134,11 @@ public class SinkModel extends PluginModel {
         /**
          * Validates both include and exclude keys if they contain /
          */
-        private void validateKeys() {
-            includeKeys.forEach(key -> {
-                if(key.contains("/"))
-                    throw new InvalidPluginConfigurationException("include_keys cannot contain /");
-            });
-            excludeKeys.forEach(key -> {
-                if(key.contains("/"))
-                    throw new InvalidPluginConfigurationException("exclude_keys cannot contain /");
-            });
+        private static List<String> validateKeys(List<String> input) {
+            boolean allValid = input.stream().noneMatch(key -> key.contains("/"));
+            if (!allValid)
+                throw new InvalidPluginConfigurationException("include_keys cannot contain /");
+            return input.stream().sorted().collect(Collectors.toList());
         }
     }
 

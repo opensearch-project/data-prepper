@@ -149,7 +149,7 @@ class SinkModelTest {
         final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "abc", "efg"), null, pluginSettings);
 
         assertThat(sinkModel.getExcludeKeys(), equalTo(new ArrayList<String>()));
-        assertThat(sinkModel.getIncludeKeys(), equalTo(Arrays.asList("bcd", "abc", "efg")));
+        assertThat(sinkModel.getIncludeKeys(), equalTo(Arrays.asList("abc", "bcd", "efg")));
 
     }
 
