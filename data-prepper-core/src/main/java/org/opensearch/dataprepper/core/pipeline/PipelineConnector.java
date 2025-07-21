@@ -101,11 +101,6 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
-    public FailurePipeline getFailurePipeline() {
-        return null;
-    }
-
-    @Override
     public void shutdown() {
         //TODO: Cleanup resources
     }

@@ -76,7 +76,6 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         this.failurePipeline = failurePipeline;
     }
 
-    @Override
     public FailurePipeline getFailurePipeline() {
         return failurePipeline;
     }

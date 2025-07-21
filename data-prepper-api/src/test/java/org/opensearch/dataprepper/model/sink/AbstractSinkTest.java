@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,6 +31,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.number.OrderingComparison.greaterThan;
 import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
 import static org.hamcrest.number.OrderingComparison.lessThan;
@@ -85,6 +87,16 @@ class AbstractSinkTest {
         );
         assertEquals(abstractSink.getRetryThreadState(), null);
         abstractSink.shutdown();
+    }
+
+    @Test
+    public void testGetAndSetFailurePipeline() {
+        AbstractSink<Record<String>> abstractSink = new AbstractSinkImpl(pluginSetting);
+        abstractSink.initialize();
+        assertEquals(abstractSink.isReady(), true);
+        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        abstractSink.setFailurePipeline(failurePipeline);
+        assertThat(abstractSink.getFailurePipeline(), sameInstance(failurePipeline));
     }
 
     @Test

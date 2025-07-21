@@ -71,7 +71,6 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
         this.failurePipeline = failurePipeline;
     }
 
-    @Override
     public FailurePipeline getFailurePipeline() {
         return failurePipeline;
     }

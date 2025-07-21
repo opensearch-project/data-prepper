@@ -6,7 +6,10 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doCallRealMethod;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -28,6 +31,10 @@ public class SinkTest {
         }
 
         @Override
+        public void setFailurePipeline(FailurePipeline failurePipeline) {
+        }
+
+        @Override
         public void output(Collection<Record<?>> records) {
         }
     
@@ -39,5 +46,13 @@ public class SinkTest {
     public void testSinkUpdateLatencyMetrics() {
         sink = new SinkTestClass();
         sink.updateLatencyMetrics(Collections.emptyList());
+    }
+
+    @Test
+    public void testSetFailurePipeline() {
+        Sink testSink = mock(Sink.class);
+        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        doCallRealMethod().when(testSink).setFailurePipeline(failurePipeline);
+        testSink.setFailurePipeline(failurePipeline);
     }
 }
