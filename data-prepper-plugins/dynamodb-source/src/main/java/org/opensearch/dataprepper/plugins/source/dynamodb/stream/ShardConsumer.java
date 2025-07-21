@@ -241,6 +241,9 @@ public class ShardConsumer implements Runnable {
         // Check should skip processing or not.
         if (shouldSkip()) {
             shardProgress.increment();
+            if (shardAcknowledgementManager != null) {
+                checkpointer.completePartition();
+            }
             return;
         }
 
@@ -283,8 +286,7 @@ public class ShardConsumer implements Runnable {
                 AcknowledgementSet acknowledgementSet = null;
                 if (shardAcknowledgementManager != null) {
                     final StreamProgressState lastProgressState = streamPartition.getProgressState().orElseThrow();
-                    final String endingSequenceNumber = lastProgressState.getEndingSequenceNumber();
-                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, lastProgressState.getSequenceNumber(), endingSequenceNumber == null || endingSequenceNumber.isEmpty());
+                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, lastProgressState.getSequenceNumber(), shardIterator == null);
                 }
 
                 records = response.records().stream()

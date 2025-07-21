@@ -151,6 +151,7 @@ public class StreamScheduler implements Runnable {
                 }
             } else {
                 LOG.error("Received an exception while processing shard {}, giving up shard: {}", streamPartition.getShardId(), ex);
+                shardAcknowledgementManager.giveUpPartition(streamPartition);
                 coordinator.giveUpPartition(streamPartition);
             }
         };

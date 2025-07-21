@@ -220,6 +220,12 @@ public class ShardAcknowledgementManager {
         partitionsToRemove.clear();
     }
 
+    public void giveUpPartition(final StreamPartition streamPartition) {
+        sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        checkpoints.remove(streamPartition);
+        ackStatuses.remove(streamPartition);
+    }
+
     public boolean isExportDone(StreamPartition streamPartition) {
         Optional<EnhancedSourcePartition> globalPartition = sourceCoordinator.getPartition(streamPartition.getStreamArn());
         return globalPartition.isPresent();
