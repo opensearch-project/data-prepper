@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -148,7 +149,7 @@ class SinkModelTest {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "abc", "efg"), null, pluginSettings);
 
-        assertThat(sinkModel.getExcludeKeys(), empty());
+        assertThat(sinkModel.getExcludeKeys(), is(empty()));
         assertThat(sinkModel.getIncludeKeys(), contains("abc", "bcd", "efg")); //must be sorted
 
     }
@@ -164,7 +165,7 @@ class SinkModelTest {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("bcd", "efg", "abc"), pluginSettings);
 
-        assertThat(sinkModel.getIncludeKeys(), empty());
+        assertThat(sinkModel.getIncludeKeys(), is(empty()));
         assertThat(sinkModel.getExcludeKeys(), contains("abc", "bcd", "efg")); //must be sorted
 
     }
