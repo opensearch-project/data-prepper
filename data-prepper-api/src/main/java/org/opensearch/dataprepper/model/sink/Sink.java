@@ -58,13 +58,4 @@ public interface Sink<T extends Record<?>> {
     default void setFailurePipeline(final FailurePipeline failurePipeline) {
     }
 
-    /**
-     * Returns default failure pipeline of a source
-
-     * @return FailurePipeline returns failure pipeline
-     * @since 2.12
-     */
-    default FailurePipeline getFailurePipeline() {
-        return null;
-    }
 }

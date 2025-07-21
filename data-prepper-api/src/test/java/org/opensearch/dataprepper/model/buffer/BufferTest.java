@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.buffer;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.failures.FailurePipeline;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -16,7 +17,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doCallRealMethod;
 
 class BufferTest {
 
@@ -71,4 +74,11 @@ class BufferTest {
 
     }
 
+    @Test
+    void testSetFailurePipeline() {
+        final Buffer<Record<Event>> buffer = createObjectUnderTest();
+        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        doCallRealMethod().when(buffer).setFailurePipeline(failurePipeline);
+        buffer.setFailurePipeline(failurePipeline);
+    }
 }
