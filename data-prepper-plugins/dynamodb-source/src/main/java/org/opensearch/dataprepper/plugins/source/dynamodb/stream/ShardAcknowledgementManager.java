@@ -48,6 +48,7 @@ public class ShardAcknowledgementManager {
 
     private final ExecutorService executorService;
     private final List<StreamPartition> partitionsToRemove;
+    private final List<StreamPartition> partitionsToGiveUp;
     private boolean shutdownTriggered;
 
     private Instant lastCheckpointTime;
@@ -62,6 +63,7 @@ public class ShardAcknowledgementManager {
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
         this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
+        this.partitionsToGiveUp = Collections.synchronizedList(new ArrayList<>());
         this.lastCheckpointTime = Instant.now();
         
         // Start monitoring acknowledgments in the constructor
@@ -132,6 +134,11 @@ public class ShardAcknowledgementManager {
                     sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
                     LOG.debug("Checkpointed shard {} with latest sequence number acknowledged {}", streamPartition.getShardId(), latestCheckpointForShard.getSequenceNumber());
                 }
+                if (partitionsToGiveUp.contains(streamPartition)) {
+                    partitionsToRemove.add(streamPartition);
+                    sourceCoordinator.giveUpPartition(streamPartition);
+                }
+
             } catch (final Exception e) {
                 LOG.error("Received exception while monitoring acknowledgments for stream partition {}", streamPartition.getPartitionKey(), e);
             }
@@ -190,11 +197,13 @@ public class ShardAcknowledgementManager {
         }
         partitionsToRemove.add(streamPartition);
         sourceCoordinator.giveUpPartition(streamPartition);
+        partitionsToGiveUp.remove(streamPartition);
     }
 
     private void handleCompletedShard(final StreamPartition streamPartition) {
         sourceCoordinator.completePartition(streamPartition);
         partitionsToRemove.add(streamPartition);
+        partitionsToGiveUp.remove(streamPartition);
         LOG.info("Received all acknowledgments for partition {}, marking partition as completed", streamPartition.getPartitionKey());
     }
 
@@ -221,9 +230,10 @@ public class ShardAcknowledgementManager {
     }
 
     public void giveUpPartition(final StreamPartition streamPartition) {
-        sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
-        checkpoints.remove(streamPartition);
-        ackStatuses.remove(streamPartition);
+        if (!partitionsToGiveUp.contains(streamPartition)) {
+            LOG.debug("Adding partition {} to give up list", streamPartition.getPartitionKey());
+            partitionsToGiveUp.add(streamPartition);
+        }
     }
 
     public boolean isExportDone(StreamPartition streamPartition) {
