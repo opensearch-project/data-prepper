@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -252,7 +254,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
-                arguments("getEventType() == \"LOG\"",  longEvent, false)
+                arguments("getEventType() == \"LOG\"",  longEvent, false),
+                arguments("dateTimeFormat(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
         );
     }
 
