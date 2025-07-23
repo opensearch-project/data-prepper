@@ -117,6 +117,9 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @JsonProperty("fetch_min_bytes")
     private ByteCount fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
+    @JsonProperty("isolation_level")
+    private String isolationLevel = "read_uncommitted";
+
     @Override
     @JsonIgnore
     public MessageFormat getSerdeFormat() {
@@ -260,5 +263,10 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
 
     public boolean encryptionAtRestEnabled() {
         return encryptionId != null || encryptionKey != null || kmsConfig != null;
+    }
+
+    @Override
+    public String getIsolationLevel() {
+        return isolationLevel;
     }
 }

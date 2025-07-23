@@ -43,4 +43,6 @@ public interface TopicConsumerConfig extends TopicConfig {
     Integer getConsumerMaxPollRecords();
 
     Integer getWorkers();
+
+    String getIsolationLevel();
 }

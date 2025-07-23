@@ -53,4 +53,19 @@ class SourceTopicConfigTest {
         setField(SourceTopicConfig.class, objectUnderTest, "fetchMaxBytes", "0b");
         assertThrows(RuntimeException.class, () -> objectUnderTest.getFetchMaxBytes());
     }
+
+    @Test
+    void verify_default_isolation_level() {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo("read_uncommitted"));
+    }
+
+    @Test
+    void verify_custom_isolation_level() throws NoSuchFieldException, IllegalAccessException {
+        SourceTopicConfig objectUnderTest = createObjectUnderTest();
+
+        setField(SourceTopicConfig.class, objectUnderTest, "isolationLevel", "read_committed");
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo("read_committed"));
+    }
+
 }
