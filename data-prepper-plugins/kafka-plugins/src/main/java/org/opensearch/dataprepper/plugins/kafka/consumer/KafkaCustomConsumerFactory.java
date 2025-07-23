@@ -41,6 +41,8 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
@@ -174,6 +176,12 @@ public class KafkaCustomConsumerFactory {
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
         properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int)topicConfig.getFetchMinBytes());
         properties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName());
+        if (topicConfig instanceof KafkaIsolationLevelConfig) {
+            IsolationLevel isolationLevel = ((KafkaIsolationLevelConfig) topicConfig).getIsolationLevel();
+            if (isolationLevel != null) {
+                properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
+            }
+        }
     }
 
     private void setSchemaRegistryProperties(final KafkaConsumerConfig kafkaConsumerConfig, final Properties properties, final TopicConfig topicConfig) {
