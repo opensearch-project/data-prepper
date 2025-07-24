@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.model.configuration;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -42,6 +41,27 @@ public class PluginModel {
     private final String pluginName;
     private final InternalJsonModel innerModel;
 
+    public PluginModel(final String pluginName, final Map<String, Object> pluginSettings) {
+        this(pluginName, new InternalJsonModel(pluginSettings));
+    }
+
+    protected PluginModel(final String pluginName, final InternalJsonModel innerModel) {
+        this.pluginName = pluginName;
+        this.innerModel = Objects.requireNonNull(innerModel);
+    }
+
+    public String getPluginName() {
+        return pluginName;
+    }
+
+    public Map<String, Object> getPluginSettings() {
+        return innerModel.pluginSettings;
+    }
+
+    <M extends InternalJsonModel> M getInternalJsonModel() {
+        return (M) innerModel;
+    }
+
     /**
      * This class represents the part of the {@link PluginModel} which sits below the name.
      * In the following example, this would be everything below "opensearch":
@@ -71,27 +91,6 @@ public class PluginModel {
         }
     }
 
-    public PluginModel(final String pluginName, final Map<String, Object> pluginSettings) {
-        this(pluginName, new InternalJsonModel(pluginSettings));
-    }
-
-    protected PluginModel(final String pluginName, final InternalJsonModel innerModel) {
-        this.pluginName = pluginName;
-        this.innerModel = Objects.requireNonNull(innerModel);
-    }
-
-    public String getPluginName() {
-        return pluginName;
-    }
-
-    public Map<String, Object> getPluginSettings() {
-        return innerModel.pluginSettings;
-    }
-
-    <M extends InternalJsonModel> M getInternalJsonModel() {
-        return (M) innerModel;
-    }
-
     /**
      * Custom Serializer for Plugin Model
      * <p>
@@ -114,7 +113,7 @@ public class PluginModel {
                 final PluginModel value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
             gen.writeStartObject();
             Map<String, Object> serializedInner = SERIALIZER_OBJECT_MAPPER.convertValue(value.innerModel, Map.class);
-            if(serializedInner != null && serializedInner.isEmpty())
+            if (serializedInner != null && serializedInner.isEmpty())
                 serializedInner = null;
             gen.writeObjectField(value.getPluginName(), serializedInner);
             gen.writeEndObject();
@@ -145,7 +144,6 @@ public class PluginModel {
      *
      * @param <T> The type inheriting from {@link PluginModel} that you ultimately need deserialized
      * @param <M> The type inheriting from {@link InternalJsonModel} that has custom fields.
-     *
      * @see SinkModel.SinkModelDeserializer
      */
     abstract static class AbstractPluginModelDeserializer<T extends PluginModel, M extends InternalJsonModel> extends StdDeserializer<PluginModel> {
@@ -166,7 +164,7 @@ public class PluginModel {
         }
 
         @Override
-        public PluginModel deserialize(final JsonParser jsonParser, final DeserializationContext context) throws IOException, JacksonException {
+        public PluginModel deserialize(final JsonParser jsonParser, final DeserializationContext context) throws IOException {
             final JsonNode node = jsonParser.getCodec().readTree(jsonParser);
 
             final Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
@@ -176,11 +174,24 @@ public class PluginModel {
             final JsonNode value = onlyField.getValue();
 
             M innerModel = SERIALIZER_OBJECT_MAPPER.convertValue(value, innerModelClass);
-            if(innerModel == null)
+            if (innerModel == null)
                 innerModel = emptyInnerModelConstructor.get();
 
             return constructorFunction.apply(pluginName, innerModel);
         }
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PluginModel that = (PluginModel) o;
+        return Objects.equals(pluginName, that.pluginName) && 
+               Objects.equals(innerModel.pluginSettings, that.innerModel.pluginSettings);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(pluginName, innerModel.pluginSettings);
+    }
 }
