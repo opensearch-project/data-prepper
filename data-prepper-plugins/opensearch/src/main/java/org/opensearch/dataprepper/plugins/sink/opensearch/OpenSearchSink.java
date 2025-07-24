@@ -685,12 +685,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             LOG.info("Successfully flushed bulk request for thread {} on attempt {}", threadId, retryCount + 1);
           } catch (Exception e) {
             retryCount++;
-            LOG.warn("Error flushing bulk request during shutdown attempt {}, retrying in : {} Seconds", retryCount, retryCount*1000L);
+            LOG.warn("Error flushing bulk request during shutdown attempt {}, retrying in : {} Seconds.", retryCount, retryCount*1000L, e);
             try {
               Thread.sleep(retryCount * 1000L);
             } catch (InterruptedException ie) {
               Thread.currentThread().interrupt();
-              LOG.warn("Interrupted while waiting to retry bulk flush");
+              LOG.warn("Interrupted while waiting to retry bulk flush", ie);
               break;
             }
           }
