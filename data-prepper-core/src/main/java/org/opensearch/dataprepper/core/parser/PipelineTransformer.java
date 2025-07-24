@@ -74,7 +74,7 @@ public class PipelineTransformer {
 
     private final ExpressionEvaluator expressionEvaluator;
 
-    public PipelineTransformer(
+    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
                                final RouterFactory routerFactory,

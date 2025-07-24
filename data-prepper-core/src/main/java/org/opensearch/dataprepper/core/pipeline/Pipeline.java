@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
@@ -55,14 +56,15 @@ import static java.lang.String.format;
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
-    private final ProcessorRegistry processorRegistry;
     private final PipelineShutdown pipelineShutdown;
+
     private final String name;
     private final Source source;
     private final Buffer buffer;
     private final List<List<Processor>> processorSets;
     private final List<DataFlowComponent<Sink>> sinks;
     private final Router router;
+
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
@@ -82,21 +84,21 @@ public class Pipeline {
      * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of
      * {@link Sink}
      *
-     * @param name                      name of the pipeline
-     * @param source                    source from where the pipeline reads the records
-     * @param buffer                    buffer for the source to queue records
-     * @param processorSets             processor sets that will be applied to records. Each set includes either a single shared processor instance
+     * @param name                     name of the pipeline
+     * @param source                   source from where the pipeline reads the records
+     * @param buffer                   buffer for the source to queue records
+     * @param processorSets               processor sets that will be applied to records. Each set includes either a single shared processor instance
      *                                  or multiple instances with each to be accessed only by a single {@link ProcessWorker}.
-     * @param sinks                     sink to which the transformed records are posted
-     * @param router                    router object for routing in the pipeline
-     * @param eventFactory              event factory to create events
-     * @param acknowledgementSetManager acknowledgement set manager
-     * @param sourceCoordinatorFactory  source coordinator factory that enables coordination between different instances/threads of sources
-     * @param processorThreads          configured or default threads to parallelize processor work
-     * @param readBatchTimeoutInMillis  configured or default timeout for reading batch of records from buffer
-     * @param processorShutdownTimeout  configured or default timeout before forcefully terminating the processor workers
+     * @param sinks                    sink to which the transformed records are posted
+     * @param router                   router object for routing in the pipeline
+     * @param eventFactory             event factory to create events
+     * @param acknowledgementSetManager   acknowledgement set manager
+     * @param sourceCoordinatorFactory source coordinator factory that enables coordination between different instances/threads of sources
+     * @param processorThreads         configured or default threads to parallelize processor work
+     * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
+     * @param processorShutdownTimeout configured or default timeout before forcefully terminating the processor workers
      * @param peerForwarderDrainTimeout configured or default timeout before considering the peer forwarder drained and ready for termination
-     * @param sinkShutdownTimeout       configured or default timeout before forcefully terminating the sink workers
+     * @param sinkShutdownTimeout      configured or default timeout before forcefully terminating the sink workers
      */
     public Pipeline(
             @Nonnull final String name,
@@ -137,7 +139,10 @@ public class Pipeline {
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         this.pipelineShutdown = new PipelineShutdown(name, buffer);
-        this.processorRegistry = new ProcessorRegistry(List.of());
+    }
+
+    AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
     }
 
     /**
@@ -190,13 +195,12 @@ public class Pipeline {
         return processorSets;
     }
 
-
-    public ProcessorProvider getProcessorProvider() {
-        return processorRegistry;
-    }
-
-    public void swapProcessors(List<Processor> newProcessors) {
-        processorRegistry.swapProcessors(newProcessors);
+    /**
+     * @return a flat list of {@link Processor} of this pipeline or an empty list.
+     */
+    @VisibleForTesting
+    public List<Processor> getProcessors() {
+        return getProcessorSets().stream().flatMap(Collection::stream).collect(Collectors.toList());
     }
 
     public int getReadBatchTimeoutInMillis() {
@@ -204,7 +208,7 @@ public class Pipeline {
     }
 
     public boolean isReady() {
-        for (final Sink sink : getSinks()) {
+        for (final Sink sink: getSinks()) {
             if (!sink.isReady()) {
                 LOG.info("Pipeline [{}] - sink is not ready for execution, retrying", name);
                 sink.initialize();
@@ -236,8 +240,7 @@ public class Pipeline {
                         }
                     }
             ).collect(Collectors.toList());
-            this.processorRegistry.swapProcessors(processors);
-            processorExecutorService.submit(new ProcessWorker(buffer, this));
+            processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
         }
     }
 
@@ -267,8 +270,7 @@ public class Pipeline {
                     }
                     try {
                         Thread.sleep(sleepIfNotReadyTime);
-                    } catch (Exception e) {
-                    }
+                    } catch (Exception e){}
                 }
                 startSourceAndProcessors();
             }, null);
@@ -360,16 +362,16 @@ public class Pipeline {
 
         final RouterGetRecordStrategy getRecordStrategy =
                 new RouterCopyRecordStrategy(eventFactory,
-                        (source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled()) ?
-                                acknowledgementSetManager :
-                                InactiveAcknowledgementSetManager.getInstance(),
-                        sinks);
+                (source.areAcknowledgementsEnabled() || buffer.areAcknowledgementsEnabled()) ?
+                    acknowledgementSetManager :
+                    InactiveAcknowledgementSetManager.getInstance(),
+                sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> {
                     sink.updateLatencyMetrics(events);
                     sink.output(events);
                 }, null))
-        );
+            );
         return sinkFutures;
     }
 

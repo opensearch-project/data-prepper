@@ -7,12 +7,13 @@ package org.opensearch.dataprepper.core.pipeline;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-@SuppressWarnings({"rawtypes"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class ProcessWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessWorker.class);
 
@@ -24,11 +25,12 @@ public class ProcessWorker implements Runnable {
 
     public ProcessWorker(
             final Buffer readBuffer,
+            final List<Processor> processors,
             final Pipeline pipeline) {
         this.readBuffer = readBuffer;
-        this.processors = pipeline.getProcessorProvider().getProcessors();
+        this.processors = processors;
         this.pipeline = pipeline;
-        this.pipelineRunner = new PipelineRunnerImpl(pipeline);
+        this.pipelineRunner = new PipelineRunnerImpl(pipeline, processors);
     }
 
     @Override
@@ -82,7 +84,7 @@ public class ProcessWorker implements Runnable {
     private boolean areComponentsReadyForShutdown() {
         return isBufferReadyForShutdown() && processors.stream()
                 .map(Processor::isReadyForShutdown)
-                .allMatch(result -> result);
+                .allMatch(result -> result == true);
     }
 
     private boolean isBufferReadyForShutdown() {

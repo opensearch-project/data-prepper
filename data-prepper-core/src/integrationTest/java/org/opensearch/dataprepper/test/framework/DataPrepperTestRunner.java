@@ -8,8 +8,6 @@ package org.opensearch.dataprepper.test.framework;
 import org.opensearch.dataprepper.AbstractContextManager;
 import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.parser.config.FileStructurePathProvider;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import org.slf4j.Logger;
@@ -17,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import javax.annotation.Nullable;
-import java.util.List;
 
 /**
  * Provides the ability to run a Data Prepper test instance. Each of these will run
@@ -28,7 +25,7 @@ import java.util.List;
  */
 public class DataPrepperTestRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperTestRunner.class);
-    public static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper";
+    private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper";
     private final String dataPrepperConfigFile;
     private final String pipelinesDirectoryOrFile;
     private final InMemorySourceAccessor inMemorySourceAccessor;
@@ -61,20 +58,6 @@ public class DataPrepperTestRunner {
     public void start() {
         contextManager.getDataPrepperBean()
                 .execute();
-    }
-
-    public PluginFactory getPluginFactory() {
-        return contextManager.getDataPrepperBean()
-                .getPluginFactory();
-    }
-
-    /**
-     * Dynamically Swap processors in a running pipeline
-     */
-    public void swapProcessors(String pipelineName, List<Processor> newProcessors) {
-        contextManager.getDataPrepperBean()
-                .getPipeline(pipelineName)
-                .swapProcessors(newProcessors);
     }
 
     /**
