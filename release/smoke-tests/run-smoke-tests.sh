@@ -3,6 +3,8 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+set -e
+
 export IMAGE_NAME="opensearch-data-prepper"
 
 function end_tests () {
