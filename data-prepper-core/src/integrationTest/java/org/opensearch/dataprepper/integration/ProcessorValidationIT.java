@@ -5,11 +5,12 @@
 package org.opensearch.dataprepper.integration;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
@@ -34,6 +35,8 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
  * Integration tests for validating processor behavior in pipelines and to verify that
@@ -44,28 +47,17 @@ class ProcessorValidationIT {
     private static final int BATCH_SIZE = 5;
     private static final int TOTAL_EVENTS = 100;
     private static final int WAIT_TIMEOUT_SECONDS = 10;
-    private static Map<String, List<BaseEventsTrackingProcessor>> PIPELINE_TO_PROCESSORS_MAP;
 
     private DataPrepperTestRunner testRunner;
     private InMemorySourceAccessor sourceAccessor;
     private InMemorySinkAccessor sinkAccessor;
     private String pipelineType;
 
-    @BeforeAll
-    static void setupProcessors() {
-        BaseEventsTrackingProcessor singleThreadEventsTrackingProcessor = new SingleThreadEventsTrackingTestProcessor();
-        BaseEventsTrackingProcessor basicEventsTrackingProcessor = new BasicEventsTrackingTestProcessor();
-        PIPELINE_TO_PROCESSORS_MAP = Map.of(
-            "single-thread-processor-pipeline", List.of(singleThreadEventsTrackingProcessor),
-            "basic-processor-pipeline", List.of(basicEventsTrackingProcessor),
-            "multi-processor-pipeline", List.of(singleThreadEventsTrackingProcessor, basicEventsTrackingProcessor)
-        );
-    }
-
     @BeforeEach
     void setUp() {
-        PIPELINE_TO_PROCESSORS_MAP.values().forEach(processorsList ->
-                processorsList.forEach(BaseEventsTrackingProcessor::reset));
+        new BasicEventsTrackingTestProcessor().reset();
+        new SingleThreadEventsTrackingTestProcessor().reset();
+        SingleThreadEventsTrackingTestProcessor.getProcessors().clear();
     }
 
     @AfterEach
@@ -85,28 +77,85 @@ class ProcessorValidationIT {
      * @param expectedTotalEvents Total number of events expected to be processed
      */
     @ParameterizedTest(name = "{index} - {0} - {1}")
-    @MethodSource("provideTestParameters")
-    void test_events_processed_validation(String pipelineType, String testName, int numberOfBatches, int eventsPerBatch, int expectedTotalEvents) {
+    @ArgumentsSource(WithoutSingleThreadParametersArgumentsProvider.class)
+    void test_events_processed_when_no_SingleThread_processors(String pipelineType, String testName, List<BaseEventsTrackingProcessor> processorEventStores, int numberOfBatches, int eventsPerBatch, int expectedTotalEvents) {
         this.pipelineType = pipelineType;
         initializeTestRunner();
         List<List<Record<Event>>> batches = createBatches(numberOfBatches, eventsPerBatch);
         batches.forEach(batch -> sourceAccessor.submit(IN_MEMORY_IDENTIFIER, batch));
 
-        verifyProcessingResults(pipelineType, expectedTotalEvents, eventsPerBatch);
+        verifyProcessingResults(pipelineType, expectedTotalEvents, eventsPerBatch, processorEventStores);
     }
 
-    /**
-     * Provides test parameters for the parameterized test.
-     * Creates test scenarios for each pipeline type with both single batch and multiple batch configurations.
-     * @return Stream of test parameters
-     */
-    private static Stream<Arguments> provideTestParameters() {
-        List<Arguments> arguments = new ArrayList<>();
-        for (String pipelineType : PIPELINE_TO_PROCESSORS_MAP.keySet()) {
-            arguments.add(Arguments.of(pipelineType, "SingleBatch", 1, TOTAL_EVENTS, TOTAL_EVENTS));
-            arguments.add(Arguments.of(pipelineType, "MultipleBatches", BATCH_SIZE, TOTAL_EVENTS, BATCH_SIZE * TOTAL_EVENTS));
+    @ParameterizedTest(name = "{index} - {0} - {1}")
+    @ArgumentsSource(WithSingleThreadParametersArgumentsProvider.class)
+    void test_events_processed_when_SingleThread_processor(String pipelineType, String testName, List<BaseEventsTrackingProcessor> processorEventStores, int numberOfBatches, int eventsPerBatch, int expectedTotalEvents) {
+        this.pipelineType = pipelineType;
+        initializeTestRunner();
+        List<List<Record<Event>>> batches = createBatches(numberOfBatches, eventsPerBatch);
+        batches.forEach(batch -> sourceAccessor.submit(IN_MEMORY_IDENTIFIER, batch));
+
+        verifyProcessingResults(pipelineType, expectedTotalEvents, eventsPerBatch, processorEventStores);
+
+        verifySingleThreadUsage();
+    }
+
+    static class WithSingleThreadParametersArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) throws Exception {
+            return Stream.of(
+                    arguments("single-thread-processor-pipeline",
+                            "SingleBatch",
+                            List.of(new SingleThreadEventsTrackingTestProcessor()),
+                            1,
+                            TOTAL_EVENTS,
+                            TOTAL_EVENTS
+                    ),
+                    arguments("single-thread-processor-pipeline",
+                            "MultipleBatches",
+                            List.of(new SingleThreadEventsTrackingTestProcessor()),
+                            BATCH_SIZE,
+                            TOTAL_EVENTS,
+                            BATCH_SIZE * TOTAL_EVENTS
+                    ),
+                    arguments("multi-processor-pipeline",
+                            "SingleBatch",
+                            List.of(new SingleThreadEventsTrackingTestProcessor(), new BasicEventsTrackingTestProcessor()),
+                            1,
+                            TOTAL_EVENTS,
+                            TOTAL_EVENTS
+                    ),
+                    arguments("multi-processor-pipeline",
+                            "MultipleBatches",
+                            List.of(new SingleThreadEventsTrackingTestProcessor(), new BasicEventsTrackingTestProcessor()),
+                            BATCH_SIZE,
+                            TOTAL_EVENTS,
+                            BATCH_SIZE * TOTAL_EVENTS
+                    )
+            );
         }
-        return arguments.stream();
+    }
+
+    static class WithoutSingleThreadParametersArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) throws Exception {
+            return Stream.of(
+                    arguments("basic-processor-pipeline",
+                            "SingleBatch",
+                            List.of(new BasicEventsTrackingTestProcessor()),
+                            1,
+                            TOTAL_EVENTS,
+                            TOTAL_EVENTS
+                    ),
+                    arguments("basic-processor-pipeline",
+                            "MultipleBatches",
+                            List.of(new BasicEventsTrackingTestProcessor()),
+                            BATCH_SIZE,
+                            TOTAL_EVENTS,
+                            BATCH_SIZE * TOTAL_EVENTS
+                    )
+            );
+        }
     }
 
     /**
@@ -125,11 +174,13 @@ class ProcessorValidationIT {
 
     /**
      * Verifies that events were processed correctly by the pipeline.
-     * @param pipelineType The type of pipeline being tested
-     * @param expectedTotalEvents Total number of events expected to be processed
-     * @param eventsPerBatch Number of events in each batch
+     *
+     * @param pipelineType         The type of pipeline being tested
+     * @param expectedTotalEvents  Total number of events expected to be processed
+     * @param eventsPerBatch       Number of events in each batch
+     * @param processorEventStores
      */
-    private void verifyProcessingResults(String pipelineType, int expectedTotalEvents, int eventsPerBatch) {
+    private void verifyProcessingResults(String pipelineType, int expectedTotalEvents, int eventsPerBatch, List<BaseEventsTrackingProcessor> processorEventStores) {
         // Wait for all events to be processed
         await().atMost(WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(
@@ -140,15 +191,14 @@ class ProcessorValidationIT {
         assertThat(outputRecords.size(), equalTo(expectedTotalEvents));
 
         // Verify each processor in the pipeline processed events
-        List<BaseEventsTrackingProcessor> processors = PIPELINE_TO_PROCESSORS_MAP.get(pipelineType);
-        for (BaseEventsTrackingProcessor processor : processors) {
+        for (BaseEventsTrackingProcessor processor : processorEventStores) {
             String processorName = processor.getName();
             Map<String, AtomicInteger> processedEventsMap = processor.getEventsMap();
 
             verifyEventProcessing(processedEventsMap, outputRecords, expectedTotalEvents, processorName);
         }
 
-        verifyWorkerThreads(outputRecords, processors);
+        verifyWorkerThreads(outputRecords, processorEventStores);
 
         int numberOfBatches = expectedTotalEvents / eventsPerBatch;
         for (int batch = 0; batch < numberOfBatches; batch++) {
@@ -158,6 +208,24 @@ class ProcessorValidationIT {
                     .collect(Collectors.toList());
             assertThat(batchRecords.size(), equalTo(eventsPerBatch));
         }
+    }
+
+    private static void verifySingleThreadUsage() {
+        List<SingleThreadEventsTrackingTestProcessor> singleThreadProcessors = SingleThreadEventsTrackingTestProcessor.getProcessors();
+        assertThat(singleThreadProcessors.size(), equalTo(4));
+        assertAll(
+                () -> assertThat(singleThreadProcessors.get(0).getThreadsUsing().size(), equalTo(1)),
+                () -> assertThat(singleThreadProcessors.get(1).getThreadsUsing().size(), equalTo(1)),
+                () -> assertThat(singleThreadProcessors.get(2).getThreadsUsing().size(), equalTo(1)),
+                () -> assertThat(singleThreadProcessors.get(3).getThreadsUsing().size(), equalTo(1))
+        );
+
+        assertAll(
+                () -> assertThat(singleThreadProcessors.get(0).getNumberOfProcessWorkersFromPipelineDescription(), equalTo(4)),
+                () -> assertThat(singleThreadProcessors.get(1).getNumberOfProcessWorkersFromPipelineDescription(), equalTo(4)),
+                () -> assertThat(singleThreadProcessors.get(2).getNumberOfProcessWorkersFromPipelineDescription(), equalTo(4)),
+                () -> assertThat(singleThreadProcessors.get(3).getNumberOfProcessWorkersFromPipelineDescription(), equalTo(4))
+        );
     }
 
     /**
