@@ -20,6 +20,6 @@ public class BasicEventsTrackingTestProcessor extends BaseEventsTrackingProcesso
     private static final String PLUGIN_NAME = "basic_events_tracking_test";
 
     public BasicEventsTrackingTestProcessor() {
-        super(PLUGIN_NAME, PROCESSED_EVENTS_MAP);
+        super(PLUGIN_NAME, PROCESSED_EVENTS_MAP, -1);
     }
 }

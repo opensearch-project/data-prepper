@@ -236,8 +236,11 @@ public class Pipeline {
                         }
                     }
             ).collect(Collectors.toList());
+            final ProcessorRegistry processorRegistry = new ProcessorRegistry(processors);
+            processorExecutorService.submit(new ProcessWorker(buffer, this, processorRegistry));
+
+            // This registry is for the zero buffer
             this.processorRegistry.swapProcessors(processors);
-            processorExecutorService.submit(new ProcessWorker(buffer, this));
         }
     }
 
