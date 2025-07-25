@@ -62,7 +62,7 @@ public class StreamCheckpointer {
         return globalPartition.isPresent();
     }
 
-    public void updateShardForAcknowledgmentWait(final Duration acknowledgmentSetTimeout) {
-        coordinator.saveProgressStateForPartition(streamPartition, acknowledgmentSetTimeout);
+    public void completePartition() {
+        coordinator.completePartition(streamPartition);
     }
 }
