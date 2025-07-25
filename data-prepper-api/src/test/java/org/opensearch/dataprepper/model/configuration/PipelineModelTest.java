@@ -108,23 +108,6 @@ class PipelineModelTest {
     }
 
     @Test
-    void testPipelineModelWithNullSourceThrowsException() {
-        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
-                null,
-                validBufferPluginModel(),
-                validPreppersPluginModel(),
-                validPipelineRouter(),
-                validSinksPluginModel(),
-                TEST_WORKERS,
-                TEST_READ_BATCH_DELAY
-        ));
-
-        final String expected = "Source must not be null";
-
-        assertTrue(exception.getMessage().contains(expected));
-    }
-
-    @Test
     void testPipelineModelWithNullSinksThrowsException() {
         final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 validSourcePluginModel(),
