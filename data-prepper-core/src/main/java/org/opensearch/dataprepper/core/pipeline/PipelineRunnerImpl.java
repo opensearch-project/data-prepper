@@ -37,10 +37,12 @@ public class PipelineRunnerImpl implements PipelineRunner {
     final Counter invalidEventHandlesCounter;
     private final Pipeline pipeline;
     private final PluginMetrics pluginMetrics;
+    private final ProcessorProvider processorProvider;
 
-    public PipelineRunnerImpl(final Pipeline pipeline) {
+    public PipelineRunnerImpl(final Pipeline pipeline, final ProcessorProvider processorProvider) {
         this.pipeline = pipeline;
         this.pluginMetrics = PluginMetrics.fromNames("PipelineRunner", pipeline.getName());
+        this.processorProvider = processorProvider;
         this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
     }
 
@@ -49,7 +51,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         final Map.Entry<Collection, CheckpointState> recordsReadFromBuffer = readFromBuffer(getBuffer(), getPipeline());
         Collection records = recordsReadFromBuffer.getKey();
         final CheckpointState checkpointState = recordsReadFromBuffer.getValue();
-        List<Processor> currentProcessors = pipeline.getProcessorProvider().getProcessors();
+        List<Processor> currentProcessors = processorProvider.getProcessors();
         records = runProcessorsAndProcessAcknowledgements(currentProcessors, records);
         postToSink(getPipeline(), records);
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
