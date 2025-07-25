@@ -56,14 +56,6 @@ done
 
 export DOCKER_IMAGE="${IMAGE_NAME}:${TAG_NAME}"
 
-# Check the Docker image before running
-if ! docker inspect --type=image "${DOCKER_IMAGE}" > /dev/null
-then
-    echo "--------------------------------------------------------------------------"
-    echo "Unable to find image \"${DOCKER_IMAGE}\" are you sure it exists?"
-    end_tests 1
-fi
-
 echo "Will smoke test image \"${DOCKER_IMAGE}\""
 
 ./gradlew -PendToEndDataPrepperImage=${IMAGE_NAME} -PendToEndDataPrepperTag=${TAG_NAME} :e2e-test:log:basicLogEndToEndTest
