@@ -249,4 +249,8 @@ public class ShardAcknowledgementManager {
         Optional<EnhancedSourcePartition> globalPartition = sourceCoordinator.getPartition(streamPartition.getStreamArn());
         return globalPartition.isPresent();
     }
+
+    public void startUpdatingOwnershipForShard(final StreamPartition streamPartition) {
+        checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>());
+    }
 }
