@@ -145,7 +145,7 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(null);
-        when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
+        when(pipeline.getSingleThreadUnsafeProcessorProvider()).thenReturn(processorProvider);
         when(processorProvider.getProcessors()).thenReturn(processors);
 
         records = getRecords(testKey, testValue, acknowledgementSet);

@@ -55,7 +55,7 @@ import static java.lang.String.format;
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
-    private final ProcessorRegistry processorRegistry;
+    private final ProcessorRegistry singleThreadUnsafeProcessorRegistry;
     private final PipelineShutdown pipelineShutdown;
     private final String name;
     private final Source source;
@@ -137,7 +137,7 @@ public class Pipeline {
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         this.pipelineShutdown = new PipelineShutdown(name, buffer);
-        this.processorRegistry = new ProcessorRegistry(List.of());
+        this.singleThreadUnsafeProcessorRegistry = new ProcessorRegistry(List.of());
     }
 
     /**
@@ -191,12 +191,18 @@ public class Pipeline {
     }
 
 
-    public ProcessorProvider getProcessorProvider() {
-        return processorRegistry;
+    /**
+     * Gets a {@link ProcessorRegistry} which can be used for processors
+     * that are not annotated with {@link org.opensearch.dataprepper.model.annotations.SingleThread}.
+     *
+     * @return The {@link ProcessorProvider}
+     */
+    public ProcessorProvider getSingleThreadUnsafeProcessorProvider() {
+        return singleThreadUnsafeProcessorRegistry;
     }
 
     public void swapProcessors(List<Processor> newProcessors) {
-        processorRegistry.swapProcessors(newProcessors);
+        singleThreadUnsafeProcessorRegistry.swapProcessors(newProcessors);
     }
 
     public int getReadBatchTimeoutInMillis() {
@@ -236,11 +242,11 @@ public class Pipeline {
                         }
                     }
             ).collect(Collectors.toList());
-            final ProcessorRegistry processorRegistry = new ProcessorRegistry(processors);
-            processorExecutorService.submit(new ProcessWorker(buffer, this, processorRegistry));
+            final ProcessorRegistry workerSpecificProcessorRegistry = new ProcessorRegistry(processors);
+            processorExecutorService.submit(new ProcessWorker(buffer, this, workerSpecificProcessorRegistry));
 
             // This registry is for the zero buffer
-            this.processorRegistry.swapProcessors(processors);
+            this.singleThreadUnsafeProcessorRegistry.swapProcessors(processors);
         }
     }
 
