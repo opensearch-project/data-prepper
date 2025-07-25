@@ -79,4 +79,18 @@ class BufferTopicConfigTest {
         assertThat(objectUnderTest.IsEncryptionAtRestSettingValid(), is(false));
     }
 
+    @Test
+    void verify_default_isolation_level() {
+        BufferTopicConfig objectUnderTest = createObjectUnderTest();
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo("read_uncommitted"));
+    }
+
+    @Test
+    void verify_custom_isolation_level() throws NoSuchFieldException, IllegalAccessException {
+        BufferTopicConfig objectUnderTest = createObjectUnderTest();
+
+        setField(BufferTopicConfig.class, objectUnderTest, "isolationLevel", "read_committed");
+        assertThat(objectUnderTest.getIsolationLevel(), equalTo("read_committed"));
+    }
+
 }

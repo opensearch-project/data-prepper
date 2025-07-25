@@ -98,6 +98,9 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @JsonProperty("fetch_min_bytes")
     private String fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
+    @JsonProperty("isolation_level")
+    private String isolationLevel = "read_uncommitted";
+
     @Override
     public String getEncryptionId() {
         return null;
@@ -211,5 +214,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @Override
     public Duration getHeartBeatInterval() {
         return heartBeatInterval;
+    }
+
+    @Override
+    public String getIsolationLevel() {
+        return isolationLevel;
     }
 }
