@@ -91,7 +91,7 @@ class PipelineRunnerTest {
     }
 
     private PipelineRunnerImpl createObjectUnderTest() {
-        return new PipelineRunnerImpl(pipeline);
+        return new PipelineRunnerImpl(pipeline, processorProvider);
     }
 
     @BeforeEach
@@ -379,7 +379,6 @@ class PipelineRunnerTest {
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
-            when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
             when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =
@@ -405,7 +404,6 @@ class PipelineRunnerTest {
             when(pipeline.getName()).thenReturn(MOCK_PIPELINE_NAME);
             when(pipeline.publishToSinks(anyCollection())).thenReturn(
                     Collections.singletonList(CompletableFuture.completedFuture(null)));
-            when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
             when(processorProvider.getProcessors()).thenReturn(processors);
 
             Map.Entry<Collection, CheckpointState> entry =

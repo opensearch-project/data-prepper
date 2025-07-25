@@ -24,11 +24,12 @@ public class ProcessWorker implements Runnable {
 
     public ProcessWorker(
             final Buffer readBuffer,
-            final Pipeline pipeline) {
+            final Pipeline pipeline,
+            final ProcessorProvider processorProvider) {
         this.readBuffer = readBuffer;
-        this.processors = pipeline.getProcessorProvider().getProcessors();
+        this.processors = processorProvider.getProcessors();
         this.pipeline = pipeline;
-        this.pipelineRunner = new PipelineRunnerImpl(pipeline);
+        this.pipelineRunner = new PipelineRunnerImpl(pipeline, processorProvider);
     }
 
     @Override

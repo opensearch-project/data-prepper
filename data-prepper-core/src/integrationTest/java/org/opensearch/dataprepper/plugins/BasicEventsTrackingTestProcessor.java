@@ -18,8 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class BasicEventsTrackingTestProcessor extends BaseEventsTrackingProcessor {
     private static final Map<String, AtomicInteger> PROCESSED_EVENTS_MAP = new ConcurrentHashMap<>();
     private static final String PLUGIN_NAME = "basic_events_tracking_test";
+    private static final int NUMBER_OF_PROCESS_WORKERS_NOT_CAPTURED = -1;
 
     public BasicEventsTrackingTestProcessor() {
-        super(PLUGIN_NAME, PROCESSED_EVENTS_MAP);
+        super(PLUGIN_NAME, PROCESSED_EVENTS_MAP, NUMBER_OF_PROCESS_WORKERS_NOT_CAPTURED);
     }
 }

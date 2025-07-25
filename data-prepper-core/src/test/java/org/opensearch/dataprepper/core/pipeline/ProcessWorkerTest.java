@@ -42,14 +42,13 @@ public class ProcessWorkerTest {
         when(pipeline.isStopRequested()).thenReturn(false).thenReturn(true);
         when(pipeline.getPeerForwarderDrainTimeout()).thenReturn(Duration.ofMillis(100));
         when(buffer.isEmpty()).thenReturn(true);
-        when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
     }
 
     private ProcessWorker createObjectUnderTest() {
         try (final MockedConstruction<PipelineRunnerImpl> ignored = mockConstruction(PipelineRunnerImpl.class, (mock, context) -> {
             pipelineRunner = mock;
         })) {
-            return new ProcessWorker(buffer, pipeline);
+            return new ProcessWorker(buffer, pipeline, processorProvider);
         }
     }
 

@@ -9,7 +9,10 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -20,19 +23,26 @@ public abstract class BaseEventsTrackingProcessor implements Processor<Record<Ev
     private final String countPropertyName;
     private final String threadPropertyName;
     private final Map<String, AtomicInteger> eventsMap;
+    private final int numberOfProcessWorkers;
+    private final Set<Long> threadsUsing;
     private final String processorName;
 
     /**
      * Constructor for the base events tracking processor.
      *
-     * @param processorName Name of the processor
-     * @param eventsMap Map for tracking processed events
+     * @param processorName          Name of the processor
+     * @param eventsMap              Map for tracking processed events
+     * @param numberOfProcessWorkers
      */
-    protected BaseEventsTrackingProcessor(String processorName, Map<String, AtomicInteger> eventsMap) {
+    protected BaseEventsTrackingProcessor(final String processorName,
+                                          final Map<String, AtomicInteger> eventsMap,
+                                          final int numberOfProcessWorkers) {
         this.countPropertyName = processorName + "_processed_count";
         this.threadPropertyName = processorName + "_processed_by_thread";
         this.processorName = processorName;
         this.eventsMap = eventsMap;
+        this.numberOfProcessWorkers = numberOfProcessWorkers;
+        threadsUsing = Collections.synchronizedSet(new HashSet<>());
     }
 
     /**
@@ -41,6 +51,14 @@ public abstract class BaseEventsTrackingProcessor implements Processor<Record<Ev
      */
     public Map<String, AtomicInteger> getEventsMap() {
         return eventsMap;
+    }
+
+    public Set<?> getThreadsUsing() {
+        return threadsUsing;
+    }
+
+    public int getNumberOfProcessWorkersFromPipelineDescription() {
+        return numberOfProcessWorkers;
     }
 
     /**
@@ -70,7 +88,10 @@ public abstract class BaseEventsTrackingProcessor implements Processor<Record<Ev
      */
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        final String threadName = Thread.currentThread().getName();
+        final Thread currentThread = Thread.currentThread();
+        final String threadName = currentThread.getName();
+
+        threadsUsing.add(currentThread.getId());
 
         for (Record<Event> record : records) {
             Event event = record.getData();

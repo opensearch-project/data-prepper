@@ -238,7 +238,7 @@ public class PipelineTransformer {
                 // Only allow ZeroBuffer for single-threaded pipelines with no @SingleThread processors
                 if (processorThreads == 1 && !hasSingleThreadedProcessors) {
                     ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(
-                            new PipelineRunnerImpl(pipeline));
+                            new PipelineRunnerImpl(pipeline, pipeline.getSingleThreadUnsafeProcessorProvider()));
                 } else {
                     if (hasSingleThreadedProcessors) {
                         throw new IllegalStateException(
