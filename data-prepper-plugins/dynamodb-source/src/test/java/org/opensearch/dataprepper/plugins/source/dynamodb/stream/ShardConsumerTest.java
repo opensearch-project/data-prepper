@@ -345,6 +345,26 @@ class ShardConsumerTest {
         }
     }
 
+    @Test
+    void test_run_shardConsumer_calls_startUpdatingOwnershipForShard() throws Exception {
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            ShardConsumer shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                    .shardIterator(null)
+                    .shardAcknowledgementManager(shardAcknowledgementManager)
+                    .streamPartition(streamPartition)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .waitForExport(false)
+                    .build();
+
+            shardConsumer.run();
+
+            // Verify that startUpdatingOwnershipForShard is called
+            verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
+        }
+    }
+
     private List<Record> buildRecords(int count) {
         List<Record> records = new ArrayList<>();
         for (int i = 0; i < count; i++) {

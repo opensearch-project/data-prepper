@@ -22,7 +22,9 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -92,5 +94,25 @@ class ShardAcknowledgementManagerTest {
     @Test
     void testShutdown() {
         assertDoesNotThrow(() -> shardAcknowledgementManager.shutdown());
+    }
+
+    @Test
+    void testUpdateOwnershipForAllShardPartitions() throws Exception {
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class))).thenReturn(acknowledgementSet);
+        
+        // Create acknowledgment set to add partition to checkpoints
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
+        
+        // Set lastCheckpointTime to past to trigger checkpoint interval
+        Field lastCheckpointTimeField = ShardAcknowledgementManager.class.getDeclaredField("lastCheckpointTime");
+        lastCheckpointTimeField.setAccessible(true);
+        lastCheckpointTimeField.set(shardAcknowledgementManager, Instant.now().minus(Duration.ofMinutes(5)));
+        
+        // Call updateOwnershipForAllShardPartitions directly
+        shardAcknowledgementManager.updateOwnershipForAllShardPartitions();
+        
+        // Verify that saveProgressStateForPartition is called
+        verify(sourceCoordinator).saveProgressStateForPartition(eq(streamPartition), any(Duration.class));
     }
 }
