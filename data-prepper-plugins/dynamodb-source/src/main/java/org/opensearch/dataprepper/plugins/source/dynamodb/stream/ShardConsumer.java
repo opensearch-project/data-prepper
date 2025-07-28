@@ -246,9 +246,9 @@ public class ShardConsumer implements Runnable {
             }
             return;
         }
-
-        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
-
+        if (shardAcknowledgementManager != null) {
+            shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
+        }
         long lastCheckpointTime = System.currentTimeMillis();
         String sequenceNumber = "";
         int interval;
