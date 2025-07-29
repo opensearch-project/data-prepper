@@ -18,7 +18,6 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -106,29 +105,29 @@ class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void GIVEN_new_sink_config_WHEN_get_custom_headers_called_SHOULD_return_empty_map() {
-        assertThat(new CloudWatchLogsSinkConfig().getCustomHeaders(), notNullValue());
-        assertThat(new CloudWatchLogsSinkConfig().getCustomHeaders().isEmpty(), equalTo(true));
+    void GIVEN_new_sink_config_WHEN_get_header_overrides_called_SHOULD_return_empty_map() {
+        assertThat(new CloudWatchLogsSinkConfig().getHeaderOverrides(), notNullValue());
+        assertThat(new CloudWatchLogsSinkConfig().getHeaderOverrides().isEmpty(), equalTo(true));
     }
 
     @Test
-    void GIVEN_custom_headers_set_WHEN_get_custom_headers_called_SHOULD_return_configured_value() throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_header_overrides_set_WHEN_get_header_overrides_called_SHOULD_return_configured_value() throws NoSuchFieldException, IllegalAccessException {
         Map<String, String> headers = new HashMap<>();
         headers.put("X-Custom-Header", "custom-value");
         headers.put("X-Request-ID", "request-123");
 
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "customHeaders", headers);
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", headers);
 
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders(), equalTo(headers));
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(headers));
     }
 
     @Test
-    void GIVEN_empty_custom_headers_WHEN_get_custom_headers_called_SHOULD_return_empty_headers() throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_empty_header_overrides_WHEN_get_header_overrides_called_SHOULD_return_empty_headers() throws NoSuchFieldException, IllegalAccessException {
         Map<String, String> emptyHeaders = new HashMap<>();
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "customHeaders", emptyHeaders);
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", emptyHeaders);
 
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders(), equalTo(emptyHeaders));
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders().isEmpty(), equalTo(true));
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(emptyHeaders));
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides().isEmpty(), equalTo(true));
     }
 
     @Test
@@ -140,29 +139,29 @@ class CloudWatchLogsSinkConfigTest {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "awsConfig", awsConfig);
-        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "customHeaders", headers);
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "headerOverrides", headers);
 
         assertThat(cloudWatchLogsSinkConfig.getLogGroup(), equalTo(LOG_GROUP));
         assertThat(cloudWatchLogsSinkConfig.getLogStream(), equalTo(LOG_STREAM));
         assertThat(cloudWatchLogsSinkConfig.getAwsConfig(), equalTo(awsConfig));
         assertThat(cloudWatchLogsSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders(), equalTo(headers));
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), equalTo(headers));
     }
 
     @Test
-    void GIVEN_sink_config_without_custom_headers_WHEN_accessed_SHOULD_maintain_backward_compatibility() throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_sink_config_without_header_overrides_WHEN_accessed_SHOULD_maintain_backward_compatibility() throws NoSuchFieldException, IllegalAccessException {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "awsConfig", awsConfig);
 
-        // Verify that existing functionality works without custom headers
+        // Verify that existing functionality works without header overrides
         assertThat(cloudWatchLogsSinkConfig.getLogGroup(), equalTo(LOG_GROUP));
         assertThat(cloudWatchLogsSinkConfig.getLogStream(), equalTo(LOG_STREAM));
         assertThat(cloudWatchLogsSinkConfig.getAwsConfig(), equalTo(awsConfig));
         assertThat(cloudWatchLogsSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders(), notNullValue());
-        assertThat(cloudWatchLogsSinkConfig.getCustomHeaders().isEmpty(), equalTo(true));
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides(), notNullValue());
+        assertThat(cloudWatchLogsSinkConfig.getHeaderOverrides().isEmpty(), equalTo(true));
         assertThat(cloudWatchLogsSinkConfig.getWorkers(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_NUM_WORKERS));
         assertThat(cloudWatchLogsSinkConfig.getMaxRetries(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_RETRY_COUNT));
     }
@@ -274,7 +273,7 @@ class CloudWatchLogsSinkConfigTest {
 
     // Size Validation Tests
     @Test
-    void GIVEN_exactly_10_custom_headers_WHEN_accessed_THEN_should_be_valid() throws Exception {
+    void GIVEN_exactly_10_header_overrides_WHEN_accessed_THEN_should_be_valid() throws Exception {
         CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
         Map<String, String> exactlyTenHeaders = new HashMap<>();
         
@@ -282,14 +281,14 @@ class CloudWatchLogsSinkConfigTest {
             exactlyTenHeaders.put("Header-" + i, "value-" + i);
         }
         
-        ReflectivelySetField.setField(config.getClass(), config, "customHeaders", exactlyTenHeaders);
+        ReflectivelySetField.setField(config.getClass(), config, "headerOverrides", exactlyTenHeaders);
         
-        assertThat(config.getCustomHeaders(), aMapWithSize(10));
-        assertThat(config.getCustomHeaders().size(), lessThanOrEqualTo(10));
+        assertThat(config.getHeaderOverrides(), aMapWithSize(10));
+        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
     }
 
     @Test
-    void GIVEN_less_than_10_custom_headers_WHEN_accessed_THEN_should_be_valid() throws Exception {
+    void GIVEN_less_than_10_header_overrides_WHEN_accessed_THEN_should_be_valid() throws Exception {
         CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
         Map<String, String> fiveHeaders = new HashMap<>();
         
@@ -297,17 +296,17 @@ class CloudWatchLogsSinkConfigTest {
             fiveHeaders.put("Header-" + i, "value-" + i);
         }
         
-        ReflectivelySetField.setField(config.getClass(), config, "customHeaders", fiveHeaders);
+        ReflectivelySetField.setField(config.getClass(), config, "headerOverrides", fiveHeaders);
         
-        assertThat(config.getCustomHeaders(), aMapWithSize(5));
-        assertThat(config.getCustomHeaders().size(), lessThanOrEqualTo(10));
+        assertThat(config.getHeaderOverrides(), aMapWithSize(5));
+        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
     }
 
     @Test
-    void GIVEN_default_config_WHEN_accessed_THEN_custom_headers_should_be_empty() {
+    void GIVEN_default_config_WHEN_accessed_THEN_header_overrides_should_be_empty() {
         CloudWatchLogsSinkConfig config = new CloudWatchLogsSinkConfig();
         
-        assertThat(config.getCustomHeaders(), aMapWithSize(0));
-        assertThat(config.getCustomHeaders().size(), lessThanOrEqualTo(10));
+        assertThat(config.getHeaderOverrides(), aMapWithSize(0));
+        assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
     }
 }

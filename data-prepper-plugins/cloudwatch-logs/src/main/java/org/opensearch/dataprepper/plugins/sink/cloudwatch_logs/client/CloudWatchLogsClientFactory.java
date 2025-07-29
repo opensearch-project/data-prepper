@@ -37,9 +37,10 @@ public final class CloudWatchLogsClientFactory {
     public static CloudWatchLogsClient createCwlClient(final AwsConfig awsConfig,
             final AwsCredentialsSupplier awsCredentialsSupplier,
             final Map<String, String> customHeaders) {
-        final AwsCredentialsProvider awsCredentialsProvider = awsConfig != null
-                ? awsCredentialsSupplier.getProvider(convertToCredentialOptions(awsConfig))
-                : awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder().build());
+        final AwsCredentialsOptions awsCredentialsOptions = awsConfig != null
+                ? convertToCredentialOptions(awsConfig)
+                : AwsCredentialsOptions.defaultOptions();
+        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
         Region region = awsConfig != null ? awsConfig.getAwsRegion() : awsCredentialsSupplier.getDefaultRegion().get();
 
         if (awsCredentialsProvider == null || region == null) {

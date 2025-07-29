@@ -47,7 +47,7 @@ class CloudWatchLogsSinkTest {
     private AwsCredentialsSupplier mockCredentialSupplier;
     private AwsConfig mockAwsConfig;
     private ThresholdConfig thresholdConfig;
-    private Map<String, String> mockCustomHeaders;
+    private Map<String, String> mockHeaderOverrides;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
     private CloudWatchLogsClient mockClient;
     private static final String TEST_LOG_GROUP = "testLogGroup";
@@ -64,14 +64,14 @@ class CloudWatchLogsSinkTest {
         mockCredentialSupplier = mock(AwsCredentialsSupplier.class);
         mockAwsConfig = mock(AwsConfig.class);
         thresholdConfig = new ThresholdConfig();
-        mockCustomHeaders = new HashMap<>();
-        mockCustomHeaders.put("X-Test-Header", "test-value");
+        mockHeaderOverrides = new HashMap<>();
+        mockHeaderOverrides.put("X-Test-Header", "test-value");
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         mockClient = mock(CloudWatchLogsClient.class);
 
         when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(mockAwsConfig);
         when(mockCloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
-        when(mockCloudWatchLogsSinkConfig.getCustomHeaders()).thenReturn(new HashMap<>());
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(new HashMap<>());
         when(mockCloudWatchLogsSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
         when(mockCloudWatchLogsSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
         when(mockCloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
@@ -160,9 +160,9 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
-    void WHEN_custom_headers_is_empty_THEN_empty_map_is_passed_to_client_factory() {
+    void WHEN_header_overrides_is_empty_THEN_empty_map_is_passed_to_client_factory() {
         Map<String, String> emptyHeaders = new HashMap<>();
-        when(mockCloudWatchLogsSinkConfig.getCustomHeaders()).thenReturn(emptyHeaders);
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(emptyHeaders);
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
@@ -179,8 +179,8 @@ class CloudWatchLogsSinkTest {
     }
 
     @Test
-    void WHEN_custom_headers_is_provided_THEN_headers_are_passed_to_client_factory() {
-        when(mockCloudWatchLogsSinkConfig.getCustomHeaders()).thenReturn(mockCustomHeaders);
+    void WHEN_header_overrides_is_provided_THEN_headers_are_passed_to_client_factory() {
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
@@ -192,13 +192,13 @@ class CloudWatchLogsSinkTest {
             mockedStatic.verify(() -> CloudWatchLogsClientFactory.createCwlClient(
                     eq(mockAwsConfig), 
                     eq(mockCredentialSupplier), 
-                    eq(mockCustomHeaders)));
+                    eq(mockHeaderOverrides)));
         }
     }
 
     @Test
-    void WHEN_sink_initialization_with_custom_headers_THEN_sink_is_ready() {
-        when(mockCloudWatchLogsSinkConfig.getCustomHeaders()).thenReturn(mockCustomHeaders);
+    void WHEN_sink_initialization_with_header_overrides_THEN_sink_is_ready() {
+        when(mockCloudWatchLogsSinkConfig.getHeaderOverrides()).thenReturn(mockHeaderOverrides);
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),

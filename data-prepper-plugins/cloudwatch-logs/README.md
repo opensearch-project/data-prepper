@@ -30,7 +30,7 @@ pipeline:
           max_request_size: 1mb
           retry_count: 5
           back_off_time: 500ms
-        custom_headers:
+        header_overrides:
           X-Custom-Header: "custom-value"
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
@@ -60,7 +60,7 @@ pipeline:
 
 - `back_off_time` (Optional) : A string representing the amount of time in milliseconds between errored transmission re-attempts. Defaults to "500ms". (Min = "500ms", Max = "1000ms")
 
-- `custom_headers` (Optional) : A string map representing custom HTTP headers to include in CloudWatch Logs requests.
+- `header_overrides` (Optional) : A string map representing custom HTTP headers to include in CloudWatch Logs requests.
 
 ## Buffer Type Configuration
 

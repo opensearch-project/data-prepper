@@ -43,10 +43,11 @@ import java.util.concurrent.Executors;
 @DataPrepperPlugin(name = "cloudwatch_logs", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
 public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsSink.class);
-    
+
     private final CloudWatchLogsService cloudWatchLogsService;
     private DlqPushHandler dlqPushHandler = null;
     private volatile boolean isInitialized;
+
     @DataPrepperPluginConstructor
     public CloudWatchLogsSink(final PluginSetting pluginSetting,
                               final PluginMetrics pluginMetrics,
@@ -57,20 +58,20 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
 
         AwsConfig awsConfig = cloudWatchLogsSinkConfig.getAwsConfig();
         ThresholdConfig thresholdConfig = cloudWatchLogsSinkConfig.getThresholdConfig();
-        Map<String, String> customHeaders = cloudWatchLogsSinkConfig.getCustomHeaders();
-        
+        Map<String, String> headerOverrides = cloudWatchLogsSinkConfig.getHeaderOverrides();
+
         // Log custom headers configuration during plugin startup
-        logCustomHeadersConfiguration(customHeaders);
+        logCustomHeadersConfiguration(headerOverrides);
 
         CloudWatchLogsMetrics cloudWatchLogsMetrics = new CloudWatchLogsMetrics(pluginMetrics);
         CloudWatchLogsLimits cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(),
                 thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getFlushInterval());
+                thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getFlushInterval());
 
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
         }
-        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, customHeaders);
+        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, headerOverrides);
         if (cloudWatchLogsClient == null) {
             throw new RuntimeException("cloudWatchLogsClient is null");
         }
@@ -120,28 +121,24 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     public boolean isReady() {
         return isInitialized;
     }
-    
+
     /**
      * Logs custom headers configuration during plugin startup.
      * Ensures no sensitive header values are logged.
-     * 
-     * @param customHeaders The custom headers map to log
+     *
+     * @param headerOverrides The custom headers map to log
      */
-    private void logCustomHeadersConfiguration(Map<String, String> customHeaders) {
-        if (customHeaders.isEmpty()) {
-            LOG.info("CloudWatch Logs sink initialized without custom headers");
-            return;
+    private void logCustomHeadersConfiguration(Map<String, String> headerOverrides) {
+        if (LOG.isInfoEnabled()) {
+            if (headerOverrides.isEmpty()) {
+                LOG.info("CloudWatch Logs sink initialized without custom headers");
+            } else {
+                int headerCount = headerOverrides.size();
+                String headerNames = String.join(", ", headerOverrides.keySet());
+
+                LOG.info("CloudWatch Logs sink initialized with {} custom headers: [{}]",
+                        headerCount, headerNames);
+            }
         }
-        
-        int headerCount = customHeaders.size();
-        String headerNames = String.join(", ", customHeaders.keySet());
-        
-        LOG.info("CloudWatch Logs sink initialized with {} custom headers: [{}]", 
-            headerCount, headerNames);
-        
-        // Log individual header for debugging (without values)
-        customHeaders.keySet().forEach(headerName -> {
-            LOG.debug("Custom header configured: {} = [REDACTED]", headerName);
-        });
     }
 }
