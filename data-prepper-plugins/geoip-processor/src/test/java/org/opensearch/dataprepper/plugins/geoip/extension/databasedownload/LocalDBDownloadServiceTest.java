@@ -15,9 +15,11 @@ import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +42,30 @@ class LocalDBDownloadServiceTest {
         assertTrue(new File(destinationDirectory + File.separator + "filename.mmdb").exists());
     }
 
+    @Test
+    void testOverwriteFunctionality() throws Exception {
+        downloadThroughLocalPath = createObjectUnderTest();
+        
+        String initialContent = "Initial database content\nVersion: 1.0";
+        createFileWithContent(sourceDirectory + File.separator + "SampleFile.mmdb", initialContent);
+        
+        downloadThroughLocalPath.initiateDownload();
+        
+        File destinationFile = new File(destinationDirectory + File.separator + "filename.mmdb");
+        assertTrue(destinationFile.exists());
+        
+        String copiedContent = Files.readString(destinationFile.toPath());
+        assertEquals(initialContent, copiedContent);
+        
+        String updatedContent = "Updated database content\nVersion: 2.0";
+        createFileWithContent(sourceDirectory + File.separator + "SampleFile.mmdb", updatedContent);
+        
+        downloadThroughLocalPath.initiateDownload();
+        
+        String finalContent = Files.readString(destinationFile.toPath());
+        assertEquals(updatedContent, finalContent);
+    }
+
     private LocalDBDownloadService createObjectUnderTest() {
         when(maxMindDatabaseConfig.getDatabasePaths()).thenReturn(Map.of("filename", sourceDirectory + File.separator + "SampleFile.mmdb"));
         createFolder(destinationDirectory);
@@ -58,8 +84,12 @@ class LocalDBDownloadServiceTest {
         String content = "This is sample file";
 
         createFolder(sourceDirectory);
-        new File(sourceDirectory + File.separator + fileName);
-        try (FileWriter writer = new FileWriter(sourceDirectory + File.separator + fileName)) {
+        createFileWithContent(sourceDirectory + File.separator + fileName, content);
+    }
+
+    private void createFileWithContent(String filePath, String content) throws IOException {
+        createFolder(sourceDirectory);
+        try (FileWriter writer = new FileWriter(filePath)) {
             writer.write(content);
         }
     }
