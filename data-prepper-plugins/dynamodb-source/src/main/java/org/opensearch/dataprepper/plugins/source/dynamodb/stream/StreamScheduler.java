@@ -131,6 +131,11 @@ public class StreamScheduler implements Runnable {
         // Should Stop
         LOG.warn("Stream Scheduler is interrupted, looks like shutdown has triggered");
 
+        // Shutdown acknowledgment manager if it exists
+        if (shardAcknowledgementManager != null) {
+            shardAcknowledgementManager.shutdown();
+        }
+
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
         ShardConsumer.stopAll();

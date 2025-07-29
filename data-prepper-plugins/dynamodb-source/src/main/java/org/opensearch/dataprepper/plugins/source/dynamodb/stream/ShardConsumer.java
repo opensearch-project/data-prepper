@@ -287,8 +287,7 @@ public class ShardConsumer implements Runnable {
 
                 AcknowledgementSet acknowledgementSet = null;
                 if (shardAcknowledgementManager != null) {
-                    final StreamProgressState lastProgressState = streamPartition.getProgressState().orElseThrow();
-                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, lastProgressState.getSequenceNumber(), shardIterator == null);
+                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
                 }
 
                 records = response.records().stream()

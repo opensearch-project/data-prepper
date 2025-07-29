@@ -92,9 +92,12 @@ public class ShardAcknowledgementManager {
 
     boolean runMonitorAcknowledgmentLoop(final Consumer<StreamPartition> stopWorkerConsumer) {
         removePartitions();
-        if (shutdownTriggered && checkpoints.isEmpty()) {
-            LOG.info("Shutdown was triggered and not waiting on any acknowledgments, exiting cleanly");
-            return true;
+        if (shutdownTriggered) {
+            LOG.info("Shutdown was triggered giving up partitions and exiting cleanly");
+            for (final StreamPartition streamPartition : checkpoints.keySet()) {
+                sourceCoordinator.giveUpPartition(streamPartition);
+            }
+                return true;
         }
 
         for (final StreamPartition streamPartition : checkpoints.keySet()) {
