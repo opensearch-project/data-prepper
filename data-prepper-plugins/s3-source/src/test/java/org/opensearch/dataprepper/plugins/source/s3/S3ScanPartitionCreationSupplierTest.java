@@ -296,7 +296,7 @@ public class S3ScanPartitionCreationSupplierTest {
 
 
     @Test
-    void scheduled_scan_filters_on_start_time_and_end_time_for_the_first_scan_and_does_not_filter_on_subsequent_scans() {
+    void scheduled_scan_filters_on_start_time_and_end_time_for_the_first_scan_and_filters_on_start_time_for_subsequent_scans() {
         schedulingOptions = mock(S3ScanSchedulingOptions.class);
         given(schedulingOptions.getCount()).willReturn(2);
 
@@ -308,8 +308,10 @@ public class S3ScanPartitionCreationSupplierTest {
         globalStateMap.put(notFirstScanBucket, "2024-09-07T20:43:34.384822Z");
         globalStateMap.put(SCAN_COUNT, 0);
 
-        final LocalDateTime startTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(1725907846000L), ZoneId.systemDefault());
-        final LocalDateTime endTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(1725907849100L), ZoneId.systemDefault());
+        long startMillis = 1725907846000L;
+        long endMillis = 1725907849100L;
+        final LocalDateTime startTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(startMillis), ZoneId.systemDefault());
+        final LocalDateTime endTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(endMillis), ZoneId.systemDefault());
 
         final ScanOptions firstBucketScanOptions = mock(ScanOptions.class);
         final S3ScanBucketOption firstBucketScanBucketOption = mock(S3ScanBucketOption.class);
@@ -330,11 +332,17 @@ public class S3ScanPartitionCreationSupplierTest {
         final ListObjectsV2Response listObjectsResponse = mock(ListObjectsV2Response.class);
         final List<S3Object> s3ObjectsList = new ArrayList<>();
 
-        final Instant objectNotBetweenStartAndEndTime = Instant.ofEpochMilli(1725907846000L).minus(500L, TimeUnit.SECONDS.toChronoUnit());
+        final Instant objectAfterStartAndEndTime = Instant.ofEpochMilli(endMillis).plus(500L, TimeUnit.SECONDS.toChronoUnit());
         final S3Object validObject = mock(S3Object.class);
         given(validObject.key()).willReturn("valid");
-        given(validObject.lastModified()).willReturn(objectNotBetweenStartAndEndTime);
+        given(validObject.lastModified()).willReturn(objectAfterStartAndEndTime);
         s3ObjectsList.add(validObject);
+
+        final Instant objectBeforeStartTime = Instant.ofEpochMilli(startMillis).minus(500L, TimeUnit.SECONDS.toChronoUnit());
+        final S3Object invalidObject = mock(S3Object.class);
+        given(invalidObject.key()).willReturn("invalid");
+        given(invalidObject.lastModified()).willReturn(objectBeforeStartTime);
+        s3ObjectsList.add(invalidObject);
 
         final List<PartitionIdentifier> expectedPartitionIdentifiers = new ArrayList<>();
         expectedPartitionIdentifiers.add(PartitionIdentifier.builder().withPartitionKey(notFirstScanBucket + "|" + validObject.key()).build());
