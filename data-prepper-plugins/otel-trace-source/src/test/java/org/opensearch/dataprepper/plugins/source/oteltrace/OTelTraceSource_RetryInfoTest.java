@@ -155,8 +155,9 @@ class OTelTraceSource_RetryInfoTest {
                 .setEndTimeUnixNano(101)
                 .setTraceState("SUCCESS").build();
 
-        ScopeSpans scopeSpan = ScopeSpans.newBuilder().addSpans(testSpan).build();
         return ExportTraceServiceRequest.newBuilder()
-                .addResourceSpans(ResourceSpans.newBuilder().addScopeSpans(scopeSpan)).build();
+                .addResourceSpans(ResourceSpans.newBuilder()
+                        .addScopeSpans(ScopeSpans.newBuilder().addSpans(testSpan)).build())
+                .build();
     }
 }
