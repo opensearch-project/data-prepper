@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
-import kafka.server.KafkaConfig$;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +57,6 @@ public class EmbeddedKafkaClusterSingleNode extends ExternalResource {
         log.debug("ZooKeeper instance is running at {}", zookeeper.connectString());
 
         final Properties effectiveBrokerConfig = effectiveBrokerConfigFrom(brokerConfig, zookeeper);
-        log.debug("Starting a Kafka instance on  ...",
-                effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.ZkConnectDoc()));
         broker = new EmbeddedKafkaServer(effectiveBrokerConfig);
         log.debug("Kafka instance is running at {}, connected to ZooKeeper at {}",
                 broker.brokerList(), broker.zookeeperConnect());
@@ -80,15 +77,6 @@ public class EmbeddedKafkaClusterSingleNode extends ExternalResource {
     private Properties effectiveBrokerConfigFrom(final Properties brokerConfig, final EmbeddedZooKeeperServer zookeeper) {
         final Properties effectiveConfig = new Properties();
         effectiveConfig.putAll(brokerConfig);
-        effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectProp(), zookeeper.connectString());
-        effectiveConfig.put(KafkaConfig$.MODULE$.ZkSessionTimeoutMsProp(), 30 * 1000);
-        effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectionTimeoutMsProp(), 60 * 1000);
-        effectiveConfig.put(KafkaConfig$.MODULE$.DeleteTopicEnableProp(), true);
-        effectiveConfig.put(KafkaConfig$.MODULE$.LogCleanerDedupeBufferSizeProp(), 2 * 1024 * 1024L);
-        effectiveConfig.put(KafkaConfig$.MODULE$.GroupMinSessionTimeoutMsProp(), 0);
-        effectiveConfig.put(KafkaConfig$.MODULE$.OffsetsTopicReplicationFactorProp(), (short) 1);
-        effectiveConfig.put(KafkaConfig$.MODULE$.OffsetsTopicPartitionsProp(), 1);
-        effectiveConfig.put(KafkaConfig$.MODULE$.AutoCreateTopicsEnableProp(), true);
         return effectiveConfig;
     }
 
