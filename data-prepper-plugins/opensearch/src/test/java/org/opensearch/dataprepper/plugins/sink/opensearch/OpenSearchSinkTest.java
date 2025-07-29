@@ -58,6 +58,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.model.sink.SinkLatencyMetrics.EXTERNAL_LATENCY;
@@ -201,6 +202,19 @@ public class OpenSearchSinkTest {
         objectUnderTest.initialize();
 
         verify(pluginConfigObservable).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void test_initialization_with_failure_and_retry_with_query_manager() throws IOException {
+        when(openSearchSinkConfiguration.getIndexConfiguration().getQueryTerm()).thenReturn(UUID.randomUUID().toString());
+
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenThrow(RuntimeException.class).thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        objectUnderTest.initialize();
+        verify(pluginConfigObservable, times(2)).addPluginConfigObserver(any());
     }
 
     @Test
