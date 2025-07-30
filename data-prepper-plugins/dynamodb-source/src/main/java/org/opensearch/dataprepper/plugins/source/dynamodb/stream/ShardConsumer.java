@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.dynamodb.configuration.StreamConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.converter.StreamRecordConverter;
-import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.TableInfo;
 import org.opensearch.dataprepper.plugins.source.dynamodb.utils.DynamoDBSourceAggregateMetrics;
 import org.slf4j.Logger;

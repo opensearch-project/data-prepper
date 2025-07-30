@@ -21,8 +21,8 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -105,9 +105,8 @@ class ShardAcknowledgementManagerTest {
         shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
         
         // Set lastCheckpointTime to past to trigger checkpoint interval
-        Field lastCheckpointTimeField = ShardAcknowledgementManager.class.getDeclaredField("lastCheckpointTime");
-        lastCheckpointTimeField.setAccessible(true);
-        lastCheckpointTimeField.set(shardAcknowledgementManager, Instant.now().minus(Duration.ofMinutes(5)));
+        ReflectivelySetField.setField(ShardAcknowledgementManager.class, shardAcknowledgementManager, 
+            "lastCheckpointTime", Instant.now().minus(Duration.ofMinutes(5)));
         
         // Call updateOwnershipForAllShardPartitions directly
         shardAcknowledgementManager.updateOwnershipForAllShardPartitions();

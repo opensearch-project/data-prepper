@@ -359,10 +359,9 @@ class ShardConsumerTest {
                     .build();
 
             shardConsumer.run();
-
-            // Verify that startUpdatingOwnershipForShard is called
-            verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
         }
+        // Verify that startUpdatingOwnershipForShard is called
+        verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
     }
 
     private List<Record> buildRecords(int count) {
