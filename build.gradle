@@ -242,6 +242,9 @@ subprojects {
                 def java8Name = details.requested.name.replace('-jdk15on', '-jdk18on')
                 details.useTarget group: 'org.bouncycastle', name: java8Name, version: libs.bouncycastle.bcprov.get().version
                 details.because 'Use only the Java 8 artifacts of BouncyCastle'
+            } else if (details.requested.group == 'org.junit.jupiter') {
+                details.useTarget group: details.requested.group, name: details.requested.name, version: testLibs.versions.junit.get()
+                details.because 'Use the defined JUnit of the Data Prepper project to ensure consistent versions.'
             }
         }
     }
