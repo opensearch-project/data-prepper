@@ -27,5 +27,5 @@ dependencies {
 
 
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
 }
