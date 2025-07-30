@@ -39,9 +39,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
-    implementation 'io.confluent:kafka-avro-serializer:7.9.1'
-    implementation 'io.confluent:kafka-json-schema-serializer:7.9.1'
-    implementation 'io.confluent:kafka-schema-registry-client:7.9.1'
+    implementation 'io.confluent:kafka-avro-serializer:8.0.0'
+    implementation 'io.confluent:kafka-json-schema-serializer:8.0.0'
+    implementation 'io.confluent:kafka-schema-registry-client:8.0.0'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:kafka'
@@ -77,8 +77,8 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
     integrationTestImplementation testLibs.junit.vintage
-    integrationTestImplementation 'io.confluent:kafka-schema-registry:7.9.1'
-    integrationTestImplementation ('io.confluent:kafka-schema-registry:7.9.1:tests') {
+    integrationTestImplementation 'io.confluent:kafka-schema-registry:8.0.0'
+    integrationTestImplementation ('io.confluent:kafka-schema-registry:8.0.0:tests') {
         exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
         exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
         exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
