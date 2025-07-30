@@ -90,18 +90,18 @@ class OtlpSinkMetricsTest {
     void testRecordResponseCodeCounters() {
         // 5xx
         sinkMetrics.recordResponseCode(503);
-        verify(pluginMetrics).counter("http_5xx_responses");
+        verify(pluginMetrics).counter("http5xxResponses");
         verify(counterMock).increment();
 
         // 4xx
         sinkMetrics.recordResponseCode(404);
-        verify(pluginMetrics).counter("http_4xx_responses");
+        verify(pluginMetrics).counter("http4xxResponses");
         // total increments called twice so far
         verify(counterMock, times(2)).increment();
 
         // 2xx
         sinkMetrics.recordResponseCode(200);
-        verify(pluginMetrics).counter("http_2xx_responses");
+        verify(pluginMetrics).counter("http2xxResponses");
         verify(counterMock, times(3)).increment();
     }
 
