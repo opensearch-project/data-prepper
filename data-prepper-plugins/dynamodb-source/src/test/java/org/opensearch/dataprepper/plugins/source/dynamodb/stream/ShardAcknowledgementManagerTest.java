@@ -21,12 +21,13 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
+
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -105,7 +106,7 @@ class ShardAcknowledgementManagerTest {
         shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
         
         // Set lastCheckpointTime to past to trigger checkpoint interval
-        ReflectivelySetField.setField(ShardAcknowledgementManager.class, shardAcknowledgementManager, 
+        setField(ShardAcknowledgementManager.class, shardAcknowledgementManager, 
             "lastCheckpointTime", Instant.now().minus(Duration.ofMinutes(5)));
         
         // Call updateOwnershipForAllShardPartitions directly
