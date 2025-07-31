@@ -31,7 +31,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation libs.bouncycastle.bcprov
     implementation libs.bouncycastle.bcpkix
-    testImplementation 'org.assertj:assertj-core:3.27.0'
+    testImplementation 'org.assertj:assertj-core:3.27.3'
     testImplementation libs.commons.io
     testImplementation 'org.skyscreamer:jsonassert:1.5.3'
 }
