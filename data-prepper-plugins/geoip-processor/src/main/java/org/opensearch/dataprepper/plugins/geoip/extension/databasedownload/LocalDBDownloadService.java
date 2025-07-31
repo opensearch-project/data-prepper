@@ -5,10 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.geoip.extension.databasedownload;
 
-import com.google.common.io.Files;
 import org.opensearch.dataprepper.plugins.geoip.extension.MaxMindDatabaseConfig;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Set;
 
 /**
@@ -37,8 +38,8 @@ public class LocalDBDownloadService implements DBSource {
     public void initiateDownload() throws Exception {
         final Set<String> strings = maxMindDatabaseConfig.getDatabasePaths().keySet();
         for (final String key: strings) {
-            Files.copy(new File(maxMindDatabaseConfig.getDatabasePaths().get(key)),
-                    new File(destinationDirectory + File.separator + key + MAXMIND_DATABASE_EXTENSION));
+            Files.copy(new File(maxMindDatabaseConfig.getDatabasePaths().get(key)).toPath(),
+                    new File(destinationDirectory + File.separator + key + MAXMIND_DATABASE_EXTENSION).toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 }
