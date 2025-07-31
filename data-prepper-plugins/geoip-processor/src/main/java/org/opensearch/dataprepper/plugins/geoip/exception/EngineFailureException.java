@@ -9,4 +9,8 @@ public class EngineFailureException extends RuntimeException {
     public EngineFailureException(final String exceptionMsg) {
         super(exceptionMsg);
     }
+
+    public EngineFailureException(final String exceptionMsg, Throwable cause){
+        super(exceptionMsg, cause);
+    }
 }
