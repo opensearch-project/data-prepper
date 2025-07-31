@@ -20,7 +20,7 @@ public class S3EventNotificationParser implements S3NotificationParser {
             final JsonNode eventNode = getS3EventNode(parsedNode, objectMapper);
 
             final S3EventNotification s3EventNotification = objectMapper.treeToValue(eventNode, S3EventNotification.class);
-            if (s3EventNotification.getRecords() != null) {
+            if (s3EventNotification != null && s3EventNotification.getRecords() != null) {
                 return new ParsedMessage(message, s3EventNotification.getRecords());
             } else {
                 LOG.debug("SQS message with ID:{} does not have any S3 event notification records.", message.messageId());
