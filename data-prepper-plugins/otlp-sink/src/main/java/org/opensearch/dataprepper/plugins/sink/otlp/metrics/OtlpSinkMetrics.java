@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.otlp.metrics;
 
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -38,48 +37,10 @@ public class OtlpSinkMetrics {
     public OtlpSinkMetrics(@Nonnull final PluginMetrics pluginMetrics, @Nonnull final PluginSetting pluginSetting) {
         this.pluginMetrics = pluginMetrics;
 
-        final String pipelineName = pluginSetting.getPipelineName();
-        final String pluginName = pluginSetting.getName();
+        httpLatency = pluginMetrics.timer("httpLatency");
 
-        httpLatency = buildLatencyTimer(pipelineName, pluginName, "httpLatency");
-
-        payloadSize = buildDistributionSummary(pipelineName, pluginName, "payloadSize");
-        payloadGzipSize = buildDistributionSummary(pipelineName, pluginName, "payloadGzipSize");
-    }
-
-    /**
-     * Builds a timer for latency metrics with percentiles
-     *
-     * @param pipelineName The pipeline name
-     * @param pluginName   The plugin name
-     * @param metricName   The metric name
-     * @return The timer
-     */
-    private static Timer buildLatencyTimer(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
-        return Timer.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
-                .publishPercentiles(0.5, 0.9, 0.95, 0.99, 1.0)
-                .publishPercentileHistogram(true)
-                .distributionStatisticBufferLength(1024)
-                .distributionStatisticExpiry(Duration.ofMinutes(10))
-                .register(Metrics.globalRegistry);
-    }
-
-    /**
-     * Builds a distribution summary for payload size metrics with percentiles
-     *
-     * @param pipelineName The pipeline name
-     * @param pluginName   The plugin name
-     * @param metricName   The metric name
-     * @return The distribution summary
-     */
-    private static DistributionSummary buildDistributionSummary(@Nonnull final String pipelineName, @Nonnull final String pluginName, @Nonnull final String metricName) {
-        return DistributionSummary.builder(String.format("%s_%s_%s", pipelineName, pluginName, metricName))
-                .baseUnit("bytes")
-                .publishPercentiles(0.5, 0.9, 0.95, 0.99, 1.0)
-                .publishPercentileHistogram(true)
-                .distributionStatisticBufferLength(1024)
-                .distributionStatisticExpiry(Duration.ofMinutes(10))
-                .register(Metrics.globalRegistry);
+        payloadSize = pluginMetrics.summary("payloadSize");
+        payloadGzipSize = pluginMetrics.summary("payloadGzipSize");
     }
 
     public void incrementRecordsOut(final long count) {
@@ -133,6 +94,6 @@ public class OtlpSinkMetrics {
      */
     public void recordResponseCode(final int statusCode) {
         final String codeCategory = (statusCode / 100) + "xx";
-        pluginMetrics.counter("http_" + codeCategory + "_responses").increment();
+        pluginMetrics.counter("http" + codeCategory + "Responses").increment();
     }
 }
