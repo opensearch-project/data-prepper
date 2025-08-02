@@ -249,7 +249,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     openSearchClientRefresher = new OpenSearchClientRefresher(
             pluginMetrics, connectionConfiguration, clientFunction);
 
-    if (queryExecutorService != null) {
+    if (queryExecutorService != null && existingDocumentQueryManager == null) {
       existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
       queryExecutorService.submit(existingDocumentQueryManager);
     }
