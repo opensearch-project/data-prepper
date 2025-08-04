@@ -252,10 +252,14 @@ public class ShardConsumer implements Runnable {
         String sequenceNumber = "";
         int interval;
         List<software.amazon.awssdk.services.dynamodb.model.Record> records;
-
+        boolean createdFinalAcknowledgmentSetForShard = false;
         while (!shouldStop) {
             if (shardIterator == null) {
                 // End of Shard
+                if (shardAcknowledgementManager != null && !createdFinalAcknowledgmentSetForShard) {
+                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, true);
+                    finalAcknowledgmentSet.complete();
+                }
                 LOG.debug("Reached end of shard");
                 break;
             }
@@ -287,6 +291,9 @@ public class ShardConsumer implements Runnable {
                 AcknowledgementSet acknowledgementSet = null;
                 if (shardAcknowledgementManager != null) {
                     acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    if (shardIterator == null) {
+                        createdFinalAcknowledgmentSetForShard = true;
+                    }
                 }
 
                 records = response.records().stream()
