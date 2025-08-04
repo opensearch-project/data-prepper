@@ -49,6 +49,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -347,6 +348,9 @@ class ShardConsumerTest {
 
     @Test
     void test_run_shardConsumer_calls_startUpdatingOwnershipForShard() throws Exception {
+        final AcknowledgementSet finalAcknowledgementSet = mock(AcknowledgementSet.class);
+        when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
+            .thenReturn(finalAcknowledgementSet);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
             ShardConsumer shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
@@ -364,6 +368,94 @@ class ShardConsumerTest {
         verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
     }
 
+    @Test
+    void test_shard_has_records_null_iterator() throws Exception {
+        final AcknowledgementSet finalAcknowledgementSet = mock(AcknowledgementSet.class);
+        when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
+                .thenReturn(finalAcknowledgementSet);
+
+        // Set up response with null nextShardIterator to trigger end of shard
+        GetRecordsResponse response = GetRecordsResponse.builder()
+                .records(buildRecords(1))
+                .nextShardIterator(null)
+                .build();
+        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
+
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            } else if (invocation.getMethod().getName().equals("shouldStop")) {
+                return false;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                        .shardIterator(shardIterator)
+                        .shardAcknowledgementManager(shardAcknowledgementManager)
+                        .streamPartition(streamPartition)
+                        .tableInfo(tableInfo)
+                        .startTime(null)
+                        .waitForExport(false)
+                        .build();
+            }
+
+            shardConsumer.run();
+
+            // Verify acknowledgment set created for records with shardIterator == null (true)
+            verify(shardAcknowledgementManager).createAcknowledgmentSet(eq(streamPartition), any(String.class), eq(true));
+            // Verify final acknowledgment set created and completed when shardIterator is null
+            verify(finalAcknowledgementSet).complete();
+
+        }
+    }
+
+
+    @Test
+    void test_shard_has_no_records_null_iterator() throws Exception {
+        final AcknowledgementSet finalAcknowledgementSet = mock(AcknowledgementSet.class);
+        when(shardAcknowledgementManager.createAcknowledgmentSet(any(StreamPartition.class), any(String.class), any(Boolean.class)))
+            .thenReturn(finalAcknowledgementSet);
+
+        // Set up response with null nextShardIterator to trigger end of shard
+        GetRecordsResponse response = GetRecordsResponse.builder()
+            .records(List.of())
+            .nextShardIterator(null)
+            .build();
+        when(dynamoDbStreamsClient.getRecords(any(GetRecordsRequest.class))).thenReturn(response);
+
+        try (MockedStatic<ShardConsumer> shardConsumerMockedStatic = mockStatic(ShardConsumer.class, invocation -> {
+            if (invocation.getMethod().getName().equals("stopAll")) {
+                return null;
+            } else if (invocation.getMethod().getName().equals("shouldStop")) {
+                return false;
+            }
+            return invocation.callRealMethod();
+        })) {
+            ShardConsumer shardConsumer;
+            try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+                bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+                shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                    .shardIterator(shardIterator)
+                    .shardAcknowledgementManager(shardAcknowledgementManager)
+                    .streamPartition(streamPartition)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .waitForExport(false)
+                    .build();
+            }
+
+            shardConsumer.run();
+
+            // Verify acknowledgment set created for records with shardIterator == null (true)
+            verify(shardAcknowledgementManager).createAcknowledgmentSet(eq(streamPartition), any(String.class), eq(true));
+            // Verify final acknowledgment set created and completed when shardIterator is null
+            verify(finalAcknowledgementSet).complete();
+
+        }
+    }
     private List<Record> buildRecords(int count) {
         List<Record> records = new ArrayList<>();
         for (int i = 0; i < count; i++) {
