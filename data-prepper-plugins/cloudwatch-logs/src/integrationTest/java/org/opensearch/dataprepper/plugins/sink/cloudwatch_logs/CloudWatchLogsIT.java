@@ -140,7 +140,7 @@ public class CloudWatchLogsIT {
         when(awsConfig.getAwsStsExternalId()).thenReturn(null);
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(null);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
-        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, new HashMap<>(), null);
         logGroupName = System.getProperty("tests.cloudwatch.log_group");
         logStreamName = createLogStream(logGroupName);
         pluginMetrics = mock(PluginMetrics.class);

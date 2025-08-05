@@ -34,6 +34,7 @@ pipeline:
           X-Custom-Header: "custom-value"
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
+        endpoint: "https://logs.us-west-2.amazonaws.com"
 ```
 
 ## AWS Configuration
@@ -61,6 +62,8 @@ pipeline:
 - `back_off_time` (Optional) : A string representing the amount of time in milliseconds between errored transmission re-attempts. Defaults to "500ms". (Min = "500ms", Max = "1000ms")
 
 - `header_overrides` (Optional) : A string map representing custom HTTP headers to include in CloudWatch Logs requests.
+
+- `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
 ## Buffer Type Configuration
 

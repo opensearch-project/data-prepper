@@ -100,7 +100,7 @@ class CloudWatchLogsSinkTest {
     void WHEN_sink_is_initialized_THEN_sink_is_ready_returns_true() {
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
@@ -115,7 +115,7 @@ class CloudWatchLogsSinkTest {
         when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(null);
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             assertThrows(RuntimeException.class, ()-> getTestCloudWatchSink());
@@ -126,7 +126,7 @@ class CloudWatchLogsSinkTest {
     void WHEN_given_sample_empty_records_THEN_records_are_processed() {
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
@@ -145,7 +145,7 @@ class CloudWatchLogsSinkTest {
     void WHEN_given_sample_empty_records_THEN_records_are_not_processed() {
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
@@ -166,7 +166,7 @@ class CloudWatchLogsSinkTest {
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
@@ -174,7 +174,8 @@ class CloudWatchLogsSinkTest {
             mockedStatic.verify(() -> CloudWatchLogsClientFactory.createCwlClient(
                     eq(mockAwsConfig), 
                     eq(mockCredentialSupplier), 
-                    eq(emptyHeaders)));
+                    eq(emptyHeaders),
+                    any()));
         }
     }
 
@@ -184,7 +185,7 @@ class CloudWatchLogsSinkTest {
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
@@ -192,7 +193,8 @@ class CloudWatchLogsSinkTest {
             mockedStatic.verify(() -> CloudWatchLogsClientFactory.createCwlClient(
                     eq(mockAwsConfig), 
                     eq(mockCredentialSupplier), 
-                    eq(mockHeaderOverrides)));
+                    eq(mockHeaderOverrides),
+                    any()));
         }
     }
 
@@ -202,7 +204,7 @@ class CloudWatchLogsSinkTest {
         
         try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
             mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
-                            any(AwsCredentialsSupplier.class), any()))
+                            any(AwsCredentialsSupplier.class), any(), any()))
                     .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
