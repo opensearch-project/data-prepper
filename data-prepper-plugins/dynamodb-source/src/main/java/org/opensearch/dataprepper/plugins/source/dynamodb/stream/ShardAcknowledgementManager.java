@@ -46,7 +46,7 @@ public class ShardAcknowledgementManager {
 
     private static final long WAIT_FOR_ACKNOWLEDGMENTS_TIMEOUT = 10L;
 
-    static final Duration CHECKPOINT_INTERVAL = Duration.ofMinutes(2);
+    static final long CHECKPOINT_INTERVAL = Duration.ofMinutes(2).toMillis();
 
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
     private final Map<StreamPartition, ConcurrentLinkedQueue<ShardCheckpointStatus>> checkpoints = new ConcurrentHashMap<>();
@@ -61,7 +61,7 @@ public class ShardAcknowledgementManager {
     private final List<StreamPartition> partitionsToGiveUp;
     private boolean shutdownTriggered;
 
-    private Instant lastCheckpointTime;
+    private long lastCheckpointTime;
 
     public ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
                                        final EnhancedSourceCoordinator sourceCoordinator,
@@ -72,9 +72,9 @@ public class ShardAcknowledgementManager {
         this.sourceCoordinator = sourceCoordinator;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
-        this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
+        this.partitionsToRemove = new ArrayList<>();
         this.partitionsToGiveUp = Collections.synchronizedList(new ArrayList<>());
-        this.lastCheckpointTime = Instant.now();
+        this.lastCheckpointTime = System.currentTimeMillis();
         
         executorService.submit(() -> monitorAcknowledgments(stopWorkerConsumer));
     }
@@ -84,6 +84,12 @@ public class ShardAcknowledgementManager {
             boolean exit = runMonitorAcknowledgmentLoop(stopWorkerConsumer);
             if (exit) {
                 break;
+            }
+            try {
+                // Idle between loops to save on CPU
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
 
@@ -189,14 +195,14 @@ public class ShardAcknowledgementManager {
     }
 
     void updateOwnershipForAllShardPartitions() {
-        if (Duration.between(lastCheckpointTime, Instant.now()).compareTo(CHECKPOINT_INTERVAL) > 0) {
+        if (System.currentTimeMillis() - lastCheckpointTime > CHECKPOINT_INTERVAL) {
             for (final StreamPartition streamPartition : checkpoints.keySet()) {
                 if (!partitionsToRemove.contains(streamPartition)) {
                     sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
                 }
             }
 
-            lastCheckpointTime = Instant.now();
+            lastCheckpointTime = System.currentTimeMillis();
         }
     }
 
@@ -233,12 +239,13 @@ public class ShardAcknowledgementManager {
     }
 
     private void removePartitions() {
-        partitionsToRemove.forEach(streamPartition -> {
+        for (final StreamPartition streamPartition : partitionsToRemove) {
             checkpoints.remove(streamPartition);
             ackStatuses.remove(streamPartition);
-        });
-
-        partitionsToRemove.clear();
+        }
+        if (!partitionsToRemove.isEmpty()){
+            partitionsToRemove.clear();
+        }
     }
 
     public void giveUpPartition(final StreamPartition streamPartition) {
