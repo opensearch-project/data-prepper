@@ -322,4 +322,17 @@ class CloudWatchLogsSinkConfigTest {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "endpoint", testEndpoint);
         assertThat(cloudWatchLogsSinkConfig.getEndpoint(), equalTo(testEndpoint));
     }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_entity_called_SHOULD_return_null() {
+        assertThat(new CloudWatchLogsSinkConfig().getEntity(), equalTo(null));
+    }
+
+    @Test
+    void GIVEN_entity_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        EntityConfig testEntity = new EntityConfig();
+        
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "entity", testEntity);
+        assertThat(cloudWatchLogsSinkConfig.getEntity(), equalTo(testEntity));
+    }
 }

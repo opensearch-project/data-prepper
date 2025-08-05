@@ -18,16 +18,19 @@ public class CloudWatchLogsMetrics {
     public static final String CLOUDWATCH_LOGS_EVENTS_SUCCEEDED = "cloudWatchLogsEventsSucceeded";
     public static final String CLOUDWATCH_LOGS_EVENTS_FAILED = "cloudWatchLogsEventsFailed";
     public static final String CLOUDWATCH_LOGS_REQUESTS_FAILED = "cloudWatchLogsRequestsFailed";
+    public static final String CLOUDWATCH_LOGS_ENTITY_REJECTED = "cloudWatchLogsEntityRejected";
     private final Counter logEventSuccessCounter;
     private final Counter logEventFailCounter;
     private final Counter requestSuccessCount;
     private final Counter requestFailCount;
+    private final Counter entityRejectedCounter;
 
     public CloudWatchLogsMetrics(final PluginMetrics pluginMetrics) {
         this.logEventSuccessCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_SUCCEEDED);
         this.requestFailCount = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_FAILED);
         this.logEventFailCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_FAILED);
         this.requestSuccessCount = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED);
+        this.entityRejectedCounter = pluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_REJECTED);
     }
 
     public void increaseLogEventSuccessCounter(int value) {
@@ -44,5 +47,9 @@ public class CloudWatchLogsMetrics {
 
     public void increaseRequestFailCounter(int value) {
         requestFailCount.increment(value);
+    }
+
+    public void increaseEntityRejectedCounter() {
+        entityRejectedCounter.increment();
     }
 }

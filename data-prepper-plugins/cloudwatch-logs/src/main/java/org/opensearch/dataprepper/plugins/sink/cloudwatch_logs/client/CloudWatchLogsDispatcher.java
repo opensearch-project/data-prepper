@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.EntityConfig;
+import software.amazon.awssdk.services.cloudwatchlogs.model.Entity;
 
 @Builder
 public class CloudWatchLogsDispatcher {
@@ -39,19 +41,22 @@ public class CloudWatchLogsDispatcher {
     private String logGroup;
     private String logStream;
     private int retryCount;
+    private EntityConfig entity;
     public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                     final DlqPushHandler dlqPushHandler,
                                     final Executor executor,
                                     final String logGroup,
                                     final String logStream,
-                                    final int retryCount) {
+                                    final int retryCount,
+                                    final EntityConfig entity) {
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
         this.logGroup = logGroup;
         this.logStream = logStream;
         this.retryCount = retryCount;
         this.dlqPushHandler = dlqPushHandler;
+        this.entity = entity;
 
         this.executor = executor;
     }
@@ -87,6 +92,7 @@ public class CloudWatchLogsDispatcher {
                 .logEvents(inputLogEvents)
                 .logGroupName(logGroup)
                 .logStreamName(logStream)
+                .entity(createEntity())
                 .build();
 
         executor.execute(Uploader.builder()
@@ -98,6 +104,17 @@ public class CloudWatchLogsDispatcher {
                 .totalEventCount(inputLogEvents.size())
                 .retryCount(retryCount)
                 .build());
+    }
+
+    private Entity createEntity() {
+        if (entity == null) {
+            return null;
+        }
+
+        return Entity.builder()
+                .attributes(entity.getAttributes())
+                .keyAttributes(entity.getKeyAttributes())
+                .build();
     }
 
     @Builder
@@ -162,10 +179,19 @@ public class CloudWatchLogsDispatcher {
             } else {
                 if (putLogEventsResponse != null) {
                     dlqObjects = getDlqObjectsFromResponse(putLogEventsResponse);
+                    handleRejectedEntityInfo(putLogEventsResponse);
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
+        }
+
+        private void handleRejectedEntityInfo(PutLogEventsResponse putLogEventsResponse) {
+            if (putLogEventsResponse.rejectedEntityInfo() != null) {
+                cloudWatchLogsMetrics.increaseEntityRejectedCounter();
+                LOG.warn("Entity information was rejected by CloudWatch Logs: {}", 
+                        putLogEventsResponse.rejectedEntityInfo().errorType());
+            }
         }
 
         List<DlqObject> getDlqObjectsFromResponse(PutLogEventsResponse putLogEventsResponse) {

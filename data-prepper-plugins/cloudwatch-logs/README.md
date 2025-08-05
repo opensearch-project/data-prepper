@@ -35,6 +35,12 @@ pipeline:
           X-Request-ID: "request-123"
           X-Source: "dataprepper"
         endpoint: "https://logs.us-west-2.amazonaws.com"
+        entity:
+          attributes:
+            key1: "value1"
+            key2: "value2"
+          key_attributes:
+            keyAttr1: "keyValue1"
 ```
 
 ## AWS Configuration
@@ -65,6 +71,8 @@ pipeline:
 
 - `endpoint` (Optional) : A string representing a custom CloudWatch Logs endpoint URL to override the default service endpoint.
 
+- `entity` (Optional) : An object representing entity information to include in CloudWatch Logs PutLogEvents requests. Referenced here: [How to add related information to telemetry](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/adding-your-own-related-telemetry.html)
+
 ## Buffer Type Configuration
 
 - `buffer_type` (Optional) : A string representing the type of buffer to use to hold onto events. Currently only supports `in_memory`.
@@ -83,6 +91,7 @@ threshold parameters.
 * `cloudWatchLogsEventsFailed` - The number of log events failed while publishing to CloudWatch Logs.
 * `cloudWatchLogsRequestsSucceeded` - The number of log requests successfully made to CloudWatch Logs.
 * `cloudWatchLogsRequestsFailed` - The number of log requests failed to reach CloudWatch Logs.
+* `cloudWatchLogsEntityRejected` - The number of times entity information was rejected by CloudWatch Logs.
 
 ## Developer Guide
 
