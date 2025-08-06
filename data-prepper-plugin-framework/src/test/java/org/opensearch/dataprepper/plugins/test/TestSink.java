@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.test;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.sink.Sink;
 
 import java.time.Duration;
@@ -23,6 +24,7 @@ public class TestSink implements Sink<Record<String>> {
     private final boolean failSinkForTest;
     private boolean ready;
     private Instant readyTime;
+    private HeadlessPipeline failurePipeline;
 
     public TestSink() {
         this.failSinkForTest = false;
@@ -49,6 +51,15 @@ public class TestSink implements Sink<Record<String>> {
             throw new RuntimeException("Sink is expected to fail");
         }
         records.stream().collect(Collectors.toCollection(() -> collectedRecords));
+    }
+
+    @Override
+    public void setFailurePipeline(final HeadlessPipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public HeadlessPipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     @Override

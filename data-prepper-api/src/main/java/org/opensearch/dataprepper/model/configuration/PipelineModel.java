@@ -77,7 +77,6 @@ public class PipelineModel {
             @JsonProperty("sink") final List<SinkModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
-        checkArgument(Objects.nonNull(source), "Source must not be null");
         checkArgument(Objects.nonNull(sinks), "Sinks must not be null");
         checkArgument(sinks.size() > 0, "PipelineModel must include at least 1 sink");
 

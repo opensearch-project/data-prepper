@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.model.buffer;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -77,7 +77,7 @@ class BufferTest {
     @Test
     void testSetFailurePipeline() {
         final Buffer<Record<Event>> buffer = createObjectUnderTest();
-        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
         doCallRealMethod().when(buffer).setFailurePipeline(failurePipeline);
         buffer.setFailurePipeline(failurePipeline);
     }

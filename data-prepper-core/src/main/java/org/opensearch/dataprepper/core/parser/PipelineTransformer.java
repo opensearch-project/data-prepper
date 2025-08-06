@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
-import org.opensearch.dataprepper.core.pipeline.FailurePipelineSource;
+import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
 import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
 import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
@@ -130,11 +130,11 @@ public class PipelineTransformer {
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
         final String failurePipelineName = dataPrepperConfiguration.getFailurePipelineName();
         try {
-            final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-            final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
-                    pipelineMap, pipelineConfigurationMap);
             Source source;
             if (!pipelineName.equals(failurePipelineName)) {
+                final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+                final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
+                        pipelineMap, pipelineConfigurationMap);
                 source = pipelineSource.orElseGet(() -> {
                     try {
                         return pluginFactory.loadPlugin(Source.class, sourceSetting);
@@ -150,7 +150,7 @@ public class PipelineTransformer {
                     }
                 });
             } else {
-                source = new FailurePipelineSource();
+                source = new HeadlessPipelineSource(failurePipelineName, "");
             }
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
@@ -268,13 +268,16 @@ public class PipelineTransformer {
             processRemoveIfRequired(pipelineName, pipelineConfigurationMap, pipelineMap);
         }
         final Pipeline failurePipeline = pipelineMap.get(failurePipelineName);
+        boolean acknowledgementsEnabled = false;
         if (failurePipeline != null) {
             for (Map.Entry<String, Pipeline> pipelineEntry : pipelineMap.entrySet()) {
                 if (!(pipelineEntry.getKey().equals(failurePipelineName))) {
                     pipelineEntry.getValue().setFailurePipeline(failurePipeline);
+                    acknowledgementsEnabled = acknowledgementsEnabled || pipelineEntry.getValue().areAcknowledgementsEnabled();
 
                 }
             }
+            failurePipeline.setAcknowledgementsEnabled(acknowledgementsEnabled);
         }
 
     }
@@ -367,7 +370,7 @@ public class PipelineTransformer {
     }
 
     private Optional<String> getPipelineNameIfPipelineType(final PluginSetting pluginSetting) {
-        if (PIPELINE_TYPE.equals(pluginSetting.getName()) &&
+        if (pluginSetting != null && PIPELINE_TYPE.equals(pluginSetting.getName()) &&
                 pluginSetting.getAttributeFromSettings(ATTRIBUTE_NAME) != null) {
             //Validator marked valid config with type as pipeline will have attribute name
             return Optional.of((String) pluginSetting.getAttributeFromSettings(ATTRIBUTE_NAME));

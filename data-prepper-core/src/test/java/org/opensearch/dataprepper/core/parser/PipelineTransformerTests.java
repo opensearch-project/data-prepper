@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
+import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
 import org.opensearch.dataprepper.core.validation.PluginErrorCollector;
@@ -60,10 +61,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -358,6 +361,28 @@ class PipelineTransformerTests {
         assertThat(pipelineMap.size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.size());
         verify(dataPrepperConfiguration).getPipelineExtensions();
+    }
+
+    @Test
+    void testMultipleSinksWithFailurePipeline() {
+        when(dataPrepperConfiguration.getFailurePipelineName()).thenReturn(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        when(expressionEvaluator.isValidExpressionStatement("/value == raw")).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement("/value == service")).thenReturn(true);
+        mockDataPrepperConfigurationAccesses();
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_WITH_FAILURE_PIPELINE_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(pipelineMap.size(), equalTo(4));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.size());
+        Pipeline failurePipeline = pipelineMap.get(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME);
+        assertTrue(failurePipeline != null);
+        for (Map.Entry<String, Pipeline> entry : pipelineMap.entrySet()) {
+            if (!entry.getKey().equals(DataPrepperConfiguration.DEFAULT_FAILURE_PIPELINE_NAME)) {
+                assertThat(entry.getValue().getFailurePipeline(), sameInstance(failurePipeline));
+            }
+        }
+        assertTrue(failurePipeline.getSource() instanceof HeadlessPipelineSource);
+        assertThat(((HeadlessPipelineSource)failurePipeline.getSource()).getAcknowledgementsEnabled(), equalTo(false));
     }
 
     @Test

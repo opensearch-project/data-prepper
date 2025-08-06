@@ -116,6 +116,7 @@ public class DefaultPluginFactory implements PluginFactory {
         final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
+
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);

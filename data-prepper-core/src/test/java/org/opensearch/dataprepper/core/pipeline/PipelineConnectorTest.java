@@ -146,6 +146,7 @@ public class PipelineConnectorTest {
         spanRecordList = Collections.singletonList(SPAN_RECORD);
         spanBuffer = new BlockingBuffer<>("Pipeline1");
         sput = new PipelineConnector<>();
+        sput.setFailurePipeline(null);
 
     }
 

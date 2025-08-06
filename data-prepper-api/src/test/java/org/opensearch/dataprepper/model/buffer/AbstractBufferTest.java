@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -188,7 +188,7 @@ public class AbstractBufferTest {
     @Test
     void testGetAndSetFailurePipeline() {
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
-        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
         abstractBuffer.setFailurePipeline(failurePipeline);
         assertThat(abstractBuffer.getFailurePipeline(), sameInstance(failurePipeline));
     }

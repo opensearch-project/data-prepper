@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -31,7 +31,7 @@ public class SinkTest {
         }
 
         @Override
-        public void setFailurePipeline(FailurePipeline failurePipeline) {
+        public void setFailurePipeline(HeadlessPipeline failurePipeline) {
         }
 
         @Override
@@ -51,7 +51,7 @@ public class SinkTest {
     @Test
     public void testSetFailurePipeline() {
         Sink testSink = mock(Sink.class);
-        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
         doCallRealMethod().when(testSink).setFailurePipeline(failurePipeline);
         testSink.setFailurePipeline(failurePipeline);
     }

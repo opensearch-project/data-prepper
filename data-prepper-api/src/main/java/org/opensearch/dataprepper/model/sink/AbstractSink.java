@@ -10,7 +10,7 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 
@@ -30,7 +30,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     private int maxRetries;
     private int waitTimeMs;
     private SinkThread sinkThread;
-    private FailurePipeline failurePipeline;
+    private HeadlessPipeline failurePipeline;
 
     public AbstractSink(final PluginSetting pluginSetting, int numRetries, int waitTimeMs) {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
@@ -72,11 +72,11 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
     }
 
     @Override
-    public void setFailurePipeline(final FailurePipeline failurePipeline) {
+    public void setFailurePipeline(final HeadlessPipeline failurePipeline) {
         this.failurePipeline = failurePipeline;
     }
 
-    public FailurePipeline getFailurePipeline() {
+    public HeadlessPipeline getFailurePipeline() {
         return failurePipeline;
     }
 
