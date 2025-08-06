@@ -13,8 +13,10 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
-import java.util.HashMap;
+import java.net.URI;
+
 import java.util.Map;
 
 /**
@@ -32,11 +34,13 @@ public final class CloudWatchLogsClientFactory {
      * @param awsConfig              AwsConfig specifying region, roles, and header overrides.
      * @param awsCredentialsSupplier AwsCredentialsSupplier Interface for which to create CredentialsProvider for Client config.
      * @param customHeaders          Map of custom headers to include in requests. Can be null.
+     * @param endpoint               Optional endpoint URL to override the default CloudWatch Logs endpoint.
      * @return CloudWatchLogsClient used to interact with CloudWatch Logs services.
      */
     public static CloudWatchLogsClient createCwlClient(final AwsConfig awsConfig,
             final AwsCredentialsSupplier awsCredentialsSupplier,
-            final Map<String, String> customHeaders) {
+            final Map<String, String> customHeaders,
+            final String endpoint) {
         final AwsCredentialsOptions awsCredentialsOptions = awsConfig != null
                 ? convertToCredentialOptions(awsConfig)
                 : AwsCredentialsOptions.defaultOptions();
@@ -47,23 +51,16 @@ public final class CloudWatchLogsClientFactory {
             return null;
         }
 
-        return CloudWatchLogsClient.builder()
+        CloudWatchLogsClientBuilder clientBuilder = CloudWatchLogsClient.builder()
                 .region(region)
                 .credentialsProvider(awsCredentialsProvider)
-                .overrideConfiguration(createOverrideConfiguration(customHeaders))
-                .build();
-    }
-
-    /**
-     * Generates a CloudWatchLogs Client based on STS role ARN system credentials.
-     *
-     * @param awsConfig              AwsConfig specifying region, roles, and header overrides.
-     * @param awsCredentialsSupplier AwsCredentialsSupplier Interface for which to create CredentialsProvider for Client config.
-     * @return CloudWatchLogsClient used to interact with CloudWatch Logs services.
-     */
-    public static CloudWatchLogsClient createCwlClient(final AwsConfig awsConfig,
-            final AwsCredentialsSupplier awsCredentialsSupplier) {
-        return createCwlClient(awsConfig, awsCredentialsSupplier, new HashMap<>());
+                .overrideConfiguration(createOverrideConfiguration(customHeaders));
+        
+        if (endpoint != null && !endpoint.trim().isEmpty()) {
+            clientBuilder.endpointOverride(URI.create(endpoint));
+        }
+        
+        return clientBuilder.build();
     }
 
     private static ClientOverrideConfiguration createOverrideConfiguration(final Map<String, String> customHeaders) {

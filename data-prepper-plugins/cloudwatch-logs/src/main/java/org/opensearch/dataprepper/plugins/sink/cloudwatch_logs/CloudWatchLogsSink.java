@@ -71,7 +71,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
         }
-        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, headerOverrides);
+        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, headerOverrides, cloudWatchLogsSinkConfig.getEndpoint());
         if (cloudWatchLogsClient == null) {
             throw new RuntimeException("cloudWatchLogsClient is null");
         }

@@ -57,6 +57,9 @@ public class CloudWatchLogsSinkConfig {
     @ValidCustomHeaders
     private Map<String, String> headerOverrides = new HashMap<>();
 
+    @JsonProperty("endpoint")
+    private String endpoint;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -87,6 +90,10 @@ public class CloudWatchLogsSinkConfig {
 
     public Map<String, String> getHeaderOverrides() {
         return headerOverrides;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
     }
 
 }

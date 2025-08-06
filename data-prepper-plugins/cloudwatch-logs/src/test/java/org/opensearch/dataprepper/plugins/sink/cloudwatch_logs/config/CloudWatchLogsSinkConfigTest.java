@@ -309,4 +309,17 @@ class CloudWatchLogsSinkConfigTest {
         assertThat(config.getHeaderOverrides(), aMapWithSize(0));
         assertThat(config.getHeaderOverrides().size(), lessThanOrEqualTo(10));
     }
+
+    @Test
+    void GIVEN_new_sink_config_WHEN_get_endpoint_called_SHOULD_return_null() {
+        assertThat(new CloudWatchLogsSinkConfig().getEndpoint(), equalTo(null));
+    }
+
+    @Test
+    void GIVEN_endpoint_configured_SHOULD_return_the_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        String testEndpoint = "https://logs.us-west-2.amazonaws.com";
+        
+        ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "endpoint", testEndpoint);
+        assertThat(cloudWatchLogsSinkConfig.getEndpoint(), equalTo(testEndpoint));
+    }
 }
