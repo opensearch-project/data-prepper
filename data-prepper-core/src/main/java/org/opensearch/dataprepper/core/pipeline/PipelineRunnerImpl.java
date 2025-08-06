@@ -108,10 +108,10 @@ public class PipelineRunnerImpl implements PipelineRunner {
                     processAcknowledgements(inputEvents, records);
                 }
             } catch (final Exception e) {
-                LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
                 if (pipeline.getFailurePipeline() != null) {
-                    pipeline.getFailurePipeline().sendFailedEvents(records);
+                    pipeline.getFailurePipeline().sendEvents(records);
                 } else if (inputEvents != null) {
+                    LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
                     processAcknowledgements(inputEvents, Collections.emptyList());
                 }
 

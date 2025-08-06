@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.plugin.PluginComponentType;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
@@ -55,7 +55,7 @@ public interface Sink<T extends Record<?>> {
      * @param failurePipeline failure pipeline
      * @since 2.12
      */
-    default void setFailurePipeline(final FailurePipeline failurePipeline) {
+    default void setFailurePipeline(final HeadlessPipeline failurePipeline) {
     }
 
 }

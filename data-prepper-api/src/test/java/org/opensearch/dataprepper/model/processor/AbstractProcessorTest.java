@@ -14,7 +14,7 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import static org.mockito.Mockito.mock;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -106,7 +106,7 @@ class AbstractProcessorTest {
         PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
         AbstractProcessor<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
-        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
         processor.setFailurePipeline(failurePipeline);
         assertThat(processor.getFailurePipeline(), sameInstance(failurePipeline));
     }

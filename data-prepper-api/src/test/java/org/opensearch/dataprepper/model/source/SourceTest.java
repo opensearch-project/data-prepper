@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.model.source;
 
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,7 +26,7 @@ public class SourceTest {
     @Test
     void testSetFailurePipeline() {
       Source<Record<Event>> objectUnderTest = mock(Source.class);
-      FailurePipeline failurePipeline = mock(FailurePipeline.class);
+      HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
       doCallRealMethod().when(objectUnderTest).setFailurePipeline(failurePipeline);
       objectUnderTest.setFailurePipeline(failurePipeline);
     }

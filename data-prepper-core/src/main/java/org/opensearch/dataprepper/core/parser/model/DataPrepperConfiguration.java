@@ -35,7 +35,7 @@ import java.util.Objects;
  */
 public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer, ExperimentalConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
-    static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq";
+    public static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq_pipeline";
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
 

@@ -22,7 +22,7 @@ import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -54,7 +54,7 @@ import static java.lang.String.format;
  * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class Pipeline implements FailurePipeline {
+public class Pipeline implements HeadlessPipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
     private final ProcessorRegistry singleThreadUnsafeProcessorRegistry;
@@ -67,7 +67,7 @@ public class Pipeline implements FailurePipeline {
     private final Router router;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
-    private FailurePipeline failurePipeline;
+    private HeadlessPipeline failurePipeline;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
     private final Duration sinkShutdownTimeout;
@@ -165,7 +165,7 @@ public class Pipeline implements FailurePipeline {
         return this.buffer;
     }
 
-    public void setFailurePipeline(FailurePipeline failurePipeline) {
+    public void setFailurePipeline(HeadlessPipeline failurePipeline) {
         this.failurePipeline = failurePipeline;
         this.source.setFailurePipeline(failurePipeline);
         this.buffer.setFailurePipeline(failurePipeline);
@@ -173,7 +173,7 @@ public class Pipeline implements FailurePipeline {
         this.getSinks().forEach(sink -> sink.setFailurePipeline(failurePipeline));
     }
 
-    public FailurePipeline getFailurePipeline() {
+    public HeadlessPipeline getFailurePipeline() {
         return failurePipeline;
     }
 
@@ -303,9 +303,15 @@ public class Pipeline implements FailurePipeline {
         }
     }
 
-    public void sendFailedEvents(Collection<Record<Event>> records) {
-        if (this.source instanceof FailurePipelineSource) {
-            ((FailurePipelineSource)this.source).sendFailedEvents(records);
+    public void setAcknowledgementsEnabled(final boolean acknowledgementsEnabled) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).setAcknowledgementsEnabled(acknowledgementsEnabled);
+        }
+    }
+
+    public void sendEvents(Collection<Record<Event>> records) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).sendEvents(records);
         }
     }
 

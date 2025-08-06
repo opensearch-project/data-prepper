@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -94,7 +94,7 @@ class AbstractSinkTest {
         AbstractSink<Record<String>> abstractSink = new AbstractSinkImpl(pluginSetting);
         abstractSink.initialize();
         assertEquals(abstractSink.isReady(), true);
-        FailurePipeline failurePipeline = mock(FailurePipeline.class);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
         abstractSink.setFailurePipeline(failurePipeline);
         assertThat(abstractSink.getFailurePipeline(), sameInstance(failurePipeline));
     }

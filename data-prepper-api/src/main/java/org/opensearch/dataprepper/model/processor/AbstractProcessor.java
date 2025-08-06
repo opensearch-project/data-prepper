@@ -11,7 +11,7 @@ import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.failures.FailurePipeline;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.util.Collection;
 
@@ -27,7 +27,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     private final Counter recordsInCounter;
     private final Counter recordsOutCounter;
     private final Timer timeElapsedTimer;
-    private FailurePipeline failurePipeline;
+    private HeadlessPipeline failurePipeline;
 
     public AbstractProcessor(final PluginSetting pluginSetting) {
         pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
@@ -67,11 +67,11 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     public abstract Collection<OutputRecord> doExecute(Collection<InputRecord> records);
 
     @Override
-    public void setFailurePipeline(FailurePipeline failurePipeline) {
+    public void setFailurePipeline(HeadlessPipeline failurePipeline) {
         this.failurePipeline = failurePipeline;
     }
 
-    public FailurePipeline getFailurePipeline() {
+    public HeadlessPipeline getFailurePipeline() {
         return failurePipeline;
     }
 }
