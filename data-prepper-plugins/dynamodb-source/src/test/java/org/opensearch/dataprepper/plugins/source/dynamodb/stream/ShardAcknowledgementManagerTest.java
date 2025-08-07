@@ -23,7 +23,6 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -107,7 +106,7 @@ class ShardAcknowledgementManagerTest {
         
         // Set lastCheckpointTime to past to trigger checkpoint interval
         setField(ShardAcknowledgementManager.class, shardAcknowledgementManager, 
-            "lastCheckpointTime", Instant.now().minus(Duration.ofMinutes(5)));
+            "lastCheckpointTime", System.currentTimeMillis() - Duration.ofMinutes(5).toMillis());
         
         // Call updateOwnershipForAllShardPartitions directly
         shardAcknowledgementManager.updateOwnershipForAllShardPartitions();

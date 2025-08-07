@@ -263,13 +263,12 @@ public class ShardConsumer implements Runnable {
                 LOG.debug("Reached end of shard");
                 break;
             }
-
-            if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
-                LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
-                if (shardAcknowledgementManager == null) {
+            if (shardAcknowledgementManager == null) {
+                if (System.currentTimeMillis() - lastCheckpointTime > DEFAULT_CHECKPOINT_INTERVAL_MILLS) {
+                    LOG.debug("{} records written to buffer for shard {}", recordsWrittenToBuffer, shardId);
                     checkpointer.checkpoint(sequenceNumber);
+                    lastCheckpointTime = System.currentTimeMillis();
                 }
-                lastCheckpointTime = System.currentTimeMillis();
             }
 
             GetRecordsResponse response = callGetRecords(shardIterator);
