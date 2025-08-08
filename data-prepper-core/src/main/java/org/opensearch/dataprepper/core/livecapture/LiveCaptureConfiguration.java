@@ -13,8 +13,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Maps to the 'live_capture' section in the Data Prepper configuration.
  */
 public class LiveCaptureConfiguration {
-    
-    
+
+
     private final boolean defaultEnabled;
     private final double defaultRate;
     private final Object liveCaptureOutputSinkConfig;
@@ -30,11 +30,15 @@ public class LiveCaptureConfiguration {
             @JsonProperty("default_enabled") final Boolean defaultEnabled,
             @JsonProperty("default_rate") final Double defaultRate,
             @JsonProperty("live_capture_out") final Object liveCaptureOutputSinkConfig) {
-        
+
         this.defaultEnabled = defaultEnabled != null ? defaultEnabled : false;
-        this.defaultRate = defaultRate != null ? defaultRate : 1.0;
+        double rate = defaultRate != null ? defaultRate : 1.0;
+        if (rate <= 0) {
+            throw new IllegalArgumentException("default_rate must be positive");
+        }
+        this.defaultRate = rate;
         this.liveCaptureOutputSinkConfig = liveCaptureOutputSinkConfig;
-        
+
     }
 
     public boolean isDefaultEnabled() {
@@ -48,5 +52,5 @@ public class LiveCaptureConfiguration {
     public Object getLiveCaptureOutputSinkConfig() {
         return liveCaptureOutputSinkConfig;
     }
-    
+
 }

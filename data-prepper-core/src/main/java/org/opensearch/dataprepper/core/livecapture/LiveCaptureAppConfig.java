@@ -139,10 +139,10 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
      * @param eventFactory the event factory to use
      * @return the LiveCaptureHandler instance
      */
-    @Bean
-    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory) {
-        return new LiveCaptureHandler(eventFactory);
-    }
+//    @Bean
+////    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory) {
+////        return new LiveCaptureHandler(eventFactory);
+////    }
 
 
 }
