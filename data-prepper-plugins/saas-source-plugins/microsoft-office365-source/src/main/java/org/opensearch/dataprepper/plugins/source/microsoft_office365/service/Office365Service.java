@@ -108,9 +108,8 @@ public class Office365Service {
                             break;
                         }
 
-                        addItemsToQueue(response.getItems(), contentType, itemInfoQueue);
                         nextPageUri = response.getNextPageUri();
-
+                        addItemsToQueue(response.getItems(), contentType, itemInfoQueue, nextPageUri == null);
                     } while (nextPageUri != null);
                 } catch (Exception e) {
                     log.error(NOISY, "Failed to fetch logs for time window {} to {} for content type {}. Will retry this window.",
@@ -140,15 +139,22 @@ public class Office365Service {
 
     private void addItemsToQueue(final List<Map<String, Object>> items,
                                  final String contentType,
-                                 final Queue<ItemInfo> itemInfoQueue) {
+                                 final Queue<ItemInfo> itemInfoQueue,
+                                 final boolean lastPage) {
         items.forEach(item -> {
+            Instant contentCreated = Instant.parse((String) item.get(CONTENT_CREATED_KEY));
+            // If last page, add 1ms offset for next poll start time to avoid duplication when all events are processed.
+            // 1ms is m365's smallest time unit so polling data starting from next 1ms would not skip any event.
+            // If not last page, keep nextPollAttemptStartTime to be contentCreated time so to avoid data loss in a rare scenario
+            // where 1ms have multiple events and split by nextPageUri
+            Instant nextPollAttemptStartTime = lastPage ? contentCreated.plusMillis(1) : contentCreated;
             ItemInfo itemInfo = Office365ItemInfo.builder()
                     .itemId((String) item.get(CONTENT_ID_KEY))
-                    .eventTime(Instant.parse((String) item.get(CONTENT_CREATED_KEY)))
+                    .eventTime(contentCreated)
                     .partitionKey(contentType + UUID.randomUUID())
                     .metadata(item)
                     .keyAttributes(Map.of(TYPE_KEY, contentType, CONTENT_URI_KEY, item.get(CONTENT_URI_KEY)))
-                    .lastModifiedAt(Instant.now()) // Used to track the time that it was imported
+                    .lastModifiedAt(nextPollAttemptStartTime)
                     .build();
             itemInfoQueue.add(itemInfo);
         });
