@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
@@ -22,6 +23,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
 /**
  * A scheduler to manage all the stream related work in one place
@@ -47,13 +50,13 @@ public class StreamScheduler implements Runnable {
     private final EnhancedSourceCoordinator coordinator;
     private final ShardConsumerFactory consumerFactory;
     private final ExecutorService executor;
+    private final PluginMetrics pluginMetrics;
     private final AtomicLong activeChangeEventConsumers;
     private final AtomicLong shardsInProcessing;
+    private final AcknowledgementSetManager acknowledgementSetManager;
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
     private final BackoffCalculator backoffCalculator;
     private int noAvailableShardsCount = 0;
-
-    private final ShardAcknowledgementManager shardAcknowledgementManager;
 
 
     public StreamScheduler(final EnhancedSourceCoordinator coordinator,
@@ -64,10 +67,10 @@ public class StreamScheduler implements Runnable {
                            final BackoffCalculator backoffCalculator) {
         this.coordinator = coordinator;
         this.consumerFactory = consumerFactory;
+        this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.dynamoDBSourceConfig = dynamoDBSourceConfig;
         this.backoffCalculator = backoffCalculator;
-        this.shardAcknowledgementManager = dynamoDBSourceConfig.isAcknowledgmentsEnabled() ? 
-            new ShardAcknowledgementManager(acknowledgementSetManager, coordinator, dynamoDBSourceConfig, coordinator::giveUpPartition) : null;
 
         executor = Executors.newFixedThreadPool(MAX_JOB_COUNT);
         activeChangeEventConsumers = pluginMetrics.gauge(ACTIVE_CHANGE_EVENT_CONSUMERS, new AtomicLong());
@@ -75,12 +78,42 @@ public class StreamScheduler implements Runnable {
     }
 
     private void processStreamPartition(StreamPartition streamPartition) {
+        final boolean acknowledgmentsEnabled = dynamoDBSourceConfig.isAcknowledgmentsEnabled();
+        AcknowledgementSet acknowledgementSet = null;
 
-        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout(), shardAcknowledgementManager);
+        if (acknowledgmentsEnabled) {
+            acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                if (result) {
+                    LOG.info("Received acknowledgment of completion from sink for shard {}", streamPartition.getShardId());
+                    completeConsumer(streamPartition).accept(null, null);
+                } else {
+                    LOG.warn("Negative acknowledgment received for shard {}, it will be retried", streamPartition.getShardId());
+                    coordinator.giveUpPartition(streamPartition);
+                }
+            }, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        }
+
+        Runnable shardConsumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
         if (shardConsumer != null) {
 
             CompletableFuture runConsumer = CompletableFuture.runAsync(shardConsumer, executor);
-            runConsumer.whenComplete(completeConsumer(streamPartition));
+
+            if (acknowledgmentsEnabled) {
+                runConsumer.whenComplete((v, ex) -> {
+                    numOfWorkers.decrementAndGet();
+                    if (ex != null) {
+                        LOG.error(NOISY, "Received exception while processing shard {}, giving up this shard for reprocessing: {}",
+                                streamPartition.getShardId(), ex);
+                        coordinator.giveUpPartition(streamPartition);
+                    }
+                    if (numOfWorkers.get() == 0) {
+                        activeChangeEventConsumers.decrementAndGet();
+                    }
+                    shardsInProcessing.decrementAndGet();
+                });
+            } else {
+                runConsumer.whenComplete(completeConsumer(streamPartition));
+            }
             numOfWorkers.incrementAndGet();
             if (numOfWorkers.get() % 10 == 0) {
                 SHARD_COUNT_LOGGER.info("Actively processing {} shards", numOfWorkers.get());
@@ -131,11 +164,6 @@ public class StreamScheduler implements Runnable {
         // Should Stop
         LOG.warn("Stream Scheduler is interrupted, looks like shutdown has triggered");
 
-        // Shutdown acknowledgment manager if it exists
-        if (shardAcknowledgementManager != null) {
-            shardAcknowledgementManager.shutdown();
-        }
-
         // Cannot call executor.shutdownNow() here
         // Otherwise the final checkpoint will fail due to SDK interruption.
         ShardConsumer.stopAll();
@@ -144,24 +172,23 @@ public class StreamScheduler implements Runnable {
 
     private BiConsumer completeConsumer(StreamPartition streamPartition) {
         return (v, ex) -> {
-            numOfWorkers.decrementAndGet();
-            if (numOfWorkers.get() == 0) {
-                activeChangeEventConsumers.decrementAndGet();
+            if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
+                numOfWorkers.decrementAndGet();
+                if (numOfWorkers.get() == 0) {
+                    activeChangeEventConsumers.decrementAndGet();
+                }
+                shardsInProcessing.decrementAndGet();
             }
-            shardsInProcessing.decrementAndGet();
             if (ex == null) {
                 LOG.info("Shard consumer for {} is completed", streamPartition.getShardId());
-                if (!dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
-                    coordinator.completePartition(streamPartition);
-                }
+                coordinator.completePartition(streamPartition);
             } else {
+                // Do nothing
+                // The consumer must have already done one last checkpointing.
                 LOG.error("Received an exception while processing shard {}, giving up shard: {}", streamPartition.getShardId(), ex);
-                if (dynamoDBSourceConfig.isAcknowledgmentsEnabled()) {
-                    shardAcknowledgementManager.giveUpPartition(streamPartition);
-                } else {
-                    coordinator.giveUpPartition(streamPartition);
-                }
+                coordinator.giveUpPartition(streamPartition);
             }
         };
     }
+
 }
