@@ -78,6 +78,9 @@ public class ShardConsumerFactory {
         if (progressState.isPresent()) {
             // We can't checkpoint with acks yet
             sequenceNumber = acknowledgementSet == null ? null : progressState.get().getSequenceNumber();
+            if (streamConfig.isDisableCheckpointing()) {
+                sequenceNumber = null;
+            }
             waitForExport = progressState.get().shouldWaitForExport();
             if (progressState.get().getStartTime() != 0) {
                 startTime = Instant.ofEpochMilli(progressState.get().getStartTime());

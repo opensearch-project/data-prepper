@@ -16,6 +16,9 @@ public class StreamConfig {
     @JsonProperty("view_on_remove")
     private StreamViewType viewForRemoves = StreamViewType.NEW_IMAGE;
 
+    @JsonProperty("disable_checkpointing")
+    private boolean disableCheckpointing = false;
+
     public StreamStartPosition getStartPosition() {
         return startPosition;
     }
@@ -23,5 +26,7 @@ public class StreamConfig {
     public StreamViewType getStreamViewForRemoves() {
         return viewForRemoves;
     }
+
+    public boolean isDisableCheckpointing() { return disableCheckpointing; }
 
 }
