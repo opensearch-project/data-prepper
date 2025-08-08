@@ -346,4 +346,48 @@ public class OpenSearchSinkTest {
 
         verify(dynamicDocumentVersionDroppedEvents).increment();
     }
+
+    @Test
+    void createDlqObjectFromEvent_with_null_message_uses_default_message() throws IOException {
+        when(pluginSetting.getName()).thenReturn("opensearch");
+        
+        final Event event = mock(JacksonEvent.class);
+        final String document = UUID.randomUUID().toString();
+        when(event.toJsonString()).thenReturn(document);
+        final EventHandle eventHandle = mock(EventHandle.class);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        final String index = UUID.randomUUID().toString();
+        
+        final OpenSearchSink objectUnderTest = createObjectUnderTest();
+        when(indexManagerFactory.getIndexManager(any(IndexType.class), eq(openSearchClient), any(RestHighLevelClient.class), eq(openSearchSinkConfiguration), any(TemplateStrategy.class), any()))
+                .thenReturn(indexManager);
+        doNothing().when(indexManager).setupIndex();
+        objectUnderTest.initialize();
+        
+        final DlqObject.Builder dlqObjectBuilder = mock(DlqObject.Builder.class);
+        final ArgumentCaptor<FailedDlqData> failedDlqData = ArgumentCaptor.forClass(FailedDlqData.class);
+        when(dlqObjectBuilder.withEventHandle(eventHandle)).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withFailedData(failedDlqData.capture())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginName(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPluginId(pluginSetting.getName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.withPipelineName(pipelineDescription.getPipelineName())).thenReturn(dlqObjectBuilder);
+        when(dlqObjectBuilder.build()).thenReturn(mock(DlqObject.class));
+        
+        try (final MockedStatic<DlqObject> dlqObjectMockedStatic = mockStatic(DlqObject.class)) {
+            dlqObjectMockedStatic.when(DlqObject::builder).thenReturn(dlqObjectBuilder);
+            
+            // Use reflection to call the private method with null message
+            java.lang.reflect.Method method = OpenSearchSink.class.getDeclaredMethod("createDlqObjectFromEvent", Event.class, String.class, String.class);
+            method.setAccessible(true);
+            method.invoke(objectUnderTest, event, index, null);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        
+        final FailedDlqData failedDlqDataResult = failedDlqData.getValue();
+        assertThat(failedDlqDataResult, notNullValue());
+        assertThat(failedDlqDataResult.getDocument(), equalTo(document));
+        assertThat(failedDlqDataResult.getIndex(), equalTo(index));
+        assertThat(failedDlqDataResult.getMessage(), equalTo(""));
+    }
 }
