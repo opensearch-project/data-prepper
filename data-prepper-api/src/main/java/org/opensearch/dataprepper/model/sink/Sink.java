@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.sink;
 
 import org.opensearch.dataprepper.model.plugin.PluginComponentType;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
@@ -46,6 +47,15 @@ public interface Sink<T extends Record<?>> {
      * @param events list of events used for updating the latency metrics
      */
     default void updateLatencyMetrics(final Collection<T> events) {
+    }
+
+    /**
+     * Sets default failure pipeline of a source
+
+     * @param failurePipeline failure pipeline
+     * @since 2.12
+     */
+    default void setFailurePipeline(final HeadlessPipeline failurePipeline) {
     }
 
 }

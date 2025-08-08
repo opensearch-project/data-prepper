@@ -20,7 +20,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -52,7 +54,7 @@ import static java.lang.String.format;
  * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class Pipeline {
+public class Pipeline implements HeadlessPipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
     private final ProcessorRegistry singleThreadUnsafeProcessorRegistry;
@@ -65,6 +67,7 @@ public class Pipeline {
     private final Router router;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
+    private HeadlessPipeline failurePipeline;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
     private final Duration sinkShutdownTimeout;
@@ -121,6 +124,7 @@ public class Pipeline {
         this.processorSets = processorSets;
         this.sinks = sinks;
         this.router = router;
+        this.failurePipeline = null;
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.processorThreads = processorThreads;
         this.eventFactory = eventFactory;
@@ -159,6 +163,18 @@ public class Pipeline {
      */
     public Buffer getBuffer() {
         return this.buffer;
+    }
+
+    public void setFailurePipeline(HeadlessPipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+        this.source.setFailurePipeline(failurePipeline);
+        this.buffer.setFailurePipeline(failurePipeline);
+        processorSets.forEach(processorSet -> processorSet.forEach(processor -> processor.setFailurePipeline(failurePipeline)));
+        this.getSinks().forEach(sink -> sink.setFailurePipeline(failurePipeline));
+    }
+
+    public HeadlessPipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     /**
@@ -284,6 +300,18 @@ public class Pipeline {
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
             LOG.error("Pipeline [{}] encountered exception while starting the source, skipping execution", name, ex);
+        }
+    }
+
+    public void setAcknowledgementsEnabled(final boolean acknowledgementsEnabled) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).setAcknowledgementsEnabled(acknowledgementsEnabled);
+        }
+    }
+
+    public void sendEvents(Collection<Record<Event>> records) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).sendEvents(records);
         }
     }
 

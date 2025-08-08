@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.test;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 
@@ -22,6 +23,7 @@ public class TestSource implements Source<Record<String>> {
             .map(Record::new).collect(Collectors.toList());
     private boolean isStopRequested;
     private boolean failSourceForTest;
+    private HeadlessPipeline failurePipeline;
 
     public TestSource() {
         this.isStopRequested = false;
@@ -46,6 +48,15 @@ public class TestSource implements Source<Record<String>> {
                     throw new RuntimeException("Timed out writing to buffer");
                 }
             }
+    }
+
+    @Override
+    public void setFailurePipeline(final HeadlessPipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+    }
+
+    public HeadlessPipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     @Override

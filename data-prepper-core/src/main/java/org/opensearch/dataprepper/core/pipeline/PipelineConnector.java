@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +94,10 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
             throw new RuntimeException(format("PipelineConnector [%s-%s]: Pipeline [%s] is not active, " +
                     "cannot proceed", sinkPipelineName, sourcePipelineName, sourcePipelineName));
         }
+    }
+
+    @Override
+    public void setFailurePipeline(final HeadlessPipeline failurePipeline) {
     }
 
     @Override

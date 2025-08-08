@@ -14,6 +14,10 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
+import static org.mockito.Mockito.mock;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -93,6 +97,20 @@ class AbstractProcessorTest {
                 0.2));
     }
 
+    @Test
+    void testGetAndSetFailurePipeline() {
+        final String processorName = "testProcessor";
+        final String pipelineName = "testPipeline";
+        MetricsTestUtil.initMetrics();
+
+        PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
+        pluginSetting.setPipelineName(pipelineName);
+        AbstractProcessor<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+        processor.setFailurePipeline(failurePipeline);
+        assertThat(processor.getFailurePipeline(), sameInstance(failurePipeline));
+    }
+
     public static class ProcessorImpl extends AbstractProcessor<Record<String>, Record<String>> {
         public ProcessorImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
@@ -112,6 +130,7 @@ class AbstractProcessorTest {
                     .flatMap(stringRecord -> Arrays.asList(stringRecord, stringRecord).stream())
                     .collect(Collectors.toList());
         }
+
 
         @Override
         public void prepareForShutdown() {
