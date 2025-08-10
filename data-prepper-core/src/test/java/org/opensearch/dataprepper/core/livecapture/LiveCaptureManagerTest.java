@@ -59,10 +59,10 @@ class LiveCaptureManagerTest {
 
     @Test
     void testEventMarking() {
-        assertThat(LiveCaptureManager.isLiveCapture(testEvent), is(false));
+        assertThat(LiveCaptureManager.shouldLiveCapture(testEvent), is(false));
 
         LiveCaptureManager.setLiveCapture(testEvent, true);
-        assertThat(LiveCaptureManager.isLiveCapture(testEvent), is(true));
+        assertThat(LiveCaptureManager.shouldLiveCapture(testEvent), is(true));
 
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         assertThat(output, notNullValue());
@@ -72,14 +72,14 @@ class LiveCaptureManagerTest {
     @Test
     void testAddLiveCaptureEntry() {
         LiveCaptureManager.setLiveCapture(testEvent, true);
-        
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Source", "Test message", null, null);
-        
+
+        LiveCaptureManager.addLiveCaptureEntry(testEvent, LiveCaptureManager.SOURCE, "Test message", null, null);
+
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         assertThat(output.size(), equalTo(1));
-        
+
         Map<String, Object> entry = output.get(0);
-        assertThat(entry.get("stage"), equalTo("Source"));
+        assertThat(entry.get("stage"), equalTo(LiveCaptureManager.SOURCE));
         assertThat(entry.get("logMessage"), equalTo("Test message"));
         assertThat(entry.get("eventTime"), notNullValue());
         assertThat(entry.get("captureMetaData"), notNullValue());
@@ -87,8 +87,8 @@ class LiveCaptureManagerTest {
 
     @Test
     void testAddLiveCaptureEntryWithNonMarkedEvent() {
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Source", "Test message", null, null);
-        
+        LiveCaptureManager.addLiveCaptureEntry(testEvent, LiveCaptureManager.SOURCE, "Test message", null, null);
+
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         assertThat(output, nullValue());
     }
@@ -96,29 +96,14 @@ class LiveCaptureManagerTest {
     @Test
     void testHasActiveFilters() {
         assertThat(liveCaptureManager.hasActiveFilters(), is(false));
-        
+
         liveCaptureManager.addFilter("field1", "value1");
         assertThat(liveCaptureManager.hasActiveFilters(), is(true));
-        
+
         liveCaptureManager.clearFilters();
         assertThat(liveCaptureManager.hasActiveFilters(), is(false));
     }
 
-    @Test
-    void testEventCloning() {
-        LiveCaptureManager.setLiveCapture(testEvent, true);
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Source", "Original event", null, null);
-        
-        Event clonedEvent = LiveCaptureManager.cloneEventWithLiveCapture(testEvent);
-        
-        assertThat(LiveCaptureManager.isLiveCapture(clonedEvent), is(true));
-        
-        List<Map<String, Object>> originalOutput = LiveCaptureManager.getLiveCaptureOutput(testEvent);
-        List<Map<String, Object>> clonedOutput = LiveCaptureManager.getLiveCaptureOutput(clonedEvent);
-        
-        assertThat(clonedOutput.size(), equalTo(originalOutput.size()));
-        assertThat(clonedOutput.get(0).get("logMessage"), equalTo("Original event"));
-    }
 
     @Test
     void testShouldCaptureEventWhenDisabled() {
@@ -130,7 +115,7 @@ class LiveCaptureManagerTest {
     void testShouldCaptureEventWhenEnabled() {
         liveCaptureManager.setEnabled(true);
         liveCaptureManager.setRateLimit(100.0); // High rate to ensure capture
-        
+
         // Should allow at least some events through rate limiting
         boolean anyCaptured = false;
         for (int i = 0; i < 50; i++) {
@@ -151,9 +136,9 @@ class LiveCaptureManagerTest {
     @Test
     void testAddLiveCaptureEntryWithProcessorStage() {
         LiveCaptureManager.setLiveCapture(testEvent, true);
-        
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Processor", "Processor executed", "uppercase", null);
-        
+
+        LiveCaptureManager.addLiveCaptureEntry(testEvent, LiveCaptureManager.PROCESSOR, "Processor executed", "uppercase", null);
+
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         @SuppressWarnings("unchecked")
         Map<String, Object> captureMetaData = (Map<String, Object>) output.get(0).get("captureMetaData");
@@ -163,9 +148,9 @@ class LiveCaptureManagerTest {
     @Test
     void testAddLiveCaptureEntryWithRouteStage() {
         LiveCaptureManager.setLiveCapture(testEvent, true);
-        
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Route", "Route matched", "test-route", null);
-        
+
+        LiveCaptureManager.addLiveCaptureEntry(testEvent, LiveCaptureManager.ROUTE, "Route matched", "test-route", null);
+
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         @SuppressWarnings("unchecked")
         Map<String, Object> captureMetaData = (Map<String, Object>) output.get(0).get("captureMetaData");
@@ -175,9 +160,9 @@ class LiveCaptureManagerTest {
     @Test
     void testAddLiveCaptureEntryWithSinkStage() {
         LiveCaptureManager.setLiveCapture(testEvent, true);
-        
-        LiveCaptureManager.addLiveCaptureEntry(testEvent, "Sink", "Sink received", "opensearch", null);
-        
+
+        LiveCaptureManager.addLiveCaptureEntry(testEvent, LiveCaptureManager.SINK, "Sink received", "opensearch", null);
+
         List<Map<String, Object>> output = LiveCaptureManager.getLiveCaptureOutput(testEvent);
         @SuppressWarnings("unchecked")
         Map<String, Object> captureMetaData = (Map<String, Object>) output.get(0).get("captureMetaData");
@@ -189,7 +174,7 @@ class LiveCaptureManagerTest {
         liveCaptureManager.setEnabled(true);
         liveCaptureManager.setRateLimit(100.0); // High rate to ensure capture
         liveCaptureManager.addFilter("field1", "value1");
-        
+
         // Event has field1 with value "value1", should pass filter and rate limiting should allow it
         boolean shouldCapture = false;
         for (int i = 0; i < 50; i++) {
@@ -205,7 +190,7 @@ class LiveCaptureManagerTest {
             }
         }
         assertThat(shouldCapture, is(true));
-        
+
         liveCaptureManager.clearFilters();
         // After clearing filters, should work with any event
         boolean shouldCaptureAfterClear = false;
@@ -228,19 +213,12 @@ class LiveCaptureManagerTest {
     void testShouldCaptureEventWithFiltersNoMatch() {
         liveCaptureManager.setEnabled(true);
         liveCaptureManager.addFilter("testFilter", "nonexistent_field");
-        
+
         // Event doesn't have nonexistent_field, should not pass filter
         boolean shouldCapture = liveCaptureManager.shouldCaptureEvent(testEvent);
         assertThat(shouldCapture, is(false));
     }
 
-    @Test
-    void testCloneEventWithoutLiveCapture() {
-        Event clonedEvent = LiveCaptureManager.cloneEventWithLiveCapture(testEvent);
-        
-        assertThat(LiveCaptureManager.isLiveCapture(clonedEvent), is(false));
-        assertThat(clonedEvent.get("field1", String.class), equalTo("value1"));
-    }
 
     @Test
     void testGetInstance() {

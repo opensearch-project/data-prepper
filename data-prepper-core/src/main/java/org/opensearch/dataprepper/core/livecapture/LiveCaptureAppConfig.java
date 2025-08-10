@@ -85,10 +85,7 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
         
         @SuppressWarnings("unchecked")
         Map<String, Object> sinkConfigMap = (Map<String, Object>) sinkConfig;
-        
-        int entryThreshold = getIntValue(sinkConfigMap, "entry_threshold", 1);
-        int batchSize = getIntValue(sinkConfigMap, "batch_size", 1);
-        
+
         Sink<Record<Event>> eventSink = null;
         for (Map.Entry<String, Object> entry : sinkConfigMap.entrySet()) {
             if (!"entry_threshold".equals(entry.getKey()) && !"batch_size".equals(entry.getKey())) {
@@ -96,37 +93,32 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
                 break;
             }
         }
-        
+
         if (eventSink != null) {
-            LiveCaptureOutputManager.getInstance().initialize(eventSink, entryThreshold, batchSize);
+            LiveCaptureOutputManager.getInstance().initialize(eventSink);
             LOG.info("LiveCaptureOutputManager initialized with sink: {}", eventSink.getClass().getSimpleName());
         }
     }
 
-    private int getIntValue(Map<String, Object> map, String key, int defaultValue) {
-        Object value = map.get(key);
-        return value instanceof Number ? ((Number) value).intValue() : defaultValue;
-    }
-    
     private Sink<Record<Event>> createPluginBasedSink(String sinkType, Object sinkSettings) {
         if (!(sinkSettings instanceof Map)) {
             return null;
         }
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>) sinkSettings;
-        
+
         PluginFactory pluginFactory = applicationContext.getBean(PluginFactory.class);
         PluginSetting pluginSetting = new PluginSetting(sinkType, settingsMap);
         pluginSetting.setPipelineName("live-capture-pipeline");
-        
+
         @SuppressWarnings("unchecked")
         Sink<Record<Event>> sink = (Sink<Record<Event>>) pluginFactory.loadPlugin(
             Sink.class, pluginSetting, new SinkContext(null));
-        
+
         return sink;
     }
-    
+
 
     @PreDestroy
     public void shutdownLiveCapture() {
@@ -139,10 +131,9 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
      * @param eventFactory the event factory to use
      * @return the LiveCaptureHandler instance
      */
-//    @Bean
-////    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory) {
-////        return new LiveCaptureHandler(eventFactory);
-////    }
-
+    @Bean
+    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory) {
+        return new LiveCaptureHandler(eventFactory);
+    }
 
 }

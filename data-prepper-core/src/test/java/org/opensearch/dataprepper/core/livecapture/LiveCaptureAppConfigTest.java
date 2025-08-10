@@ -131,9 +131,7 @@ class LiveCaptureAppConfigTest {
 
             // Verify LiveCaptureManager initialization
             mockedLiveCaptureManager.verify(() -> LiveCaptureManager.initialize(true, 2.0));
-
-            // Verify output manager initialization with plugin-based sink
-            verify(mockOutputManager).initialize(any(Sink.class), any(Integer.class), any(Integer.class));
+            verify(mockOutputManager).initialize(any(Sink.class));
             verify(mockOutputManager).enable();
         }
     }
@@ -164,9 +162,7 @@ class LiveCaptureAppConfigTest {
             mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
 
             liveCaptureAppConfig.initializeLiveCaptureManager();
-
-            // Verify that initialize was called with a Sink (which would be our plugin-based sink)
-            verify(mockOutputManager).initialize(any(Sink.class), any(Integer.class), any(Integer.class));
+            verify(mockOutputManager).initialize(any(Sink.class));
         }
     }
 }
