@@ -22,7 +22,7 @@ public interface HeadlessPipeline {
     /**
      * sends events to the headless pipeline
      *
-     * @param records records to be sent to headless pipeline
+     * @param events records to be sent to headless pipeline
      * @since 2.13
      */
     void sendEvents(Collection<Record<Event>> events);
