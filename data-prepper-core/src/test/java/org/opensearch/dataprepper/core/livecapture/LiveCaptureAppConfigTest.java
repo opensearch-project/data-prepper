@@ -40,8 +40,6 @@ class LiveCaptureAppConfigTest {
     @Mock
     private EventFactory defaultEventFactory;
 
-    @Mock
-    private LiveCaptureOutputManager mockOutputManager;
 
     @Mock
     private ApplicationContext applicationContext;
@@ -86,14 +84,10 @@ class LiveCaptureAppConfigTest {
     }
 
     @Test
-    void shutdownLiveCapture_calls_output_manager_shutdown() {
-        try (MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
-
-            liveCaptureAppConfig.shutdownLiveCapture();
-
-            verify(mockOutputManager).shutdown();
-        }
+    void shutdownLiveCapture_completes_successfully() {
+        // Test that shutdown method completes without error
+        liveCaptureAppConfig.shutdownLiveCapture();
+        // No verification needed since shutdown is now a no-op with debug logging
     }
 
 
@@ -122,17 +116,16 @@ class LiveCaptureAppConfigTest {
         when(applicationContext.getBean(PluginFactory.class)).thenReturn(pluginFactory);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class), any(SinkContext.class))).thenReturn(mockSink);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class);
-             MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
-
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
+        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class)) {
+            LiveCaptureManager mockManager = org.mockito.Mockito.mock(LiveCaptureManager.class);
+            mockedLiveCaptureManager.when(LiveCaptureManager::getInstance).thenReturn(mockManager);
 
             liveCaptureAppConfig.initializeLiveCaptureManager();
 
             // Verify LiveCaptureManager initialization
             mockedLiveCaptureManager.verify(() -> LiveCaptureManager.initialize(true, 2.0));
-            verify(mockOutputManager).initialize(any(Sink.class));
-            verify(mockOutputManager).enable();
+            verify(mockSink).initialize();
+            verify(mockManager).setOutputSink(any(Sink.class));
         }
     }
 
@@ -156,13 +149,13 @@ class LiveCaptureAppConfigTest {
         when(applicationContext.getBean(PluginFactory.class)).thenReturn(pluginFactory);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class), any(SinkContext.class))).thenReturn(mockSink);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class);
-             MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
-
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
+        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class)) {
+            LiveCaptureManager mockManager = org.mockito.Mockito.mock(LiveCaptureManager.class);
+            mockedLiveCaptureManager.when(LiveCaptureManager::getInstance).thenReturn(mockManager);
 
             liveCaptureAppConfig.initializeLiveCaptureManager();
-            verify(mockOutputManager).initialize(any(Sink.class));
+            verify(mockSink).initialize();
+            verify(mockManager).setOutputSink(any(Sink.class));
         }
     }
 }
