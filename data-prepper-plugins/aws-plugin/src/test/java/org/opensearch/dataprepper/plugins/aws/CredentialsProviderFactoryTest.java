@@ -117,6 +117,33 @@ class CredentialsProviderFactoryTest {
     }
 
     @Test
+    void getDefaultStsHeaderOverrides_returns_expected_headers() {
+        final Map<String, String> headerOverrides = Map.of(
+                "header1", "value1",
+                "header2", "value2",
+                "custom-header", "custom-value"
+        );
+        when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(headerOverrides);
+
+        final CredentialsProviderFactory credentialsProviderFactory = createObjectUnderTest();
+
+        final Map<String, String> actualHeaderOverrides = credentialsProviderFactory.getDefaultStsHeaderOverrides();
+
+        assertThat(actualHeaderOverrides, equalTo(headerOverrides));
+    }
+
+    @Test
+    void getDefaultStsHeaderOverrides_returns_null_when_not_configured() {
+        when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(null);
+
+        final CredentialsProviderFactory credentialsProviderFactory = createObjectUnderTest();
+
+        final Map<String, String> actualHeaderOverrides = credentialsProviderFactory.getDefaultStsHeaderOverrides();
+
+        assertThat(actualHeaderOverrides, nullValue());
+    }
+
+    @Test
     void getDefaultStsRoleArn_returns_from_default_configuration() {
         final String roleArn = "arn:aws:iam::123456789012:role/test-role";
         when(defaultStsConfiguration.getAwsStsRoleArn()).thenReturn(roleArn);
@@ -389,6 +416,47 @@ class CredentialsProviderFactoryTest {
             assertThat(backoffStrategy, instanceOf(EqualJitterBackoffStrategy.class));
 
             assertThat(retryPolicy.throttlingBackoffStrategy(), sameInstance(backoffStrategy));
+        }
+
+        @Test
+        void providerFromOptions_should_use_default_STS_Headers_when_credentialsOptions_HeaderOverrides_are_null() {
+            final String defaultHeaderName = "default-header";
+            final String defaultHeaderValue = "default-value";
+            final Map<String, String> defaultHeaders = Map.of(defaultHeaderName, defaultHeaderValue);
+
+            when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
+            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsHeaderOverrides()).thenReturn(null);
+            when(defaultStsConfiguration.getStsHeaderOverrides()).thenReturn(defaultHeaders);
+
+            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
+
+            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
+            final AwsCredentialsProvider actualCredentialsProvider;
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
+                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+
+            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(actualAssumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(actualAssumeRoleRequest.roleSessionName(), startsWith("Data-Prepper-"));
+            assertThat(actualAssumeRoleRequest.overrideConfiguration(), notNullValue());
+            assertThat(actualAssumeRoleRequest.overrideConfiguration().isPresent(), equalTo(true));
+            final AwsRequestOverrideConfiguration overrideConfiguration = actualAssumeRoleRequest.overrideConfiguration().get();
+            assertThat(overrideConfiguration.headers(), notNullValue());
+            assertThat(overrideConfiguration.headers().size(), equalTo(1));
+            assertThat(overrideConfiguration.headers(), hasKey(defaultHeaderName));
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName), notNullValue());
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName).size(), equalTo(1));
+            assertThat(overrideConfiguration.headers().get(defaultHeaderName), hasItem(defaultHeaderValue));
         }
     }
 
