@@ -27,7 +27,7 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
 
     @Override
     public Object translate(final String value) {
-x        final Matcher matcher = SECRETS_REF_PATTERN.matcher(value);
+        final Matcher matcher = SECRETS_REF_PATTERN.matcher(value);
         if (matcher.matches()) {
             final String secretId = matcher.group(SECRET_CONFIGURATION_ID_GROUP);
             final String secretKey = matcher.group(SECRET_KEY_GROUP);
