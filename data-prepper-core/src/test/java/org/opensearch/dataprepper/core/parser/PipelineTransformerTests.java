@@ -343,6 +343,16 @@ class PipelineTransformerTests {
     }
 
     @Test
+    void parseConfiguration_with_missing_source_should_fail() {
+        final PipelineTransformer pipelineTransformer =
+                createObjectUnderTest(TestDataProvider.MISSING_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
+
+        final Map<String, Pipeline> connectedPipelines =pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
+        assertThat(connectedPipelines.size(), equalTo(0));
+        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
+    }
+
+    @Test
     void parseConfiguration_with_missing_pipeline_name_in_multiple_pipelines_should_throw() {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE);

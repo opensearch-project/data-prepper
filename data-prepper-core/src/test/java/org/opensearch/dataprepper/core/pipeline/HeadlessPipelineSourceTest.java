@@ -86,7 +86,6 @@ class HeadlessPipelineSourceTest {
     }
 
     @Test
-    //@Timeout(value = 2000, unit = TimeUnit.MILLISECONDS)
     public void testSendEventsExceptionWithAcknowledgements() throws Exception {
         doThrow(RuntimeException.class).when(buffer).writeAll(any(Collection.class), any(Integer.class));
         headlessPipelineSource = createObjectUnderTest();

@@ -79,7 +79,7 @@ public class HeadlessPipelineSource implements Source<Record<Event>>, HeadlessPi
                 numberOfEventsSuccessful.increment(records.size());
                 break;
             } catch (Exception e) {
-                LOG.error(NOISY, "Failed to write to failure pipeline");
+                LOG.error(NOISY, "Failed to write to failure pipeline.", e);
                 if (acknowledgementsEnabled) {
                     /* If acknowledgements enabled, better to retry here than retrying from the beginning */
                     try {

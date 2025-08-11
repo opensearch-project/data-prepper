@@ -712,6 +712,7 @@ class PipelineTests {
         processorSets.forEach(processorSet -> processorSet.forEach(processor -> {
         assertThat(((TestProcessor)processor).getFailurePipeline(), equalTo(failurePipeline));
         }));
+        assertThat(sinks.size(), equalTo(1));
         for (Sink sink: sinks) {
             assertThat(((TestSink)sink).getFailurePipeline(), equalTo(failurePipeline));
         }
@@ -721,7 +722,6 @@ class PipelineTests {
         Collection<Record<Event>> records = mock(Collection.class);
         failurePipeline.sendEvents(records);
         verify(headlessPipelineSource).sendEvents(records);
-        //assertThat(testPipeline.areAcknowledgementsEnabled(), equalTo(false));
 
     }
 }

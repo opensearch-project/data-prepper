@@ -133,6 +133,17 @@ public class PipelineTransformer {
             Source source;
             if (!pipelineName.equals(failurePipelineName)) {
                 final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+                if (sourceSetting == null) {
+                    Exception e = new IllegalArgumentException(String.format("{}: Source must not be null", pipelineName));
+                    final PluginError pluginError = PluginError.builder()
+                            .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
+                            .pipelineName(pipelineName)
+                            .pluginName("UNKNOWN")
+                            .exception(e)
+                            .build();
+                    pluginErrorCollector.collectPluginError(pluginError);
+                    return;
+                }
                 final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                         pipelineMap, pipelineConfigurationMap);
                 source = pipelineSource.orElseGet(() -> {
