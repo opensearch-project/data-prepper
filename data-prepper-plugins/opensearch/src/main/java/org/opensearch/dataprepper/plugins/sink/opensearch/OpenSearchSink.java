@@ -679,7 +679,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             .withFailedData(FailedDlqData.builder()
                     .withDocument(event.toJsonString())
                     .withIndex(index)
-                    .withMessage(message)
+                    .withMessage(message != null ? message : "")
                     .build())
             .withPluginName(PLUGIN_NAME)
             .withPipelineName(pipeline)
