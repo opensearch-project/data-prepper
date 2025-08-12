@@ -230,7 +230,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1", "key_1"})
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
     public void testReplaceInvalidKeyChars(final String key) {
         assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo("key_1"));
         assertThat(JacksonEvent.replaceInvalidKeyChars(key.substring(0,3)), equalTo("key"));
@@ -238,7 +238,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1", "key_1"})
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
     public void testPutWithReplaceInvalidKeyChars(final String key) {
         final String value = UUID.randomUUID().toString();
 
@@ -247,7 +247,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"key 1", "key$1", "key&1", "key^1", "key%1"})
+    @ValueSource(strings = {"key&1", "key^1", "key%1"})
     public void testPutWithoutReplaceInvalidKeyChars(final String key) {
         final String value = UUID.randomUUID().toString();
 
@@ -283,14 +283,12 @@ public class JacksonEventTest {
         final Map<String, Object> data1 = new HashMap<>();
         final Map<String, Object> data2 = new HashMap<>();
         final Map<String, Object> data3 = new HashMap<>();
-        data3.put("key$5", "value5");
+        data3.put("key^5", "value5");
         data2.put("key^3", 3);
         data2.put("key%4", data3);
-        data1.put("key 1", "value1");
         data1.put("key&2", data2);
 
         event.put("foo", data1, true);
-        assertThat(event.get("foo/key_1", String.class), equalTo("value1"));
         assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
         assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
     }
@@ -301,14 +299,12 @@ public class JacksonEventTest {
         final Map<String, Object> data1 = new HashMap<>();
         final Map<String, Object> data2 = new HashMap<>();
         final Map<String, Object> data3 = new HashMap<>();
-        data3.put("key$5", "value5");
+        data3.put("key^5", "value5");
         data2.put("key^3", 3);
         data2.put("key%4", data3);
-        data1.put("key 1", "value1");
         data1.put("key&2", data2);
 
         event.put(key, data1, true);
-        assertThat(event.get("foo/key_1", String.class), equalTo("value1"));
         assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
         assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
     }

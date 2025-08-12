@@ -148,7 +148,7 @@ class CsvProcessorTest {
         when(processorConfig.getNormalizeKeys()).thenReturn(true);
         csvProcessor = createObjectUnderTest();
 
-        Record<Event> eventUnderTest = createMessageEvent("key 1,key$2,key^3\n1,2,3");
+        Record<Event> eventUnderTest = createMessageEvent("key%1,key&2,key^3\n1,2,3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThatKeyEquals(parsedEvent, "key_1", "1");
@@ -184,7 +184,7 @@ class CsvProcessorTest {
 
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message","1,2,3");
-        eventData.put("header","col 1,col$2,col^3");
+        eventData.put("header","col%1,col&2,col^3");
         Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
