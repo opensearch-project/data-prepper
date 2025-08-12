@@ -274,11 +274,6 @@ class OperatorConfiguration {
     }
 
     @Bean
-    public AddBinaryOperator concatOperator() {
-        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, null); 
-    }
-
-    @Bean
     public GenericTypeOfOperator typeOfOperator() {
         return new GenericTypeOfOperator(DataPrepperExpressionParser.TYPEOF, typeOf);
     }
