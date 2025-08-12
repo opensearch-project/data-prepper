@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.ml_inference.processor.common;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,10 +36,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -75,6 +82,8 @@ public class SageMakerBatchJobCreatorTest {
     private Counter counter;
     private ConcurrentLinkedQueue<Record<Event>> batch_records;
     private ConcurrentLinkedQueue<Record<Event>> processedBatchRecords;
+    private static final int NUM_THREADS = 5;
+    private static final int BATCH_SIZE = 100;
 
     @BeforeEach
     void setUp() {
@@ -325,6 +334,144 @@ public class SageMakerBatchJobCreatorTest {
             assertEquals(100, processedBatchRecords.size()); // Record should still be added but with failure tag
             assertTrue(batch_records.isEmpty());
         }
+    }
+
+    @Test
+    void testConcurrentAddProcessedBatchRecordsToResults() throws InterruptedException {
+        // Setup - First populate processedBatchRecords by processing a batch
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(NUM_THREADS);
+        final AtomicInteger successfulThreads = new AtomicInteger(0);
+
+        // Create initial batch to trigger processing
+        List<Record<Event>> initialBatch = new ArrayList<>();
+        for (int i = 0; i < BATCH_SIZE; i++) {
+            Record<Event> mockRecord = mock(Record.class);
+            Event mockEvent = mock(Event.class);
+            JsonNode mockJsonNode = mock(JsonNode.class);
+
+            when(mockRecord.getData()).thenReturn(mockEvent);
+            when(mockEvent.getJsonNode()).thenReturn(mockJsonNode);
+            when(mockJsonNode.get("bucket")).thenReturn(mock(JsonNode.class));
+            when(mockJsonNode.get("bucket").asText()).thenReturn("test-bucket");
+            when(mockJsonNode.get("key")).thenReturn(mock(JsonNode.class));
+            when(mockJsonNode.get("key").asText()).thenReturn("test-key-" + i);
+
+            initialBatch.add(mockRecord);
+        }
+
+        // Add records and process them to populate processedBatchRecords
+        sageMakerBatchJobCreator.createMLBatchJob(initialBatch, new ArrayList<>());
+        sageMakerBatchJobCreator.checkAndProcessBatch(); // This populates processedBatchRecords
+
+        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final List<List<Record<Event>>> threadResults = new ArrayList<>();
+
+        // Create separate result lists for each thread to avoid ArrayList thread safety issues
+        for (int i = 0; i < NUM_THREADS; i++) {
+            threadResults.add(new ArrayList<>());
+        }
+
+        // Create concurrent tasks
+        for (int i = 0; i < NUM_THREADS; i++) {
+            final int threadIndex = i;
+            executorService.submit(() -> {
+                try {
+                    startLatch.await(); // Wait for all threads to be ready
+
+                    // Each thread tries to add processed records to its own result list
+                    List<Record<Event>> threadResultList = threadResults.get(threadIndex);
+                    sageMakerBatchJobCreator.addProcessedBatchRecordsToResults(threadResultList);
+
+                    successfulThreads.incrementAndGet();
+                } catch (Exception e) {
+                    fail("Thread " + threadIndex + " failed with exception: " + e.getMessage(), e);
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+        }
+
+        // Start all threads simultaneously
+        startLatch.countDown();
+
+        // Wait for completion
+        assertTrue(completionLatch.await(10, TimeUnit.SECONDS));
+        executorService.shutdown();
+        assertTrue(executorService.awaitTermination(5, TimeUnit.SECONDS));
+
+        // Verify results
+        assertEquals(NUM_THREADS, successfulThreads.get());
+
+        // Verify that only ONE thread actually got the records (due to non-blocking lock)
+        int threadsWithResults = 0;
+        int totalRecords = 0;
+        for (List<Record<Event>> resultList : threadResults) {
+            if (!resultList.isEmpty()) {
+                threadsWithResults++;
+                totalRecords += resultList.size();
+            }
+        }
+
+        assertEquals(1, threadsWithResults, "Only one thread should have acquired the lock and gotten results");
+        assertEquals(BATCH_SIZE, totalRecords, "The successful thread should have gotten all processed records");
+    }
+
+    @Test
+    void testConcurrentCheckAndProcessBatch() throws InterruptedException {
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(NUM_THREADS);
+        final AtomicInteger processAttemptsCount = new AtomicInteger(0);
+        final AtomicInteger successfulProcessCount = new AtomicInteger(0);
+
+        // Create batch that meets the size requirement for processing
+        List<Record<Event>> initialBatch = new ArrayList<>();
+        for (int i = 0; i < BATCH_SIZE; i++) {
+            Record<Event> mockRecord = mock(Record.class);
+            Event mockEvent = mock(Event.class);
+            JsonNode mockJsonNode = mock(JsonNode.class);
+
+            when(mockRecord.getData()).thenReturn(mockEvent);
+            when(mockEvent.getJsonNode()).thenReturn(mockJsonNode);
+            when(mockJsonNode.get("bucket")).thenReturn(mock(JsonNode.class));
+            when(mockJsonNode.get("bucket").asText()).thenReturn("test-bucket");
+            when(mockJsonNode.get("key")).thenReturn(mock(JsonNode.class));
+            when(mockJsonNode.get("key").asText()).thenReturn("test-key-" + i);
+
+            initialBatch.add(mockRecord);
+        }
+
+        // Add the batch
+        sageMakerBatchJobCreator.createMLBatchJob(initialBatch, new ArrayList<>());
+        ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+
+        // Submit concurrent processing tasks
+        for (int i = 0; i < NUM_THREADS; i++) {
+            final int threadIndex = i;
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    processAttemptsCount.incrementAndGet();
+                    sageMakerBatchJobCreator.checkAndProcessBatch();
+                } catch (Exception e) {
+                    fail("Thread " + threadIndex + " failed with exception: " + e.getMessage(), e);
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+        }
+
+        // Start all threads simultaneously
+        startLatch.countDown();
+
+        // Wait for completion
+        assertTrue(completionLatch.await(10, TimeUnit.SECONDS));
+        executorService.shutdown();
+        assertTrue(executorService.awaitTermination(5, TimeUnit.SECONDS));
+
+        // Verify results
+        assertEquals(NUM_THREADS, processAttemptsCount.get(), "All threads should have attempted processing");
+        assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(), "Batch should be empty after processing");
     }
 
     // Helper methods
