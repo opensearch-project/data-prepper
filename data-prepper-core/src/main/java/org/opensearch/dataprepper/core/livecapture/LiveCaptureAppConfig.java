@@ -49,12 +49,9 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
     @EventListener(ContextRefreshedEvent.class)
     public void initializeLiveCaptureManager() {
         final LiveCaptureConfiguration config = dataPrepperConfiguration.getLiveCaptureConfiguration();
-        
         boolean enabled = config != null && config.isDefaultEnabled();
         double rate = config != null ? config.getDefaultRate() : 1.0;
-
         LiveCaptureManager.initialize(enabled, rate);
-
         if (config != null && config.getLiveCaptureOutputSinkConfig() != null) {
             initializeOutputSink(config);
         }
@@ -68,7 +65,6 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
         
         @SuppressWarnings("unchecked")
         Map<String, Object> configMap = (Map<String, Object>) sinkConfig;
-
         // Find the first non-metadata entry to create the sink
         for (Map.Entry<String, Object> entry : configMap.entrySet()) {
             if (!"entry_threshold".equals(entry.getKey()) && !"batch_size".equals(entry.getKey())) {
@@ -89,7 +85,6 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>) sinkSettings;
-
         PluginFactory pluginFactory = applicationContext.getBean(PluginFactory.class);
         PluginSetting pluginSetting = new PluginSetting(sinkType, settingsMap);
         pluginSetting.setPipelineName("live-capture-pipeline");

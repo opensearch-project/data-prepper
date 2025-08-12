@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 
 /**
  * Manages live capture functionality for Data Prepper events.
@@ -41,6 +42,7 @@ public class LiveCaptureManager {
     private volatile double currentRateLimit;
     private final Map<String, String> activeFilters;
     private volatile Sink<Record<Event>> outputSink;
+    private static final Map<String, Buffer<Record<Event>>> pipelineBuffers = new ConcurrentHashMap<>();
 
     private LiveCaptureManager(final boolean initialEnabled, final double eventsPerSecond) {
         this.enabled = new AtomicBoolean(initialEnabled);
@@ -238,6 +240,200 @@ public class LiveCaptureManager {
         } catch (Exception e) {
             LOG.error("Error processing live capture data: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Capture events from source stage - called from PipelineRunnerImpl.readFromBuffer()
+     * 
+     * @param records collection of records to potentially capture
+     * @param source the source instance
+     * @param pipelineName name of the pipeline
+     */
+    public static void captureSourceEvents(java.util.Collection records, Object source, String pipelineName) {
+        if (!getInstance().isEnabled()) return;
+        
+        String sourceName = extractPluginName(source, "Source");
+        
+        for (Object record : records) {
+            if (record instanceof Record) {
+                Record<Event> eventRecord = (Record<Event>) record;
+                if (eventRecord.getData() instanceof Event) {
+                    Event event = eventRecord.getData();
+                    LiveCaptureManager manager = getInstance();
+                    
+                    if (!shouldLiveCapture(event) && manager.shouldCaptureEventWithRateLimit(event)) {
+                        setLiveCapture(event, true);
+                        addLiveCaptureEntry(event, SOURCE, 
+                            "Event captured from " + sourceName + " source", null, pipelineName);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Capture events from processor stage - called from PipelineRunnerImpl.runProcessorsAndProcessAcknowledgements()
+     * 
+     * @param records collection of records to potentially capture
+     * @param processor the processor instance
+     */
+    public static void captureProcessorEvents(java.util.Collection records, Object processor) {
+        if (!getInstance().isEnabled()) return;
+        
+        String processorName = extractPluginName(processor, "Processor");
+        
+        for (Object record : records) {
+            if (record instanceof Record) {
+                Record<Event> eventRecord = (Record<Event>) record;
+                if (eventRecord.getData() instanceof Event) {
+                    Event event = eventRecord.getData();
+                    
+                    if (shouldLiveCapture(event)) {
+                        addLiveCaptureEntry(event, PROCESSOR,
+                            "After " + processorName + " processor execution", processorName, null);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Capture route information - called from Router.route()
+     * 
+     * @param allRecords collection of all records being routed
+     * @param recordsToRoutes map of records to their matched routes
+     */
+    public static void captureRouteEvents(java.util.Collection allRecords, java.util.Map recordsToRoutes) {
+        if (!getInstance().isEnabled()) return;
+        
+        for (Object record : allRecords) {
+            if (record instanceof Record) {
+                Record eventRecord = (Record) record;
+                if (eventRecord.getData() instanceof Event) {
+                    Event event = (Event) eventRecord.getData();
+                    
+                    if (shouldLiveCapture(event)) {
+                        @SuppressWarnings("unchecked")
+                        java.util.Set<String> matchedRoutes = (java.util.Set<String>) recordsToRoutes.get(record);
+                        
+                        if (matchedRoutes != null && !matchedRoutes.isEmpty()) {
+                            for (String routeName : matchedRoutes) {
+                                addLiveCaptureEntry(event, ROUTE,
+                                    "Event matched route: " + routeName, routeName, null);
+                            }
+                        } else {
+                            addLiveCaptureEntry(event, ROUTE,
+                                "Event matched no routes", "_no_route", null);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Capture sink events - called from Pipeline.publishToSinks()
+     * 
+     * @param events collection of events being sent to sink
+     * @param sink the sink instance
+     */
+    public static void captureSinkEvents(java.util.Collection events, Object sink) {
+        if (!getInstance().isEnabled()) return;
+        
+        String sinkName = extractPluginName(sink, "Sink");
+        
+        for (Object record : events) {
+            if (record instanceof Record) {
+                Record eventRecord = (Record) record;
+                if (eventRecord.getData() instanceof Event) {
+                    Event event = (Event) eventRecord.getData();
+                    
+                    if (shouldLiveCapture(event)) {
+                        addLiveCaptureEntry(event, SINK,
+                            "Received by sink " + sinkName, sinkName, null);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Process all live capture data after pipeline completion - called from PipelineRunnerImpl
+     * 
+     * @param records collection of completed records to process
+     */
+    public static void processCompletedEvents(java.util.Collection records) {
+        if (!getInstance().isEnabled()) return;
+        
+        for (Object record : records) {
+            if (record instanceof Record) {
+                Record<Event> eventRecord = (Record<Event>) record;
+                if (eventRecord.getData() instanceof Event) {
+                    Event event = eventRecord.getData();
+                    
+                    if (shouldLiveCapture(event)) {
+                        List<Map<String, Object>> liveCaptureEntries = getLiveCaptureOutput(event);
+                        if (liveCaptureEntries != null && !liveCaptureEntries.isEmpty()) {
+                            getInstance().processEventLiveCapture(liveCaptureEntries);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Consolidated method to extract plugin names from instances
+     */
+    private static String extractPluginName(Object plugin, String suffix) {
+        if (plugin == null) return "unknown";
+        
+        String className = plugin.getClass().getSimpleName();
+        
+        // Remove suffix
+        if (className.endsWith(suffix)) {
+            className = className.substring(0, className.length() - suffix.length());
+        }
+        
+        // Convert CamelCase to snake_case for processors, lowercase for others
+        if ("Processor".equals(suffix)) {
+            return className.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+        } else {
+            return className.toLowerCase();
+        }
+    }
+    
+    // getting buffers and pipeline names for injecting events
+    /**
+     * Gets the buffer for a specific pipeline by name.
+     * Used for live capture event injection.
+     * 
+     * @param pipelineName the name of the pipeline
+     * @return the buffer for the pipeline, or null if not found
+     */
+    public static Buffer<Record<Event>> getPipelineBuffer(final String pipelineName) {
+        return pipelineBuffers.get(pipelineName);
+    }
+
+    /**
+     * Gets all available pipeline names.
+     * Used for live capture event injection validation.
+     * 
+     * @return set of pipeline names
+     */
+    public static java.util.Set<String> getAvailablePipelines() {
+        return pipelineBuffers.keySet();
+    }
+    
+    /**
+     * Stores a pipeline buffer for event injection.
+     * Called during pipeline creation.
+     * 
+     * @param pipelineName the name of the pipeline
+     * @param buffer the pipeline buffer
+     */
+    public static void storePipelineBuffer(final String pipelineName, final Buffer<Record<Event>> buffer) {
+        pipelineBuffers.put(pipelineName, buffer);
     }
 
 }

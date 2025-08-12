@@ -219,6 +219,7 @@ class LiveCaptureManagerTest {
         assertThat(shouldCapture, is(false));
     }
 
+
     @Test
     void testGetInstance() {
         LiveCaptureManager instance1 = LiveCaptureManager.getInstance();
