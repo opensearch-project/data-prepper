@@ -29,19 +29,18 @@ import java.util.Map;
 
 /**
  * Spring configuration for live capture functionality.
- * Sets up beans and initializes the live capture manager with configuration values.
  */
 @Configuration
 public class LiveCaptureAppConfig implements ApplicationContextAware {
-
     private static final Logger LOG = LoggerFactory.getLogger(LiveCaptureAppConfig.class);
-
     private final DataPrepperConfiguration dataPrepperConfiguration;
+    private final LiveCaptureManager liveCaptureManager;
     private ApplicationContext applicationContext;
 
     @Inject
-    public LiveCaptureAppConfig(final DataPrepperConfiguration dataPrepperConfiguration) {
+    public LiveCaptureAppConfig(final DataPrepperConfiguration dataPrepperConfiguration, final LiveCaptureManager liveCaptureManager) {
         this.dataPrepperConfiguration = dataPrepperConfiguration;
+        this.liveCaptureManager = liveCaptureManager;
     }
 
     @Override
@@ -49,100 +48,78 @@ public class LiveCaptureAppConfig implements ApplicationContextAware {
         this.applicationContext = applicationContext;
     }
 
-
     @EventListener(ContextRefreshedEvent.class)
     public void initializeLiveCaptureManager() {
-        final LiveCaptureConfiguration liveCaptureConfig = dataPrepperConfiguration.getLiveCaptureConfiguration();
-        
-        boolean defaultEnabled = liveCaptureConfig != null && liveCaptureConfig.isDefaultEnabled();
-        double defaultRate = liveCaptureConfig != null ? liveCaptureConfig.getDefaultRate() : 1.0;
-
-        LiveCaptureManager.initialize(defaultEnabled, defaultRate);
-        LOG.info("LiveCaptureManager initialized with default enabled: {}, default rate: {}",
-                defaultEnabled, defaultRate);
-
-        // Initialize LiveCaptureOutputManager if sink configuration is present
-        if (liveCaptureConfig != null && liveCaptureConfig.getLiveCaptureOutputSinkConfig() != null) {
-            initializeLiveCaptureOutputManager(liveCaptureConfig);
-            
-            // Sync output manager state with live capture default state
-            if (defaultEnabled) {
-                LiveCaptureOutputManager.getInstance().enable();
-            } else {
-                LiveCaptureOutputManager.getInstance().disable();
-            }
+        final LiveCaptureConfiguration config = dataPrepperConfiguration.getLiveCaptureConfiguration();
+        boolean enabled = config != null && config.isDefaultEnabled();
+        double rate = config != null ? config.getDefaultRate() : 1.0;
+        liveCaptureManager.initialize(enabled, rate);
+        if (config != null && config.getFirstSinkConfiguration() != null) {
+            initializeOutputSink(config);
         }
     }
 
-    /**
-     * Initializes the LiveCaptureOutputManager with the configured sink.
-     */
-    private void initializeLiveCaptureOutputManager(final LiveCaptureConfiguration liveCaptureConfig) {
-        Object sinkConfig = liveCaptureConfig.getLiveCaptureOutputSinkConfig();
+    private void initializeOutputSink(final LiveCaptureConfiguration config) {
+        final Object sinkConfig = config.getFirstSinkConfiguration();
         if (!(sinkConfig instanceof Map)) {
+            LOG.warn("Live capture sink configuration must be a map, but was: {}", 
+                sinkConfig != null ? sinkConfig.getClass().getSimpleName() : "null");
             return;
         }
         
         @SuppressWarnings("unchecked")
-        Map<String, Object> sinkConfigMap = (Map<String, Object>) sinkConfig;
+        final Map<String, Object> configMap = (Map<String, Object>) sinkConfig;
         
-        int entryThreshold = getIntValue(sinkConfigMap, "entry_threshold", 1);
-        int batchSize = getIntValue(sinkConfigMap, "batch_size", 1);
-        
-        Sink<Record<Event>> eventSink = null;
-        for (Map.Entry<String, Object> entry : sinkConfigMap.entrySet()) {
+        // Find the first non-metadata entry to create the sink
+        for (final Map.Entry<String, Object> entry : configMap.entrySet()) {
             if (!"entry_threshold".equals(entry.getKey()) && !"batch_size".equals(entry.getKey())) {
-                eventSink = createPluginBasedSink(entry.getKey(), entry.getValue());
+                final Sink<Record<Event>> sink = createSink(entry.getKey(), entry.getValue());
+                if (sink != null) {
+                    sink.initialize();
+                    liveCaptureManager.setOutputSink(sink);
+                    LOG.info("Initialized live capture output sink: {}", entry.getKey());
+                } else {
+                    LOG.warn("Failed to create live capture sink: {}", entry.getKey());
+                }
                 break;
             }
         }
-        
-        if (eventSink != null) {
-            LiveCaptureOutputManager.getInstance().initialize(eventSink, entryThreshold, batchSize);
-            LOG.info("LiveCaptureOutputManager initialized with sink: {}", eventSink.getClass().getSimpleName());
+    }
+
+    private Sink<Record<Event>> createSink(final String sinkType, final Object sinkSettings) {
+        if (!(sinkSettings instanceof Map)) {
+            LOG.warn("Sink settings for '{}' must be a map, but was: {}", sinkType, 
+                sinkSettings != null ? sinkSettings.getClass().getSimpleName() : "null");
+            return null;
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            final Map<String, Object> settingsMap = (Map<String, Object>) sinkSettings;
+            final PluginFactory pluginFactory = applicationContext.getBean(PluginFactory.class);
+            final PluginSetting pluginSetting = new PluginSetting(sinkType, settingsMap);
+            pluginSetting.setPipelineName("live-capture-pipeline");
+
+            @SuppressWarnings("unchecked")
+            final Sink<Record<Event>> sink = (Sink<Record<Event>>) pluginFactory.loadPlugin(
+                    Sink.class, pluginSetting, new SinkContext(null));
+
+            return sink;
+        } catch (Exception e) {
+            LOG.error("Failed to create sink '{}' with settings: {}", sinkType, sinkSettings, e);
+            return null;
         }
     }
 
-    private int getIntValue(Map<String, Object> map, String key, int defaultValue) {
-        Object value = map.get(key);
-        return value instanceof Number ? ((Number) value).intValue() : defaultValue;
-    }
-    
-    private Sink<Record<Event>> createPluginBasedSink(String sinkType, Object sinkSettings) {
-        if (!(sinkSettings instanceof Map)) {
-            return null;
-        }
-        
-        @SuppressWarnings("unchecked")
-        Map<String, Object> settingsMap = (Map<String, Object>) sinkSettings;
-        
-        PluginFactory pluginFactory = applicationContext.getBean(PluginFactory.class);
-        PluginSetting pluginSetting = new PluginSetting(sinkType, settingsMap);
-        pluginSetting.setPipelineName("live-capture-pipeline");
-        
-        @SuppressWarnings("unchecked")
-        Sink<Record<Event>> sink = (Sink<Record<Event>>) pluginFactory.loadPlugin(
-            Sink.class, pluginSetting, new SinkContext(null));
-        
-        return sink;
-    }
-    
 
     @PreDestroy
     public void shutdownLiveCapture() {
-        LiveCaptureOutputManager.getInstance().shutdown();
+        LOG.debug("Live capture shutdown - sink lifecycle managed independently");
     }
 
-    /**
-     * Creates the LiveCaptureHandler bean for handling REST API requests.
-     *
-     * @param eventFactory the event factory to use
-     * @return the LiveCaptureHandler instance
-     */
-//    @Bean
-////    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory) {
-////        return new LiveCaptureHandler(eventFactory);
-////    }
-
+    @Bean
+    public LiveCaptureHandler liveCaptureHandler(final EventFactory eventFactory, final LiveCaptureManager liveCaptureManager) {
+        return new LiveCaptureHandler(eventFactory, liveCaptureManager);
+    }
 
 }

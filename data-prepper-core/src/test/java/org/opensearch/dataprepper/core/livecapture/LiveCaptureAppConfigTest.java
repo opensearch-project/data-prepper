@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.core.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -24,7 +23,6 @@ import org.springframework.context.ApplicationContext;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,8 +38,6 @@ class LiveCaptureAppConfigTest {
     @Mock
     private EventFactory defaultEventFactory;
 
-    @Mock
-    private LiveCaptureOutputManager mockOutputManager;
 
     @Mock
     private ApplicationContext applicationContext;
@@ -52,11 +48,14 @@ class LiveCaptureAppConfigTest {
     @Mock
     private Sink<Record<Event>> mockSink;
 
+    @Mock
+    private LiveCaptureManager liveCaptureManager;
+
     private LiveCaptureAppConfig liveCaptureAppConfig;
 
     @BeforeEach
     void setUp() {
-        liveCaptureAppConfig = new LiveCaptureAppConfig(dataPrepperConfiguration);
+        liveCaptureAppConfig = new LiveCaptureAppConfig(dataPrepperConfiguration, liveCaptureManager);
         liveCaptureAppConfig.setApplicationContext(applicationContext);
     }
 
@@ -66,34 +65,26 @@ class LiveCaptureAppConfigTest {
         when(liveCaptureConfiguration.isDefaultEnabled()).thenReturn(true);
         when(liveCaptureConfiguration.getDefaultRate()).thenReturn(5.0);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class)) {
-            liveCaptureAppConfig.initializeLiveCaptureManager();
+        liveCaptureAppConfig.initializeLiveCaptureManager();
 
-            mockedLiveCaptureManager.verify(() -> LiveCaptureManager.initialize(true, 5.0));
-        }
+        verify(liveCaptureManager).initialize(true, 5.0);
     }
 
     @Test
     void initializeLiveCaptureManager_with_null_configuration() {
         when(dataPrepperConfiguration.getLiveCaptureConfiguration()).thenReturn(null);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class)) {
-            liveCaptureAppConfig.initializeLiveCaptureManager();
+        liveCaptureAppConfig.initializeLiveCaptureManager();
 
-            // Should use defaults: enabled=false, rate=1.0
-            mockedLiveCaptureManager.verify(() -> LiveCaptureManager.initialize(false, 1.0));
-        }
+        // Should use defaults: enabled=false, rate=1.0
+        verify(liveCaptureManager).initialize(false, 1.0);
     }
 
     @Test
-    void shutdownLiveCapture_calls_output_manager_shutdown() {
-        try (MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
-
-            liveCaptureAppConfig.shutdownLiveCapture();
-
-            verify(mockOutputManager).shutdown();
-        }
+    void shutdownLiveCapture_completes_successfully() {
+        // Test that shutdown method completes without error
+        liveCaptureAppConfig.shutdownLiveCapture();
+        // No verification needed since shutdown is now a no-op with debug logging
     }
 
 
@@ -116,26 +107,18 @@ class LiveCaptureAppConfigTest {
         when(dataPrepperConfiguration.getLiveCaptureConfiguration()).thenReturn(liveCaptureConfiguration);
         when(liveCaptureConfiguration.isDefaultEnabled()).thenReturn(true);
         when(liveCaptureConfiguration.getDefaultRate()).thenReturn(2.0);
-        when(liveCaptureConfiguration.getLiveCaptureOutputSinkConfig()).thenReturn(sinkConfig);
+        when(liveCaptureConfiguration.getFirstSinkConfiguration()).thenReturn(sinkConfig);
 
         // Mock PluginFactory to return a mock sink
         when(applicationContext.getBean(PluginFactory.class)).thenReturn(pluginFactory);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class), any(SinkContext.class))).thenReturn(mockSink);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class);
-             MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
+        liveCaptureAppConfig.initializeLiveCaptureManager();
 
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
-
-            liveCaptureAppConfig.initializeLiveCaptureManager();
-
-            // Verify LiveCaptureManager initialization
-            mockedLiveCaptureManager.verify(() -> LiveCaptureManager.initialize(true, 2.0));
-
-            // Verify output manager initialization with plugin-based sink
-            verify(mockOutputManager).initialize(any(Sink.class), any(Integer.class), any(Integer.class));
-            verify(mockOutputManager).enable();
-        }
+        // Verify LiveCaptureManager initialization
+        verify(liveCaptureManager).initialize(true, 2.0);
+        verify(mockSink).initialize();
+        verify(liveCaptureManager).setOutputSink(any(Sink.class));
     }
 
     @Test
@@ -152,21 +135,14 @@ class LiveCaptureAppConfigTest {
         when(dataPrepperConfiguration.getLiveCaptureConfiguration()).thenReturn(liveCaptureConfiguration);
         when(liveCaptureConfiguration.isDefaultEnabled()).thenReturn(false);
         when(liveCaptureConfiguration.getDefaultRate()).thenReturn(1.0);
-        when(liveCaptureConfiguration.getLiveCaptureOutputSinkConfig()).thenReturn(sinkConfig);
+        when(liveCaptureConfiguration.getFirstSinkConfiguration()).thenReturn(sinkConfig);
 
         // Mock PluginFactory to return a mock sink
         when(applicationContext.getBean(PluginFactory.class)).thenReturn(pluginFactory);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class), any(SinkContext.class))).thenReturn(mockSink);
 
-        try (MockedStatic<LiveCaptureManager> mockedLiveCaptureManager = mockStatic(LiveCaptureManager.class);
-             MockedStatic<LiveCaptureOutputManager> mockedOutputManager = mockStatic(LiveCaptureOutputManager.class)) {
-
-            mockedOutputManager.when(LiveCaptureOutputManager::getInstance).thenReturn(mockOutputManager);
-
-            liveCaptureAppConfig.initializeLiveCaptureManager();
-
-            // Verify that initialize was called with a Sink (which would be our plugin-based sink)
-            verify(mockOutputManager).initialize(any(Sink.class), any(Integer.class), any(Integer.class));
-        }
+        liveCaptureAppConfig.initializeLiveCaptureManager();
+        verify(mockSink).initialize();
+        verify(liveCaptureManager).setOutputSink(any(Sink.class));
     }
 }

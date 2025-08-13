@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.core.pipeline.router;
 
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureManager;
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -43,6 +44,10 @@ public class Router {
 
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
 
+        // live capture hook for route events
+        if (LiveCaptureManager.getInstance().isEnabled()) {
+            LiveCaptureManager.captureRouteEvents(allRecords, recordsToRoutes);
+        }
         boolean allRecordsRouted = false;
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {

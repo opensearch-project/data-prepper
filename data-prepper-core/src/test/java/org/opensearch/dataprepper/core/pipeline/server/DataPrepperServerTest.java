@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureHandler;
 import org.opensearch.dataprepper.plugins.encryption.EncryptionHttpHandler;
 
 import java.net.InetSocketAddress;
@@ -53,6 +54,9 @@ public class DataPrepperServerTest {
     private GetPipelinesHandler getPipelinesHandler;
 
     @Mock
+    private LiveCaptureHandler liveCaptureHandler;
+
+    @Mock
     private EncryptionHttpHandler encryptionHttpHandler;
 
     @Mock
@@ -70,7 +74,7 @@ public class DataPrepperServerTest {
     @AfterEach
     public void tearDown() {
         verifyNoMoreInteractions(server, httpServerProvider, listPipelinesHandler, shutdownHandler,
-                prometheusMeterRegistry, authenticator, context, socketAddress);
+                liveCaptureHandler, prometheusMeterRegistry, authenticator, context, socketAddress);
     }
 
     @Test
@@ -89,7 +93,7 @@ public class DataPrepperServerTest {
         verifyServerStart();
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
-        verify(context, times(5)).setAuthenticator(eq(authenticator));
+        verify(context, times(6)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -103,7 +107,7 @@ public class DataPrepperServerTest {
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/encryption/rotate"), any(EncryptionHttpHandler.class));
-        verify(context, times(6)).setAuthenticator(eq(authenticator));
+        verify(context, times(7)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -114,7 +118,7 @@ public class DataPrepperServerTest {
         dataPrepperServer.start();
 
         verifyServerStart();
-        verify(context, times(3)).setAuthenticator(eq(authenticator));
+        verify(context, times(4)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -183,6 +187,6 @@ public class DataPrepperServerTest {
                                                     final Authenticator authenticator,
                                                     final EncryptionHttpHandler encryptionHttpHandler) {
         return new DataPrepperServer(
-                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, encryptionHttpHandler, prometheusMeterRegistry, authenticator);
+                httpServerProvider, listPipelinesHandler, shutdownHandler, getPipelinesHandler, liveCaptureHandler, encryptionHttpHandler, prometheusMeterRegistry, authenticator);
     }
 }

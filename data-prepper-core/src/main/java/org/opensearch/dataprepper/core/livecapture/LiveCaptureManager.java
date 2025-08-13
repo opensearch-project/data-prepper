@@ -6,287 +6,196 @@
 package org.opensearch.dataprepper.core.livecapture;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.springframework.stereotype.Component;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.RateLimiter;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+
+import static java.lang.Boolean.TRUE;
+import static java.util.Collections.singletonList;
 
 /**
  * Manages live capture functionality for Data Prepper events.
- * Coordinates event marking, rate limiting, and capture entry management.
+ * Handles event marking, filtering, rate limiting, capture entry management, and output processing.
  */
+@Component
 public class LiveCaptureManager {
     private static final Logger LOG = LoggerFactory.getLogger(LiveCaptureManager.class);
     public static final String LIVE_CAPTURE_FLAG = "liveCapture";
     public static final String LIVE_CAPTURE_OUTPUT = "liveCaptureOutput";
-    public static final String LIVE_CAPTURE_TRACE_ID = "liveCapture_traceId";
-    
+    public static final String SOURCE = "Source";
+    public static final String PROCESSOR = "Processor";
+    public static final String ROUTE = "Route";
+    public static final String SINK = "Sink";
     private static volatile LiveCaptureManager INSTANCE;
     
     private final AtomicBoolean enabled;
-    private volatile SimpleRateLimiter rateLimiter;
+    private volatile RateLimiter rateLimiter;
+    private volatile double currentRateLimit;
     private final Map<String, String> activeFilters;
-    private final ConcurrentLinkedQueue<Map<String, Object>> storedEntries;
-    private final AtomicInteger entryCount;
-    
-    private LiveCaptureManager(final boolean initialEnabled, final double eventsPerSecond) {
-        this.enabled = new AtomicBoolean(initialEnabled);
-        this.rateLimiter = new SimpleRateLimiter(eventsPerSecond);
+    private volatile Sink<Record<Event>> outputSink;
+    private final Map<String, Buffer<Record<Event>>> pipelineBuffers = new ConcurrentHashMap<>();
+
+    public LiveCaptureManager() {
+        this.enabled = new AtomicBoolean(false);
+        this.rateLimiter = RateLimiter.create(1.0);
+        this.currentRateLimit = 1.0;
         this.activeFilters = new ConcurrentHashMap<>();
-        this.storedEntries = new ConcurrentLinkedQueue<>();
-        this.entryCount = new AtomicInteger(0);
     }
-    
-    /**
-     * Initializes the singleton instance of LiveCaptureManager.
-     * 
-     * @param initialEnabled whether live capture is initially enabled
-     * @param eventsPerSecond the initial rate limit for events per second
-     */
-    public static synchronized void initialize(final boolean initialEnabled, final double eventsPerSecond) {
-        if (INSTANCE == null) {
-            INSTANCE = new LiveCaptureManager(initialEnabled, eventsPerSecond);
-            LOG.info("LiveCaptureManager initialized: enabled={}, rate={}", initialEnabled, eventsPerSecond);
-        } else {
-            // Allow updating enabled state and rate after initialization
-            INSTANCE.enabled.set(initialEnabled);
-            INSTANCE.rateLimiter = new SimpleRateLimiter(eventsPerSecond);
-            LOG.info("LiveCaptureManager updated: enabled={}, rate={}", initialEnabled, eventsPerSecond);
-        }
+
+    public void initialize(final boolean initialEnabled, final double eventsPerSecond) {
+        this.enabled.set(initialEnabled);
+        this.rateLimiter = RateLimiter.create(eventsPerSecond);
+        this.currentRateLimit = eventsPerSecond;
+        // Set the static instance for backward compatibility
+        INSTANCE = this;
+        LOG.info("LiveCaptureManager initialized: enabled={}, rate={}", initialEnabled, eventsPerSecond);
     }
-    
-    /**
-     * @return the singleton instance of LiveCaptureManager
-     */
-    public static LiveCaptureManager getInstance() {
+
+    // Static methods for backward compatibility with non-Spring managed classes
+    public static synchronized LiveCaptureManager getInstance() {
         if (INSTANCE == null) {
-            initialize(false, 1.0);
+            // Fallback instance for non-Spring contexts
+            INSTANCE = new LiveCaptureManager();
+            INSTANCE.initialize(false, 1.0);
         }
         return INSTANCE;
     }
-    
-    /**
-     * Checks if an event is marked for live capture via metadata.
-     * 
-     * @param event the event to check
-     * @return true if the event is marked for live capture
-     */
-    public static boolean isLiveCapture(final Event event) {
+    public static boolean shouldLiveCapture(final Event event) {
         Object flag = event.getMetadata().getAttribute(LIVE_CAPTURE_FLAG);
-        return Boolean.TRUE.equals(flag);
+        return TRUE.equals(flag);
     }
-    
-    /**
-     * Marks an event for live capture and creates the output list.
-     * Also assigns a unique trace ID for grouping related entries.
-     * 
-     * @param event the event to mark
-     * @param liveCapture whether to mark the event for live capture
-     */
+
     public static void setLiveCapture(final Event event, final boolean liveCapture) {
         final EventMetadata md = event.getMetadata();
         md.setAttribute(LIVE_CAPTURE_FLAG, liveCapture);
         if (liveCapture && md.getAttribute(LIVE_CAPTURE_OUTPUT) == null) {
             md.setAttribute(LIVE_CAPTURE_OUTPUT, new ArrayList<Map<String, Object>>());
-            // Add unique trace ID for grouping entries from the same event
-            String traceId = UUID.randomUUID().toString();
-            md.setAttribute(LIVE_CAPTURE_TRACE_ID, traceId);
         }
     }
-    
-    public static void addLiveCaptureEntry(
-            final Event event,
-            final String stage,
-            final String description,
-            final String name,
-            final String pipelineName) {
-        
-        if (!isLiveCapture(event)) return;
-        
-        String traceId = (String) event.getMetadata().getAttribute(LIVE_CAPTURE_TRACE_ID);
-        
+
+    public static void addLiveCaptureEntry(final Event event, final String stage, 
+            final String description, final String name, final String pipelineName) {
+        if (!shouldLiveCapture(event)) return;
+
         Map<String, Object> entry = new HashMap<>();
-        entry.put("traceId", traceId);
         entry.put("stage", stage);
         entry.put("eventTime", Instant.now().toString());
         entry.put("logMessage", description);
-        
-        if ("Source".equals(stage) && pipelineName != null) {
+        entry.put("captureMetaData", createCaptureMetadata(event, stage, name));
+
+        if (SOURCE.equals(stage) && pipelineName != null) {
             entry.put("pipelineName", pipelineName);
         }
-        
-        Map<String, Object> captureMetaData = createCaptureMetadata(event, stage, name);
-        entry.put("captureMetaData", captureMetaData);
-        
+
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> output = (List<Map<String, Object>>) event.getMetadata().getAttribute(LIVE_CAPTURE_OUTPUT);
         if (output != null) {
             output.add(entry);
         }
-        
-        getInstance().storeEntry(entry);
     }
-    
-    /**
-     * Gets the live capture output list from an event.
-     * 
-     * @param event the event to get the output from
-     * @return the live capture output list
-     */
+
     @SuppressWarnings("unchecked")
     public static List<Map<String, Object>> getLiveCaptureOutput(final Event event) {
         return (List<Map<String, Object>>) event.getMetadata().getAttribute(LIVE_CAPTURE_OUTPUT);
     }
-    
-    /**
-     * Clones an event while preserving live capture metadata.
-     * 
-     * @param original the original event to clone
-     * @return the cloned event with live capture metadata
-     */
-    public static Event cloneEventWithLiveCapture(final Event original) {
-        Event cloned = JacksonEvent.fromEvent(original);
-        if (isLiveCapture(original)) {
-            setLiveCapture(cloned, true);
-            List<Map<String, Object>> history = getLiveCaptureOutput(original);
-            if (history != null) {
-                cloned.getMetadata().setAttribute(LIVE_CAPTURE_OUTPUT, new ArrayList<>(history));
-            }
-        }
-        return cloned;
-    }
-    
-    /**
-     * Turns live capture on or off. Disabling clears all filters.
-     * 
-     * @param flag whether to enable or disable live capture
-     */
-    public void setEnabled(final boolean flag) {
+
+    public void setEnabled(final boolean flag, final boolean clearFilters) {
         enabled.set(flag);
-        if (!flag) {
+        if (!flag && clearFilters) {
             activeFilters.clear();
         }
-        LOG.info("Live capture {}", flag ? "enabled" : "disabled");
+        LOG.info("Live capture {} (filters {})", 
+                flag ? "enabled" : "disabled",
+                !flag && clearFilters ? "cleared" : 
+                activeFilters.isEmpty() ? "none" : "preserved");
     }
-    
-    /**
-     * @return true if live capture is enabled
-     */
+
+
+    public void setEnabled(final boolean flag) {
+        setEnabled(flag, true);
+    }
+
     public boolean isEnabled() {
         return enabled.get();
     }
-    
-    /**
-     * Updates the global rate limit (events per second).
-     * 
-     * @param eps the new events per second rate
-     */
+
     public void setRateLimit(final double eps) {
-        rateLimiter = new SimpleRateLimiter(eps);
+        rateLimiter = RateLimiter.create(eps);
+        currentRateLimit = eps;
         LOG.info("Live capture rate set to {} eps", eps);
     }
-    
-    /**
-     * @return the current rate limit in events per second
-     */
+
     public double getRateLimit() {
-        return rateLimiter.getRate();
+        return currentRateLimit;
     }
-    
-    /**
-     * Adds a filter for selective event capture.
-     * 
-     * @param name the filter name
-     * @param expr the filter expression
-     */
+
+
     public void addFilter(final String name, final String expr) {
         activeFilters.put(name, expr);
         LOG.info("Live-capture filter added: {} = {}", name, expr);
     }
-    
-    /**
-     * Clears all active filters.
-     */
+
     public void clearFilters() {
         activeFilters.clear();
         LOG.info("Live-capture filters cleared");
     }
-    
-    /**
-     * @return true if there are active filters for selective event capture
-     */
+
     public boolean hasActiveFilters() {
         return !activeFilters.isEmpty();
     }
-    
-    /**
-     * Decides whether this event should be marked at birth.
-     * 
-     * @param event the event to evaluate
-     * @return true if the event should be captured
-     */
+
     public boolean shouldCaptureEvent(final Event event) {
-        if (!enabled.get()) {
-            return false;
-        }
-        return activeFilters.isEmpty() || matchesFilters(event);
+        return enabled.get() && (activeFilters.isEmpty() || matchesFilters(event));
     }
-    
-    /**
-     * Decides whether this event should be marked at birth, including rate limiting.
-     * This method should only be called at the Source stage when events are first created.
-     * 
-     * @param event the event to evaluate
-     * @return true if the event should be captured after applying rate limiting
-     */
+
     public boolean shouldCaptureEventWithRateLimit(final Event event) {
-        if (!shouldCaptureEvent(event)) {
-            return false;
-        }
-        
-        // Apply rate limiting only at event creation time
-        return rateLimiter.tryAcquire();
+        return shouldCaptureEvent(event) && rateLimiter.tryAcquire();
     }
-    
+
     private static Map<String, Object> createCaptureMetadata(Event event, String stage, String name) {
         Map<String, Object> captureMetaData = new HashMap<>();
         captureMetaData.put("event", event.toMap());
-        
+
         switch (stage) {
-            case "Source":
+            case SOURCE:
                 String ingestionMethod = extractIngestionMethod(event);
                 if (ingestionMethod != null) {
                     captureMetaData.put("ingestionMethod", ingestionMethod);
                 }
                 break;
-            case "Processor":
+            case PROCESSOR:
                 if (name != null) captureMetaData.put("processorName", name);
                 break;
-            case "Route":
+            case ROUTE:
                 if (name != null) captureMetaData.put("routeName", name);
                 break;
-            case "Sink":
+            case SINK:
                 if (name != null) captureMetaData.put("sinkName", name);
                 break;
         }
-        
+
         return captureMetaData;
     }
-    
+
     private boolean matchesFilters(final Event event) {
         if (activeFilters.isEmpty()) return true;
-        
+
         try {
             Map<String, Object> eventData = event.toMap();
             return activeFilters.entrySet().stream().allMatch(filter -> {
@@ -298,59 +207,202 @@ public class LiveCaptureManager {
             return false;
         }
     }
-    
+
     private static String extractIngestionMethod(final Event event) {
         EventMetadata metadata = event.getMetadata();
         Object ingestionMethod = metadata.getAttribute("ingestionMethod");
         if (ingestionMethod != null) {
             return ingestionMethod.toString();
         }
-        
+
         String eventType = metadata.getEventType();
         if (eventType != null) {
             return eventType;
         }
-        
+
         return "unknown";
     }
-    
-    private void storeEntry(final Map<String, Object> entry) {
-        entry.put("entryId", System.currentTimeMillis() + "-" + entryCount.incrementAndGet());
-        
-        storedEntries.offer(entry);
-        while (storedEntries.size() > 1000) {
-            storedEntries.poll();
+
+    public void setOutputSink(final Sink<Record<Event>> sink) {
+        this.outputSink = sink;
+        LOG.info("Live capture output sink configured: {}",
+                sink != null ? sink.getClass().getSimpleName() : "null");
+    }
+
+    // turn every entry into a dataprepper event so we can output to sink
+    public static void processEventLiveCapture(final List<Map<String, Object>> liveCaptureEntries) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.enabled.get() || instance.outputSink == null || liveCaptureEntries == null || liveCaptureEntries.isEmpty()) {
+            return;
         }
-        
+
         try {
-            LiveCaptureOutputManager.getInstance().addEntry(entry);
+            Event event = JacksonEvent.builder()
+                    .withEventType("LIVE_CAPTURE_TRACE")
+                    .withData(Map.of("entries", liveCaptureEntries))
+                    .build();
+
+            instance.outputSink.output(singletonList(new Record<>(event)));
+            LOG.debug("Sent live capture trace with {} entries to sink", liveCaptureEntries.size());
         } catch (Exception e) {
-            LOG.debug("Failed to send entry to LiveCaptureOutputManager: {}", e.getMessage());
+            LOG.error("Error processing live capture data: {}", e.getMessage(), e);
         }
     }
 
+    // Instance method implementations
     /**
-     * Retrieves all stored live capture entries.
-     *
-     * @return list of stored live capture entries
+     * Capture events from source stage
      */
-    public List<Map<String, Object>> getStoredEntries() {
-        return new ArrayList<>(storedEntries);
+    public static void captureSourceEvents(Collection<Record<Event>> records, Object source, String pipelineName) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.isEnabled()) return;
+        
+        String sourceName = extractPluginName(source, "Source");
+        
+        for (Record<Event> eventRecord : records) {
+            if (eventRecord.getData() instanceof Event) {
+                Event event = eventRecord.getData();
+                
+                if (!shouldLiveCapture(event) && instance.shouldCaptureEventWithRateLimit(event)) {
+                    setLiveCapture(event, true);
+                    addLiveCaptureEntry(event, SOURCE, 
+                        "Event captured from " + sourceName + " source", null, pipelineName);
+                }
+            }
+        }
     }
     
-    public List<Map<String, Object>> getLatestEntries(final int limit) {
-        List<Map<String, Object>> allEntries = new ArrayList<>(storedEntries);
-        return allEntries.size() <= limit ? allEntries : 
-            allEntries.subList(allEntries.size() - limit, allEntries.size());
+    /**
+     * Capture events from processor stage
+     */
+    public static void captureProcessorEvents(Collection<Record<Event>> records, Object processor) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.isEnabled()) return;
+        
+        String processorName = extractPluginName(processor, "Processor");
+        
+        for (Record<Event> eventRecord : records) {
+            if (eventRecord.getData() instanceof Event) {
+                Event event = eventRecord.getData();
+                
+                if (shouldLiveCapture(event)) {
+                    addLiveCaptureEntry(event, PROCESSOR,
+                        "After " + processorName + " processor execution", processorName, null);
+                }
+            }
+        }
     }
     
     /**
-     * Clears all stored live capture entries. Primarily for testing.
+     * Capture route information
      */
-    public void clearStoredEntries() {
-        storedEntries.clear();
-        entryCount.set(0);
-        LOG.debug("All stored live capture entries cleared");
+    public static void captureRouteEvents(Collection<Record> allRecords, Map<Record, Set<String>> recordsToRoutes) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.isEnabled()) return;
+        
+        for (Record eventRecord : allRecords) {
+            if (eventRecord.getData() instanceof Event) {
+                Event event = (Event) eventRecord.getData();
+                
+                if (shouldLiveCapture(event)) {
+                    Set<String> matchedRoutes = recordsToRoutes.get(eventRecord);
+                    
+                    if (matchedRoutes != null && !matchedRoutes.isEmpty()) {
+                        for (String routeName : matchedRoutes) {
+                            addLiveCaptureEntry(event, ROUTE,
+                                "Event matched route: " + routeName, routeName, null);
+                        }
+                    } else {
+                        addLiveCaptureEntry(event, ROUTE,
+                            "Event matched no routes", "_no_route", null);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Capture sink events
+     */
+    public static void captureSinkEvents(Collection<Record> events, Object sink) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.isEnabled()) return;
+        
+        String sinkName = extractPluginName(sink, "Sink");
+        
+        for (Record eventRecord : events) {
+            if (eventRecord.getData() instanceof Event) {
+                Event event = (Event) eventRecord.getData();
+                
+                if (shouldLiveCapture(event)) {
+                    addLiveCaptureEntry(event, SINK,
+                        "Received by sink " + sinkName, sinkName, null);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Process all live capture data after pipeline completion
+     */
+    public static void processCompletedEvents(Collection<Record<Event>> records) {
+        LiveCaptureManager instance = getInstance();
+        if (!instance.isEnabled()) return;
+
+        for (Record<Event> eventRecord : records) {
+            if (eventRecord.getData() instanceof Event) {
+                Event event = eventRecord.getData();
+                
+                if (shouldLiveCapture(event)) {
+                    List<Map<String, Object>> liveCaptureEntries = getLiveCaptureOutput(event);
+                    if (liveCaptureEntries != null && !liveCaptureEntries.isEmpty()) {
+                        processEventLiveCapture(liveCaptureEntries);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Gets the buffer for a specific pipeline by name.
+     */
+    public static Buffer<Record<Event>> getPipelineBuffer(final String pipelineName) {
+        return getInstance().pipelineBuffers.get(pipelineName);
+    }
+
+    /**
+     * Gets all available pipeline names.
+     */
+    public static Set<String> getAvailablePipelines() {
+        return getInstance().pipelineBuffers.keySet();
+    }
+    
+    /**
+     * Stores a pipeline buffer for event injection.
+     */
+    public static void storePipelineBuffer(final String pipelineName, final Buffer<Record<Event>> buffer) {
+        getInstance().pipelineBuffers.put(pipelineName, buffer);
+    }
+    
+    /**
+     * Consolidated method to extract plugin names from instances
+     */
+    private static String extractPluginName(Object plugin, String suffix) {
+        if (plugin == null) return "unknown";
+        
+        String className = plugin.getClass().getSimpleName();
+        
+        // Remove suffix
+        if (className.endsWith(suffix)) {
+            className = className.substring(0, className.length() - suffix.length());
+        }
+        
+        // Convert CamelCase to snake_case for processors, lowercase for others
+        if ("Processor".equals(suffix)) {
+            return className.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+        } else {
+            return className.toLowerCase();
+        }
     }
 
 }

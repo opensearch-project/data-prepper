@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.core.pipeline;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.acknowledgements.InactiveAcknowledgementSetManager;
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureManager;
 import org.opensearch.dataprepper.core.parser.DataFlowComponent;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.core.pipeline.common.PipelineThreadPoolExecutor;
@@ -364,12 +365,18 @@ public class Pipeline {
                                 acknowledgementSetManager :
                                 InactiveAcknowledgementSetManager.getInstance(),
                         sinks);
-        router.route(records, sinks, getRecordStrategy, (sink, events) ->
-                sinkFutures.add(sinkExecutorService.submit(() -> {
-                    sink.updateLatencyMetrics(events);
-                    sink.output(events);
-                }, null))
-        );
+        router.route(records, sinks, getRecordStrategy, (sink, events) -> {
+
+            // live capture hook for sink event
+            if (LiveCaptureManager.getInstance().isEnabled()) {
+                LiveCaptureManager.captureSinkEvents(events, sink);
+            }
+
+            sinkFutures.add(sinkExecutorService.submit(() -> {
+                sink.updateLatencyMetrics(events);
+                sink.output(events);
+            }, null));
+        });
         return sinkFutures;
     }
 
