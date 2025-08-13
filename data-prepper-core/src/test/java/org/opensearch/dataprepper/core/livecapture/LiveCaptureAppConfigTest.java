@@ -140,7 +140,6 @@ class LiveCaptureAppConfigTest {
         // Mock PluginFactory to return a mock sink
         when(applicationContext.getBean(PluginFactory.class)).thenReturn(pluginFactory);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class), any(SinkContext.class))).thenReturn(mockSink);
-
         liveCaptureAppConfig.initializeLiveCaptureManager();
         verify(mockSink).initialize();
         verify(liveCaptureManager).setOutputSink(any(Sink.class));
