@@ -300,7 +300,7 @@ public class KeyValueProcessorTests {
     void testInvalidKeyCharsReplacement() {
         when(mockConfig.getDestination()).thenReturn(null);
         when(mockConfig.getNormalizeKeys()).thenReturn(true);
-        final Record<Event> record = getMessage("key 1=value1&key^2=value2");
+        final Record<Event> record = getMessage("key%1=value1&key^2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) createObjectUnderTest().doExecute(Collections.singletonList(record));
         final Event event = editedRecords.get(0).getData();
 
