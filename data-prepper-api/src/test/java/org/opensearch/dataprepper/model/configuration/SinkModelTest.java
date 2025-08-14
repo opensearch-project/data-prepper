@@ -171,6 +171,14 @@ class SinkModelTest {
     }
 
     @Test
+    void sinkModel_with_forward_pipelines() {
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), Arrays.asList("forward-pipeline1", "forward-pipeline2"), pluginSettings);
+
+        assertThat(sinkModel.getForwardPipelineNames(), equalTo(Arrays.asList("forward-pipeline1", "forward-pipeline2")));
+    }
+
+    @Test
     void sinkModel_with_invalid_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), List.of("/bcd"), pluginSettings));
@@ -213,7 +221,8 @@ class SinkModelTest {
             assertThat(actualSinkModel.getExcludeKeys(), notNullValue());
             assertThat(actualSinkModel.getExcludeKeys(), empty());
             assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
-            assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
+            assertThat(actualSinkModel.getForwardPipelineNames(), notNullValue());
+            assertThat(actualSinkModel.getForwardPipelineNames(), empty());
 
         }
     }
