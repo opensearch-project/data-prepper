@@ -38,10 +38,12 @@ public class PipelineRunnerImpl implements PipelineRunner {
     final Counter invalidEventHandlesCounter;
     private final Pipeline pipeline;
     private final PluginMetrics pluginMetrics;
+    private final ProcessorProvider processorProvider;
 
-    public PipelineRunnerImpl(final Pipeline pipeline) {
+    public PipelineRunnerImpl(final Pipeline pipeline, final ProcessorProvider processorProvider) {
         this.pipeline = pipeline;
         this.pluginMetrics = PluginMetrics.fromNames("PipelineRunner", pipeline.getName());
+        this.processorProvider = processorProvider;
         this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
         
         // Store the buffer for live capture injection (only if enabled and both name and buffer are available)
@@ -55,7 +57,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
         final Map.Entry<Collection, CheckpointState> recordsReadFromBuffer = readFromBuffer(getBuffer(), getPipeline());
         Collection records = recordsReadFromBuffer.getKey();
         final CheckpointState checkpointState = recordsReadFromBuffer.getValue();
-        List<Processor> currentProcessors = pipeline.getProcessorProvider().getProcessors();
+        List<Processor> currentProcessors = processorProvider.getProcessors();
         records = runProcessorsAndProcessAcknowledgements(currentProcessors, records);
         postToSink(getPipeline(), records);
         
@@ -127,8 +129,10 @@ public class PipelineRunnerImpl implements PipelineRunner {
                     processAcknowledgements(inputEvents, records);
                 }
             } catch (final Exception e) {
-                LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
-                if (inputEvents != null) {
+                if (pipeline.getFailurePipeline() != null) {
+                    pipeline.getFailurePipeline().sendEvents(records);
+                } else if (inputEvents != null) {
+                    LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
                     processAcknowledgements(inputEvents, Collections.emptyList());
                 }
 

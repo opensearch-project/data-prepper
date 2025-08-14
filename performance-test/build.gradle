@@ -6,7 +6,7 @@
 plugins {
     id 'java'
     id 'io.gatling.gradle' version '3.10.4'
-    id 'com.gradleup.shadow' version '8.3.6'
+    id 'com.gradleup.shadow' version '8.3.8'
 }
 
 configurations.all {
@@ -16,7 +16,7 @@ configurations.all {
 group 'org.opensearch.dataprepper.test.performance'
 
 dependencies {
-    gatlingImplementation 'software.amazon.awssdk:auth:2.26.12'
+    gatlingImplementation 'software.amazon.awssdk:auth:2.32.13'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
 

@@ -76,7 +76,9 @@ public class PipelineConfiguration {
     }
 
     public void updateCommonPipelineConfiguration(final String pipelineName) {
-        updatePluginSetting(sourcePluginSetting, pipelineName);
+        if (sourcePluginSetting != null) {
+            updatePluginSetting(sourcePluginSetting, pipelineName);
+        }
         updatePluginSetting(bufferPluginSetting, pipelineName);
         processorPluginSettings.forEach(processorPluginSettings ->
                 updatePluginSetting(processorPluginSettings, pipelineName));
@@ -92,7 +94,7 @@ public class PipelineConfiguration {
 
     private PluginSetting getSourceFromPluginModel(final PluginModel pluginModel) {
         if (pluginModel == null) {
-            throw new IllegalArgumentException("Invalid configuration, source is a required component");
+            return null;
         }
         return getPluginSettingFromPluginModel(pluginModel);
     }

@@ -22,6 +22,7 @@ log-pipeline:
           retry_backoff: PT100S
           consumer_max_poll_records: 500
           max_partition_fetch_bytes: "10mb"
+          isolation_level: read_committed
       schema:
         registry_url: http://localhost:8081/
         version: 1

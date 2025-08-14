@@ -51,7 +51,6 @@ class ParseTreeEvaluatorListenerTest {
             operatorConfiguration.lessThanOperator(), operatorConfiguration.lessThanOrEqualOperator(),
             operatorConfiguration.regexEqualOperator(), operatorConfiguration.regexNotEqualOperator(),
             operatorConfiguration.typeOfOperator(),
-            operatorConfiguration.concatOperator(),
             operatorConfiguration.addOperator(),
             operatorConfiguration.subtractOperator(),
             operatorConfiguration.multiplyOperator(),
@@ -348,6 +347,26 @@ class ParseTreeEvaluatorListenerTest {
         final String notStatement = String.format("not /%s", testKey);
         final Event testEvent = createTestEvent(data);
         assertThat(evaluateStatementOnEvent(notStatement, testEvent), is(false));
+    }
+
+    @Test
+    void testSimpleAddOperatorExpressionWithInteger() {
+        final String integerKey1 = "integerKey1";
+        final String integerKey2 = "integerKey2";
+        final Map<String, Integer> data = Map.of(integerKey1, 1, integerKey2, 2);
+        final String addStatement = String.format("/%s + /%s", integerKey1, integerKey2);
+        final Event testEvent = createTestEvent(data);
+        assertThat(evaluateStatementOnEvent(addStatement, testEvent), equalTo(3));
+    }
+
+    @Test
+    void testSimpleAddOperatorExpressionWithString() {
+        final String stringKey1 = "stringKey1";
+        final String stringKey2 = "stringKey2";
+        final Map<String, String> data = Map.of(stringKey1, "a", stringKey2, "b");
+        final String addStatement = String.format("/%s + /%s", stringKey1, stringKey2);
+        final Event testEvent = createTestEvent(data);
+        assertThat(evaluateStatementOnEvent(addStatement, testEvent), equalTo("ab"));
     }
 
     @Test

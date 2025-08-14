@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockMakers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,9 +34,9 @@ class DnsPeerListProviderCreationTest {
     private static final String VALID_ENDPOINT = "VALID.ENDPOINT";
     private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
 
-    @Mock
+    @Mock(mockMaker = MockMakers.INLINE)
     private DnsAddressEndpointGroupBuilder dnsAddressEndpointGroupBuilder;
-    @Mock
+    @Mock(mockMaker = MockMakers.INLINE)
     private DnsAddressEndpointGroup dnsAddressEndpointGroup;
 
     private PeerForwarderConfiguration peerForwarderConfiguration;

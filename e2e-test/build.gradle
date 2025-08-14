@@ -85,7 +85,9 @@ subprojects {
 
     tasks.register('dataPrepperDockerImage', DockerProviderTask) {
         if(dataPrepperDefinedDockerImage != null) {
-            dependsOn 'pullDataPrepperDockerImage'
+            if(dataPrepperDefinedDockerImage.contains('/')) {
+                dependsOn 'pullDataPrepperDockerImage'
+            }
             imageId = "${dataPrepperDefinedDockerImage}"
         }
         else if(targetJavaVersion == 'docker') {

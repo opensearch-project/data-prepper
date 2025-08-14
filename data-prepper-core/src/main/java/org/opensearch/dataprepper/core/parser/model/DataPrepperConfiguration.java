@@ -36,6 +36,7 @@ import java.util.Objects;
  */
 public class DataPrepperConfiguration implements ExtensionsConfiguration, EventConfigurationContainer, ExperimentalConfigurationContainer {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
+    public static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq_pipeline";
 
     private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
 
@@ -62,7 +63,6 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private ExperimentalConfiguration experimental;
     private PipelineExtensions pipelineExtensions;
     private LiveCaptureConfiguration liveCaptureConfiguration;
-
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
     public DataPrepperConfiguration() {}
@@ -145,6 +145,10 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
 
     public int getServerPort() {
         return serverPort;
+    }
+
+    public String getFailurePipelineName() {
+        return failurePipelineName;
     }
 
     public boolean ssl() {

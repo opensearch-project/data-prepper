@@ -183,6 +183,9 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                                                  final LocalDateTime endDateTime,
                                                  final boolean isFirstScan) {
         if (!isFirstScan && schedulingOptions != null) {
+            if (startDateTime != null) {
+                return lastModifiedTime.isAfter(startDateTime);
+            }
             return true;
         } else if (Objects.isNull(startDateTime) && Objects.isNull(endDateTime)) {
             return true;
