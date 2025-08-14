@@ -90,17 +90,17 @@ public class OTLPSource implements Source<Record<Object>> {
       final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getLogsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          buffer, pluginMetrics);
+          buffer, pluginMetrics, "otlpTracesSource_");
 
       final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getMetricsOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          metricBuffer, pluginMetrics);
+          metricBuffer, pluginMetrics, "otlpMetricsSource_");
 
       final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
           (int) (otlpSourceConfig.getRequestTimeoutInMillis() * 0.8),
           otlpSourceConfig.getTracesOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
-          buffer, pluginMetrics);
+          buffer, pluginMetrics, "otlpLogsSource_");
 
       ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(otlpSourceConfig);
       CreateServer createServer = new CreateServer(serverConfiguration, LOG, pluginMetrics, "otlp", pipelineName);
