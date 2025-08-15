@@ -78,6 +78,15 @@ public class DefaultTraceGroupFieldsTest {
     }
 
     @Test
+    public void testEquals_withDifferentValues() {
+        final DefaultTraceGroupFields traceGroupFields =
+            new DefaultTraceGroupFields(TEST_END_TIME, TEST_DURATION - 1, TEST_STATUS_CODE);
+        assertThat(traceGroupFields, is(not(equalTo(null))));
+        Integer tmp = 5;
+        assertThat(traceGroupFields, is(not(equalTo(tmp))));
+    }
+
+    @Test
     public void testEquals_withDifferentStatusCode() {
         final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
                 .withDurationInNanos(TEST_DURATION)
