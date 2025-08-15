@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.Getter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
@@ -28,6 +29,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
@@ -40,8 +43,10 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final S3Client s3Client;
     private final DateTimeFormatter dateTimeFormatter;
+    private final Lock batchProcessingLock;
 
     // Added batch processing fields
+    @Getter
     private final ConcurrentLinkedQueue<Record<Event>> batch_records = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Record<Event>> processedBatchRecords = new ConcurrentLinkedQueue<>();
     private final int MAX_BATCH_SIZE;
@@ -60,6 +65,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         this.s3Client = createS3Client(mlProcessorConfig, awsCredentialsSupplier);
         this.dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         this.MAX_BATCH_SIZE = mlProcessorConfig.getMaxBatchSize();
+        this.batchProcessingLock = new ReentrantLock();
     }
 
     @Override
@@ -81,16 +87,30 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
      */
     @Override
     public void addProcessedBatchRecordsToResults(List<Record<Event>> resultRecords) {
-        if (!processedBatchRecords.isEmpty()) {
-            resultRecords.addAll(processedBatchRecords);
-            LOG.info("Result records updated: {} processed records added, new total size: {}",
-                    processedBatchRecords.size(), resultRecords.size());
-            processedBatchRecords.clear();
+        if (!batchProcessingLock.tryLock()) {
+            LOG.debug("Another thread is currently processing results, skipping this attempt");
+            return;
+        }
+
+        try {
+            if (!processedBatchRecords.isEmpty()) {
+                resultRecords.addAll(processedBatchRecords);
+                LOG.info("Result records updated: {} processed records added, new total size: {}",
+                        processedBatchRecords.size(), resultRecords.size());
+                processedBatchRecords.clear();
+            }
+        } finally {
+            batchProcessingLock.unlock();
         }
     }
 
     @Override
     public void checkAndProcessBatch() {
+        if (!batchProcessingLock.tryLock()) {
+            LOG.debug("Another thread is currently processing the current batch, skipping this attempt");
+            return;
+        }
+
         try {
             if (batch_records.isEmpty()) {
                 return;
@@ -120,6 +140,8 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             }
         } catch (Exception e) {
             LOG.error("Error in batch processing check: ", e);
+        } finally {
+            batchProcessingLock.unlock();
         }
     }
 
