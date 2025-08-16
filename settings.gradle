@@ -80,6 +80,7 @@ dependencyResolutionManagement {
             version('awaitility', '4.2.0')
             version('spring', '5.3.28')
             version('slf4j', '2.0.6')
+            version('assertj', '3.27.3')
             library('junit-core', 'org.junit.jupiter', 'junit-jupiter').versionRef('junit')
             library('junit-params', 'org.junit.jupiter', 'junit-jupiter-params').versionRef('junit')
             library('junit-engine', 'org.junit.jupiter', 'junit-jupiter-engine').versionRef('junit')
@@ -93,6 +94,7 @@ dependencyResolutionManagement {
             library('awaitility', 'org.awaitility', 'awaitility').versionRef('awaitility')
             library('spring-test', 'org.springframework', 'spring-test').versionRef('spring')
             library('slf4j-simple', 'org.slf4j', 'slf4j-simple').versionRef('slf4j')
+            library('assertj', 'org.assertj', 'assertj-core').versionRef('assertj')
         }
     }
 }
