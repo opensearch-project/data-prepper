@@ -13,7 +13,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -131,8 +130,6 @@ class ShardConsumerFactoryTest {
 
     @Test
     public void test_create_shardConsumer_correctly_with_is_disable_checkpointing_enabled_starts_from_trim_horizon() {
-
-        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         when(streamConfig.isDisableCheckpointing()).thenReturn(true);
         StreamProgressState state = new StreamProgressState();
         state.setWaitForExport(false);
@@ -141,7 +138,7 @@ class ShardConsumerFactoryTest {
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        Runnable consumer = consumerFactory.createConsumer(streamPartition, acknowledgementSet, null);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), mock(ShardAcknowledgementManager.class));
         assertThat(consumer, notNullValue());
 
         final ArgumentCaptor<GetShardIteratorRequest> captor = ArgumentCaptor.forClass(GetShardIteratorRequest.class);

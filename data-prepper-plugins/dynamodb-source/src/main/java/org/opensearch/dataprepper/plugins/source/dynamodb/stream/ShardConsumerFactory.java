@@ -142,11 +142,10 @@ public class ShardConsumerFactory {
 
         if (sequenceNumber != null && !sequenceNumber.isEmpty()) {
             LOG.debug("Get Shard Iterator at {}", sequenceNumber);
-            // There may be an overlap for 1 record
             getShardIteratorRequest = GetShardIteratorRequest.builder()
                     .shardId(shardId)
                     .streamArn(streamArn)
-                    .shardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
+                    .shardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
                     .sequenceNumber(sequenceNumber)
                     .build();
         } else {

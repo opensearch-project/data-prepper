@@ -85,6 +85,12 @@ public class ShardAcknowledgementManager {
             if (exit) {
                 break;
             }
+
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         LOG.info("Exiting acknowledgment manager");
@@ -111,6 +117,9 @@ public class ShardAcknowledgementManager {
 
                     if (checkpointStatuses.peek().isPositiveAcknowledgement()) {
                         latestCheckpointForShard = checkpointStatuses.poll();
+                        if (latestCheckpointForShard != null) {
+                            ackStatuses.get(streamPartition).remove(latestCheckpointForShard.getSequenceNumber());
+                        }
                     } else if (checkpointStatuses.peek().isNegativeAcknowledgement()
                         || checkpointStatuses.peek().isExpired(dynamoDBSourceConfig.getShardAcknowledgmentTimeout())) {
                         handleFailure(streamPartition, streamProgressState, latestCheckpointForShard);

@@ -257,7 +257,7 @@ public class ShardConsumer implements Runnable {
             if (shardIterator == null) {
                 // End of Shard
                 if (shardAcknowledgementManager != null && !createdFinalAcknowledgmentSetForShard) {
-                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, true);
+                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "END_OF_SHARD", true);
                     finalAcknowledgmentSet.complete();
                 }
                 LOG.debug("Reached end of shard");
