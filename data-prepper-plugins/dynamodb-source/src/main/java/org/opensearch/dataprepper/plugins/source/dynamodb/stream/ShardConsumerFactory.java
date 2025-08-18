@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -64,8 +63,8 @@ public class ShardConsumerFactory {
     }
 
     public Runnable createConsumer(final StreamPartition streamPartition,
-                                   final AcknowledgementSet acknowledgementSet,
-                                   final Duration shardAcknowledgmentTimeout) {
+                                   final Duration shardAcknowledgmentTimeout,
+                                   final ShardAcknowledgementManager shardAcknowledgementManager) {
 
         LOG.info("Starting to consume shard " + streamPartition.getShardId());
 
@@ -76,8 +75,7 @@ public class ShardConsumerFactory {
         Instant startTime = null;
         boolean waitForExport = false;
         if (progressState.isPresent()) {
-            // We can't checkpoint with acks yet
-            sequenceNumber = acknowledgementSet == null ? null : progressState.get().getSequenceNumber();
+            sequenceNumber = shardAcknowledgementManager == null ? null : progressState.get().getSequenceNumber();
             if (streamConfig.isDisableCheckpointing()) {
                 sequenceNumber = null;
             }
@@ -107,13 +105,13 @@ public class ShardConsumerFactory {
         ShardConsumer shardConsumer = ShardConsumer.builder(streamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig)
                 .tableInfo(tableInfo)
                 .checkpointer(checkpointer)
+                .shardAcknowledgementManager(shardAcknowledgementManager)
+                .streamPartition(streamPartition)
                 .shardIterator(shardIterator)
                 .shardId(streamPartition.getShardId())
                 .lastShardIterator(lastShardIterator)
                 .startTime(startTime)
                 .waitForExport(waitForExport)
-                .acknowledgmentSet(acknowledgementSet)
-                .acknowledgmentSetTimeout(shardAcknowledgmentTimeout)
                 .build();
         return shardConsumer;
     }
