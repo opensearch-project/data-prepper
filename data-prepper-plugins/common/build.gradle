@@ -10,6 +10,7 @@ dependencies {
     api project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8' 
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:acm'
