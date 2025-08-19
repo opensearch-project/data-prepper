@@ -85,7 +85,7 @@ public class ShardConsumer implements Runnable {
     static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(60);
     static final int DEFAULT_BUFFER_BATCH_SIZE = 1_000;
     static final String SHARD_PROGRESS = "shardProgress";
-
+    static final String END_OF_SHARD = "END_OF_SHARD";
 
     private final DynamoDbStreamsClient dynamoDbStreamsClient;
 
@@ -257,7 +257,7 @@ public class ShardConsumer implements Runnable {
             if (shardIterator == null) {
                 // End of Shard
                 if (shardAcknowledgementManager != null && !createdFinalAcknowledgmentSetForShard) {
-                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "END_OF_SHARD", true);
+                    final AcknowledgementSet finalAcknowledgmentSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, END_OF_SHARD, true);
                     finalAcknowledgmentSet.complete();
                 }
                 LOG.debug("Reached end of shard");

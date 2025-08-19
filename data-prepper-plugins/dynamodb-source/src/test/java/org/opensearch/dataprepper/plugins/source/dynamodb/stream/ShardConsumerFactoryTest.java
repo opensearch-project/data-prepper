@@ -128,6 +128,34 @@ class ShardConsumerFactoryTest {
         verify(streamApiInvocations).increment();
     }
 
+
+    @Test
+    public void test_create_shardConsumer_with_sequence_number() {
+
+        final String sequuenceNumber = UUID.randomUUID().toString();
+        StreamProgressState state = new StreamProgressState();
+        state.setWaitForExport(false);
+        state.setStartTime(Instant.now().toEpochMilli());
+        state.setSequenceNumber(sequuenceNumber);
+
+        streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
+
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
+        assertThat(consumer, notNullValue());
+        final ArgumentCaptor<GetShardIteratorRequest> captor = ArgumentCaptor.forClass(GetShardIteratorRequest.class);
+        verify(dynamoDbStreamsClient).getShardIterator(captor.capture());
+
+        final GetShardIteratorRequest getShardIteratorRequest = captor.getValue();
+        assertThat(getShardIteratorRequest.sequenceNumber(), equalTo(sequuenceNumber));
+        assertThat(getShardIteratorRequest.shardIteratorType(), equalTo(ShardIteratorType.AFTER_SEQUENCE_NUMBER));
+        assertThat(getShardIteratorRequest.shardId(), equalTo(shardId));
+        assertThat(getShardIteratorRequest.streamArn(), equalTo(streamArn));
+
+        verify(streamApiInvocations).increment();
+    }
+
     @Test
     public void test_create_shardConsumer_correctly_with_is_disable_checkpointing_enabled_starts_from_trim_horizon() {
         when(streamConfig.isDisableCheckpointing()).thenReturn(true);

@@ -1,11 +1,6 @@
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
- *
- * The OpenSearch Contributors require contributions made to
- * this file be licensed under the Apache-2.0 license or a
- * compatible open source license.
- *
  */
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
@@ -13,8 +8,12 @@ package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
@@ -23,14 +22,15 @@ import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -61,6 +61,9 @@ class ShardAcknowledgementManagerTest {
     @Mock
     private Consumer<StreamPartition> stopWorkerConsumer;
 
+    @Captor
+    private ArgumentCaptor<Consumer<Boolean>> ackCallbackCaptor;
+
     private ShardAcknowledgementManager shardAcknowledgementManager;
 
     @BeforeEach
@@ -83,6 +86,19 @@ class ShardAcknowledgementManagerTest {
     }
 
     @Test
+    void testCreateAcknowledgmentSet_withNullSequenceNumber() {
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
+            .thenReturn(acknowledgementSet);
+
+        AcknowledgementSet result = shardAcknowledgementManager.createAcknowledgmentSet(
+            streamPartition, null, false);
+
+        assertNotNull(result);
+        verify(acknowledgementSetManager).create(any(Consumer.class), eq(Duration.ofMinutes(15)));
+    }
+
+    @Test
     void testIsExportDone() {
         when(streamPartition.getStreamArn()).thenReturn("stream-arn");
         when(sourceCoordinator.getPartition("stream-arn")).thenReturn(Optional.of(streamPartition));
@@ -93,26 +109,132 @@ class ShardAcknowledgementManagerTest {
     }
 
     @Test
+    void testIsExportDone_whenPartitionNotPresent() {
+        when(streamPartition.getStreamArn()).thenReturn("stream-arn");
+        when(sourceCoordinator.getPartition("stream-arn")).thenReturn(Optional.empty());
+
+        boolean result = shardAcknowledgementManager.isExportDone(streamPartition);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void testStartUpdatingOwnershipForShard() {
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
+
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class)))
+            .thenReturn(acknowledgementSet);
+
+        AcknowledgementSet result = shardAcknowledgementManager.createAcknowledgmentSet(
+            streamPartition, "seq123", false);
+
+        assertNotNull(result);
+    }
+
+    @Test
     void testShutdown() {
         assertDoesNotThrow(() -> shardAcknowledgementManager.shutdown());
     }
 
     @Test
-    void testUpdateOwnershipForAllShardPartitions() throws Exception {
+    void testPositiveAcknowledgment_successfullyCompletesCheckpoint() {
+
+        // Setup
         when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
-        when(acknowledgementSetManager.create(any(Consumer.class), any(Duration.class))).thenReturn(acknowledgementSet);
-        
-        // Create acknowledgment set to add partition to checkpoints
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+            .thenReturn(acknowledgementSet);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        // Create acknowledgment set and start updating ownership
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
         shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
-        
-        // Set lastCheckpointTime to past to trigger checkpoint interval
-        setField(ShardAcknowledgementManager.class, shardAcknowledgementManager, 
-            "lastCheckpointTime", Instant.now().minus(Duration.ofMinutes(5)));
-        
-        // Call updateOwnershipForAllShardPartitions directly
-        shardAcknowledgementManager.updateOwnershipForAllShardPartitions();
-        
-        // Verify that saveProgressStateForPartition is called
+
+        // Simulate positive acknowledgment
+        ackCallbackCaptor.getValue().accept(true);
+
+        // Run the acknowledgment loop
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        // Verify the checkpoint was saved with positive acknowledgment
+        verify(streamProgressState).setSequenceNumber("seq123");
         verify(sourceCoordinator).saveProgressStateForPartition(eq(streamPartition), any(Duration.class));
+    }
+
+    @Test
+    void testPositiveAcknowledgment_finalAcknowledgmentSet_completes_partition() {
+
+        // Setup
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+                .thenReturn(acknowledgementSet);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        // Create acknowledgment set and start updating ownership
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", true);
+
+        // Simulate positive acknowledgment
+        ackCallbackCaptor.getValue().accept(true);
+
+        // Run the acknowledgment loop
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        verify(sourceCoordinator).completePartition(streamPartition);
+    }
+
+    @Test
+    void testAcknowledgmentTimeout() throws Exception {
+        // Setup
+        Duration timeout = Duration.ofMillis(1);
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(timeout);
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+            .thenReturn(acknowledgementSet);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        // Create acknowledgment set and start updating ownership
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
+
+        Thread.sleep(10);
+
+        // Run the acknowledgment loop
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        verify(sourceCoordinator).giveUpPartition(streamPartition);
+        verifyNoInteractions(streamProgressState);
+    }
+
+    @Test
+    void testMultipleAcknowledgments_handledCorrectly() {
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        // Setup
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+            .thenReturn(acknowledgementSet);
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        // Create first acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq123", false);
+        Consumer<Boolean> callback1 = ackCallbackCaptor.getValue();
+
+        // Create second acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq124", false);
+        Consumer<Boolean> callback2 = ackCallbackCaptor.getValue();
+
+        // Simulate mixed acknowledgments
+        callback1.accept(true);  // Positive ack
+        callback2.accept(false); // Negative ack
+
+        // Run the acknowledgment loop
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        final InOrder inOrder = Mockito.inOrder(sourceCoordinator, streamProgressState);
+        inOrder.verify(streamProgressState).setSequenceNumber("seq123");
+        inOrder.verify(sourceCoordinator).saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        inOrder.verify(sourceCoordinator).giveUpPartition(streamPartition);
+
+        verifyNoMoreInteractions(streamProgressState);
     }
 }

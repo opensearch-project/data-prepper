@@ -132,8 +132,6 @@ public class ShardAcknowledgementManager {
                             LOG.warn("Acknowledgment timed out for partition {} with sequence number {}, giving up partition",
                                 streamPartition.getPartitionKey(), checkpointStatuses.peek().getSequenceNumber());
                         }
-
-                        stopWorkerConsumer.accept(streamPartition);
                         break;
                     } else {
                         break;

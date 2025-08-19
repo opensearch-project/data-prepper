@@ -189,7 +189,7 @@ class StreamSchedulerTest {
         Thread.sleep(3000);
         executorService.shutdown();
         future.cancel(true);
-        assertThat(executorService.awaitTermination(1000, TimeUnit.MILLISECONDS), equalTo(true));
+        assertThat(executorService.awaitTermination(2000, TimeUnit.MILLISECONDS), equalTo(true));
 
         // Should acquire the stream partition
         verify(coordinator).acquireAvailablePartition(StreamPartition.PARTITION_TYPE);

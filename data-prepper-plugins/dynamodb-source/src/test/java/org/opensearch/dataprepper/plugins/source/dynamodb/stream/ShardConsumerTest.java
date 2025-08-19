@@ -59,6 +59,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.DEFAULT_BUFFER_BATCH_SIZE;
+import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.END_OF_SHARD;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.SHARD_PROGRESS;
 
 @ExtendWith(MockitoExtension.class)
@@ -450,7 +451,7 @@ class ShardConsumerTest {
             shardConsumer.run();
 
             // Verify acknowledgment set created for records with shardIterator == null (true)
-            verify(shardAcknowledgementManager).createAcknowledgmentSet(eq(streamPartition), any(String.class), eq(true));
+            verify(shardAcknowledgementManager).createAcknowledgmentSet(eq(streamPartition), eq(END_OF_SHARD), eq(true));
             // Verify final acknowledgment set created and completed when shardIterator is null
             verify(finalAcknowledgementSet).complete();
 
