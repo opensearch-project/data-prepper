@@ -18,6 +18,7 @@ class CloudWatchLogsMetricsTest {
     private Counter mockSuccessRequestCounter;
     private Counter mockFailedEventCounter;
     private Counter mockFailedRequestCounter;
+    private Counter mockEntityRejectedCounter;
 
     @BeforeEach
     void setUp() {
@@ -26,11 +27,13 @@ class CloudWatchLogsMetricsTest {
         mockSuccessRequestCounter = mock(Counter.class);
         mockFailedEventCounter = mock(Counter.class);
         mockFailedRequestCounter = mock(Counter.class);
+        mockEntityRejectedCounter = mock(Counter.class);
 
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_SUCCEEDED)).thenReturn(mockSuccessEventCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED)).thenReturn(mockSuccessRequestCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_FAILED)).thenReturn(mockFailedEventCounter);
         when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_REQUESTS_FAILED)).thenReturn(mockFailedRequestCounter);
+        when(mockPluginMetrics.counter(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_ENTITY_REJECTED)).thenReturn(mockEntityRejectedCounter);
 
         testCloudWatchLogsMetrics = new CloudWatchLogsMetrics(mockPluginMetrics);
     }
@@ -62,5 +65,11 @@ class CloudWatchLogsMetricsTest {
     void WHEN_increase_request_failed_counter_called_THEN_request_failed_counter_increase_method_should_be_called() {
         testCloudWatchLogsMetrics.increaseRequestFailCounter(1);
         verify(mockFailedRequestCounter, times(1)).increment(1);
+    }
+
+    @Test
+    void WHEN_increase_entity_rejected_counter_called_THEN_entity_rejected_counter_increase_method_should_be_called() {
+        testCloudWatchLogsMetrics.increaseEntityRejectedCounter();
+        verify(mockEntityRejectedCounter, times(1)).increment();
     }
 }
