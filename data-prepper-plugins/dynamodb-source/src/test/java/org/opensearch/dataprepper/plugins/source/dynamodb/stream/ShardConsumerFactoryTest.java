@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -26,13 +27,16 @@ import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
 import software.amazon.awssdk.services.dynamodb.model.InternalServerErrorException;
+import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
@@ -116,9 +120,61 @@ class ShardConsumerFactoryTest {
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
         assertThat(consumer, notNullValue());
         verify(dynamoDbStreamsClient).getShardIterator(any(GetShardIteratorRequest.class));
+
+        verify(streamApiInvocations).increment();
+    }
+
+
+    @Test
+    public void test_create_shardConsumer_with_sequence_number() {
+
+        final String sequuenceNumber = UUID.randomUUID().toString();
+        StreamProgressState state = new StreamProgressState();
+        state.setWaitForExport(false);
+        state.setStartTime(Instant.now().toEpochMilli());
+        state.setSequenceNumber(sequuenceNumber);
+
+        streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
+
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
+        assertThat(consumer, notNullValue());
+        final ArgumentCaptor<GetShardIteratorRequest> captor = ArgumentCaptor.forClass(GetShardIteratorRequest.class);
+        verify(dynamoDbStreamsClient).getShardIterator(captor.capture());
+
+        final GetShardIteratorRequest getShardIteratorRequest = captor.getValue();
+        assertThat(getShardIteratorRequest.sequenceNumber(), equalTo(sequuenceNumber));
+        assertThat(getShardIteratorRequest.shardIteratorType(), equalTo(ShardIteratorType.AFTER_SEQUENCE_NUMBER));
+        assertThat(getShardIteratorRequest.shardId(), equalTo(shardId));
+        assertThat(getShardIteratorRequest.streamArn(), equalTo(streamArn));
+
+        verify(streamApiInvocations).increment();
+    }
+
+    @Test
+    public void test_create_shardConsumer_correctly_with_is_disable_checkpointing_enabled_starts_from_trim_horizon() {
+        when(streamConfig.isDisableCheckpointing()).thenReturn(true);
+        StreamProgressState state = new StreamProgressState();
+        state.setWaitForExport(false);
+        state.setSequenceNumber(UUID.randomUUID().toString());
+        state.setStartTime(Instant.now().toEpochMilli());
+        streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
+
+        ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), mock(ShardAcknowledgementManager.class));
+        assertThat(consumer, notNullValue());
+
+        final ArgumentCaptor<GetShardIteratorRequest> captor = ArgumentCaptor.forClass(GetShardIteratorRequest.class);
+        verify(dynamoDbStreamsClient).getShardIterator(captor.capture());
+
+        final GetShardIteratorRequest getShardIteratorRequest = captor.getValue();
+        assertThat(getShardIteratorRequest.sequenceNumber(), equalTo(null));
+        assertThat(getShardIteratorRequest.shardIteratorType(), equalTo(ShardIteratorType.TRIM_HORIZON));
 
         verify(streamApiInvocations).increment();
     }
@@ -133,7 +189,8 @@ class ShardConsumerFactoryTest {
         streamPartition = new StreamPartition(streamArn, shardId, Optional.of(state));
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
         assertThat(consumer, notNullValue());
         // Should get iterators twice
         verify(dynamoDbStreamsClient, times(2)).getShardIterator(any(GetShardIteratorRequest.class));
@@ -154,7 +211,8 @@ class ShardConsumerFactoryTest {
         when(dynamoDBSourceAggregateMetrics.getStream5xxErrors()).thenReturn(stream5xxErrors);
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
         assertThat(consumer, nullValue());
         verify(stream5xxErrors).increment();
         verify(streamApiInvocations).increment();
@@ -172,7 +230,8 @@ class ShardConsumerFactoryTest {
         when(dynamoDBSourceAggregateMetrics.getStream4xxErrors()).thenReturn(stream4xxErrors);
 
         ShardConsumerFactory consumerFactory = new ShardConsumerFactory(coordinator, dynamoDbStreamsClient, pluginMetrics, dynamoDBSourceAggregateMetrics, buffer, streamConfig);
-        Runnable consumer = consumerFactory.createConsumer(streamPartition, null, null);
+        ShardAcknowledgementManager shardAcknowledgementManager = mock(ShardAcknowledgementManager.class);
+        Runnable consumer = consumerFactory.createConsumer(streamPartition, Duration.ofMinutes(1), shardAcknowledgementManager);
         assertThat(consumer, nullValue());
         verify(stream4xxErrors).increment();
         verify(streamApiInvocations).increment();

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -93,5 +94,12 @@ class KafkaSourceConfigTest {
 		assertEquals(EncryptionType.NONE, encryptionConfig.getType());
         setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
 		assertEquals(EncryptionType.SSL, encryptionConfig.getType());
+	}
+
+	@Test
+	void test_isolation_level_deserialization_from_yaml() {
+		assertThat(kafkaSourceConfig.getTopics(), notNullValue());
+		SourceTopicConfig topic = (SourceTopicConfig) kafkaSourceConfig.getTopics().get(0);
+		assertEquals(IsolationLevel.READ_COMMITTED, topic.getIsolationLevel());
 	}
 }

@@ -128,6 +128,10 @@ public class KeyValueProcessorConfig {
     })
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
+    @JsonProperty("normalize_keys")
+    @JsonPropertyDescription("If specified, replaces invalid characters with underscore character")
+    private Boolean normalizeKeys = false;
+
     @JsonProperty("include_keys")
     @JsonPropertyDescription("An array specifying the keys that should be included in the destination field. " +
             "By default, all keys will be added.")
@@ -294,6 +298,10 @@ public class KeyValueProcessorConfig {
 
     public boolean isStrictGroupingEnabled() {
         return strictGrouping;
+    }
+
+    public Boolean getNormalizeKeys() {
+        return normalizeKeys;
     }
 
     public String getDestination() {

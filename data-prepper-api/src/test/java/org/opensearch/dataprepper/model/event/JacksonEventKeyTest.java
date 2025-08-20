@@ -69,7 +69,13 @@ class JacksonEventKeyTest {
             "key_with_underscore",
             "key@with@at",
             "key[with]brackets",
-            "key~1withtilda"
+            "key~1withtilda",
+            "key with space",
+            "key$with$dollar",
+            " key_with_space_prefix",
+            "key_with_space_suffix ",
+            "$key_with_dollar_prefix",
+            "key_with_dollar_suffix$"
     })
     void getKey_returns_expected_result(final String key) {
         assertThat(new JacksonEventKey(key).getKey(), equalTo(key));
@@ -152,7 +158,13 @@ class JacksonEventKeyTest {
             "key-with-hyphen, true",
             "key_with_underscore, true",
             "key@with@at, true",
-            "key[with]brackets, true"
+            "key[with]brackets, true",
+            "key with space, true",
+            "key$with$dollar, true",
+            " key_with_space_prefix, true",
+            "key_with_space_suffix , true",
+            "$key_with_dollar_prefix, true",
+            "key_with_dollar_suffix$, true"
     })
     void isValidEventKey_returns_expected_result(final String key, final boolean isValid) {
         assertThat(JacksonEventKey.isValidEventKey(key), equalTo(isValid));
@@ -194,6 +206,13 @@ class JacksonEventKeyTest {
                     arguments(List.of(EventKeyFactory.EventAction.ALL), EventKeyFactory.EventAction.DELETE, true)
             );
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testReplaceInvalidKeyChars(final String key) {
+        assertThat(JacksonEventKey.replaceInvalidCharacters(key), equalTo("key_1"));
+        assertThat(JacksonEventKey.replaceInvalidCharacters(null), equalTo(null));
     }
 
     @ParameterizedTest

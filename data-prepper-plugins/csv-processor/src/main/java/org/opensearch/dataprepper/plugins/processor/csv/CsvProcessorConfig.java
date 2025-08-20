@@ -42,6 +42,11 @@ public class CsvProcessorConfig {
             "is parsed. If there is no event header, no action is taken. Default value is true.")
     private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
+    @JsonProperty(value = "normalize_keys", defaultValue = "false")
+    @JsonPropertyDescription("If set to true, replaces invalid characters with underscore character")
+    private Boolean normalizeKeys = false;
+
+
     @JsonProperty(value = "multiline", defaultValue = "false")
     @JsonPropertyDescription("If specified, the source key has multiple lines, including header line")
     private Boolean multiLine = false;
@@ -128,6 +133,10 @@ public class CsvProcessorConfig {
      */
     public String getColumnNamesSourceKey() {
         return columnNamesSourceKey;
+    }
+
+    public Boolean getNormalizeKeys() {
+        return normalizeKeys;
     }
 
     /**

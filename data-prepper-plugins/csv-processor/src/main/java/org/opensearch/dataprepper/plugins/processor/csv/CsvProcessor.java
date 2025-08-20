@@ -52,6 +52,8 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
     private final CsvMapper mapper;
     private final CsvSchema schema;
 
+    private final boolean normalizeKeys;
+
     @DataPrepperPluginConstructor
     public CsvProcessor(final PluginMetrics pluginMetrics,
                         final CsvProcessorConfig config,
@@ -67,6 +69,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     String.format("csv_when value of %s is not a valid expression statement. " +
                             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.", config.getCsvWhen()));
         }
+        this.normalizeKeys = config.getNormalizeKeys();
         this.mapper = createCsvMapper();
         this.schema = createCsvSchema();
     }
@@ -107,7 +110,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     }
                     continue;
                 }
-    
+
 
                 final boolean userDidSpecifyHeaderEventKey = Objects.nonNull(config.getColumnNamesSourceKey());
                 final boolean thisEventHasHeaderSource = userDidSpecifyHeaderEventKey && event.containsKey(config.getColumnNamesSourceKey());
@@ -210,7 +213,8 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
     private void putDataInEvent(final Event event, final List<String> header, final List<String> data) {
         int providedHeaderColIdx = 0;
         for (; providedHeaderColIdx < header.size() && providedHeaderColIdx < data.size(); providedHeaderColIdx++) {
-            event.put(header.get(providedHeaderColIdx), data.get(providedHeaderColIdx));
+            String key = header.get(providedHeaderColIdx);
+            event.put(key, data.get(providedHeaderColIdx), normalizeKeys);
         }
         for (int remainingColIdx = providedHeaderColIdx; remainingColIdx < data.size(); remainingColIdx++) {
             event.put(generateColumnHeader(remainingColIdx), data.get(remainingColIdx));

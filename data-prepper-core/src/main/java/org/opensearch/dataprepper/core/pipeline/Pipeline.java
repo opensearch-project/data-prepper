@@ -20,7 +20,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
@@ -52,10 +54,10 @@ import static java.lang.String.format;
  * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class Pipeline {
+public class Pipeline implements HeadlessPipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final int SINK_LOGGING_FREQUENCY = (int) Duration.ofSeconds(60).toMillis();
-    private final ProcessorRegistry processorRegistry;
+    private final ProcessorRegistry singleThreadUnsafeProcessorRegistry;
     private final PipelineShutdown pipelineShutdown;
     private final String name;
     private final Source source;
@@ -65,6 +67,7 @@ public class Pipeline {
     private final Router router;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
+    private HeadlessPipeline failurePipeline;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
     private final Duration sinkShutdownTimeout;
@@ -121,6 +124,7 @@ public class Pipeline {
         this.processorSets = processorSets;
         this.sinks = sinks;
         this.router = router;
+        this.failurePipeline = null;
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.processorThreads = processorThreads;
         this.eventFactory = eventFactory;
@@ -137,7 +141,7 @@ public class Pipeline {
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         this.pipelineShutdown = new PipelineShutdown(name, buffer);
-        this.processorRegistry = new ProcessorRegistry(List.of());
+        this.singleThreadUnsafeProcessorRegistry = new ProcessorRegistry(List.of());
     }
 
     /**
@@ -159,6 +163,18 @@ public class Pipeline {
      */
     public Buffer getBuffer() {
         return this.buffer;
+    }
+
+    public void setFailurePipeline(HeadlessPipeline failurePipeline) {
+        this.failurePipeline = failurePipeline;
+        this.source.setFailurePipeline(failurePipeline);
+        this.buffer.setFailurePipeline(failurePipeline);
+        processorSets.forEach(processorSet -> processorSet.forEach(processor -> processor.setFailurePipeline(failurePipeline)));
+        this.getSinks().forEach(sink -> sink.setFailurePipeline(failurePipeline));
+    }
+
+    public HeadlessPipeline getFailurePipeline() {
+        return failurePipeline;
     }
 
     /**
@@ -191,12 +207,18 @@ public class Pipeline {
     }
 
 
-    public ProcessorProvider getProcessorProvider() {
-        return processorRegistry;
+    /**
+     * Gets a {@link ProcessorRegistry} which can be used for processors
+     * that are not annotated with {@link org.opensearch.dataprepper.model.annotations.SingleThread}.
+     *
+     * @return The {@link ProcessorProvider}
+     */
+    public ProcessorProvider getSingleThreadUnsafeProcessorProvider() {
+        return singleThreadUnsafeProcessorRegistry;
     }
 
     public void swapProcessors(List<Processor> newProcessors) {
-        processorRegistry.swapProcessors(newProcessors);
+        singleThreadUnsafeProcessorRegistry.swapProcessors(newProcessors);
     }
 
     public int getReadBatchTimeoutInMillis() {
@@ -236,8 +258,11 @@ public class Pipeline {
                         }
                     }
             ).collect(Collectors.toList());
-            this.processorRegistry.swapProcessors(processors);
-            processorExecutorService.submit(new ProcessWorker(buffer, this));
+            final ProcessorRegistry workerSpecificProcessorRegistry = new ProcessorRegistry(processors);
+            processorExecutorService.submit(new ProcessWorker(buffer, this, workerSpecificProcessorRegistry));
+
+            // This registry is for the zero buffer
+            this.singleThreadUnsafeProcessorRegistry.swapProcessors(processors);
         }
     }
 
@@ -275,6 +300,18 @@ public class Pipeline {
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
             LOG.error("Pipeline [{}] encountered exception while starting the source, skipping execution", name, ex);
+        }
+    }
+
+    public void setAcknowledgementsEnabled(final boolean acknowledgementsEnabled) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).setAcknowledgementsEnabled(acknowledgementsEnabled);
+        }
+    }
+
+    public void sendEvents(Collection<Record<Event>> records) {
+        if (getSource() instanceof HeadlessPipelineSource) {
+            ((HeadlessPipelineSource)getSource()).sendEvents(records);
         }
     }
 

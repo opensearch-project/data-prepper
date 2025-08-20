@@ -72,11 +72,14 @@ class Office365ServiceTest {
     @Test
     void testGetOffice365EntitiesWithMultipleTimeWindows() {
         // Create test data
-        List<Map<String, Object>> items = new ArrayList<>();
-        Map<String, Object> item = createTestItem();
-        items.add(item);
+        Instant contentCreated = Instant.now().minusSeconds(100);
+        List<Map<String, Object>> items1 = new ArrayList<>();
+        List<Map<String, Object>> items2 = new ArrayList<>();
+        items1.add(createTestItem("id1", contentCreated));
+        items2.add(createTestItem("id2", contentCreated));
 
-        AuditLogsResponse response = new AuditLogsResponse(items, null);
+        AuditLogsResponse response1 = new AuditLogsResponse(items1, "nextPageUri1");
+        AuditLogsResponse response2 = new AuditLogsResponse(items2, null);
 
         // Fix the time windows - use current time as reference
         Instant now = Instant.now();
@@ -88,7 +91,13 @@ class Office365ServiceTest {
                 any(Instant.class),
                 any(Instant.class),
                 isNull()))
-                .thenReturn(response);
+                .thenReturn(response1);
+        when(office365RestClient.searchAuditLogs(
+                anyString(),
+                any(Instant.class),
+                any(Instant.class),
+                eq("nextPageUri1")))
+                .thenReturn(response2);
 
         Queue<ItemInfo> itemInfoQueue = new ConcurrentLinkedQueue<>();
 
@@ -112,10 +121,26 @@ class Office365ServiceTest {
                 .count();
 
         // Verify the number of items
-        int expectedItems = Constants.CONTENT_TYPES.length * (int)distinctTimeWindows;
+        int expectedItems = Constants.CONTENT_TYPES.length * (int)distinctTimeWindows * 2;
         assertEquals(expectedItems, itemInfoQueue.size(),
                 String.format("Expected %d items (%d content types * %d time windows * 1 item), but found %d",
                         expectedItems, Constants.CONTENT_TYPES.length, distinctTimeWindows, itemInfoQueue.size()));
+
+
+        Instant expectedLastModifiedAtForSecondPage = contentCreated.plusMillis(1);
+        for (int i = 0; i < Constants.CONTENT_TYPES.length * (int) distinctTimeWindows * 2; i++) {
+            ItemInfo itemInfo = itemInfoQueue.poll();
+            assertEquals(contentCreated, itemInfo.getEventTime());
+            if (i % 2 == 0) {
+                assertEquals("id1", itemInfo.getItemId());
+                assertEquals(contentCreated, itemInfo.getLastModifiedAt(),
+                        "Expect first page's lastModifiedAt timestamp to be same as contentCreated timestamp");
+            } else {
+                assertEquals("id2", itemInfo.getItemId());
+                assertEquals(expectedLastModifiedAtForSecondPage, itemInfo.getLastModifiedAt(),
+                        "Expect second page's lastModifiedAt timestamp to be 1ms after contentCreated timestamp");
+            }
+        }
 
         // Verify we have at least 3 distinct time windows
         assertTrue(distinctTimeWindows >= 3,
@@ -153,7 +178,7 @@ class Office365ServiceTest {
     @Test
     void testGetOffice365EntitiesWithSevenDayLimit() {
         List<Map<String, Object>> items = new ArrayList<>();
-        Map<String, Object> item = createTestItem();
+        Map<String, Object> item = createTestItem("id", Instant.now());
         items.add(item);
 
         AuditLogsResponse mockResponse = new AuditLogsResponse(items, null);
@@ -192,7 +217,7 @@ class Office365ServiceTest {
 
         // Create successful response
         List<Map<String, Object>> items = new ArrayList<>();
-        items.add(createTestItem());
+        items.add(createTestItem("id", Instant.now()));
         AuditLogsResponse successResponse = new AuditLogsResponse(items, null);
 
         // Set up mock to fail first then succeed for first content type
@@ -263,10 +288,10 @@ class Office365ServiceTest {
         verify(office365RestClient).getAuditLog("test-id");
     }
 
-    private Map<String, Object> createTestItem() {
+    private Map<String, Object> createTestItem(String contentId, Instant contentCreated) {
         Map<String, Object> item = new HashMap<>();
-        item.put("contentId", "test-id");
-        item.put("contentCreated", Instant.now().toString());
+        item.put("contentId", contentId);
+        item.put("contentCreated", contentCreated.toString());
         item.put("contentUri", "https://test.com");
         return item;
     }

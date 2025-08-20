@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.ProcessWorker;
 import org.opensearch.dataprepper.core.pipeline.ProcessorProvider;
+import org.opensearch.dataprepper.core.pipeline.ProcessorRegistry;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -144,7 +145,7 @@ public class AggregateProcessorITWithAcks {
         when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(null);
-        when(pipeline.getProcessorProvider()).thenReturn(processorProvider);
+        when(pipeline.getSingleThreadUnsafeProcessorProvider()).thenReturn(processorProvider);
         when(processorProvider.getProcessors()).thenReturn(processors);
 
         records = getRecords(testKey, testValue, acknowledgementSet);
@@ -208,7 +209,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -239,7 +240,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -271,7 +272,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -303,7 +304,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
 
             processWorker.run();
@@ -331,7 +332,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -361,7 +362,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
 
             processWorker.run();
         }
@@ -418,7 +419,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -472,7 +473,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -502,7 +503,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -535,7 +536,7 @@ public class AggregateProcessorITWithAcks {
                     .thenReturn(futureHelperResult);
 
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -569,7 +570,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)
@@ -596,7 +597,7 @@ public class AggregateProcessorITWithAcks {
             futureHelperMockedStatic.when(() -> FutureHelper.awaitFuturesIndefinitely(sinkFutures))
                     .thenReturn(futureHelperResult);
 
-            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline);
+            final ProcessWorker processWorker = new ProcessWorker(buffer, pipeline, new ProcessorRegistry(processors));
             processWorker.run();
         }
         await().atMost(TEST_TIMEOUT)

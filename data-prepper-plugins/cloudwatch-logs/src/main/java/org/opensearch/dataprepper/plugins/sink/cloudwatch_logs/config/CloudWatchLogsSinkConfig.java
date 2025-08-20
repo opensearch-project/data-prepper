@@ -11,9 +11,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
+import java.util.HashMap;
+import java.util.Map;
 
 public class CloudWatchLogsSinkConfig {
     public static final int DEFAULT_RETRY_COUNT = 5;
@@ -49,6 +52,14 @@ public class CloudWatchLogsSinkConfig {
     @Max(50)
     private int workers = DEFAULT_NUM_WORKERS;
 
+    @JsonProperty("header_overrides")
+    @Size(max = 10, message = "Maximum 10 custom headers allowed")
+    @ValidCustomHeaders
+    private Map<String, String> headerOverrides = new HashMap<>();
+
+    @JsonProperty("endpoint")
+    private String endpoint;
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -75,6 +86,14 @@ public class CloudWatchLogsSinkConfig {
 
     public int getWorkers() {
         return workers;
+    }
+
+    public Map<String, String> getHeaderOverrides() {
+        return headerOverrides;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
     }
 
 }

@@ -24,23 +24,30 @@ import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatch
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsClientFactory;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
+
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.exception.InvalidBufferTypeException;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import org.opensearch.dataprepper.plugins.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.model.annotations.Experimental;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 @Experimental
 @DataPrepperPlugin(name = "cloudwatch_logs", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
 public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
+    private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsSink.class);
+
     private final CloudWatchLogsService cloudWatchLogsService;
     private DlqPushHandler dlqPushHandler = null;
     private volatile boolean isInitialized;
+
     @DataPrepperPluginConstructor
     public CloudWatchLogsSink(final PluginSetting pluginSetting,
                               final PluginMetrics pluginMetrics,
@@ -51,16 +58,20 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
 
         AwsConfig awsConfig = cloudWatchLogsSinkConfig.getAwsConfig();
         ThresholdConfig thresholdConfig = cloudWatchLogsSinkConfig.getThresholdConfig();
+        Map<String, String> headerOverrides = cloudWatchLogsSinkConfig.getHeaderOverrides();
+
+        // Log custom headers configuration during plugin startup
+        logCustomHeadersConfiguration(headerOverrides);
 
         CloudWatchLogsMetrics cloudWatchLogsMetrics = new CloudWatchLogsMetrics(pluginMetrics);
         CloudWatchLogsLimits cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(),
                 thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getFlushInterval());
+                thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getFlushInterval());
 
         if (awsConfig == null && awsCredentialsSupplier == null) {
             throw new RuntimeException("Missing awsConfig and awsCredentialsSupplier");
         }
-        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, headerOverrides, cloudWatchLogsSinkConfig.getEndpoint());
         if (cloudWatchLogsClient == null) {
             throw new RuntimeException("cloudWatchLogsClient is null");
         }
@@ -109,5 +120,25 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     @Override
     public boolean isReady() {
         return isInitialized;
+    }
+
+    /**
+     * Logs custom headers configuration during plugin startup.
+     * Ensures no sensitive header values are logged.
+     *
+     * @param headerOverrides The custom headers map to log
+     */
+    private void logCustomHeadersConfiguration(Map<String, String> headerOverrides) {
+        if (LOG.isInfoEnabled()) {
+            if (headerOverrides.isEmpty()) {
+                LOG.info("CloudWatch Logs sink initialized without custom headers");
+            } else {
+                int headerCount = headerOverrides.size();
+                String headerNames = String.join(", ", headerOverrides.keySet());
+
+                LOG.info("CloudWatch Logs sink initialized with {} custom headers: [{}]",
+                        headerCount, headerNames);
+            }
+        }
     }
 }

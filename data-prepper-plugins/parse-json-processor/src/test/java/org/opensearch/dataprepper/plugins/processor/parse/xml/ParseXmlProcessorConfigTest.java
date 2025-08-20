@@ -23,6 +23,7 @@ public class ParseXmlProcessorConfigTest {
         assertThat(objectUnderTest.getSource(), equalTo(ParseXmlProcessorConfig.DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDestination(), equalTo(null));
         assertThat(objectUnderTest.getPointer(), equalTo(null));
+        assertThat(objectUnderTest.getNormalizeKeys(), equalTo(false));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
         assertThat(objectUnderTest.getOverwriteIfDestinationExists(), equalTo(true));
         assertThat(objectUnderTest.getHandleFailedEventsOption(), equalTo(HandleFailedEventsOption.SKIP));

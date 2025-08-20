@@ -22,10 +22,12 @@ import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFacto
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
@@ -78,6 +80,7 @@ class PipelineTests {
     private static final int TEST_READ_BATCH_TIMEOUT = 500;
     private static final int TEST_PROCESSOR_THREADS = 1;
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
+    private static final String FAILURE_PIPELINE_NAME = "failure-pipeline";
 
     private Router router;
     private SourceCoordinatorFactory sourceCoordinatorFactory;
@@ -679,5 +682,46 @@ class PipelineTests {
         testPipeline.shutdown(DataPrepperShutdownOptions.builder().withBufferReadTimeout(Duration.ofMillis(1)).build());
         Thread.sleep(2);
         assertThat(testPipeline.isForceStopReadingBuffers(), is(true));
+    }
+
+    @Test
+    void testFailurePipeline() throws InterruptedException {
+        final Source<Record<String>> testSource = new TestSource();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        final TestSink testSink = new TestSink();
+        final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.singletonList(Collections.singletonList(testProcessor)),
+                Collections.singletonList(sinkDataFlowComponent), router,
+                eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+        HeadlessPipelineSource headlessPipelineSource = mock(HeadlessPipelineSource.class);
+        Pipeline failurePipeline = new Pipeline(FAILURE_PIPELINE_NAME, headlessPipelineSource, new BlockingBuffer(FAILURE_PIPELINE_NAME),
+                Collections.emptyList(),
+                Collections.singletonList(sinkDataFlowComponent), router,
+                eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        testPipeline.setFailurePipeline(failurePipeline);
+        assertThat(((AbstractBuffer)testPipeline.getBuffer()).getFailurePipeline(), equalTo(failurePipeline));
+        assertThat(((TestSource)testPipeline.getSource()).getFailurePipeline(), equalTo(failurePipeline));
+
+        Collection<Sink> sinks = testPipeline.getSinks();
+        List<List<Processor>> processorSets = testPipeline.getProcessorSets();
+        processorSets.forEach(processorSet -> processorSet.forEach(processor -> {
+        assertThat(((TestProcessor)processor).getFailurePipeline(), equalTo(failurePipeline));
+        }));
+        assertThat(sinks.size(), equalTo(1));
+        for (Sink sink: sinks) {
+            assertThat(((TestSink)sink).getFailurePipeline(), equalTo(failurePipeline));
+        }
+        failurePipeline.setAcknowledgementsEnabled(false);
+        verify(headlessPipelineSource).setAcknowledgementsEnabled(false);
+        testPipeline.setAcknowledgementsEnabled(false);
+        Collection<Record<Event>> records = mock(Collection.class);
+        failurePipeline.sendEvents(records);
+        verify(headlessPipelineSource).sendEvents(records);
+
     }
 }
