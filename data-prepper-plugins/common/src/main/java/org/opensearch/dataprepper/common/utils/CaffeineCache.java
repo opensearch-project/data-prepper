@@ -18,6 +18,8 @@ import com.github.benmanes.caffeine.cache.Weigher;
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.TimeUnit;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class CaffeineCache<K, V> {
 
@@ -34,16 +36,16 @@ public class CaffeineCache<K, V> {
     private final Cache<K, V> cache;
     private final long maxBytes;
     private final int maxEntries;
-    private int curEntries;
-    private long curBytes;
-    private boolean strictLRU;
+    private AtomicInteger curEntries;
+    private AtomicLong curBytes;
 
-    public CaffeineCache(int maxEntries, long maxBytes, int ttlSeconds, boolean strictLRU) {
+    public CaffeineCache(int maxEntries, long maxBytes, int ttlSeconds, boolean lruMode) {
         this.maxBytes = maxBytes;
-        this.strictLRU = strictLRU;
         this.maxEntries = maxEntries;
+        this.curEntries = new AtomicInteger(0);
+        this.curBytes = new AtomicLong(0);
         Caffeine<K, V> caffeine;
-        if (strictLRU) {
+        if (lruMode) {
             caffeine = (Caffeine<K, V>) Caffeine.newBuilder()
                 .maximumSize(maxEntries);
         } else {
@@ -56,8 +58,8 @@ public class CaffeineCache<K, V> {
                 .removalListener((K k, V v, RemovalCause cause) -> {
                     int valueLength = (v instanceof String) ? ((String)v).length() : 
                                 ((Event)v).toJsonString().length();
-                    curBytes -= getEntrySize(k, v);
-                    curEntries--;
+                    curBytes.addAndGet(-getEntrySize(k, v));
+                    curEntries.decrementAndGet();
                 })
                 .recordStats()
                 .build();
@@ -83,10 +85,10 @@ public class CaffeineCache<K, V> {
             throw new RuntimeException("Currently only String/Integer/Long type keys are supported");
         }
         cache.put(key, value);
-        curEntries++;
-        curBytes += getEntrySize(key, value);
+        curEntries.incrementAndGet();
+        curBytes.addAndGet(getEntrySize(key, value));
         // run cleanUp to create space by removing any expired entries
-        if (curEntries > maxEntries/2 || curBytes > maxBytes/2) {
+        if (curEntries.get() > maxEntries/2 || curBytes.get() > maxBytes/2) {
             cache.cleanUp();
         }
     }
@@ -105,6 +107,7 @@ public class CaffeineCache<K, V> {
             return;
         }
         cache.invalidate(key);
+        cache.cleanUp();
     }
 
     public CacheStats getStats() {
@@ -118,12 +121,12 @@ public class CaffeineCache<K, V> {
 
     @VisibleForTesting
     int getNumEntries() {
-        return curEntries;
+        return curEntries.get();
     }
 
     @VisibleForTesting
     long getSize() {
-        return curBytes;
+        return curBytes.get();
     }
 }
 
