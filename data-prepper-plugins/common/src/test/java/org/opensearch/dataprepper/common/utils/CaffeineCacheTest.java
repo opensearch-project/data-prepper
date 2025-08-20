@@ -219,6 +219,8 @@ public class CaffeineCacheTest {
         assertTrue(cache.containsKey(key1));
         cache.remove(key1);
         assertFalse(cache.containsKey(key1));
+        assertThat(cache.getSize(), equalTo(0L));
+        assertThat(cache.getNumEntries(), equalTo(0));
     }
 
 }

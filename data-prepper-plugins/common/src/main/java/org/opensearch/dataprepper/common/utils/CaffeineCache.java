@@ -105,8 +105,6 @@ public class CaffeineCache<K, V> {
             return;
         }
         cache.invalidate(key);
-        curEntries--;
-        curBytes += getEntrySize(key, value);
     }
 
     public CacheStats getStats() {
