@@ -14,7 +14,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.utils;
  * The type Constants.
  */
 public class Constants {
-    public static final String PLUGIN_NAME = "microsoft-office365";
+    public static final String PLUGIN_NAME = "microsoft_office365";
     public static final String[] CONTENT_TYPES = {
             "Audit.AzureActiveDirectory",
             "Audit.Exchange",
