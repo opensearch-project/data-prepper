@@ -11,12 +11,15 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
 
 public class CaffeineCacheTest {
     static private final String TEST_EVENT_TYPE="event";
@@ -223,4 +226,41 @@ public class CaffeineCacheTest {
         assertThat(cache.getNumEntries(), equalTo(0));
     }
 
+    @Test
+    public void testListOfStringsKeys() {
+        CaffeineCache<List<String>, Object> dcache = new CaffeineCache<List<String>, Object>(10, 100, 2, true);
+        final String testString1 = UUID.randomUUID().toString();
+        List<String> list1 = List.of("key1", "key2");
+        List<String> list2 = List.of("key1", "key2");
+        List<String> list3 = List.of("key1", "key3");
+        dcache.put(list1, testString1);
+        assertTrue(dcache.containsKey(list2));
+        assertThat(dcache.get(list2), equalTo(testString1));
+        assertFalse(dcache.containsKey(list3));
+    }
+
+    @Test
+    public void testListOfObjectsKeys() {
+        CaffeineCache<List<Object>, Object> dcache = new CaffeineCache<List<Object>, Object>(10, 100, 2, true);
+        final String testString1 = UUID.randomUUID().toString();
+        List<Object> olist1 = List.of("key1", 2222);
+        List<Object> olist2 = List.of("key1", 2222);
+        List<Object> olist3 = List.of("key1", 3333);
+        dcache.put(olist1, testString1);
+        assertTrue(dcache.containsKey(olist2));
+        assertThat(dcache.get(olist2), equalTo(testString1));
+        assertFalse(dcache.containsKey(olist3));
+    }
+
+    @Test
+    public void testInvalidKeys() {
+        CaffeineCache<Double, Object> dcache = new CaffeineCache<Double, Object>(10, 100, 2, true);
+        assertThrows(RuntimeException.class, () -> dcache.put(3.33d, "failing test"));
+    }
+
+    @Test
+    public void testInvalidValues() {
+        CaffeineCache<String, Object> dcache = new CaffeineCache<String, Object>(10, 100, 2, true);
+        assertThrows(RuntimeException.class, () -> dcache.put("testKey", 1234));
+    }
 }

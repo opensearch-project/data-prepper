@@ -18,6 +18,7 @@ import com.github.benmanes.caffeine.cache.Weigher;
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.TimeUnit;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -81,7 +82,7 @@ public class CaffeineCache<K, V> {
         if (!(value instanceof Event) && !(value instanceof String)) {
             throw new RuntimeException("Currently only Event/String type values are supported");
         }
-        if (!(key instanceof String) && !(key instanceof Integer) && !(key instanceof Long)) {
+        if (!(key instanceof String) && !(key instanceof Integer) && !(key instanceof Long) && !(key instanceof List)) {
             throw new RuntimeException("Currently only String/Integer/Long type keys are supported");
         }
         cache.put(key, value);
