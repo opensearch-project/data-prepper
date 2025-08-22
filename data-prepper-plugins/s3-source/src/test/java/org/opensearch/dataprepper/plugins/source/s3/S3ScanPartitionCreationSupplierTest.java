@@ -611,16 +611,14 @@ public class S3ScanPartitionCreationSupplierTest {
         final ArgumentCaptor<ListObjectsV2Request> listObjectsV2RequestArgumentCaptor = ArgumentCaptor.forClass(ListObjectsV2Request.class);
         given(s3Client.listObjectsV2(listObjectsV2RequestArgumentCaptor.capture())).willReturn(listObjectsResponse);
 
+        final ArgumentCaptor<List<PartitionIdentifier>> createPartitionsArgumentCaptor = ArgumentCaptor.forClass(List.class);
+        doNothing().when(sourceCoordinator).createPartitions(createPartitionsArgumentCaptor.capture());
+
         final Map<String, Object> globalStateMap = new HashMap<>();
 
         final Instant beforeFirstScan = Instant.now();
         final List<PartitionIdentifier> resultingPartitions = partitionCreationSupplier.apply(globalStateMap);
-
-        assertThat(resultingPartitions, notNullValue());
-        assertThat(resultingPartitions.size(), equalTo(expectedPartitionIdentifiers.size()));
-        assertThat(resultingPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
-                containsInAnyOrder(expectedPartitionIdentifiers.stream().map(PartitionIdentifier::getPartitionKey)
-                        .map(Matchers::equalTo).collect(Collectors.toList())));
+        assertThat(resultingPartitions.isEmpty(), equalTo(true));
 
         assertThat(globalStateMap, notNullValue());
         assertThat(globalStateMap.containsKey(SCAN_COUNT), equalTo(true));
@@ -634,9 +632,33 @@ public class S3ScanPartitionCreationSupplierTest {
 
         final Instant beforeSecondScan = Instant.now();
         final List<PartitionIdentifier> secondScanPartitions = partitionCreationSupplier.apply(globalStateMap);
-        assertThat(secondScanPartitions.size(), equalTo(expectedPartitionIdentifiersSecondScan.size()));
-        assertThat(secondScanPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
-                containsInAnyOrder(expectedPartitionIdentifiersSecondScan.stream().map(PartitionIdentifier::getPartitionKey).map(Matchers::equalTo).collect(Collectors.toList())));
+        assertThat(secondScanPartitions.isEmpty(), equalTo(true));
+        final List<List<PartitionIdentifier>> createdPartitions = createPartitionsArgumentCaptor.getAllValues();
+        assertThat(createdPartitions.size(), equalTo(4));
+        
+        final List<PartitionIdentifier> firstScanFirstBucketPartitions = createdPartitions.get(0);
+        final List<PartitionIdentifier> firstScanSecondBucketPartitions = createdPartitions.get(1);
+        
+        final List<PartitionIdentifier> allFirstScanPartitions = new ArrayList<>();
+        allFirstScanPartitions.addAll(firstScanFirstBucketPartitions);
+        allFirstScanPartitions.addAll(firstScanSecondBucketPartitions);
+        
+        assertThat(allFirstScanPartitions.size(), equalTo(expectedPartitionIdentifiers.size()));
+        assertThat(allFirstScanPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
+                containsInAnyOrder(expectedPartitionIdentifiers.stream().map(PartitionIdentifier::getPartitionKey)
+                        .map(Matchers::equalTo).collect(Collectors.toList())));
+
+        final List<PartitionIdentifier> secondScanFirstBucketPartitions = createdPartitions.get(2);
+        final List<PartitionIdentifier> secondScanSecondBucketPartitions = createdPartitions.get(3);
+        
+        final List<PartitionIdentifier> allSecondScanPartitions = new ArrayList<>();
+        allSecondScanPartitions.addAll(secondScanFirstBucketPartitions);
+        allSecondScanPartitions.addAll(secondScanSecondBucketPartitions);
+        
+        assertThat(allSecondScanPartitions.size(), equalTo(expectedPartitionIdentifiersSecondScan.size()));
+        assertThat(allSecondScanPartitions.stream().map(PartitionIdentifier::getPartitionKey).collect(Collectors.toList()),
+                containsInAnyOrder(expectedPartitionIdentifiersSecondScan.stream().map(PartitionIdentifier::getPartitionKey)
+                        .map(Matchers::equalTo).collect(Collectors.toList())));
 
         assertThat(globalStateMap, notNullValue());
         assertThat(globalStateMap.containsKey(SCAN_COUNT), equalTo(true));
