@@ -22,11 +22,6 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 @Getter
 public class Office365SourceConfig implements CrawlerSourceConfig {
     /**
-     * Default number of records to retrieve in a single batch.
-     */
-    private static final int DEFAULT_BATCH_SIZE = 50;
-
-    /**
      * The Office 365 tenant ID that uniquely identifies the Microsoft Entra organization.
      */
     @NotNull
@@ -41,6 +36,7 @@ public class Office365SourceConfig implements CrawlerSourceConfig {
     @JsonProperty("authentication")
     @Valid
     private AuthenticationConfiguration authenticationConfiguration;
+
     /**
      * Flag to enable/disable acknowledgments for processed records.
      * When enabled, ensures records are processed at least once.
