@@ -64,7 +64,7 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
                 final ItemInfo nextItem = itemInfoIterator.next();
                 if (nextItem == null) {
                     //we don't expect null items, but just in case, we'll skip them
-                    log.info("Unexpected encounter of a null item.");
+                    log.warn("Unexpected encounter of a null item while processing batch with last item ID " + lastToken);
                     invalidPaginationItemsCounter.increment();
                     continue;
                 }

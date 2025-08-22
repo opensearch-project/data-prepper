@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -104,7 +105,7 @@ public class TokenPaginationCrawlerTest {
     }
 
     @Test
-    void testBatchSize() {
+    void testBatchSize() {  
         List<ItemInfo> itemInfoList = new ArrayList<>();
         int maxItemsPerPage = DEFAULT_BATCH_SIZE;
         for (int i = 0; i < maxItemsPerPage; i++) {
@@ -119,7 +120,7 @@ public class TokenPaginationCrawlerTest {
         for (int i = 0; i < maxItemsPerPage * 2; i++) {
             itemInfoList2.add(new TestItemInfo("testId" + i));
         }
-        when(client.listItems(any())).thenReturn(itemInfoList2.iterator());
+        when(client.listItems(anyString())).thenReturn(itemInfoList2.iterator());
         crawler.crawl(leaderPartition, coordinator);
         expectedNumberOfInvocations += 2;
         verify(coordinator, times(expectedNumberOfInvocations)).createPartition(any(SaasSourcePartition.class));
