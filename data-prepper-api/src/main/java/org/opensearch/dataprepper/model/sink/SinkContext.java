@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.sink;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,7 +34,7 @@ public class SinkContext {
         this.forwardToPipelines = new HashMap<>();
     }
 
-    public SinkContext(String tagsTargetKey, Collection<String> routes, List<String> includeKeys, List<String> excludeKeys, List<String> forwardPipelineNames) {
+    public SinkContext(String tagsTargetKey, Collection<String> routes, List<String> includeKeys, List<String> excludeKeys, final List<String> forwardPipelineNames) {
         this.tagsTargetKey = tagsTargetKey;
         this.routes = routes;
         this.includeKeys = includeKeys;
@@ -62,7 +63,7 @@ public class SinkContext {
         }
     }
 
-    public boolean forwardRecords(final Collection<Record<Event>> records) {
+    public boolean forwardRecords(final Collection<Record<Event>> records, final Map<String, Object> withData, final Map<String, Object> withMetadata) {
         if (forwardToPipelines.size() == 0) {
             return false;
         }
@@ -72,6 +73,25 @@ public class SinkContext {
                 return false;
             }
         }
+
+        if (records == null) {
+            return true;
+        }
+
+        records.forEach((record) -> {
+            Event event = record.getData();
+            if (withData != null && !withData.isEmpty()) {
+                for (Map.Entry<String, Object> entry: withData.entrySet()) {
+                    event.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (withMetadata != null && !withMetadata.isEmpty()) {
+                EventMetadata metadata = event.getMetadata();
+                for (Map.Entry<String, Object> entry: withMetadata.entrySet()) {
+                    metadata.setAttribute(entry.getKey(), entry.getValue());
+                }
+            }
+        });
 
         for (Map.Entry<String, HeadlessPipeline> entry: forwardToPipelines.entrySet()) {
             entry.getValue().sendEvents(records);

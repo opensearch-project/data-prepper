@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,6 +18,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -72,10 +75,28 @@ public class SinkContextTest {
         forwardToPipelines = sinkContext.getForwardToPipelines();
         assertThat(forwardToPipelines.get("forward-pipeline1"), equalTo(forwardPipeline1));
         assertThat(forwardToPipelines.get("forward-pipeline2"), equalTo(forwardPipeline2));
-        Collection<Record<Event>> records = mock(Collection.class);
-        assertThat(sinkContext.forwardRecords(records), equalTo(true));
+        Record<Event> record = mock(Record.class);
+        EventMetadata eventMetadata = mock(EventMetadata.class);
+        Event event = mock(Event.class);
+        when(record.getData()).thenReturn(event);
+        when(event.getMetadata()).thenReturn(eventMetadata);
+        Collection<Record<Event>> records = Collections.singletonList(record);
+
+        assertThat(sinkContext.forwardRecords(records, Map.of("datakey1", "datavalue1"), Map.of("metadataKey1", "metadataValue1")), equalTo(true));
         verify(forwardPipeline1, times(1)).sendEvents(eq(records));
         verify(forwardPipeline2, times(1)).sendEvents(eq(records));
+        verify(event, times(1)).put(any(String.class), any(Object.class));
+        verify(event, times(1)).getMetadata();
+        verify(eventMetadata, times(1)).setAttribute(any(String.class), any(Object.class));
+        assertThat(sinkContext.forwardRecords(records, null, null), equalTo(true));
+        verify(forwardPipeline1, times(2)).sendEvents(eq(records));
+        verify(forwardPipeline2, times(2)).sendEvents(eq(records));
+        assertThat(sinkContext.forwardRecords(records, Map.of(), Map.of()), equalTo(true));
+        verify(forwardPipeline1, times(3)).sendEvents(eq(records));
+        verify(forwardPipeline2, times(3)).sendEvents(eq(records));
+        assertThat(sinkContext.forwardRecords(null, Map.of(), Map.of()), equalTo(true));
+        verify(forwardPipeline1, times(3)).sendEvents(eq(records));
+        verify(forwardPipeline2, times(3)).sendEvents(eq(records));
     }
 
     @Test
@@ -92,7 +113,7 @@ public class SinkContextTest {
         HeadlessPipeline forwardPipeline1 = mock(HeadlessPipeline.class);
         assertThrows(RuntimeException.class, () -> sinkContext.setForwardToPipelines(Map.of("forward-pipeline1", forwardPipeline1)));
         Collection<Record<Event>> records = mock(Collection.class);
-        assertThat(sinkContext.forwardRecords(records), equalTo(false));
+        assertThat(sinkContext.forwardRecords(records, Map.of(), Map.of()), equalTo(false));
     }
 
     @Test
@@ -104,7 +125,7 @@ public class SinkContextTest {
         final List<String> testForwardToPipelineNames = Collections.emptyList();
         sinkContext = new SinkContext(testTagsTargetKey, testRoutes, testIncludeKeys, testExcludeKeys, testForwardToPipelineNames);
         Collection<Record<Event>> records = mock(Collection.class);
-        assertThat(sinkContext.forwardRecords(records), equalTo(false));
+        assertThat(sinkContext.forwardRecords(records, Map.of(), Map.of()), equalTo(false));
     }
 }
 
