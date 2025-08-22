@@ -34,11 +34,11 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
     private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
     private static final String INVALID_PAGINATION_ITEMS = "invalidPaginationItems";
     private final Timer crawlingTimer;
-    private final TokenCrawlerClient client;
+    private final CrawlerClient client;
     private final Counter parititionsCreatedCounter;
     private final Counter invalidPaginationItemsCounter;
 
-    public TokenPaginationCrawler(TokenCrawlerClient client,
+    public TokenPaginationCrawler(CrawlerClient client,
                                   PluginMetrics pluginMetrics) {
         this.client = client;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
@@ -55,7 +55,7 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
         TokenPaginationCrawlerLeaderProgressState leaderProgressState = (TokenPaginationCrawlerLeaderProgressState) leaderPartition
                 .getProgressState().get();
         String lastToken = leaderProgressState.getLastToken();
-        Iterator<ItemInfo> itemInfoIterator = client.listItems(lastToken);
+        Iterator<ItemInfo> itemInfoIterator = ((TokenCrawlerClient) client).listItems(lastToken);
         String latestToken = lastToken;
         log.info("Starting to crawl the source with last item ID: {}", lastToken);
         do {
@@ -122,4 +122,3 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
         parititionsCreatedCounter.increment();
     }
 }
-

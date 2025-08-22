@@ -13,7 +13,7 @@ import java.util.Iterator;
  * Interface for Crawler client to support token-based pagination. This interface can 
  * be implemented by different saas clients.
  */
-public interface TokenCrawlerClient<T extends SaasWorkerProgressState> {
+public interface TokenCrawlerClient<T extends SaasWorkerProgressState> extends CrawlerClient<PaginationCrawlerWorkerProgressState> {
 
     /**
      * This will be the main API called by crawler. This method assumes that {@link
