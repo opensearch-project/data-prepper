@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.LeaderPartition;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.TokenPaginationCrawlerLeaderProgressState;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -26,9 +27,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaderSchedulerTest {
+
+    private static String LAST_TOKEN = "sample-token-123";
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -45,6 +49,29 @@ public class LeaderSchedulerTest {
         Thread.sleep(100);
         executorService.shutdownNow();
         verifyNoInteractions(crawler);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testTokenPaginationCrawlerLeaderPartitionsCreation(boolean initializationState) throws InterruptedException {
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
+        LeaderPartition leaderPartition = new LeaderPartition(new TokenPaginationCrawlerLeaderProgressState(""));
+        TokenPaginationCrawlerLeaderProgressState state = (TokenPaginationCrawlerLeaderProgressState) leaderPartition.getProgressState().get();
+        state.setInitialized(initializationState);
+        state.setLastToken(LAST_TOKEN);
+        given(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE)).willReturn(Optional.of(leaderPartition));
+        doThrow(RuntimeException.class).when(coordinator).saveProgressStateForPartition(any(LeaderPartition.class), any(Duration.class));
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(leaderScheduler);
+
+        Thread.sleep(100);
+        executorService.shutdownNow();
+
+        // Check if crawler was invoked and updated leader lease renewal time
+        verify(crawler, times(1)).crawl(leaderPartition, coordinator);
+        verify(coordinator, times(1)).saveProgressStateForPartition(eq(leaderPartition), any(Duration.class));
+
     }
 
     @ParameterizedTest
@@ -91,6 +118,30 @@ public class LeaderSchedulerTest {
     }
 
     @Test
+    void testTokenPaginationCrawlerWhileLoopRunnningAfterTheSleep() throws InterruptedException {
+        LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
+        leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
+        LeaderPartition leaderPartition = new LeaderPartition(new TokenPaginationCrawlerLeaderProgressState(""));
+        TokenPaginationCrawlerLeaderProgressState state = (TokenPaginationCrawlerLeaderProgressState) leaderPartition.getProgressState().get();
+        state.setInitialized(false);
+        state.setLastToken(LAST_TOKEN);
+        when(crawler.crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class))).thenReturn(Instant.ofEpochMilli(10));
+        when(coordinator.acquireAvailablePartition(LeaderPartition.PARTITION_TYPE))
+                .thenReturn(Optional.of(leaderPartition))
+                .thenThrow(RuntimeException.class);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(leaderScheduler);
+
+        //Wait for more than a minute as the default while loop wait time in leader scheduler is 1 minute
+        Thread.sleep(100);
+        executorService.shutdownNow();
+
+        // Check if crawler was invoked and updated leader lease renewal time
+        verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class));
+    }
+
+    @Test
     void testWhileLoopRunnningAfterTheSleep() throws InterruptedException {
         LeaderScheduler leaderScheduler = new LeaderScheduler(coordinator, crawler);
         leaderScheduler.setLeaseInterval(Duration.ofMillis(10));
@@ -112,5 +163,19 @@ public class LeaderSchedulerTest {
 
         // Check if crawler was invoked and updated leader lease renewal time
         verify(crawler, atLeast(2)).crawl(any(LeaderPartition.class), any(EnhancedSourceCoordinator.class));
+    }
+
+    @Test
+    void testSetLeaderProgressState_throwsExceptionOnStateMismatch() {
+        // Create a LeaderPartition with TokenPaginationCrawlerLeaderProgressState
+        LeaderPartition leaderPartition = new LeaderPartition(new TokenPaginationCrawlerLeaderProgressState(""));
+        
+        // Try to set a different type of state (PaginationCrawlerLeaderProgressState)
+        PaginationCrawlerLeaderProgressState incompatibleState = new PaginationCrawlerLeaderProgressState(Instant.now());
+        
+        // Verify that RuntimeException is thrown due to state type mismatch
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            leaderPartition.setLeaderProgressState(incompatibleState);
+        });
     }
 }
