@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
+import org.opensearch.dataprepper.model.annotations.ExtensionDependsOn;
+import org.opensearch.dataprepper.model.annotations.ExtensionProvides;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -27,10 +29,17 @@ public class ExtensionLoader {
     public class ExtensionPluginWithContext {
         ExtensionPlugin extensionPlugin;
         boolean configured;
+        Class<?>[] dependentClasses;
+        Class<?>[] providedClasses;
 
-        public ExtensionPluginWithContext(final ExtensionPlugin extensionPlugin, final boolean isConfigured) {
+        public ExtensionPluginWithContext(final ExtensionPlugin extensionPlugin,
+                                          final boolean isConfigured,
+                                          final Class<?>[] dependentClasses,
+                                          final Class<?>[] providedClasses) {
             this.extensionPlugin = extensionPlugin;
             this.configured = isConfigured;
+            this.dependentClasses = dependentClasses;
+            this.providedClasses = providedClasses;
         }
 
         public ExtensionPlugin getExtensionPlugin() {
@@ -39,6 +48,14 @@ public class ExtensionLoader {
 
         public boolean isConfigured() {
             return configured;
+        }
+
+        public Class<?>[] getDependentClasses() {
+            return dependentClasses;
+        }
+
+        public Class<?>[] getProvidedClasses() {
+            return providedClasses;
         }
     }
 
@@ -73,9 +90,17 @@ public class ExtensionLoader {
                     final String pluginName = convertClassToName(extensionClass);
                     try {
                         final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
+                        final ExtensionProvides extensionProvidesAnnotation = extensionClass.getAnnotation(ExtensionProvides.class);
+                        final ExtensionDependsOn extensionDependsOnAnnotation = extensionClass.getAnnotation(ExtensionDependsOn.class);
+
+                        final Class<?>[] providedClasses = extensionProvidesAnnotation != null ?
+                                extensionProvidesAnnotation.providedClasses() : new Class<?>[]{};
+                        final Class<?>[] dependentClasses = extensionDependsOnAnnotation != null ?
+                                extensionDependsOnAnnotation.dependentClasses() : new Class<?>[]{};
+
                         final Object config = pluginArgumentsContext.getArgument(0);
                         return new ExtensionPluginWithContext(extensionPluginCreator.newPluginInstance(
-                                extensionClass, pluginArgumentsContext, pluginName), (config != null));
+                                extensionClass, pluginArgumentsContext, pluginName), (config != null), dependentClasses, providedClasses);
                     } catch (Exception e) {
                         final PluginError pluginError = PluginError.builder()
                                 .componentType(PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE)

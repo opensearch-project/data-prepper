@@ -14,6 +14,7 @@ package org.opensearch.dataprepper.plugins.aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,12 +40,14 @@ public class AwsSecretsSupplier implements SecretsSupplier {
 
     public AwsSecretsSupplier(
             final SecretValueDecoder secretValueDecoder,
-            final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
+            final AwsSecretPluginConfig awsSecretPluginConfig,
+            final ObjectMapper objectMapper,
+            final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.secretValueDecoder = secretValueDecoder;
         this.objectMapper = objectMapper;
         awsSecretManagerConfigurationMap = awsSecretPluginConfig
                 .getAwsSecretManagerConfigurationMap();
-        secretsManagerClientMap = toSecretsManagerClientMap(awsSecretPluginConfig);
+        secretsManagerClientMap = toSecretsManagerClientMap(awsSecretPluginConfig, awsCredentialsSupplier);
         secretIdToValue = toSecretMap(awsSecretManagerConfigurationMap);
     }
 
@@ -61,11 +64,12 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     private Map<String, SecretsManagerClient> toSecretsManagerClientMap(
-            final AwsSecretPluginConfig awsSecretPluginConfig) {
+            final AwsSecretPluginConfig awsSecretPluginConfig,
+            final AwsCredentialsSupplier  awsCredentialsSupplier) {
         return awsSecretPluginConfig.getAwsSecretManagerConfigurationMap().entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
                     final AwsSecretManagerConfiguration awsSecretManagerConfiguration = entry.getValue();
-                    return awsSecretManagerConfiguration.createSecretManagerClient();
+                    return awsSecretManagerConfiguration.createSecretManagerClient(awsCredentialsSupplier);
                 }));
     }
 

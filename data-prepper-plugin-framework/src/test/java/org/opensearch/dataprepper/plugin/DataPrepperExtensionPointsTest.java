@@ -127,6 +127,20 @@ class DataPrepperExtensionPointsTest {
         verifyRegisterBeanAsPrototype(coreApplicationContext);
     }
 
+    @Test
+    void getExtensionProvider_refreshes_shared_context_and_returns_correct_bean() {
+        final Class<DefaultPluginFactory> defaultPluginFactoryClass = DefaultPluginFactory.class;
+        final DefaultPluginFactory defaultPluginFactory = mock(DefaultPluginFactory.class);
+
+        when(sharedApplicationContext.getBean(defaultPluginFactoryClass)).thenReturn(defaultPluginFactory);
+
+        final DefaultPluginFactory result = createObjectUnderTest().getExtensionProvider(defaultPluginFactoryClass);
+
+        assertThat(result, equalTo(defaultPluginFactory));
+
+        verify(sharedApplicationContext).refresh();
+    }
+
     private void verifyRegisterBeanWithProvideInstance(final GenericApplicationContext applicationContext) {
         reset(extensionProvider);
         final ArgumentCaptor<Supplier<Object>> supplierArgumentCaptor =

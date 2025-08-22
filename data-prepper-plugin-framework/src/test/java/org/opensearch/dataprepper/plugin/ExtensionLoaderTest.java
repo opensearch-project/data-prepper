@@ -18,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.annotations.ExtensionDependsOn;
+import org.opensearch.dataprepper.model.annotations.ExtensionProvides;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -45,6 +47,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -224,7 +227,7 @@ class ExtensionLoaderTest {
     }
 
     @Test
-    void loadExtensions_returns_multiple_extensions_for_multiple_plugin_classes() {
+    void loadExtensions_returns_multiple_extensions_for_multiple_plugin_classes_in_correct_order() {
         final Collection<Class<? extends ExtensionPlugin>> pluginClasses = new HashSet<>();
         final Collection<ExtensionPlugin> expectedPlugins = new ArrayList<>();
 
@@ -256,6 +259,13 @@ class ExtensionLoaderTest {
         for (ExtensionPlugin expectedPlugin : actualPlugins) {
             assertThat(actualPlugins, hasItem(expectedPlugin));
         }
+
+        assertThat(actualPlugins.get(0), instanceOf(TestExtension2.class));
+        assertTrue(actualPlugins.get(1) instanceof TestExtension1 || actualPlugins.get(1) instanceof TestExtension3,
+                "Expected result to be either TestExtension1 or TestExtension3 but was " + actualPlugins.get(1).getClass().getName());
+
+        assertTrue(actualPlugins.get(2) instanceof TestExtension1 || actualPlugins.get(2) instanceof TestExtension3,
+                "Expected result to be either TestExtension1 or TestExtension3 but was " + actualPlugins.get(2).getClass().getName());
         assertThat(pluginErrorCollector.getPluginErrors().isEmpty(), is(true));
     }
 
@@ -335,10 +345,15 @@ class ExtensionLoaderTest {
                 null);
     }
 
+    @ExtensionDependsOn(dependentClasses = TestExtensionConfig.class)
     private interface TestExtension1 extends ExtensionPlugin {
     }
+
+    @ExtensionProvides(providedClasses = TestExtensionConfig.class)
     private interface TestExtension2 extends ExtensionPlugin {
     }
+
+    @ExtensionDependsOn(dependentClasses = TestExtensionConfig.class)
     private interface TestExtension3 extends ExtensionPlugin {
     }
 
