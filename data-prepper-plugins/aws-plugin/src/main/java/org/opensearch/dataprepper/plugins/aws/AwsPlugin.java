@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.aws;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.ExtensionProvides;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 
@@ -15,6 +17,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
  * Data Prepper as an extension plugin. Everything starts from here.
  */
 @DataPrepperExtensionPlugin(modelType = AwsPluginConfig.class, rootKeyJsonPath = "/aws/configurations")
+@ExtensionProvides(providedClasses = {AwsCredentialsSupplier.class})
 public class AwsPlugin implements ExtensionPlugin {
     private final DefaultAwsCredentialsSupplier defaultAwsCredentialsSupplier;
 

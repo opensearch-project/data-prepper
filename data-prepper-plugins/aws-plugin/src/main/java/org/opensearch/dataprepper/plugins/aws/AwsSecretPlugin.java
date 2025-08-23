@@ -6,9 +6,11 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.ExtensionDependsOn;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.PluginConfigPublisher;
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKeyJsonPath = "/aws/secrets",
         allowInPipelineConfigurations = true)
+@ExtensionDependsOn(dependentClasses = {AwsCredentialsSupplier.class})
 public class AwsSecretPlugin implements ExtensionPlugin {
     static final int PERIOD_IN_SECONDS = 60;
     private static final Logger LOG = LoggerFactory.getLogger(AwsSecretPlugin.class);
@@ -31,25 +34,20 @@ public class AwsSecretPlugin implements ExtensionPlugin {
     private PluginConfigPublisher pluginConfigPublisher;
     private SecretsSupplier secretsSupplier;
     private PluginMetrics pluginMetrics;
-    private final PluginConfigValueTranslator pluginConfigValueTranslator;
+    private PluginConfigValueTranslator pluginConfigValueTranslator;
+
+    private final AwsSecretPluginConfig awsSecretPluginConfig;
 
     @DataPrepperPluginConstructor
     public AwsSecretPlugin(final AwsSecretPluginConfig awsSecretPluginConfig) {
-        if (awsSecretPluginConfig != null) {
-            final SecretValueDecoder secretValueDecoder = new SecretValueDecoder();
-            secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER);
-            this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
-            pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
-            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-            pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
-            submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
-        } else {
-            pluginConfigValueTranslator = null;
-        }
+       this.awsSecretPluginConfig = awsSecretPluginConfig;
     }
 
     @Override
     public void apply(final ExtensionPoints extensionPoints) {
+        final AwsCredentialsSupplier awsCredentialsSupplier = extensionPoints.getExtensionProvider(AwsCredentialsSupplier.class);
+        initializePluginConfigValueTranslator(awsCredentialsSupplier);
+
         extensionPoints.addExtensionProvider(new AwsSecretsPluginConfigValueTranslatorExtensionProvider(pluginConfigValueTranslator));
         extensionPoints.addExtensionProvider(new AwsSecretsPluginConfigPublisherExtensionProvider(
                 pluginConfigPublisher));
@@ -84,6 +82,20 @@ public class AwsSecretPlugin implements ExtensionPlugin {
                         "attempting to force the termination");
                 scheduledExecutorService.shutdownNow();
             }
+        }
+    }
+
+    private void initializePluginConfigValueTranslator(final AwsCredentialsSupplier awsCredentialsSupplier) {
+        if (awsSecretPluginConfig != null) {
+            final SecretValueDecoder secretValueDecoder = new SecretValueDecoder();
+            secretsSupplier = new AwsSecretsSupplier(secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER, awsCredentialsSupplier);
+            this.pluginConfigPublisher = new AwsSecretsPluginConfigPublisher();
+            pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
+            scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            pluginMetrics = PluginMetrics.fromNames("secrets", "aws");
+            submitSecretsRefreshJobs(awsSecretPluginConfig, secretsSupplier);
+        } else {
+            pluginConfigValueTranslator = null;
         }
     }
 }

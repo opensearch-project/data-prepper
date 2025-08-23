@@ -50,6 +50,12 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
         providerClassesSet.add(extensionProvider.supportedClass());
     }
 
+    @Override
+    public <T> T getExtensionProvider(final Class<T> type) {
+        sharedApplicationContext.refresh();
+        return sharedApplicationContext.getBean(type);
+    }
+
     private static class EmptyContext implements ExtensionProvider.Context {
 
     }
