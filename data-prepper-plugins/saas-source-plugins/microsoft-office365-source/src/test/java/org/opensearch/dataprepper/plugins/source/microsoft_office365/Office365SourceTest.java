@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.AuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.DimensionalTimeSliceCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 
@@ -58,7 +58,7 @@ class Office365SourceTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
-    private PaginationCrawler crawler;
+    private DimensionalTimeSliceCrawler crawler;
 
     @Mock
     private PluginExecutorServiceProvider executorServiceProvider;
