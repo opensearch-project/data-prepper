@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,6 +42,7 @@ public class FileSink implements Sink<Record<Object>> {
     private boolean isStopRequested;
     private boolean initialized;
     private final String tagsTargetKey;
+    private final SinkContext sinkContext;
 
     private final boolean appendMode;
 
@@ -61,11 +63,14 @@ public class FileSink implements Sink<Record<Object>> {
         initialized = false;
         lock = new ReentrantLock(true);
         tagsTargetKey = Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null;
+        this.sinkContext = sinkContext;
     }
 
     @Override
     public void output(final Collection<Record<Object>> records) {
+        final boolean doForward = sinkContext.getForwardToPipelines().size() > 0;
         lock.lock();
+        Collection<Record<Event>> events = new ArrayList<>();
         try {
             if (isStopRequested)
                 return;
@@ -73,11 +78,18 @@ public class FileSink implements Sink<Record<Object>> {
             for (final Record<Object> record : records) {
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
+                    if (doForward && record.getData() instanceof Event) {
+                        Event event = (Event)record.getData();
+                        events.add(new Record<>(event));
+                    }
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
                 }
             }
 
+            if (doForward) {
+                sinkContext.forwardRecords(events);
+            }
             try {
                 writer.flush();
             } catch (final IOException ex) {

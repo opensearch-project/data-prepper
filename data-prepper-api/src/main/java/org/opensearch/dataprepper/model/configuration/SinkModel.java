@@ -30,7 +30,11 @@ import java.util.Map;
 public class SinkModel extends PluginModel {
 
     public SinkModel(final String pluginName, final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
-        this(pluginName, new SinkInternalJsonModel(routes, tagsTargetKey, includeKeys, excludeKeys, pluginSettings));
+        this(pluginName, new SinkInternalJsonModel(routes, tagsTargetKey, includeKeys, excludeKeys, null, pluginSettings));
+    }
+
+    public SinkModel(final String pluginName, final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final SinkForwardConfig forwardConfig, final Map<String, Object> pluginSettings) {
+        this(pluginName, new SinkInternalJsonModel(routes, tagsTargetKey, includeKeys, excludeKeys, forwardConfig, pluginSettings));
     }
 
     private SinkModel(final String pluginName, final SinkInternalJsonModel sinkInnerModel) {
@@ -55,6 +59,9 @@ public class SinkModel extends PluginModel {
         return this.<SinkInternalJsonModel>getInternalJsonModel().excludeKeys;
     }
 
+    public SinkForwardConfig getForwardConfig() {
+        return this.<SinkInternalJsonModel>getInternalJsonModel().forwardConfig;
+    }
 
     /**
      * Gets the tags target key associated with this Sink.
@@ -74,6 +81,7 @@ public class SinkModel extends PluginModel {
 
         private final List<String> includeKeys;
         private final List<String> excludeKeys;
+        private final SinkForwardConfig forwardConfig;
 
         private SinkModelBuilder(final PluginModel pluginModel) {
             this.pluginModel = pluginModel;
@@ -81,10 +89,11 @@ public class SinkModel extends PluginModel {
             this.tagsTargetKey = null;
             this.includeKeys = Collections.emptyList();
             this.excludeKeys = Collections.emptyList();
+            this.forwardConfig = null;
         }
 
         public SinkModel build() {
-            return new SinkModel(pluginModel.getPluginName(), routes, tagsTargetKey, includeKeys, excludeKeys, pluginModel.getPluginSettings());
+            return new SinkModel(pluginModel.getPluginName(), routes, tagsTargetKey, includeKeys, excludeKeys, forwardConfig, pluginModel.getPluginSettings());
         }
     }
 
@@ -110,16 +119,21 @@ public class SinkModel extends PluginModel {
         @JsonProperty("exclude_keys")
         private final List<String> excludeKeys;
 
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        @JsonProperty("forward_to")
+        private final SinkForwardConfig forwardConfig;
+
         @JsonCreator
-        private SinkInternalJsonModel(@JsonProperty("routes") final List<String> routes, @JsonProperty("tags_target_key") final String tagsTargetKey, @JsonProperty("include_keys") final List<String> includeKeys, @JsonProperty("exclude_keys") final List<String> excludeKeys) {
-            this(routes, tagsTargetKey, includeKeys, excludeKeys, new HashMap<>());
+        private SinkInternalJsonModel(@JsonProperty("routes") final List<String> routes, @JsonProperty("tags_target_key") final String tagsTargetKey, @JsonProperty("include_keys") final List<String> includeKeys, @JsonProperty("exclude_keys") final List<String> excludeKeys, @JsonProperty("forward_to") final SinkForwardConfig forwardConfig) {
+            this(routes, tagsTargetKey, includeKeys, excludeKeys, forwardConfig, new HashMap<>());
         }
 
-        private SinkInternalJsonModel(final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
+        private SinkInternalJsonModel(final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final SinkForwardConfig forwardConfig, final Map<String, Object> pluginSettings) {
             super(pluginSettings);
             this.routes = routes != null ? routes : Collections.emptyList();
             this.includeKeys = includeKeys != null ? includeKeys : Collections.emptyList();
             this.excludeKeys = excludeKeys != null ? excludeKeys : Collections.emptyList();
+            this.forwardConfig = forwardConfig;
             this.tagsTargetKey = tagsTargetKey;
             validateConfiguration();
             validateKeys();
@@ -149,7 +163,7 @@ public class SinkModel extends PluginModel {
 
     static class SinkModelDeserializer extends AbstractPluginModelDeserializer<SinkModel, SinkInternalJsonModel> {
         SinkModelDeserializer() {
-            super(SinkModel.class, SinkInternalJsonModel.class, SinkModel::new, () -> new SinkInternalJsonModel(null, null, null, null));
+            super(SinkModel.class, SinkInternalJsonModel.class, SinkModel::new, () -> new SinkInternalJsonModel(null, null, null, null, null));
         }
     }
 }
