@@ -17,11 +17,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
@@ -31,6 +34,7 @@ import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerExcept
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -155,11 +159,18 @@ class AwsSecretsSupplierTest {
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
     }
 
-    @Test
-    void testConstructorWithGetSecretValueFailure() {
-        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
+    @ParameterizedTest
+    @MethodSource("exceptionProvider")
+    void testConstructorWithGetSecretValueFailure(final Class<Throwable> e) {
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(e);
         assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(
                 secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER, awsCredentialsSupplier));
+    }
+
+    private static Stream<Arguments> exceptionProvider() {
+        return Stream.of(
+                Arguments.of(AwsServiceException.class),
+                Arguments.of(RuntimeException.class));
     }
 
     @Test
