@@ -232,7 +232,13 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public void setTraceGroupFields(final TraceGroupFields traceGroupFields) {
-        this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        EventMetadata metadata = getMetadata();
+        Object oldTraceGroupFields = metadata.getAttribute(TRACE_GROUP_FIELDS_KEY);
+        if (oldTraceGroupFields != null) {
+            metadata.setAttribute(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        } else {
+            this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        }
     }
 
     public static Builder builder() {

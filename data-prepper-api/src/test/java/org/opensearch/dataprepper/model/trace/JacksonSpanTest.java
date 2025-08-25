@@ -298,6 +298,20 @@ public class JacksonSpanTest {
     }
 
     @Test
+    public void testSetAndGetTraceGroupFieldsInMetadata() {
+        final TraceGroupFields testTraceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(200L)
+                .withStatusCode(404)
+                .withEndTime("Different end time")
+                .build();
+        jacksonSpan.getMetadata().setAttribute(JacksonSpan.TRACE_GROUP_FIELDS_KEY, new DefaultTraceGroupFields());
+        jacksonSpan.setTraceGroupFields(testTraceGroupFields);
+        final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
+        assertThat(traceGroupFields, is(equalTo(traceGroupFields)));
+        assertThat(traceGroupFields, is(equalTo(testTraceGroupFields)));
+    }
+
+    @Test
     public void testToJsonStringAllParameters() throws JsonProcessingException, JSONException {
         final String jsonResult = jacksonSpan.toJsonString();
         final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
