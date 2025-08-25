@@ -29,15 +29,17 @@ import java.util.concurrent.Executors;
 @Named
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
+    private HttpServer server;
     private final HttpServerProvider serverProvider;
     private final ListPipelinesHandler listPipelinesHandler;
     private final GetPipelinesHandler getPipelinesHandler;
+    private final UpdatePipelineHandler updatePipelineHandler;
+    private final IsDynamicallyUpdatablePipelineHandler isDynamicallyUpdatablePipelineHandler;
     private final ShutdownHandler shutdownHandler;
     private final EncryptionHttpHandler encryptionHttpHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
     private final ExecutorService executorService;
-    private HttpServer server;
 
     @Inject
     public DataPrepperServer(
@@ -45,6 +47,8 @@ public class DataPrepperServer {
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
+            final UpdatePipelineHandler updatePipelineHandler,
+            final IsDynamicallyUpdatablePipelineHandler isDynamicallyUpdatablePipelineHandler,
             @Autowired(required = false) @Nullable final EncryptionHttpHandler encryptionHttpHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
@@ -53,6 +57,8 @@ public class DataPrepperServer {
         this.listPipelinesHandler = listPipelinesHandler;
         this.shutdownHandler = shutdownHandler;
         this.getPipelinesHandler = getPipelinesHandler;
+        this.updatePipelineHandler = updatePipelineHandler;
+        this.isDynamicallyUpdatablePipelineHandler = isDynamicallyUpdatablePipelineHandler;
         this.encryptionHttpHandler = encryptionHttpHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
@@ -75,6 +81,8 @@ public class DataPrepperServer {
         createContext(server, listPipelinesHandler, authenticator, "/list");
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
+        createContext(server, updatePipelineHandler, authenticator, "/updatePipelineConfig");
+        createContext(server, isDynamicallyUpdatablePipelineHandler, authenticator, "/isDynamicallyUpdatablePipelineConfig");
 
         if (encryptionHttpHandler != null) {
             createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
@@ -92,7 +100,7 @@ public class DataPrepperServer {
             final HttpServer httpServer,
             final HttpHandler httpHandler,
             @Nullable final Authenticator authenticator,
-            final String ... paths
+            final String... paths
     ) {
         for (final String path : paths) {
             final HttpContext context = httpServer.createContext(path, httpHandler);
