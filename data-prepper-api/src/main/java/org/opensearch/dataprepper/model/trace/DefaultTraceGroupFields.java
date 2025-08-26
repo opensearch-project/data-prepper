@@ -64,17 +64,6 @@ public class DefaultTraceGroupFields implements TraceGroupFields, Serializable {
         return Objects.equals(endTime, that.endTime) && Objects.equals(durationInNanos, that.durationInNanos) && Objects.equals(statusCode, that.statusCode);
     }
 
-    /*
-    @Override
-    public String toString() {
-        return "DefaultTraceGroupFields{" +
-                "endTime=" + endTime +
-                ", durationInNanos=" + durationInNanos +
-                ", statusCode='" + statusCode + '\'' +
-                '}';
-    }
-    */
-
     @Override
     public String getEndTime() {
         return endTime;
