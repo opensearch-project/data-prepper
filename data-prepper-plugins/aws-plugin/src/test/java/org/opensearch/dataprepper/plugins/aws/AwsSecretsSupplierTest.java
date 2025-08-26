@@ -161,16 +161,10 @@ class AwsSecretsSupplierTest {
 
     @ParameterizedTest
     @MethodSource("exceptionProvider")
-    void testConstructorWithGetSecretValueFailure(final Class<Throwable> e) {
-        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(e);
+    void testConstructorWithGetSecretValueFailure(final Class<Throwable> exceptionClass) {
+        when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(exceptionClass);
         assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(
                 secretValueDecoder, awsSecretPluginConfig, OBJECT_MAPPER, awsCredentialsSupplier));
-    }
-
-    private static Stream<Arguments> exceptionProvider() {
-        return Stream.of(
-                Arguments.of(AwsServiceException.class),
-                Arguments.of(RuntimeException.class));
     }
 
     @Test
@@ -248,5 +242,10 @@ class AwsSecretsSupplierTest {
         objectUnderTest = createObjectUnderTest();
         assertThrows(RuntimeException.class,
                 () -> objectUnderTest.updateValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "key", "newValue"));
+    }
+
+    private static Stream<Arguments> exceptionProvider() {
+        return Stream.of(Arguments.of(AwsServiceException.class),
+                Arguments.of(RuntimeException.class));
     }
 }

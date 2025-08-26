@@ -63,8 +63,15 @@ public class PluginCreatorContextTest {
         when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
         when(context2.getDependentClasses()).thenReturn(classes);
         assertThat(extensionsLoaderComparator.compare(context1, context2), equalTo(-1));
+
+        when(context1.getDependentClasses()).thenReturn(new Class<?>[]{});
+        when(context1.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+
         when(context1.isConfigured()).thenReturn(false);
         when(context2.isConfigured()).thenReturn(true);
+
         assertThat(extensionsLoaderComparator.compare(context1, context2), greaterThan(0));
         when(context1.isConfigured()).thenReturn(true);
         when(context2.isConfigured()).thenReturn(false);
