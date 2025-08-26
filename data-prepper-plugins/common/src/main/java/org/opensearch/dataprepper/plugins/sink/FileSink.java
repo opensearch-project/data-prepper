@@ -88,7 +88,7 @@ public class FileSink implements Sink<Record<Object>> {
             }
 
             if (doForward) {
-                sinkContext.forwardRecords(events);
+                sinkContext.forwardRecords(events, null, null);
             }
             try {
                 writer.flush();
