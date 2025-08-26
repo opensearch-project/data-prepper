@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.plugin.FailedToUpdatePluginConfigValueException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
@@ -127,10 +128,16 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         final GetSecretValueResponse getSecretValueResponse;
         try {
             getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
-        } catch (Exception e) {
+        } catch (final AwsServiceException e) {
+            LOG.error("Unable to retrieve secret {}: {}", getSecretValueRequest.secretId(), e.getMessage());
             throw new RuntimeException(
                     String.format("Unable to retrieve secret: %s",
                             awsSecretManagerConfiguration.getAwsSecretId()), e);
+        } catch (final Exception ex) {
+            LOG.error("Unable to retrieve secret {} due to unexpected error", getSecretValueRequest.secretId(), ex);
+            throw new RuntimeException(
+                    String.format("Unable to retrieve secret: %s",
+                            awsSecretManagerConfiguration.getAwsSecretId()), ex);
         }
 
         try {
