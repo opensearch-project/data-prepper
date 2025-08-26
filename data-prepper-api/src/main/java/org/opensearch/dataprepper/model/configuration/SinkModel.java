@@ -119,8 +119,8 @@ public class SinkModel extends PluginModel {
         private SinkInternalJsonModel(final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
             super(pluginSettings);
             this.routes = routes != null ? routes : Collections.emptyList();
-            this.includeKeys = includeKeys != null ? validateKeys(includeKeys) : Collections.emptyList();
-            this.excludeKeys = excludeKeys != null ? validateKeys(excludeKeys) : Collections.emptyList();
+            this.includeKeys = includeKeys != null ? validateKeys(includeKeys, "include_keys") : Collections.emptyList();
+            this.excludeKeys = excludeKeys != null ? validateKeys(excludeKeys, "exclude_keys") : Collections.emptyList();
             this.tagsTargetKey = tagsTargetKey;
             validateConfiguration();
         }
@@ -134,10 +134,10 @@ public class SinkModel extends PluginModel {
         /**
          * Validates both include and exclude keys if they contain /
          */
-        private static List<String> validateKeys(List<String> input) {
+        private static List<String> validateKeys(List<String> input, String tag) {
             input.forEach(key -> {
                 if(key.contains("/"))
-                    throw new InvalidPluginConfigurationException("include_keys cannot contain /");
+                    throw new InvalidPluginConfigurationException(tag + " cannot contain /");
             });
             return input.stream().sorted().collect(Collectors.toList());
         }
