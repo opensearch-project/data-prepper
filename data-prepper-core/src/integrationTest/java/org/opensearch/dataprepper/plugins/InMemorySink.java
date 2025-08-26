@@ -44,7 +44,7 @@ public class InMemorySink implements Sink<Record<Event>> {
         inMemorySinkAccessor.addEvents(testingKey, records);
         boolean result = inMemorySinkAccessor.getResult();
         if (doForward) {
-            sinkContext.forwardRecords(records);
+            sinkContext.forwardRecords(records, null, null);
         } else {
             records.stream().forEach((record) -> {
                 EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
