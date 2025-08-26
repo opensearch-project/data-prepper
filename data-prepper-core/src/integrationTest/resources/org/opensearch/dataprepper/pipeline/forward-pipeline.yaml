@@ -12,7 +12,8 @@ test-forward-pipeline:
   sink:
     - in_memory:
         testing_key: ForwardPipelineIT
-        forward_to: [ "pipeline2"]
+        forward_to:
+          pipelines: [ "pipeline2"]
 
 pipeline2:
   sink:
