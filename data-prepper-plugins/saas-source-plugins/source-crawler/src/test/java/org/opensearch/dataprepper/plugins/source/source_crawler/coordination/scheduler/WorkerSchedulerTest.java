@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.SaasWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.PartitionFactory;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.partition.SaasSourcePartition;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.CrowdStrikeWorkerProgressState;
 import java.util.Optional;
@@ -118,6 +119,31 @@ public class WorkerSchedulerTest {
         assertNotNull(csState.getStartTime());
         assertNotNull(csState.getEndTime());
     }
+
+    @Test
+    void testDeserializeDimensionalTimeSliceWorkerProgressState() throws Exception {
+        String json = "{\n" +
+                "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState\",\n" +
+                "  \"startTime\": 1729391235717,\n" +
+                "  \"endTime\": 1729395235717,\n" +
+                "  \"dimensionType\": \"Exchange\"\n" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerSubtypes(DimensionalTimeSliceWorkerProgressState.class);
+        mapper.registerModule(new JavaTimeModule());
+
+        SaasWorkerProgressState state = mapper.readValue(json, SaasWorkerProgressState.class);
+
+        assertTrue(state instanceof DimensionalTimeSliceWorkerProgressState);
+        DimensionalTimeSliceWorkerProgressState dimensionalState =
+                (DimensionalTimeSliceWorkerProgressState) state;
+
+        assertNotNull(dimensionalState.getStartTime());
+        assertNotNull(dimensionalState.getEndTime());
+        assertEquals("Exchange", dimensionalState.getDimensionType());
+    }
+
 
     @Test
     void testEmptyProgressState() throws InterruptedException {

@@ -214,26 +214,28 @@ class Office365RestClientTest {
 
     @Test
     void testGetAuditLog() {
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
         String mockAuditLog = "{\"id\":\"123\",\"contentType\":\"Audit.AzureActiveDirectory\"}";
         ResponseEntity<String> mockResponse = new ResponseEntity<>(mockAuditLog, HttpStatus.OK);
 
         when(restTemplate.exchange(
-                anyString(),
+                eq(contentUri),
                 eq(HttpMethod.GET),
                 any(),
                 eq(String.class)
         )).thenReturn(mockResponse);
 
-        String result = office365RestClient.getAuditLog("test-content-id");
+        String result = office365RestClient.getAuditLog(contentUri);
 
         assertEquals(mockAuditLog, result);
     }
 
     @Test
     void testGetAuditLogFailure() {
+        String contentUri = "https://manage.office.com/api/v1.0/test-tenant/activity/feed/audit/123";
         // Mock REST template to throw an exception
         when(restTemplate.exchange(
-                anyString(),
+                eq(contentUri),
                 eq(HttpMethod.GET),
                 any(),
                 eq(String.class)
@@ -241,7 +243,7 @@ class Office365RestClientTest {
 
         // Verify that the exception is propagated
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> office365RestClient.getAuditLog("test-content-id"));
+                () -> office365RestClient.getAuditLog(contentUri));
         assertEquals("Failed to fetch audit log", exception.getMessage());
     }
 
