@@ -23,11 +23,6 @@ public class PluginCreatorContext {
     @Bean(name = "extensionsLoaderComparator")
     public Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator() {
         return (extensionOne, extensionTwo) -> {
-            // First, compare by configuration status (configured ones first)
-            int configCompare = Boolean.compare(extensionTwo.isConfigured(), extensionOne.isConfigured());
-            if (configCompare != 0) {
-                return configCompare;
-            }
 
             // Get the provided and dependent classes for both extensions
             Class<?>[] extensionOneProvidedClasses = extensionOne.getProvidedClasses();
@@ -43,6 +38,12 @@ public class PluginCreatorContext {
             // If extensionTwo provides any classes that extensionOne depends on, extensionTwo should go first
             if (containsAnyExtensionDependencies(extensionTwoProvidedClasses, extensionOneDependentClasses)) {
                 return 1;
+            }
+
+            // Lastly, compare by configuration status (configured ones before non-configured ones)
+            int configCompare = Boolean.compare(extensionTwo.isConfigured(), extensionOne.isConfigured());
+            if (configCompare != 0) {
+                return configCompare;
             }
 
             return 0;

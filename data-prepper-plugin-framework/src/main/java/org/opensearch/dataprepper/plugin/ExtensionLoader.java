@@ -144,7 +144,7 @@ public class ExtensionLoader {
         }
     }
 
-    private String convertClassToName(final Class<? extends ExtensionPlugin> extensionClass) {
+    String convertClassToName(final Class<? extends ExtensionPlugin> extensionClass) {
         final String className = extensionClass.getSimpleName();
         return classNameToPluginName(className);
     }

@@ -63,11 +63,56 @@ public class PluginCreatorContextTest {
         when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
         when(context2.getDependentClasses()).thenReturn(classes);
         assertThat(extensionsLoaderComparator.compare(context1, context2), equalTo(-1));
+
+        when(context1.getDependentClasses()).thenReturn(new Class<?>[]{});
+        when(context1.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+
         when(context1.isConfigured()).thenReturn(false);
         when(context2.isConfigured()).thenReturn(true);
+
         assertThat(extensionsLoaderComparator.compare(context1, context2), greaterThan(0));
         when(context1.isConfigured()).thenReturn(true);
         when(context2.isConfigured()).thenReturn(false);
         assertThat(extensionsLoaderComparator.compare(context1, context2), lessThan(0));
+    }
+
+    @Test
+    public void test_extensionsLoaderComparator_prioritizes_dependencies() {
+        final Class<?>[] classes = {DefaultPluginFactory.class};
+
+        ExtensionLoader.ExtensionPluginWithContext context1 = mock(ExtensionLoader.ExtensionPluginWithContext.class);
+        ExtensionLoader.ExtensionPluginWithContext context2 = mock(ExtensionLoader.ExtensionPluginWithContext.class);
+        Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator = pluginCreatorContext.extensionsLoaderComparator();
+        assertNotNull(extensionsLoaderComparator);
+
+        when(context1.isConfigured()).thenReturn(false);
+        when(context1.getDependentClasses()).thenReturn(new Class<?>[]{});
+        when(context1.getProvidedClasses()).thenReturn(classes);
+
+        when(context2.isConfigured()).thenReturn(true);
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getDependentClasses()).thenReturn(classes);
+
+        assertThat(extensionsLoaderComparator.compare(context1, context2), equalTo(-1));
+    }
+
+    @Test
+    public void test_extensionsLoaderComparator_falls_back_to_if_configured_when_there_are_no_dependencies() {
+        ExtensionLoader.ExtensionPluginWithContext context1 = mock(ExtensionLoader.ExtensionPluginWithContext.class);
+        ExtensionLoader.ExtensionPluginWithContext context2 = mock(ExtensionLoader.ExtensionPluginWithContext.class);
+        Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator = pluginCreatorContext.extensionsLoaderComparator();
+        assertNotNull(extensionsLoaderComparator);
+
+        when(context1.isConfigured()).thenReturn(false);
+        when(context1.getDependentClasses()).thenReturn(new Class<?>[]{});
+        when(context1.getProvidedClasses()).thenReturn(new Class<?>[]{});
+
+        when(context2.isConfigured()).thenReturn(true);
+        when(context2.getProvidedClasses()).thenReturn(new Class<?>[]{});
+        when(context2.getDependentClasses()).thenReturn(new Class<?>[]{});
+
+        assertThat(extensionsLoaderComparator.compare(context1, context2), equalTo(1));
     }
 }
