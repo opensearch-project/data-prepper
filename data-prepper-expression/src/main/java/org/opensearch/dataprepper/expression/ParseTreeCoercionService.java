@@ -36,13 +36,8 @@ class ParseTreeCoercionService {
         final String nodeStringValue = node.getText();
         switch (nodeType) {
             case DataPrepperExpressionParser.Function:
+                cachedFunctionStrings.computeIfAbsent(nodeStringValue, this::parseFunctionMetadata);
                 FunctionMetadata functionMetadata = cachedFunctionStrings.get(nodeStringValue);
-
-                if (functionMetadata == null) {
-                    functionMetadata = parseFunctionMetadata(nodeStringValue);
-                    cachedFunctionStrings.putIfAbsent(nodeStringValue, functionMetadata);
-                }
-
                 return expressionFunctionProvider.provideFunction(functionMetadata.functionName, functionMetadata.argList, event, convertLiteralType);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
