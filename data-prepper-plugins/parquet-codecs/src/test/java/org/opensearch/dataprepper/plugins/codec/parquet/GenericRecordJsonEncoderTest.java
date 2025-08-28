@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -237,6 +238,42 @@ class GenericRecordJsonEncoderTest {
         String json = encoder.serialize(record);
 
         assertEquals(expectedJson, json);
+    }
+
+    @Test
+    void serialize_WithDecimalLogicalType_UsesScaleFromSchema() {
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}]}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+
+        BigDecimal value = new BigDecimal("12.34").setScale(2);
+        byte[] decimalBytes = value.unscaledValue().toByteArray();
+        record.put("amount", ByteBuffer.wrap(decimalBytes));
+
+        String json = encoder.serialize(record);
+
+        // Should output the scaled decimal number (double form) from schema
+        assertEquals("{\"amount\": 12.34}", json);
+    }
+
+    @Test
+    void serialize_WithNullDecimalLogicalType_ReturnsNull() {
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}]}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+        record.put("amount", null);
+
+        String json = encoder.serialize(record);
+
+        assertEquals("{\"amount\": null}", json);
     }
 
 }
