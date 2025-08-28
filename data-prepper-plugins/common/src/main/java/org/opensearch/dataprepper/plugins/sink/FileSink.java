@@ -68,9 +68,10 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void output(final Collection<Record<Object>> records) {
-        final boolean doForward = sinkContext.getForwardToPipelines().size() > 0;
+        sinkContext.prepareForForwardPipelines(records);
         lock.lock();
         Collection<Record<Event>> events = new ArrayList<>();
+
         try {
             if (isStopRequested)
                 return;
@@ -78,18 +79,12 @@ public class FileSink implements Sink<Record<Object>> {
             for (final Record<Object> record : records) {
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
-                    if (doForward && record.getData() instanceof Event) {
-                        Event event = (Event)record.getData();
-                        events.add(new Record<>(event));
-                    }
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
                 }
             }
 
-            if (doForward) {
-                sinkContext.forwardRecords(events, null, null);
-            }
+            sinkContext.forwardRecords(events, null, null);
             try {
                 writer.flush();
             } catch (final IOException ex) {

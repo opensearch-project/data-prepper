@@ -78,6 +78,7 @@ class HeadlessPipelinesIT {
 
         final List<Record<Event>> sinkRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_DLQ);
 
+        assertThat(sinkRecords.size(), equalTo(recordsToCreate));
         for (int i = 0; i < sinkRecords.size(); i++) {
             final Record<Event> inputRecord = inputRecords.get(i);
             final Record<Event> sinkRecord = sinkRecords.get(i);
