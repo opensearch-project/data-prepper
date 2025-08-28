@@ -19,9 +19,12 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 @Named
 class ParseTreeCoercionService {
+    private static final Pattern QUOTE_PATTERN = Pattern.compile("^\"{1,3}|\"{1,3}$");
+    private static final Pattern ARGUMENT_SPLITTER = Pattern.compile("(?<!\\\\),");
     private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
     private final ExpressionFunctionProvider expressionFunctionProvider;
     private final Function<Object, Object> convertLiteralType;
@@ -47,13 +50,13 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.JsonPointer:
                 return resolveJsonPointerValue(nodeStringValue, event);
             case DataPrepperExpressionParser.String:
-                return nodeStringValue.replaceAll("^\"{1,3}|\"{1,3}$", "");
+                return QUOTE_PATTERN.matcher(nodeStringValue).replaceAll("");
             case DataPrepperExpressionParser.Integer:
-                Long longValue = Long.valueOf(nodeStringValue);
-                if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE) {
-                    return longValue;
+                try {
+                    return Integer.valueOf(nodeStringValue);
+                } catch (NumberFormatException e) {
+                    return Long.valueOf(nodeStringValue);
                 }
-                return Integer.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Float:
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
@@ -109,7 +112,7 @@ class ParseTreeCoercionService {
         List<Object> argList = new ArrayList<>();
         if (argsEndIndex > funcNameIndex + 1) {
             final String argsStr = nodeStringValue.substring(funcNameIndex + 1, argsEndIndex);
-            final String[] args = argsStr.split("(?<!\\\\),");
+            final String[] args = ARGUMENT_SPLITTER.split(argsStr);
 
             for (final String arg : args) {
                 String trimmedArg = arg.trim();
