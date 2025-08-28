@@ -69,7 +69,7 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void output(final Collection<Record<Object>> records) {
-        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext();
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
         lock.lock();
         Collection<Record<Event>> events = new ArrayList<>();
 
