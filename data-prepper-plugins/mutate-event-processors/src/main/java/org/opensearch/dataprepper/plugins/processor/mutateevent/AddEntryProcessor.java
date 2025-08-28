@@ -6,12 +6,12 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -29,18 +29,23 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 @DataPrepperPlugin(name = "add_entries", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AddEntryProcessor.class);
     private final List<AddEntryProcessorConfig.Entry> entries;
 
     private final ExpressionEvaluator expressionEvaluator;
+    private final EventKeyFactory eventKeyFactory;
 
     @DataPrepperPluginConstructor
-    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
+    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator, final EventKeyFactory eventKeyFactory) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
+        this.eventKeyFactory = eventKeyFactory;
 
         config.getEntries().forEach(entry -> {
             if (entry.getAddWhen() != null
@@ -70,12 +75,26 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     }
 
                     try {
-                        final String key = (entry.getKey() == null) ? null : recordEvent.formatString(entry.getKey(), expressionEvaluator);
+                        final String keyStr = entry.getKey();
+                        EventKey key = null;
+                        if (keyStr != null) {
+                            try {
+                                if (!keyStr.contains("%{") && !keyStr.contains("${")) {
+                                    key = eventKeyFactory.createEventKey(keyStr);
+                                } else {
+                                    // Dynamic key that needs to be resolved
+                                    String resolvedKey = recordEvent.formatString(keyStr, expressionEvaluator);
+                                    key = eventKeyFactory.createEventKey(resolvedKey);
+                                }
+                            } catch (Exception e) {
+                                LOG.debug("Failed to resolve or create key {} for event {}", keyStr, recordEvent, e);
+                            }
+                        }
                         final String metadataKey = entry.getMetadataKey();
                         final String iterateOn = entry.getIterateOn();
                         if (Objects.isNull(iterateOn)) {
                             handleWithoutIterateOn(entry, recordEvent, key, metadataKey);
-                        } else if (!Objects.isNull(key)) {
+                        } else if (!Objects.isNull(key) && key.getKey() != null) {
                             handleWithIterateOn(entry, recordEvent, iterateOn, key);
                         }
                     } catch (Exception e) {
@@ -123,7 +142,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void handleWithoutIterateOn(final AddEntryProcessorConfig.Entry entry,
                                         final Event recordEvent,
-                                        final String key,
+                                        final EventKey key,
                                         final String metadataKey) {
         final Object value = retrieveValue(entry, recordEvent);
         if (!Objects.isNull(key)) {
@@ -145,7 +164,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
                                      final Event recordEvent,
                                      final String iterateOn,
-                                     final String key) {
+                                     final EventKey key) {
         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
         if (iterateOnList != null) {
             for (final Map<String, Object> item : iterateOnList) {
@@ -159,10 +178,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
 
                 value = retrieveValue(entry, context);
-                if (!item.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                    item.put(key, value);
-                } else if (item.containsKey(key) && entry.getAppendIfKeyExists()) {
-                    mergeValueToMap(item, key, value);
+                final String keyStr = key.getKey();  // Key and keyStr are guaranteed non-null by caller
+                if (!item.containsKey(keyStr) || entry.getOverwriteIfKeyExists()) {
+                    item.put(keyStr, value);
+                } else if (item.containsKey(keyStr) && entry.getAppendIfKeyExists()) {
+                    mergeValueToMap(item, keyStr, value);
                 }
             }
             recordEvent.put(iterateOn, iterateOnList);
@@ -186,7 +206,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         return value;
     }
 
-    private void mergeValueToEvent(final Event recordEvent, final String key, final Object value) {
+    private void mergeValueToEvent(final Event recordEvent, final EventKey key, final Object value) {
         mergeValue(value, () -> recordEvent.get(key, Object.class), newValue -> recordEvent.put(key, newValue));
     }
 

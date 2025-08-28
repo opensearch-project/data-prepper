@@ -9,9 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
@@ -48,6 +50,8 @@ public class AddEntryProcessorTests {
 
     @Mock
     private ExpressionEvaluator expressionEvaluator;
+
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
 
     @Test
     void invalid_add_when_throws_InvalidPluginConfigurationException() {
@@ -885,7 +889,7 @@ public class AddEntryProcessorTests {
     }
 
     private AddEntryProcessor createObjectUnderTest() {
-        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator, eventKeyFactory);
     }
 
     private AddEntryProcessorConfig.Entry createEntry(
