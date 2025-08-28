@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 
 import java.util.Collection;
 
@@ -23,7 +24,6 @@ public class InMemorySink implements Sink<Record<Event>> {
     private final InMemorySinkAccessor inMemorySinkAccessor;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Boolean acknowledgements;
-    private final boolean doForward;
     private final SinkContext sinkContext;
 
     @DataPrepperPluginConstructor
@@ -33,7 +33,6 @@ public class InMemorySink implements Sink<Record<Event>> {
                         final InMemorySinkAccessor inMemorySinkAccessor) {
         testingKey = inMemoryConfig.getTestingKey();
         this.sinkContext = sinkContext;
-        this.doForward = sinkContext.getForwardToPipelines().size() > 0;
         this.inMemorySinkAccessor = inMemorySinkAccessor;
         this.acknowledgementSetManager = acknowledgementSetManager;
         acknowledgements = inMemoryConfig.getAcknowledgements();
@@ -43,16 +42,15 @@ public class InMemorySink implements Sink<Record<Event>> {
     public void output(final Collection<Record<Event>> records) {
         inMemorySinkAccessor.addEvents(testingKey, records);
         boolean result = inMemorySinkAccessor.getResult();
-        if (doForward) {
-            sinkContext.forwardRecords(records, null, null);
-        } else {
-            records.stream().forEach((record) -> {
-                EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-                if (acknowledgements) {
-                    eventHandle.release(result);
-                }
-            });
-        }
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
+        sinkForwardRecordsContext.addRecords(records);
+        records.stream().forEach((record) -> {
+            EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
+            if (acknowledgements) {
+                eventHandle.release(result);
+            }
+        });
+        sinkContext.forwardRecords(sinkForwardRecordsContext, null, null);
     }
 
     @Override

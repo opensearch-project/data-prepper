@@ -29,7 +29,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 
-class HeadlessPipelinesIT {
+class DLQHeadlessPipelinesIT {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorPipelineIT.class);
     private static final String IN_MEMORY_IDENTIFIER_DLQ = "PipelineDLQIT";
     private static final String IN_MEMORY_IDENTIFIER_FORWARD = "ForwardPipelineIT";
@@ -94,41 +94,5 @@ class HeadlessPipelinesIT {
         }
     }
 
-    @Test
-    void pipeline_forward_test() {
-        createPipeline(FORWARD_PIPELINE_TEST_CONFIGURATION);
-
-        final int recordsToCreate = 200;
-        final List<Record<Event>> inputRecords = IntStream.range(0, recordsToCreate)
-                .mapToObj(i -> UUID.randomUUID().toString())
-                .map(JacksonEvent::fromMessage)
-                .map(Record::new)
-                .collect(Collectors.toList());
-
-        LOG.info("Submitting a batch of record.");
-        inMemorySourceAccessor.submit(IN_MEMORY_IDENTIFIER_FORWARD, inputRecords);
-
-        await().atMost(400, TimeUnit.MILLISECONDS)
-                .untilAsserted(() -> {
-            assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_FORWARD), not(empty()));
-        });
-
-        assertThat(inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_FORWARD).size(), equalTo(2*recordsToCreate));
-
-        final List<Record<Event>> sinkRecords = inMemorySinkAccessor.get(IN_MEMORY_IDENTIFIER_FORWARD);
-
-        for (int i = 0; i < sinkRecords.size(); i++) {
-            final Record<Event> inputRecord = inputRecords.get(i%recordsToCreate);
-            final Record<Event> sinkRecord = sinkRecords.get(i);
-            assertThat(sinkRecord, notNullValue());
-            final Event recordData = sinkRecord.getData();
-            assertThat(recordData, notNullValue());
-            assertThat(
-                    recordData.get("message", String.class),
-                    equalTo(inputRecord.getData().get("message", String.class)));
-            assertThat(recordData.get("test1", String.class),
-                    equalTo("knownUpdatedPrefix1" + i%recordsToCreate));
-
-        }
-    }
 }
+

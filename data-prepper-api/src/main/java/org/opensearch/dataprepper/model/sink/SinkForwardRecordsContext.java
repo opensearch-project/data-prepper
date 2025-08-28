@@ -15,12 +15,16 @@ import java.util.List;
 
 public class SinkForwardRecordsContext {
     List<Record<Event>> records;
+    boolean forwardPipelinesPresent;
 
-    public SinkForwardRecordsContext() {
+    public SinkForwardRecordsContext(SinkContext sinkContext) {
+        forwardPipelinesPresent =  (sinkContext != null && sinkContext.getForwardToPipelines().size() > 0);
         records = new ArrayList<>();
     }
     
     public void addRecord(Record<Event> record) {
+        if (!forwardPipelinesPresent)
+            return;
         InternalEventHandle eventHandle = (InternalEventHandle)record.getData().getEventHandle();
         if (eventHandle != null) {
             eventHandle.acquireReference();
@@ -29,6 +33,8 @@ public class SinkForwardRecordsContext {
     }
 
     public void addRecords(Collection<Record<Event>> newRecords) {
+        if (!forwardPipelinesPresent)
+            return;
         newRecords.forEach((record) -> {
             Event event = record.getData();
             InternalEventHandle eventHandle = (InternalEventHandle)event.getEventHandle();
