@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import org.opensearch.dataprepper.core.event.EventConfiguration;
 import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureConfiguration;
 import org.opensearch.dataprepper.core.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.core.pipeline.PipelineShutdownOption;
@@ -61,8 +62,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     private Duration sinkShutdownTimeout;
     private ExperimentalConfiguration experimental;
     private PipelineExtensions pipelineExtensions;
-    private String failurePipelineName = DEFAULT_FAILURE_PIPELINE_NAME;
-
+    private LiveCaptureConfiguration liveCaptureConfiguration;
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
     public DataPrepperConfiguration() {}
@@ -108,7 +108,8 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
             @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
-            final PipelineExtensions pipelineExtensions) {
+            final PipelineExtensions pipelineExtensions,
+            @JsonProperty("live_capture") final LiveCaptureConfiguration liveCaptureConfiguration) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
         this.sourceCoordinationConfig = Objects.isNull(sourceCoordinationConfig)
@@ -139,6 +140,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
         this.experimental = experimental != null ? experimental : ExperimentalConfiguration.defaultConfiguration();
 
         this.pipelineExtensions = pipelineExtensions;
+        this.liveCaptureConfiguration = liveCaptureConfiguration != null ? liveCaptureConfiguration : new LiveCaptureConfiguration();
     }
 
     public int getServerPort() {
@@ -264,5 +266,9 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     @Override
     public ExperimentalConfiguration getExperimental() {
         return experimental;
+    }
+
+    public LiveCaptureConfiguration getLiveCaptureConfiguration() {
+        return liveCaptureConfiguration;
     }
 }

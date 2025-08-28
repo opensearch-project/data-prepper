@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureHandler;
 import org.opensearch.dataprepper.plugins.encryption.EncryptionHttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class DataPrepperServer {
     private final ListPipelinesHandler listPipelinesHandler;
     private final GetPipelinesHandler getPipelinesHandler;
     private final ShutdownHandler shutdownHandler;
+    private final LiveCaptureHandler liveCaptureHandler;
     private final EncryptionHttpHandler encryptionHttpHandler;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Authenticator authenticator;
@@ -45,6 +47,7 @@ public class DataPrepperServer {
             final ListPipelinesHandler listPipelinesHandler,
             final ShutdownHandler shutdownHandler,
             final GetPipelinesHandler getPipelinesHandler,
+            @Autowired(required = false) @Nullable final LiveCaptureHandler liveCaptureHandler,
             @Autowired(required = false) @Nullable final EncryptionHttpHandler encryptionHttpHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
@@ -53,6 +56,7 @@ public class DataPrepperServer {
         this.listPipelinesHandler = listPipelinesHandler;
         this.shutdownHandler = shutdownHandler;
         this.getPipelinesHandler = getPipelinesHandler;
+        this.liveCaptureHandler = liveCaptureHandler;
         this.encryptionHttpHandler = encryptionHttpHandler;
         this.prometheusMeterRegistry = prometheusMeterRegistry;
         this.authenticator = authenticator;
@@ -76,6 +80,7 @@ public class DataPrepperServer {
         createContext(server, shutdownHandler, authenticator, "/shutdown");
         createContext(server, getPipelinesHandler, authenticator, "/pipelines");
 
+        createContext(server, liveCaptureHandler, authenticator, "/livecapture");
         if (encryptionHttpHandler != null) {
             createContext(server, encryptionHttpHandler, authenticator, "/encryption/rotate");
         }
