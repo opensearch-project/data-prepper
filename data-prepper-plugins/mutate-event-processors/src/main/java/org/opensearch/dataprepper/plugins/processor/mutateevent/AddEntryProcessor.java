@@ -178,10 +178,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                         }
                         final String metadataKey = entry.getMetadataKey();
                         final String iterateOn = entry.getIterateOn();
+                        final boolean flattenKey = entry.getFlattenKey();
                         if (Objects.isNull(iterateOn)) {
                             handleWithoutIterateOn(entry, recordEvent, key, metadataKey, props);
                         } else if (!Objects.isNull(key) && key.getKey() != null) {
-                            handleWithIterateOn(entry, recordEvent, iterateOn, key, props);
+                            handleWithIterateOn(entry, recordEvent, iterateOn, flattenKey, key, props);
                         }
                     } catch (Exception e) {
                         LOG.atError()
@@ -250,10 +251,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
-                                 final Event recordEvent,
-                                 final String iterateOn,
-                                 final EventKey key,
-                                 final EntryProperties props) {
+                                     final Event recordEvent,
+                                     final String iterateOn,
+                                     final boolean flattenKey,
+                                     final EventKey key,
+                                     final EntryProperties props) {
         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, ITERATE_LIST_CLASS);
         if (iterateOnList != null && !iterateOnList.isEmpty()) {
             // Create builder once
@@ -263,17 +265,18 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
             // Pre-check addToElementWhen condition if static
             final boolean shouldProcessAll = props.addToElementWhen == null || 
                                       expressionEvaluator.evaluateConditional(props.addToElementWhen, recordEvent);
-                                      
             if (shouldProcessAll) {
                 // Bulk process all items
-                for (final Map<String, Object> item : iterateOnList) {
-                    processIterateOnItem(entry, contextBuilder, item, key, props);
+                for (int i = 0; i < iterateOnList.size(); i++) {
+                    final Map<String, Object> item = iterateOnList.get(i);
+                    iterateOnList.set(i, processIterateOnItem(entry, contextBuilder, item, flattenKey, key, props));
                 }
             } else {
                 // Process items individually with condition check
-                for (final Map<String, Object> item : iterateOnList) {
+                for (int i = 0; i < iterateOnList.size(); i++) {
+                    final Map<String, Object> item = iterateOnList.get(i);
                     if (expressionEvaluator.evaluateConditional(props.addToElementWhen, recordEvent)) {
-                        processIterateOnItem(entry, contextBuilder, item, key, props);
+                        iterateOnList.set(i, processIterateOnItem(entry, contextBuilder, item, flattenKey, key, props));
                     }
                 }
             }
@@ -281,16 +284,28 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
-    private void processIterateOnItem(AddEntryProcessorConfig.Entry entry, JacksonEvent.Builder contextBuilder, 
-                                    Map<String, Object> item, EventKey key, EntryProperties props) {
+    private Map<String, Object> processIterateOnItem(AddEntryProcessorConfig.Entry entry, JacksonEvent.Builder contextBuilder, 
+                                    Map<String, Object> item, final boolean flattenKey, EventKey key, EntryProperties props) {
         final Event context = contextBuilder.withData(item).build();
         final Object value = retrieveValue(entry, context);
         final String keyStr = key.getKey();  // Key and keyStr are guaranteed non-null by caller
         if (!item.containsKey(keyStr) || props.overwriteIfExists) {
-            item.put(keyStr, value);
+            if (flattenKey) {
+                item.put(keyStr, value);
+            }  else {
+                context.put(key, value);
+            }
         } else if (item.containsKey(keyStr) && props.appendIfExists) {
-            mergeValueToMap(item, keyStr, value);
+            if (flattenKey) {
+                mergeValueToMap(item, keyStr, value);
+            }  else {
+                mergeValueToEvent(context, key, value);
+            }
         }
+        if (flattenKey){
+            return item;
+        }
+        return context.toMap();
     }
 
     private Object retrieveValue(final AddEntryProcessorConfig.Entry entry, final Event context) {
