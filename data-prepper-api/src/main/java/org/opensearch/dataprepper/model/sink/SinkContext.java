@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.model.sink;
 import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.InternalEventHandle;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 
 import java.util.Collection;
@@ -64,20 +63,7 @@ public class SinkContext {
         }
     }
 
-    public SinkForwardRecordsContext prepareRecordsForForwarding(final Collection<Record<Event>> records) {
-        for (Map.Entry<String, HeadlessPipeline> entry: forwardToPipelines.entrySet()) {
-            records.forEach((record) -> {
-                InternalEventHandle eventHandle = (InternalEventHandle)record.getData().getEventHandle();
-                if (eventHandle != null) {
-                    eventHandle.acquireReference();
-                }
-            });
-        }
-        return new SinkForwardRecordsContext();
-
-    }
-
-    public boolean forwardRecords(final SinkForwardRecordsContext sinkForwardRecordsContext, final Collection<Record<Event>> records, final Map<String, Object> withData, final Map<String, Object> withMetadata) {
+    public boolean forwardRecords(final SinkForwardRecordsContext sinkForwardRecordsContext, final Map<String, Object> withData, final Map<String, Object> withMetadata) {
         if (forwardToPipelines.size() == 0) {
             return false;
         }
@@ -87,8 +73,9 @@ public class SinkContext {
                 return false;
             }
         }
+        List<Record<Event>> records = sinkForwardRecordsContext.getRecords();
 
-        if (records == null) {
+        if (records.size() == 0) {
             return true;
         }
 

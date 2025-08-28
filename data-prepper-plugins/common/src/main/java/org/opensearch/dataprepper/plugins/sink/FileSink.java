@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +69,7 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void output(final Collection<Record<Object>> records) {
-        sinkContext.prepareForForwardPipelines(records);
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext();
         lock.lock();
         Collection<Record<Event>> events = new ArrayList<>();
 
@@ -77,6 +78,11 @@ public class FileSink implements Sink<Record<Object>> {
                 return;
 
             for (final Record<Object> record : records) {
+                if (record.getData() instanceof Event) {
+                    Event event = (Event)record.getData();
+                    sinkForwardRecordsContext.addRecord(new Record<>(event));
+                }
+
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
                 } catch (final IOException ex) {
@@ -84,7 +90,7 @@ public class FileSink implements Sink<Record<Object>> {
                 }
             }
 
-            sinkContext.forwardRecords(events, null, null);
+            sinkContext.forwardRecords(sinkForwardRecordsContext, null, null);
             try {
                 writer.flush();
             } catch (final IOException ex) {
