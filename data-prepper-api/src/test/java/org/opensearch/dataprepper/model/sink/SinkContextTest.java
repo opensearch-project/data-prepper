@@ -86,21 +86,22 @@ public class SinkContextTest {
         when(record.getData()).thenReturn(event);
         when(event.getMetadata()).thenReturn(eventMetadata);
         Collection<Record<Event>> records = Collections.singletonList(record);
-        SinkForwardRecordsContext sinkForwardRecordsContext = sinkContext.prepareRecordsForForwarding(records);
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext();
 
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, records, Map.of("datakey1", "datavalue1"), Map.of("metadataKey1", "metadataValue1")), equalTo(true));
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, Map.of("datakey1", "datavalue1"), Map.of("metadataKey1", "metadataValue1")), equalTo(true));
+        verify(forwardPipeline1, times(0)).sendEvents(eq(records));
+        verify(forwardPipeline2, times(0)).sendEvents(eq(records));
+        sinkForwardRecordsContext.addRecords(records);
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, Map.of("datakey1", "datavalue1"), Map.of("metadataKey1", "metadataValue1")), equalTo(true));
         verify(forwardPipeline1, times(1)).sendEvents(eq(records));
         verify(forwardPipeline2, times(1)).sendEvents(eq(records));
         verify(event, times(1)).put(any(String.class), any(Object.class));
         verify(event, times(1)).getMetadata();
         verify(eventMetadata, times(1)).setAttribute(any(String.class), any(Object.class));
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, records, null, null), equalTo(true));
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, null, null), equalTo(true));
         verify(forwardPipeline1, times(2)).sendEvents(eq(records));
         verify(forwardPipeline2, times(2)).sendEvents(eq(records));
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, records, Map.of(), Map.of()), equalTo(true));
-        verify(forwardPipeline1, times(3)).sendEvents(eq(records));
-        verify(forwardPipeline2, times(3)).sendEvents(eq(records));
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, null, Map.of(), Map.of()), equalTo(true));
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, Map.of(), Map.of()), equalTo(true));
         verify(forwardPipeline1, times(3)).sendEvents(eq(records));
         verify(forwardPipeline2, times(3)).sendEvents(eq(records));
     }
@@ -118,9 +119,15 @@ public class SinkContextTest {
         assertThat(forwardToPipelines.get("forward-pipeline2"), equalTo(null));
         HeadlessPipeline forwardPipeline1 = mock(HeadlessPipeline.class);
         assertThrows(RuntimeException.class, () -> sinkContext.setForwardToPipelines(Map.of("forward-pipeline1", forwardPipeline1)));
-        Collection<Record<Event>> records = mock(Collection.class);
-        SinkForwardRecordsContext sinkForwardRecordsContext = sinkContext.prepareRecordsForForwarding(records);
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, records, Map.of(), Map.of()), equalTo(false));
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext();
+        Record<Event> record = mock(Record.class);
+        Event event = mock(Event.class);
+        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+        doNothing().when(eventHandle).acquireReference();
+        when(record.getData()).thenReturn(event);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        sinkForwardRecordsContext.addRecords(List.of(record));
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, Map.of(), Map.of()), equalTo(false));
     }
 
     @Test
@@ -131,9 +138,16 @@ public class SinkContextTest {
         final List<String> testExcludeKeys = Collections.emptyList();
         final List<String> testForwardToPipelineNames = Collections.emptyList();
         sinkContext = new SinkContext(testTagsTargetKey, testRoutes, testIncludeKeys, testExcludeKeys, testForwardToPipelineNames);
-        Collection<Record<Event>> records = mock(Collection.class);
-        SinkForwardRecordsContext sinkForwardRecordsContext = sinkContext.prepareRecordsForForwarding(records);
-        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, records, Map.of(), Map.of()), equalTo(false));
+        Record<Event> record = mock(Record.class);
+        Event event = mock(Event.class);
+        DefaultEventHandle eventHandle = mock(DefaultEventHandle.class);
+        doNothing().when(eventHandle).acquireReference();
+        when(record.getData()).thenReturn(event);
+        when(event.getEventHandle()).thenReturn(eventHandle);
+        
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext();
+        sinkForwardRecordsContext.addRecords(List.of(record));
+        assertThat(sinkContext.forwardRecords(sinkForwardRecordsContext, Map.of(), Map.of()), equalTo(false));
     }
 }
 
