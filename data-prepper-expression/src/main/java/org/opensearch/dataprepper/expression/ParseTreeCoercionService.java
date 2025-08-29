@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 class ParseTreeCoercionService {
     private static final Pattern QUOTE_PATTERN = Pattern.compile("^\"{1,3}|\"{1,3}$");
     private static final Pattern ARGUMENT_SPLITTER = Pattern.compile("(?<!\\\\),");
+    private static final int INITIAL_ARG_LIST_SIZE = 4;
     private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
     private final ExpressionFunctionProvider expressionFunctionProvider;
     private final Function<Object, Object> convertLiteralType;
@@ -39,8 +40,7 @@ class ParseTreeCoercionService {
                 FunctionMetadata functionMetadata = cachedFunctionStrings.computeIfAbsent(nodeStringValue, this::parseFunctionMetadata);
                 return expressionFunctionProvider.provideFunction(functionMetadata.functionName, functionMetadata.argList, event, convertLiteralType);
             case DataPrepperExpressionParser.EscapedJsonPointer:
-                final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
-                return resolveJsonPointerValue(jsonPointerWithoutQuotes, event);
+                return resolveJsonPointerValue(nodeStringValue.substring(1, nodeStringValue.length() - 1), event);
             case DataPrepperExpressionParser.JsonPointer:
                 return resolveJsonPointerValue(nodeStringValue, event);
             case DataPrepperExpressionParser.String:
@@ -104,7 +104,7 @@ class ParseTreeCoercionService {
             throw new ExpressionCoercionException("Invalid function format: missing closing parenthesis");
         }
 
-        List<Object> argList = new ArrayList<>();
+        List<Object> argList = new ArrayList<>(INITIAL_ARG_LIST_SIZE);
         if (argsEndIndex > funcNameIndex + 1) {
             final String argsStr = nodeStringValue.substring(funcNameIndex + 1, argsEndIndex);
             final String[] args = ARGUMENT_SPLITTER.split(argsStr);
@@ -136,16 +136,13 @@ class ParseTreeCoercionService {
         final List<Object> argList;
 
         private FunctionMetadata(String functionName, List<Object> argList) {
-            this.functionName = functionName;
+            this.functionName = functionName.intern();
             this.argList = argList;
         }
     }
 
     private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
         final Object value = event.get(jsonPointer, Object.class);
-        if (value == null) {
-            return null;
-        }
-        return convertLiteralType.apply(value);
+        return value != null ? convertLiteralType.apply(value) : null;
     }
 }
