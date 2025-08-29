@@ -28,7 +28,7 @@ class ParseTreeCoercionService {
     private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
     private final ExpressionFunctionProvider expressionFunctionProvider;
     private final Function<Object, Object> convertLiteralType;
-    private final ConcurrentMap<String, FunctionMetadata> cachedFunctionStrings = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, FunctionMetadata> cachedFunctionStrings = new ConcurrentHashMap<>(16, 0.75f);
 
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
         Objects.requireNonNull(node, "TerminalNode cannot be null");
@@ -36,8 +36,7 @@ class ParseTreeCoercionService {
         final String nodeStringValue = node.getText();
         switch (nodeType) {
             case DataPrepperExpressionParser.Function:
-                cachedFunctionStrings.computeIfAbsent(nodeStringValue, this::parseFunctionMetadata);
-                FunctionMetadata functionMetadata = cachedFunctionStrings.get(nodeStringValue);
+                FunctionMetadata functionMetadata = cachedFunctionStrings.computeIfAbsent(nodeStringValue, this::parseFunctionMetadata);
                 return expressionFunctionProvider.provideFunction(functionMetadata.functionName, functionMetadata.argList, event, convertLiteralType);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
@@ -57,8 +56,9 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.COMMA:
+                return DataPrepperExpressionParser.COMMA;
             case DataPrepperExpressionParser.SET_DELIMITER:
-                return nodeType;
+                return DataPrepperExpressionParser.SET_DELIMITER;
             case DataPrepperExpressionParser.Null:
                 return null;
             case DataPrepperExpressionParser.DataTypes:
@@ -128,15 +128,17 @@ class ParseTreeCoercionService {
             }
         }
 
-        FunctionMetadata metadata = new FunctionMetadata();
-        metadata.functionName = functionName;
-        metadata.argList = argList;
-        return metadata;
+        return new FunctionMetadata(functionName, argList);
     }
 
     private static class FunctionMetadata {
-        String functionName;
-        List<Object> argList;
+        final String functionName;
+        final List<Object> argList;
+
+        private FunctionMetadata(String functionName, List<Object> argList) {
+            this.functionName = functionName;
+            this.argList = argList;
+        }
     }
 
     private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
