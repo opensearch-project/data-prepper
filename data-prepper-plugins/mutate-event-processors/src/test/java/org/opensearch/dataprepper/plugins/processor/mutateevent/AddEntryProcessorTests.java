@@ -256,6 +256,82 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void testFormatPartsCaching() {
+        String format = "prefix ${key1} middle ${key2} suffix";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, format, null, false, false, null, null, null),
+            createEntry("target2", null, null, format, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        Map<String, Object> data = Map.of(
+            "key1", "value1",
+            "key2", "value2"
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+        assertThat(editedRecords.get(0).getData().get("target2", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+    }
+
+    @Test
+    public void testStaticExpressionValueCaching() {
+        String valueExpression = "1 + 2";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, null, valueExpression, false, false, null, null, null),
+            createEntry("target2", null, null, null, valueExpression, false, false, null, null, null)
+        ));
+
+        when(expressionEvaluator.evaluate(eq(valueExpression), any())).thenReturn(3);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", Integer.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().get("target2", Integer.class), equalTo(3));
+    }
+
+    @Test
+    public void testInvalidFormatHandling() {
+        String invalidFormat = "prefix ${key1 missing-brace";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, invalidFormat, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("target"), is(false));
+    }
+
+    @Test
+    public void testBulkIterateOnProcessing() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("newField", null, "value", null, null, false, false, null, "items", null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        List<Map<String, Object>> items = Arrays.asList(
+            new HashMap<>(),
+            new HashMap<>(),
+            new HashMap<>()
+        );
+        final Record<Event> record = buildRecordWithEvent(Map.of("items", items));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> processedItems = editedRecords.get(0).getData().get("items", List.class);
+        assertThat(processedItems.size(), equalTo(3));
+        for (Map<String, Object> item : processedItems) {
+            assertThat(item.get("newField"), equalTo("value"));
+        }
+    }
+
+    @Test
     public void testCachedAddWhenEvaluatedField() {
         final String addWhen = UUID.randomUUID().toString();
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, null)));

@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -36,26 +35,93 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 @DataPrepperPlugin(name = "add_entries", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AddEntryProcessor.class);
+    private static final String ERROR_LOG_MESSAGE = "Error adding entry to record [{}] with iterate_on [{}], add_to_element_when [{}], key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]";
     private final List<AddEntryProcessorConfig.Entry> entries;
+    private final List<EntryProperties> entryProperties;
+    private final List<KeyInfo> preprocessedKeys;
+    private final ExpressionEvaluator expressionEvaluator;
+    private final EventKeyFactory eventKeyFactory;
+    private static final Class<List<Map<String,Object>>> ITERATE_LIST_CLASS = (Class<List<Map<String,Object>>>) (Class<?>) List.class;
+
+    private static class EntryProperties {
+        final boolean overwriteIfExists;
+        final boolean appendIfExists;
+        final String addWhen;
+        final String addToElementWhen;
+        final Object staticExpressionValue;
+
+        EntryProperties(AddEntryProcessorConfig.Entry entry, ExpressionEvaluator evaluator) {
+            this.overwriteIfExists = entry.getOverwriteIfKeyExists();
+            this.appendIfExists = entry.getAppendIfKeyExists();
+            this.addWhen = entry.getAddWhen();
+            this.addToElementWhen = entry.getAddToElementWhen();
+            String valueExpr = entry.getValueExpression();
+            this.staticExpressionValue = (valueExpr != null && !containsEventReference(valueExpr)) ? 
+                evaluator.evaluate(valueExpr, null) : null;
+        }
+
+        private boolean containsEventReference(String expression) {
+            return expression.contains("/") || expression.contains("getMetadata");
+        }
+    }
 
     private static class KeyInfo {
         private final String keyStr;
         private final boolean isDynamic;
         private final EventKey staticKey;
         private final boolean addWhenEvaluated;
+        private final String[] formatParts;
 
-        KeyInfo(String keyStr, EventKeyFactory factory, String addWhen) {
+        KeyInfo(String keyStr, EventKeyFactory factory, String addWhen, String format) {
             this.keyStr = keyStr;
             this.isDynamic = keyStr != null && (keyStr.contains("%{") || keyStr.contains("${"));
             this.staticKey = !this.isDynamic && keyStr != null ? factory.createEventKey(keyStr) : null;
             this.addWhenEvaluated = addWhen == null;
+            this.formatParts = format != null ? parseFormat(format) : null;
+        }
+
+        private String[] parseFormat(String format) {
+            if (!isValidFormat(format)) {
+                return null;
+            }
+            List<String> parts = new ArrayList<>();
+            StringBuilder current = new StringBuilder();
+            int i = 0;
+            while (i < format.length()) {
+                if (format.charAt(i) == '$' && i + 1 < format.length() && format.charAt(i + 1) == '{') {
+                    if (current.length() > 0) {
+                        parts.add(current.toString());
+                        current = new StringBuilder();
+                    }
+                    int end = format.indexOf('}', i);
+                    if (end == -1) break;
+                    parts.add(format.substring(i, end + 1));
+                    i = end + 1;
+                } else {
+                    current.append(format.charAt(i));
+                    i++;
+                }
+            }
+            if (current.length() > 0) {
+                parts.add(current.toString());
+            }
+            return parts.toArray(new String[0]);
+        }
+
+        private boolean isValidFormat(String format) {
+            if (format == null) return false;
+            int count = 0;
+            for (int i = 0; i < format.length(); i++) {
+                if (format.charAt(i) == '$' && i + 1 < format.length() && format.charAt(i + 1) == '{') {
+                    count++;
+                    int end = format.indexOf('}', i);
+                    if (end == -1) return false;
+                    i = end;
+                }
+            }
+            return count > 0;
         }
     }
-    private final List<KeyInfo> preprocessedKeys;
-    private static final Class<List<Map<String,Object>>> ITERATE_LIST_CLASS = (Class<List<Map<String,Object>>>) (Class<?>) List.class;
-
-    private final ExpressionEvaluator expressionEvaluator;
-    private final EventKeyFactory eventKeyFactory;
 
     @DataPrepperPluginConstructor
     public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator, final EventKeyFactory eventKeyFactory) {
@@ -64,10 +130,8 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
         this.preprocessedKeys = new ArrayList<>(entries.size());
-        for (AddEntryProcessorConfig.Entry entry : entries) {
-            preprocessedKeys.add(new KeyInfo(entry.getKey(), eventKeyFactory, entry.getAddWhen()));
-        }
-
+        this.entryProperties = new ArrayList<>(entries.size());
+        
         config.getEntries().forEach(entry -> {
             if (entry.getAddWhen() != null
                     && !expressionEvaluator.isValidExpressionStatement(entry.getAddWhen())) {
@@ -80,6 +144,9 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new InvalidPluginConfigurationException(
                         String.format("add_to_element_when %s is not a valid expression statement. See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", entry.getAddWhen()));
             }
+            
+            preprocessedKeys.add(new KeyInfo(entry.getKey(), eventKeyFactory, entry.getAddWhen(), entry.getFormat()));
+            entryProperties.add(new EntryProperties(entry, expressionEvaluator));
         });
     }
 
@@ -92,8 +159,9 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                 for (int i = 0; i < entries.size(); i++) {
                     AddEntryProcessorConfig.Entry entry = entries.get(i);
                     KeyInfo keyInfo = preprocessedKeys.get(i);
+                    EntryProperties props = entryProperties.get(i);
 
-                    if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
+                    if (Objects.nonNull(props.addWhen) && !expressionEvaluator.evaluateConditional(props.addWhen, recordEvent)) {
                         continue;
                     }
 
@@ -111,15 +179,15 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                         final String metadataKey = entry.getMetadataKey();
                         final String iterateOn = entry.getIterateOn();
                         if (Objects.isNull(iterateOn)) {
-                            handleWithoutIterateOn(entry, recordEvent, key, metadataKey);
+                            handleWithoutIterateOn(entry, recordEvent, key, metadataKey, props);
                         } else if (!Objects.isNull(key) && key.getKey() != null) {
-                            handleWithIterateOn(entry, recordEvent, iterateOn, key);
+                            handleWithIterateOn(entry, recordEvent, iterateOn, key, props);
                         }
                     } catch (Exception e) {
                         LOG.atError()
                                 .addMarker(EVENT)
                                 .addMarker(NOISY)
-                                .setMessage("Error adding entry to record [{}] with iterate_on [{}], add_to_element_when [{}], key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]")
+                                .setMessage(ERROR_LOG_MESSAGE)
                                 .addArgument(recordEvent)
                                 .addArgument(entry.getIterateOn())
                                 .addArgument(entry.getAddToElementWhen())
@@ -159,66 +227,103 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private void handleWithoutIterateOn(final AddEntryProcessorConfig.Entry entry,
-                                        final Event recordEvent,
-                                        final EventKey key,
-                                        final String metadataKey) {
+                                    final Event recordEvent,
+                                    final EventKey key,
+                                    final String metadataKey,
+                                    final EntryProperties props) {
         final Object value = retrieveValue(entry, recordEvent);
         if (!Objects.isNull(key)) {
             final boolean keyExists = recordEvent.containsKey(key);
-            final boolean shouldOverwrite = entry.getOverwriteIfKeyExists();
-            final boolean shouldAppend = entry.getAppendIfKeyExists();
-            if (!keyExists || shouldOverwrite) {
+            if (!keyExists || props.overwriteIfExists) {
                 recordEvent.put(key, value);
-            } else if (keyExists && shouldAppend) {
+            } else if (keyExists && props.appendIfExists) {
                 mergeValueToEvent(recordEvent, key, value);
             }
         } else {
             Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
-            if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+            if (!attributes.containsKey(metadataKey) || props.overwriteIfExists) {
                 recordEvent.getMetadata().setAttribute(metadataKey, value);
-            } else if (attributes.containsKey(metadataKey) && entry.getAppendIfKeyExists()) {
+            } else if (attributes.containsKey(metadataKey) && props.appendIfExists) {
                 mergeValueToEventMetadata(recordEvent, metadataKey, value);
             }
         }
     }
 
     private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
-                                     final Event recordEvent,
-                                     final String iterateOn,
-                                     final EventKey key) {
+                                 final Event recordEvent,
+                                 final String iterateOn,
+                                 final EventKey key,
+                                 final EntryProperties props) {
         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, ITERATE_LIST_CLASS);
-        if (iterateOnList != null) {
+        if (iterateOnList != null && !iterateOnList.isEmpty()) {
+            // Create builder once
             final JacksonEvent.Builder contextBuilder = JacksonEvent.builder()
                     .withEventMetadata(recordEvent.getMetadata());
-            for (final Map<String, Object> item : iterateOnList) {
-                final Object value;
-                final Event context = contextBuilder
-                        .withData(item)
-                        .build();
-                if (entry.getAddToElementWhen() != null && !expressionEvaluator.evaluateConditional(entry.getAddToElementWhen(), recordEvent)) {
-                    continue;
+            
+            // Pre-check addToElementWhen condition if static
+            final boolean shouldProcessAll = props.addToElementWhen == null || 
+                                      expressionEvaluator.evaluateConditional(props.addToElementWhen, recordEvent);
+                                      
+            if (shouldProcessAll) {
+                // Bulk process all items
+                for (final Map<String, Object> item : iterateOnList) {
+                    processIterateOnItem(entry, contextBuilder, item, key, props);
                 }
-
-                value = retrieveValue(entry, context);
-                final String keyStr = key.getKey();  // Key and keyStr are guaranteed non-null by caller
-                if (!item.containsKey(keyStr) || entry.getOverwriteIfKeyExists()) {
-                    item.put(keyStr, value);
-                } else if (item.containsKey(keyStr) && entry.getAppendIfKeyExists()) {
-                    mergeValueToMap(item, keyStr, value);
+            } else {
+                // Process items individually with condition check
+                for (final Map<String, Object> item : iterateOnList) {
+                    if (expressionEvaluator.evaluateConditional(props.addToElementWhen, recordEvent)) {
+                        processIterateOnItem(entry, contextBuilder, item, key, props);
+                    }
                 }
             }
             recordEvent.put(iterateOn, iterateOnList);
         }
     }
 
-    private Object retrieveValue(final AddEntryProcessorConfig.Entry entry,
-                                 final Event context) {
+    private void processIterateOnItem(AddEntryProcessorConfig.Entry entry, JacksonEvent.Builder contextBuilder, 
+                                    Map<String, Object> item, EventKey key, EntryProperties props) {
+        final Event context = contextBuilder.withData(item).build();
+        final Object value = retrieveValue(entry, context);
+        final String keyStr = key.getKey();  // Key and keyStr are guaranteed non-null by caller
+        if (!item.containsKey(keyStr) || props.overwriteIfExists) {
+            item.put(keyStr, value);
+        } else if (item.containsKey(keyStr) && props.appendIfExists) {
+            mergeValueToMap(item, keyStr, value);
+        }
+    }
+
+    private Object retrieveValue(final AddEntryProcessorConfig.Entry entry, final Event context) {
         Object value;
+        int entryIndex = entries.indexOf(entry);
+        EntryProperties props = entryProperties.get(entryIndex);
+        KeyInfo keyInfo = preprocessedKeys.get(entryIndex);
+        
         if (!Objects.isNull(entry.getValueExpression())) {
-            value = expressionEvaluator.evaluate(entry.getValueExpression(), context);
+            value = props.staticExpressionValue != null ? 
+                    props.staticExpressionValue : 
+                    expressionEvaluator.evaluate(entry.getValueExpression(), context);
         } else if (!Objects.isNull(entry.getFormat())) {
             try {
-                value = context.formatString(entry.getFormat());
+                if (keyInfo.formatParts != null) {
+                    StringBuilder result = new StringBuilder();
+                    for (String part : keyInfo.formatParts) {
+                        if (part.startsWith("${")) {
+                            String key = part.substring(2, part.length() - 1);
+                            try {
+                                Object partValue = context.get(key, Object.class);
+                                if (partValue != null) {
+                                    result.append(partValue);
+                                }
+                            } catch (EventKeyNotFoundException ignored) {}
+                        } else {
+                            result.append(part);
+                        }
+                    }
+                    value = result.toString();
+                } else {
+                    value = context.formatString(entry.getFormat());
+                }
             } catch (final EventKeyNotFoundException e) {
                 value = null;
             }
