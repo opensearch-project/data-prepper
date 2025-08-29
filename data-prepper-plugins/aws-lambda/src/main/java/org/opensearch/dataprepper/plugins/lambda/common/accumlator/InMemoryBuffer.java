@@ -68,8 +68,9 @@ public class InMemoryBuffer implements Buffer {
         records.add(record);
         Event event = record.getData();
         if (keys != null && keys.size() > 0) {
-            Event newEvent = JacksonEvent.fromEvent(event);
-            newEvent.clear();
+            Event newEvent = JacksonEvent.builder()
+                             .withEventType(event.getMetadata().getEventType())
+                             .build();
             for (final String key: keys) {
                 newEvent.put(key, event.get(key, Object.class));
             }

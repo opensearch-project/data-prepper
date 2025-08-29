@@ -320,6 +320,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
         assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), List.of("value1")));
 
@@ -331,6 +333,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
         assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         List<Record<Event>> records3 = Collections.singletonList(getSampleRecordWithKeysAndValues("message3", lambdaProcessorConfig.getKeys(), List.of("value11")));
 
@@ -342,6 +346,55 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
         assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
         verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(2L));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-cache-nested-key.yaml"})
+    public void testLambdaCachingWithNestedStringKey(final String configFileName) throws Exception {
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+                configFileName);
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message1", lambdaProcessorConfig.getKeys(), List.of("value1")));
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key4\": \"value4\", \"key5\": { \"key6\" : 66 }}]"))
+                .statusCode(200)
+                .build();
+
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+
+        doAnswer(a-> {
+            InvokeRequest invokeRequest = a.getArgument(0);
+            SdkBytes payload = invokeRequest.payload();
+            JsonInputCodec codec = new JsonInputCodec( new JsonInputCodecConfig());
+            InputStream inputStream = payload.asInputStream();
+            codec.parse(inputStream, record -> {
+                Event event = record.getData();
+                assertThat(event.get("key1/key2/key3", String.class), equalTo("value1"));
+                assertThat(event.get("key2", String.class), equalTo(null));
+                assertThat(event.get("key3", String.class), equalTo(null));
+            });
+            return invokeFuture;
+        }).when(lambdaAsyncClient).invoke(any(InvokeRequest.class));
+
+
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+        // Assert
+        assertEquals(1, result.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message1"));
+        assertThat(resultEvent.get("key1/key2/key3", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        assertThat(resultEvent.get("key5/key6", Integer.class), equalTo(66));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
     }
 
     @ParameterizedTest
@@ -379,6 +432,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
         assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), values));
 
@@ -392,6 +447,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
         assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         List<Object> values3 = List.of("value1", 1234567891230L, 333);
         List<Record<Event>> records3 = Collections.singletonList(getSampleRecordWithKeysAndValues("message3", lambdaProcessorConfig.getKeys(), values3));
@@ -406,6 +463,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
         assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
         verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(2L));
     }
 
     @ParameterizedTest
@@ -444,6 +503,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
         assertThat(lambdaProcessor.getCacheEntries(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), values));
 
@@ -458,6 +519,8 @@ public class LambdaProcessorTest {
         assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
         verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
         assertThat(lambdaProcessor.getCacheEntries(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(1L));
 
         for (int i = 0; i < 20; i++) {
             List<Object> values3 = List.of("value1", 2222567891230L, 333+i);
@@ -475,6 +538,8 @@ public class LambdaProcessorTest {
         }
         assertThat(lambdaProcessor.getCacheEntries(), equalTo(8L));
         assertThat(lambdaProcessor.getCacheEvictionCount(), equalTo(13L));
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(1L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(21L));
 
     }
 
@@ -515,6 +580,10 @@ public class LambdaProcessorTest {
             verify(lambdaAsyncClient, times(i)).invoke(any(InvokeRequest.class));
             assertThat(lambdaProcessor.getCacheEntries(), equalTo((long)i));
         }
+
+        assertThat(lambdaProcessor.getCacheHitCount(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheMissCount(), equalTo(10L));
+
         try {
             Thread.sleep(15000);
         } catch (InterruptedException e) {}

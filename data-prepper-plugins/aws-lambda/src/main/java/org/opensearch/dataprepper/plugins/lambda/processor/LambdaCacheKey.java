@@ -12,9 +12,14 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class LambdaCacheKey {
-    private List<Object> keys;
+    private final List<Object> keys;
 
     public LambdaCacheKey(final List<Object> keys) {
+        for (final Object key : keys) {
+            if (!((key instanceof String) || (key instanceof Long) || (key instanceof Integer))) {
+                throw new RuntimeException("Only String and Long/Integer values are supported in cache");
+            }
+        }
         this.keys = keys;
     }
 
@@ -23,7 +28,7 @@ public class LambdaCacheKey {
         for (final String keyName : keyNames) {
             Object value = event.get(keyName, Object.class);
             if (!((value instanceof String) || (value instanceof Long) || (value instanceof Integer))) {
-                throw new RuntimeException("Only String and Number values are supported in cache");
+                throw new RuntimeException("Only String and Long/Integer values are supported in cache");
             }
             this.keys.add(value);
         }

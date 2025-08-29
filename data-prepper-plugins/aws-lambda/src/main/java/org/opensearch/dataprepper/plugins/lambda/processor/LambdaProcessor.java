@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -65,13 +66,7 @@ import com.github.benmanes.caffeine.cache.Weigher;
 
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-
-    class ByteArrayValueWeigher implements Weigher<LambdaCacheKey, Event> {
-        @Override
-        public int weigh(LambdaCacheKey key, Event value) {
-            return value.toJsonString().length() + key.length();
-        }
-    }
+    private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
 
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "recordsSuccessfullySentToLambda";
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "recordsFailedToSentLambda";
@@ -152,17 +147,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         this.cacheConfig = lambdaProcessorConfig.getCacheConfig();
         if (cacheConfig != null) {
-            /*
-            cache = Caffeine.newBuilder()
-                    .maximumWeight(cacheConfig.getMaxSize())
-                    .weigher(new ByteArrayValueWeigher())
-                    .expireAfterAccess(cacheConfig.getTtl(), TimeUnit.SECONDS)
-                    .removalListener(((key, value, cause) -> {
-                    }))
-                    .recordStats()
-                    .build();
-
-             */
             cache = createCache(lambdaProcessorConfig.getCacheConfig());
 
             pluginMetrics.gauge(NUMBER_OF_CACHE_ENTRIES, cache, c -> (double)c.estimatedSize());
@@ -175,9 +159,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             responseMode = lambdaProcessorConfig.getResponseMode();
         }
 
-
-        //int valueLength = (v instanceof String) ? ((String)v).length() :
-        //       ((Event)v).toJsonString().length();
 
         PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
 
@@ -250,19 +231,22 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             return cache.stats().evictionCount();
         }
     }
-    private Event getFromCache(final Event event) {
+
+    @VisibleForTesting
+    long getCacheMissCount() {
         synchronized (cache) {
-            LambdaCacheKey cacheKey = new LambdaCacheKey(event, lambdaProcessorConfig.getKeys());
-            return cache.getIfPresent(cacheKey);
+            cache.cleanUp();
+            return cache.stats().missCount();
         }
+    }
+    private Event getFromCache(final Event event) {
+        LambdaCacheKey cacheKey = new LambdaCacheKey(event, lambdaProcessorConfig.getKeys());
+        return cache.getIfPresent(cacheKey);
     }
 
     private void putInCache(final Event originalEvent, final Event responseEvent) {
-
-        synchronized (cache) {
-            LambdaCacheKey cacheKey = new LambdaCacheKey(originalEvent, lambdaProcessorConfig.getKeys());
-            cache.put(cacheKey, responseEvent);
-        }
+        LambdaCacheKey cacheKey = new LambdaCacheKey(originalEvent, lambdaProcessorConfig.getKeys());
+        cache.put(cacheKey, responseEvent);
     }
 
     @Override
@@ -282,18 +266,12 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 continue;
             }
             if (cacheConfig != null) {
-                synchronized (cache) {
-                    List<Object> valuesToFindInCache = new ArrayList<>();
-                    boolean unsupportedValue = false;
-                    //LambdaCacheKey cacheKey = new LambdaCacheKey(event, lambdaProcessorConfig.getKeys());
-
-                    //Event cachedValue = cache.getIfPresent(cacheKey);
-                    Event cachedValue = getFromCache(event);
-                    if (cachedValue != null) {
-                        record.getData().merge(cachedValue);
-                        resultRecords.add(record);
-                        continue;
-                    }
+                List<Object> valuesToFindInCache = new ArrayList<>();
+                Event cachedValue = getFromCache(event);
+                if (cachedValue != null) {
+                    record.getData().merge(cachedValue);
+                    resultRecords.add(record);
+                    continue;
                 }
             }
 
@@ -416,12 +394,6 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
             if (cacheConfig != null) {
                 putInCache(originalEvent, responseEvent);
-                /*
-                synchronized (cache) {
-                    LambdaCacheKey cacheKey = new LambdaCacheKey(responseEvent, lambdaProcessorConfig.getKeys());
-                    cache.put(cacheKey, responseEvent);
-                }
-                 */
             } else if (responseMode == LambdaResponseMode.REPLACE) {
                 originalEvent.clear();
             }

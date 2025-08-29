@@ -89,7 +89,7 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
 
   @AssertTrue(message = "keys must not be null or empty and response_mode must be 'merge' when using cache")
   boolean isValidCacheConfig() {
-    return cacheConfig == null || (hasKeys() && responseMode == LambdaResponseMode.MERGE);
+    return cacheConfig == null || (hasKeys() && responseMode == LambdaResponseMode.MERGE && getInvocationType() ==  InvocationType.REQUEST_RESPONSE);
   }
   public List<String> getTagsOnFailure() {
     return tagsOnFailure;
