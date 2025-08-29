@@ -202,7 +202,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         return Optional.of(sourcePartition);
     }
 
-    private void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
+    @Override
+    public void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
             final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionIdentifier.getPartitionKey());
 
