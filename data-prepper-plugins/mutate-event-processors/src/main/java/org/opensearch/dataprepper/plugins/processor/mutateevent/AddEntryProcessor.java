@@ -42,11 +42,13 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         private final String keyStr;
         private final boolean isDynamic;
         private final EventKey staticKey;
+        private final boolean addWhenEvaluated;
 
-        KeyInfo(String keyStr, EventKeyFactory factory) {
+        KeyInfo(String keyStr, EventKeyFactory factory, String addWhen) {
             this.keyStr = keyStr;
             this.isDynamic = keyStr != null && (keyStr.contains("%{") || keyStr.contains("${"));
             this.staticKey = !this.isDynamic && keyStr != null ? factory.createEventKey(keyStr) : null;
+            this.addWhenEvaluated = addWhen == null;
         }
     }
     private final List<KeyInfo> preprocessedKeys;
@@ -63,7 +65,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.eventKeyFactory = eventKeyFactory;
         this.preprocessedKeys = new ArrayList<>(entries.size());
         for (AddEntryProcessorConfig.Entry entry : entries) {
-            preprocessedKeys.add(new KeyInfo(entry.getKey(), eventKeyFactory));
+            preprocessedKeys.add(new KeyInfo(entry.getKey(), eventKeyFactory, entry.getAddWhen()));
         }
 
         config.getEntries().forEach(entry -> {
@@ -162,9 +164,12 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                                         final String metadataKey) {
         final Object value = retrieveValue(entry, recordEvent);
         if (!Objects.isNull(key)) {
-            if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+            final boolean keyExists = recordEvent.containsKey(key);
+            final boolean shouldOverwrite = entry.getOverwriteIfKeyExists();
+            final boolean shouldAppend = entry.getAppendIfKeyExists();
+            if (!keyExists || shouldOverwrite) {
                 recordEvent.put(key, value);
-            } else if (recordEvent.containsKey(key) && entry.getAppendIfKeyExists()) {
+            } else if (keyExists && shouldAppend) {
                 mergeValueToEvent(recordEvent, key, value);
             }
         } else {
@@ -183,10 +188,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                                      final EventKey key) {
         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, ITERATE_LIST_CLASS);
         if (iterateOnList != null) {
+            final JacksonEvent.Builder contextBuilder = JacksonEvent.builder()
+                    .withEventMetadata(recordEvent.getMetadata());
             for (final Map<String, Object> item : iterateOnList) {
                 final Object value;
-                final Event context = JacksonEvent.builder()
-                        .withEventMetadata(recordEvent.getMetadata())
+                final Event context = contextBuilder
                         .withData(item)
                         .build();
                 if (entry.getAddToElementWhen() != null && !expressionEvaluator.evaluateConditional(entry.getAddToElementWhen(), recordEvent)) {
@@ -236,14 +242,19 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {
         final Object currentValue = getter.get();
-        final List<Object> mergedValue = new ArrayList<>(currentValue instanceof List ? ((List<Object>)currentValue).size() + 1 : 2);
+        final List<Object> mergedValue;
         if (currentValue instanceof List) {
-            mergedValue.addAll((List<Object>) currentValue);
+            mergedValue = new ArrayList<>((List<Object>)currentValue);
         } else {
+            mergedValue = new ArrayList<>(2);
             mergedValue.add(currentValue);
         }
-
-        mergedValue.add(value);
+        
+        if (value instanceof List) {
+            mergedValue.addAll((List<Object>)value);
+        } else {
+            mergedValue.add(value);
+        }
         setter.accept(mergedValue);
     }
 }

@@ -79,6 +79,27 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void testBuilderReuseInHandleWithIterateOn() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = Arrays.asList(
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptyMap()
+        );
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("message", List.class);
+        assertThat(result.size(), equalTo(3));
+        for (Map<String, Object> item : result) {
+            assertThat(item.get("newMessage"), equalTo(3));
+        }
+    }
+
+    @Test
     public void testSingleEntryIterativeAddValue() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", null)));
 
@@ -232,6 +253,37 @@ public class AddEntryProcessorTests {
                         "date", "date-value",
                         "time", "time-value",
                         "newMessage", "date-value time-value"))));
+    }
+
+    @Test
+    public void testCachedAddWhenEvaluatedField() {
+        final String addWhen = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        when(expressionEvaluator.evaluateConditional(addWhen, record.getData())).thenReturn(true);
+
+        // First execution
+        List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+
+        // Second execution should use cached value
+        editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+    }
+
+    @Test
+    public void testListMergeOptimization() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, Arrays.asList(4, 5), null, null, false, true, null, null, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Object> currentList = new ArrayList<>(Arrays.asList(1, 2, 3));
+        final Record<Event> record = getEvent(currentList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(Arrays.asList(1, 2, 3, 4, 5)));
     }
 
     @Test
