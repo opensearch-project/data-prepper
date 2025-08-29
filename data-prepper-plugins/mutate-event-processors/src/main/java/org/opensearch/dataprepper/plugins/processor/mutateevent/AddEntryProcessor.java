@@ -73,10 +73,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                         final String key = (entry.getKey() == null) ? null : recordEvent.formatString(entry.getKey(), expressionEvaluator);
                         final String metadataKey = entry.getMetadataKey();
                         final String iterateOn = entry.getIterateOn();
+                        final boolean flattenKey = entry.getFlattenKey();
                         if (Objects.isNull(iterateOn)) {
                             handleWithoutIterateOn(entry, recordEvent, key, metadataKey);
                         } else if (!Objects.isNull(key)) {
-                            handleWithIterateOn(entry, recordEvent, iterateOn, key);
+                            handleWithIterateOn(entry, recordEvent, iterateOn, flattenKey, key);
                         }
                     } catch (Exception e) {
                         LOG.atError()
@@ -145,10 +146,12 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     private void handleWithIterateOn(final AddEntryProcessorConfig.Entry entry,
                                      final Event recordEvent,
                                      final String iterateOn,
+                                     final boolean flattenKey,
                                      final String key) {
         final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
         if (iterateOnList != null) {
-            for (final Map<String, Object> item : iterateOnList) {
+            for (int i = 0; i < iterateOnList.size(); i++) {
+                final Map<String, Object> item = iterateOnList.get(i);
                 final Object value;
                 final Event context = JacksonEvent.builder()
                         .withEventMetadata(recordEvent.getMetadata())
@@ -160,9 +163,22 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 value = retrieveValue(entry, context);
                 if (!item.containsKey(key) || entry.getOverwriteIfKeyExists()) {
-                    item.put(key, value);
+                    if (flattenKey) {
+                        item.put(key, value);
+                    }  else {
+                        context.put(key, value);
+                    }
                 } else if (item.containsKey(key) && entry.getAppendIfKeyExists()) {
-                    mergeValueToMap(item, key, value);
+                    if (flattenKey) {
+                        mergeValueToMap(item, key, value);
+                    }  else {
+                        mergeValueToEvent(context, key, value);
+                    }
+                }
+                if (flattenKey){
+                    iterateOnList.set(i, item);
+                } else {
+                    iterateOnList.set(i, context.toMap());
                 }
             }
             recordEvent.put(iterateOn, iterateOnList);
