@@ -15,8 +15,9 @@ import java.time.Duration;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
-@Getter
+import java.util.List;
 
+@Getter
 public abstract class LambdaCommonConfig {
 
   public static final int DEFAULT_CONNECTION_RETRIES = 3;
@@ -51,6 +52,14 @@ public abstract class LambdaCommonConfig {
   @JsonProperty("response_codec")
   @Valid
   private PluginModel responseCodecConfig;
+
+  @JsonPropertyDescription("Keys to send to lambda")
+  @JsonProperty("keys")
+  private List<String> keys;
+
+  public boolean hasKeys() {
+    return keys != null && keys.size() > 0;
+  }
 
   public abstract InvocationType getInvocationType();
 

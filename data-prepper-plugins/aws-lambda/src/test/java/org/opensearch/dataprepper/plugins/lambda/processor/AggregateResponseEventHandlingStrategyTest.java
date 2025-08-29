@@ -67,7 +67,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         List<Event> parsedEvents = Arrays.asList(parsedEvent1, parsedEvent2);
 
         // Act
-        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, null);
 
         // Assert
         assertEquals(2, resultRecords.size());
@@ -88,7 +88,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         when(eventHandle.getAcknowledgementSet()).thenReturn(null);
 
         // Act
-        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, null);
 
         // Assert
         assertEquals(2, resultRecords.size());
@@ -105,7 +105,7 @@ public class AggregateResponseEventHandlingStrategyTest {
         List<Event> parsedEvents = new ArrayList<>();
 
         // Act
-        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords);
+        List<Record<Event>> resultRecords = aggregateResponseEventHandlingStrategy.handleEvents(parsedEvents, originalRecords, null);
 
         // Assert
         assertEquals(0, resultRecords.size());

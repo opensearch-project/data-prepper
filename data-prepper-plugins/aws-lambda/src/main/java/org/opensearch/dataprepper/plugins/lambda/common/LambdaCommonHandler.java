@@ -50,7 +50,7 @@ public class LambdaCommonHandler {
         }
     }
 
-    private static List<Buffer> createBufferBatches(Collection<Record<Event>> records,
+    private static List<Buffer> createBufferBatches(Collection<Record<Event>> records, List<String> keys,
                                                     BatchOptions batchOptions, final OutputCodecContext outputCodecContext) {
 
         int maxEvents = batchOptions.getThresholdOptions().getEventCount();
@@ -58,7 +58,7 @@ public class LambdaCommonHandler {
         String keyName = batchOptions.getKeyName();
         Duration maxCollectionDuration = batchOptions.getThresholdOptions().getEventCollectTimeOut();
 
-        Buffer currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+        Buffer currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext, keys);
         List<Buffer> batchedBuffers = new ArrayList<>();
 
         LOG.debug("Batch size received to lambda processor: {}", records.size());
@@ -67,7 +67,7 @@ public class LambdaCommonHandler {
             if (currentBufferPerBatch.getEventCount() > 0 &&
                     ThresholdCheck.checkSizeThresholdExceed(currentBufferPerBatch, maxBytes, record)) {
                 batchedBuffers.add(currentBufferPerBatch);
-                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext, keys);
             }
 
             currentBufferPerBatch.addRecord(record);
@@ -76,7 +76,7 @@ public class LambdaCommonHandler {
             if (currentBufferPerBatch.getEventCount() > 0 &&
                     ThresholdCheck.checkEventCountThresholdExceeded(currentBufferPerBatch, maxEvents)) {
                 batchedBuffers.add(currentBufferPerBatch);
-                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext);
+                currentBufferPerBatch = new InMemoryBuffer(keyName, outputCodecContext, keys);
             }
         }
         if (currentBufferPerBatch.getEventCount() > 0) {
@@ -91,7 +91,7 @@ public class LambdaCommonHandler {
             LambdaAsyncClient lambdaAsyncClient,
             final OutputCodecContext outputCodecContext) {
 
-        List<Buffer> batchedBuffers = createBufferBatches(records, config.getBatchOptions(),
+        List<Buffer> batchedBuffers = createBufferBatches(records, config.getKeys(), config.getBatchOptions(),
                 outputCodecContext);
 
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = invokeLambdaAndGetFutureMap(config, lambdaAsyncClient, batchedBuffers);
