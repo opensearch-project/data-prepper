@@ -18,6 +18,8 @@ or by using user credential assigned with a role that has the below required per
 - `cluster_all`
 - `indices:admin/template/get`
 - `indices:admin/template/put`
+- `indices:data/write/bulk`
+- `indices:data/write/bulks`
 
 Note that `indices:admin/template/*` need to be in cluster permissions.
 
@@ -25,7 +27,7 @@ Note that `indices:admin/template/*` need to be in cluster permissions.
 
 - `Index`: `otel-v1*`; `Index permissions`: `indices_all`
 - `Index`: `.opendistro-ism-config`; `Index permissions`: `indices_all`
-- `Index`: `*`; `Index permission`: `manage_aliases`
+- `Index`: `*`; `Index permission`: `manage_aliases`, `indices:admin/get`, `indices:admin/create`, `indices:data/write/index`, `indices:data/write/bulk`, `indices:data/write/bulk*`, `indices:admin/mapping/put`
 
 `Field level security` and `Anonymization` should be left with default values.
 
