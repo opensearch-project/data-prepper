@@ -50,6 +50,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
     private final List<KeyInfo> preprocessedKeys;
+    private static final Class<List<Map<String,Object>>> ITERATE_LIST_CLASS = (Class<List<Map<String,Object>>>) (Class<?>) List.class;
 
     private final ExpressionEvaluator expressionEvaluator;
     private final EventKeyFactory eventKeyFactory;
@@ -60,9 +61,10 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
-        this.preprocessedKeys = entries.stream()
-            .map(entry -> new KeyInfo(entry.getKey(), eventKeyFactory))
-            .collect(Collectors.toList());
+        this.preprocessedKeys = new ArrayList<>(entries.size());
+        for (AddEntryProcessorConfig.Entry entry : entries) {
+            preprocessedKeys.add(new KeyInfo(entry.getKey(), eventKeyFactory));
+        }
 
         config.getEntries().forEach(entry -> {
             if (entry.getAddWhen() != null
@@ -179,7 +181,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                                      final Event recordEvent,
                                      final String iterateOn,
                                      final EventKey key) {
-        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, List.class);
+        final List<Map<String, Object>> iterateOnList = recordEvent.get(iterateOn, ITERATE_LIST_CLASS);
         if (iterateOnList != null) {
             for (final Map<String, Object> item : iterateOnList) {
                 final Object value;
@@ -234,7 +236,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {
         final Object currentValue = getter.get();
-        final List<Object> mergedValue = new ArrayList<>();
+        final List<Object> mergedValue = new ArrayList<>(currentValue instanceof List ? ((List<Object>)currentValue).size() + 1 : 2);
         if (currentValue instanceof List) {
             mergedValue.addAll((List<Object>) currentValue);
         } else {
