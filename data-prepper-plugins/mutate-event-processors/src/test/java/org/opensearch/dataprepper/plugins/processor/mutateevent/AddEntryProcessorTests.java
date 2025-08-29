@@ -9,9 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
@@ -49,6 +51,8 @@ public class AddEntryProcessorTests {
     @Mock
     private ExpressionEvaluator expressionEvaluator;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     @Test
     void invalid_add_when_throws_InvalidPluginConfigurationException() {
         final String addWhen = UUID.randomUUID().toString();
@@ -72,6 +76,27 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+    }
+
+    @Test
+    public void testBuilderReuseInHandleWithIterateOn() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false,null, "message", null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = Arrays.asList(
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptyMap()
+        );
+        final Record<Event> record = getEvent(mapList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        List<Map<String, Object>> result = editedRecords.get(0).getData().get("message", List.class);
+        assertThat(result.size(), equalTo(3));
+        for (Map<String, Object> item : result) {
+            assertThat(item.get("newMessage"), equalTo(3));
+        }
     }
 
     @Test
@@ -228,6 +253,113 @@ public class AddEntryProcessorTests {
                         "date", "date-value",
                         "time", "time-value",
                         "newMessage", "date-value time-value"))));
+    }
+
+    @Test
+    public void testFormatPartsCaching() {
+        String format = "prefix ${key1} middle ${key2} suffix";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, format, null, false, false, null, null, null),
+            createEntry("target2", null, null, format, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        Map<String, Object> data = Map.of(
+            "key1", "value1",
+            "key2", "value2"
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+        assertThat(editedRecords.get(0).getData().get("target2", String.class), 
+                   equalTo("prefix value1 middle value2 suffix"));
+    }
+
+    @Test
+    public void testStaticExpressionValueCaching() {
+        String valueExpression = "1 + 2";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, null, valueExpression, false, false, null, null, null),
+            createEntry("target2", null, null, null, valueExpression, false, false, null, null, null)
+        ));
+
+        when(expressionEvaluator.evaluate(eq(valueExpression), any())).thenReturn(3);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("target", Integer.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().get("target2", Integer.class), equalTo(3));
+    }
+
+    @Test
+    public void testInvalidFormatHandling() {
+        String invalidFormat = "prefix ${key1 missing-brace";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("target", null, null, invalidFormat, null, false, false, null, null, null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("target"), is(false));
+    }
+
+    @Test
+    public void testBulkIterateOnProcessing() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry("newField", null, "value", null, null, false, false, null, "items", null)
+        ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        List<Map<String, Object>> items = Arrays.asList(
+            new HashMap<>(),
+            new HashMap<>(),
+            new HashMap<>()
+        );
+        final Record<Event> record = buildRecordWithEvent(Map.of("items", items));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        List<Map<String, Object>> processedItems = editedRecords.get(0).getData().get("items", List.class);
+        assertThat(processedItems.size(), equalTo(3));
+        for (Map<String, Object> item : processedItems) {
+            assertThat(item.get("newField"), equalTo("value"));
+        }
+    }
+
+    @Test
+    public void testCachedAddWhenEvaluatedField() {
+        final String addWhen = UUID.randomUUID().toString();
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, null, false, false, addWhen, null, null)));
+        when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(true);
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        when(expressionEvaluator.evaluateConditional(addWhen, record.getData())).thenReturn(true);
+
+        // First execution
+        List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+
+        // Second execution should use cached value
+        editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+    }
+
+    @Test
+    public void testListMergeOptimization() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", null, Arrays.asList(4, 5), null, null, false, true, null, null, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Object> currentList = new ArrayList<>(Arrays.asList(1, 2, 3));
+        final Record<Event> record = getEvent(currentList);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(Arrays.asList(1, 2, 3, 4, 5)));
     }
 
     @Test
@@ -885,7 +1017,7 @@ public class AddEntryProcessorTests {
     }
 
     private AddEntryProcessor createObjectUnderTest() {
-        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator, eventKeyFactory);
     }
 
     private AddEntryProcessorConfig.Entry createEntry(
