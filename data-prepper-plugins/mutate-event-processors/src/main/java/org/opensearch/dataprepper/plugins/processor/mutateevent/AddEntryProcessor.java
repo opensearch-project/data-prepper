@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
@@ -36,6 +37,19 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AddEntryProcessor.class);
     private final List<AddEntryProcessorConfig.Entry> entries;
+
+    private static class KeyInfo {
+        private final String keyStr;
+        private final boolean isDynamic;
+        private final EventKey staticKey;
+
+        KeyInfo(String keyStr, EventKeyFactory factory) {
+            this.keyStr = keyStr;
+            this.isDynamic = keyStr != null && (keyStr.contains("%{") || keyStr.contains("${"));
+            this.staticKey = !this.isDynamic && keyStr != null ? factory.createEventKey(keyStr) : null;
+        }
+    }
+    private final List<KeyInfo> preprocessedKeys;
 
     private final ExpressionEvaluator expressionEvaluator;
     private final EventKeyFactory eventKeyFactory;
@@ -46,6 +60,9 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
         this.eventKeyFactory = eventKeyFactory;
+        this.preprocessedKeys = entries.stream()
+            .map(entry -> new KeyInfo(entry.getKey(), eventKeyFactory))
+            .collect(Collectors.toList());
 
         config.getEntries().forEach(entry -> {
             if (entry.getAddWhen() != null
@@ -68,26 +85,23 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             try {
-                for (AddEntryProcessorConfig.Entry entry : entries) {
+                for (int i = 0; i < entries.size(); i++) {
+                    AddEntryProcessorConfig.Entry entry = entries.get(i);
+                    KeyInfo keyInfo = preprocessedKeys.get(i);
 
                     if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
                         continue;
                     }
 
                     try {
-                        final String keyStr = entry.getKey();
                         EventKey key = null;
-                        if (keyStr != null) {
+                        if (keyInfo.keyStr != null) {
                             try {
-                                if (!keyStr.contains("%{") && !keyStr.contains("${")) {
-                                    key = eventKeyFactory.createEventKey(keyStr);
-                                } else {
-                                    // Dynamic key that needs to be resolved
-                                    String resolvedKey = recordEvent.formatString(keyStr, expressionEvaluator);
-                                    key = eventKeyFactory.createEventKey(resolvedKey);
-                                }
+                                key = keyInfo.isDynamic ?
+                                    eventKeyFactory.createEventKey(recordEvent.formatString(keyInfo.keyStr, expressionEvaluator)) :
+                                    keyInfo.staticKey;
                             } catch (Exception e) {
-                                LOG.debug("Failed to resolve or create key {} for event {}", keyStr, recordEvent, e);
+                                LOG.debug("Failed to resolve or create key {} for event {}", keyInfo.keyStr, recordEvent, e);
                             }
                         }
                         final String metadataKey = entry.getMetadataKey();
