@@ -19,6 +19,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
+import java.util.Collections;
 import org.opensearch.dataprepper.expression.util.TestObject;
 import org.opensearch.dataprepper.model.event.Event;
 
@@ -46,6 +52,52 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceTest {
+    @Test
+    void testNullNodeThrowsException() {
+        final Event testEvent = createTestEvent(new HashMap<>());
+        assertThrows(NullPointerException.class, () -> objectUnderTest.coercePrimaryTerminalNode(null, testEvent));
+    }
+
+
+    @Test
+    void testFunctionCachingUnderConcurrentAccess() throws InterruptedException {
+        final int numThreads = 10;
+        final int numIterations = 1000;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(numThreads);
+        final Event testEvent = createTestEvent(Collections.singletonMap("test", "value"));
+        final String functionString = "length(/test)";
+        
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        when(terminalNode.getText()).thenReturn(functionString);
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(5);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        for (int i = 0; i < numThreads; i++) {
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < numIterations; j++) {
+                        objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        completionLatch.await(5, TimeUnit.SECONDS);
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.SECONDS);
+        
+        // Verify one last time that the function still works correctly
+        Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, equalTo(5));
+    }
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Mock
@@ -328,7 +380,7 @@ class ParseTreeCoercionServiceTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         when(terminalNode.getText()).thenReturn("xyz(arg1)");
-        assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, null));
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, null));
     }
 
     @Test
