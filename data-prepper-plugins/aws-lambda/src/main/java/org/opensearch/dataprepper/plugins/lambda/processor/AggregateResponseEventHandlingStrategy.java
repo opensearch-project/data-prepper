@@ -13,11 +13,13 @@ import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStr
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public class AggregateResponseEventHandlingStrategy implements ResponseEventHandlingStrategy {
 
     @Override
-    public List<Record<Event>> handleEvents(List<Event> parsedEvents, List<Record<Event>> originalRecords) {
+    public List<Record<Event>> handleEvents(List<Event> parsedEvents, List<Record<Event>> originalRecords,
+                                            BiConsumer<Event, Event> consumerUnused) {
 
         List<Record<Event>> resultRecords = new ArrayList<>();
         Event originalEvent = originalRecords.get(0).getData();

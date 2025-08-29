@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodec;
@@ -38,14 +39,16 @@ public class InMemoryBuffer implements Buffer {
     private final long payloadResponseSize;
     private int eventCount;
     private long payloadRequestSize;
+    private List<String> keys;
 
 
     public InMemoryBuffer(String batchOptionKeyName) {
-        this(batchOptionKeyName, new OutputCodecContext());
+        this(batchOptionKeyName, new OutputCodecContext(), null);
     }
 
-    public InMemoryBuffer(String batchOptionKeyName, OutputCodecContext outputCodecContext) {
+    public InMemoryBuffer(String batchOptionKeyName, OutputCodecContext outputCodecContext, List<String> keys) {
         byteArrayOutputStream = new ByteArrayOutputStream(32 * 1024);
+        this.keys = keys;
         records = new ArrayList<>();
         bufferWatch = new StopWatch();
         bufferWatch.start();
@@ -64,6 +67,14 @@ public class InMemoryBuffer implements Buffer {
     public void addRecord(Record<Event> record) {
         records.add(record);
         Event event = record.getData();
+        if (keys != null && keys.size() > 0) {
+            Event newEvent = JacksonEvent.fromEvent(event);
+            newEvent.clear();
+            for (final String key: keys) {
+                newEvent.put(key, event.get(key, Object.class));
+            }
+            event = newEvent;
+        }
         try {
             if (eventCount == 0) {
                 requestCodec.start(this.byteArrayOutputStream, event, this.outputCodecContext);

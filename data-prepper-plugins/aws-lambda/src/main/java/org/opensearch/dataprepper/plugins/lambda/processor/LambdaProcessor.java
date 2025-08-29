@@ -5,12 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.lambda.processor;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -27,7 +30,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.codec.json.JsonOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler;
+
 import static org.opensearch.dataprepper.plugins.lambda.common.LambdaCommonHandler.isSuccess;
+
 import org.opensearch.dataprepper.plugins.lambda.common.ResponseEventHandlingStrategy;
 import org.opensearch.dataprepper.plugins.lambda.common.accumlator.Buffer;
 import org.opensearch.dataprepper.plugins.lambda.common.client.LambdaClientFactory;
@@ -53,13 +58,31 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Weigher;
+
+
 @DataPrepperPlugin(name = "aws_lambda", pluginType = Processor.class, pluginConfigurationType = LambdaProcessorConfig.class)
 public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+
+    class ByteArrayValueWeigher implements Weigher<LambdaCacheKey, Event> {
+        @Override
+        public int weigh(LambdaCacheKey key, Event value) {
+            return value.toJsonString().length() + key.length();
+        }
+    }
 
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_SUCCESS = "recordsSuccessfullySentToLambda";
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_LAMBDA_FAILED = "recordsFailedToSentLambda";
     public static final String NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA = "numberOfRequestsSucceeded";
     public static final String NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA = "numberOfRequestsFailed";
+
+    public static final String NUMBER_OF_CACHE_ENTRIES = "numberOfCacheEntries";
+
+    public static final String CACHE_HIT_COUNT = "cacheHitCount";
+
+    public static final String CACHE_EVICTION_COUNT = "cacheEvictionCount";
     public static final String LAMBDA_LATENCY_METRIC = "lambdaFunctionLatency";
     public static final String REQUEST_PAYLOAD_SIZE = "requestPayloadSize";
     public static final String RESPONSE_PAYLOAD_SIZE = "responsePayloadSize";
@@ -89,6 +112,11 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     private final ResponseEventHandlingStrategy responseStrategy;
     private final JsonOutputCodecConfig jsonOutputCodecConfig;
     private final CircuitBreaker circuitBreaker;
+    private final Cache<LambdaCacheKey, Event> cache;
+
+    private final LambdaProcessorConfig.CacheConfig cacheConfig;
+
+    private LambdaResponseMode responseMode;
 
     @DataPrepperPluginConstructor
     public LambdaProcessor(final PluginFactory pluginFactory, final PluginSetting pluginSetting,
@@ -112,6 +140,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 NUMBER_OF_SUCCESSFUL_REQUESTS_TO_LAMBDA);
         this.numberOfRequestsFailedCounter = pluginMetrics.counter(
                 NUMBER_OF_FAILED_REQUESTS_TO_LAMBDA);
+
         this.lambdaLatencyMetric = pluginMetrics.timer(LAMBDA_LATENCY_METRIC);
         this.requestPayloadMetric = pluginMetrics.summary(REQUEST_PAYLOAD_SIZE);
         this.responsePayloadMetric = pluginMetrics.summary(RESPONSE_PAYLOAD_SIZE);
@@ -120,6 +149,35 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
 
         this.whenCondition = lambdaProcessorConfig.getWhenCondition();
         this.tagsOnFailure = lambdaProcessorConfig.getTagsOnFailure();
+
+        this.cacheConfig = lambdaProcessorConfig.getCacheConfig();
+        if (cacheConfig != null) {
+            /*
+            cache = Caffeine.newBuilder()
+                    .maximumWeight(cacheConfig.getMaxSize())
+                    .weigher(new ByteArrayValueWeigher())
+                    .expireAfterAccess(cacheConfig.getTtl(), TimeUnit.SECONDS)
+                    .removalListener(((key, value, cause) -> {
+                    }))
+                    .recordStats()
+                    .build();
+
+             */
+            cache = createCache(lambdaProcessorConfig.getCacheConfig());
+
+            pluginMetrics.gauge(NUMBER_OF_CACHE_ENTRIES, cache, c -> (double)c.estimatedSize());
+            pluginMetrics.gauge(CACHE_HIT_COUNT, cache, c -> (double)c.stats().hitCount());
+            pluginMetrics.gauge(CACHE_EVICTION_COUNT, cache, c ->(double) c.stats().evictionCount());
+
+            responseMode = LambdaResponseMode.MERGE;
+        } else {
+            cache = null;
+            responseMode = lambdaProcessorConfig.getResponseMode();
+        }
+
+
+        //int valueLength = (v instanceof String) ? ((String)v).length() :
+        //       ((Event)v).toJsonString().length();
 
         PluginModel responseCodecConfig = lambdaProcessorConfig.getResponseCodecConfig();
 
@@ -144,6 +202,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 clientOptions
         );
 
+
         // Select the correct strategy based on the configuration
         if (lambdaProcessorConfig.getResponseEventsMatch()) {
             this.responseStrategy = new StrictResponseEventHandlingStrategy();
@@ -151,6 +210,59 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             this.responseStrategy = new AggregateResponseEventHandlingStrategy();
         }
 
+    }
+
+    private Cache<LambdaCacheKey, Event> createCache(LambdaProcessorConfig.CacheConfig cacheConfig) {
+        return Caffeine.newBuilder()
+                .maximumWeight(cacheConfig.getMaxSize())
+                .weigher(new Weigher<LambdaCacheKey, Event>() {
+                    @Override
+                    public int weigh(LambdaCacheKey key, Event value) {
+                        // The weight is the length of the string value
+                        return key.length() + value.toJsonString().length();
+                    }
+                })
+                .expireAfterWrite(cacheConfig.getTtl(), TimeUnit.SECONDS)
+                .recordStats()
+                .build();
+    }
+
+    @VisibleForTesting
+    long getCacheEntries() {
+        synchronized (cache) {
+            cache.cleanUp();
+            return cache.estimatedSize();
+        }
+    }
+
+    @VisibleForTesting
+    long getCacheHitCount() {
+        synchronized (cache) {
+            cache.cleanUp();
+            return cache.stats().hitCount();
+        }
+    }
+
+    @VisibleForTesting
+    long getCacheEvictionCount() {
+        synchronized (cache) {
+            cache.cleanUp();
+            return cache.stats().evictionCount();
+        }
+    }
+    private Event getFromCache(final Event event) {
+        synchronized (cache) {
+            LambdaCacheKey cacheKey = new LambdaCacheKey(event, lambdaProcessorConfig.getKeys());
+            return cache.getIfPresent(cacheKey);
+        }
+    }
+
+    private void putInCache(final Event originalEvent, final Event responseEvent) {
+
+        synchronized (cache) {
+            LambdaCacheKey cacheKey = new LambdaCacheKey(originalEvent, lambdaProcessorConfig.getKeys());
+            cache.put(cacheKey, responseEvent);
+        }
     }
 
     @Override
@@ -169,9 +281,28 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                 resultRecords.add(record);
                 continue;
             }
+            if (cacheConfig != null) {
+                synchronized (cache) {
+                    List<Object> valuesToFindInCache = new ArrayList<>();
+                    boolean unsupportedValue = false;
+                    //LambdaCacheKey cacheKey = new LambdaCacheKey(event, lambdaProcessorConfig.getKeys());
+
+                    //Event cachedValue = cache.getIfPresent(cacheKey);
+                    Event cachedValue = getFromCache(event);
+                    if (cachedValue != null) {
+                        record.getData().merge(cachedValue);
+                        resultRecords.add(record);
+                        continue;
+                    }
+                }
+            }
+
             recordsToLambda.add(record);
         }
 
+        if (recordsToLambda.size() == 0) {
+            return resultRecords;
+        }
         Map<Buffer, CompletableFuture<InvokeResponse>> bufferToFutureMap = new HashMap<>();
         try {
             // Check if circuit breaker is open - if so, wait until it closes
@@ -226,7 +357,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
     }
 
     private void checkCircuitBreaker() {
-        if (circuitBreaker!=null && circuitBreaker.isOpen()) {
+        if (circuitBreaker != null && circuitBreaker.isOpen()) {
             LOG.warn("Circuit breaker is open. Will wait up to {} retries with {}ms interval before proceeding.",
                     lambdaProcessorConfig.getCircuitBreakerRetries(),
                     lambdaProcessorConfig.getCircuitBreakerWaitInterval());
@@ -236,7 +367,7 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
             while (circuitBreaker.isOpen() && retries < lambdaProcessorConfig.getCircuitBreakerRetries()) {
                 try {
                     LOG.warn(NOISY, "Circuit breaker is open," +
-                                "Retry count: {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
+                            "Retry count: {}/{}", retries + 1, lambdaProcessorConfig.getCircuitBreakerRetries());
                     // Sleep for a short time before checking again
                     Thread.sleep(lambdaProcessorConfig.getCircuitBreakerWaitInterval());
                     retries++;
@@ -281,7 +412,22 @@ public class LambdaProcessor extends AbstractProcessor<Record<Event>, Record<Eve
                         "FlushedBuffer size:{}", parsedEvents.size(), flushedBuffer.getEventCount(),
                 flushedBuffer.getSize());
         lambdaResponseRecordsCounter.increment(parsedEvents.size());
-        return responseStrategy.handleEvents(parsedEvents, originalRecords);
+        return responseStrategy.handleEvents(parsedEvents, originalRecords, (originalEvent, responseEvent) -> {
+
+            if (cacheConfig != null) {
+                putInCache(originalEvent, responseEvent);
+                /*
+                synchronized (cache) {
+                    LambdaCacheKey cacheKey = new LambdaCacheKey(responseEvent, lambdaProcessorConfig.getKeys());
+                    cache.put(cacheKey, responseEvent);
+                }
+                 */
+            } else if (responseMode == LambdaResponseMode.REPLACE) {
+                originalEvent.clear();
+            }
+            originalEvent.merge(responseEvent);
+        });
+
     }
 
     /*

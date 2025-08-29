@@ -9,10 +9,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 import java.util.Collections;
 import java.util.List;
+import org.opensearch.dataprepper.model.annotations.AlsoRequired;
 import org.opensearch.dataprepper.plugins.lambda.common.config.InvocationType;
 import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfig;
 
@@ -20,6 +24,23 @@ import org.opensearch.dataprepper.plugins.lambda.common.config.LambdaCommonConfi
 @JsonClassDescription("The <code>aws_lambda</code> processor enables invocation of an AWS Lambda function within your pipeline in order to process events. " +
         "It supports both synchronous and asynchronous invocations based on your use case.")
 public class LambdaProcessorConfig extends LambdaCommonConfig {
+  public class CacheConfig {
+    @JsonProperty("ttl")
+    private long ttl;
+
+    @JsonProperty("max_size")
+    @Max(10485760)
+    @Min(1048576)
+    private long maxSize;
+
+    public long getTtl() {
+      return ttl;
+    }
+
+    public long getMaxSize() {
+      return maxSize;
+    }
+  }
   static final String DEFAULT_INVOCATION_TYPE = "request-response";
   protected static final int DEFAULT_CIRCUIT_BREAKER_RETRIES = 0;
   protected static final long DEFAULT_CIRCUIT_BREAKER_WAIT_INTERVAL_MS = 1000;
@@ -56,6 +77,20 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
   @JsonProperty("lambda_when")
   private String whenCondition;
 
+  @JsonProperty("response_mode")
+  private LambdaResponseMode responseMode = LambdaResponseMode.REPLACE;
+
+  @JsonProperty("cache")
+  @AlsoRequired(values = {
+          @AlsoRequired.Required(name = "response_mode", allowedValues = {"merge"}),
+          @AlsoRequired.Required(name = "keys")
+                  })
+  private CacheConfig cacheConfig;
+
+  @AssertTrue(message = "keys must not be null or empty and response_mode must be 'merge' when using cache")
+  boolean isValidCacheConfig() {
+    return cacheConfig == null || (hasKeys() && responseMode == LambdaResponseMode.MERGE);
+  }
   public List<String> getTagsOnFailure() {
     return tagsOnFailure;
   }
@@ -75,6 +110,10 @@ public class LambdaProcessorConfig extends LambdaCommonConfig {
   public long getCircuitBreakerWaitInterval() {
     return circuitBreakerWaitInterval;
   }
+
+  public CacheConfig getCacheConfig() { return cacheConfig;}
+
+  public LambdaResponseMode getResponseMode() { return responseMode;}
 
   @Override
   public InvocationType getInvocationType() {

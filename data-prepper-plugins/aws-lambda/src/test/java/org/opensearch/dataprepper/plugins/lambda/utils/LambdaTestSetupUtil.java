@@ -54,6 +54,14 @@ public class LambdaTestSetupUtil {
         return new Record<>(getSampleEvent(), RecordMetadata.defaultMetadata());
     }
 
+    public static Record<Event> getSampleRecordWithKeysAndValues(final String message, final List<String> keys, final List<Object> values) {
+        Event event = JacksonEvent.fromMessage(message);
+        for (int i = 0; i < keys.size(); i++) {
+            event.put(keys.get(i), values.get(i));
+        }
+        return new Record(event);
+    }
+
     public static Event getSampleEvent() {
         return JacksonEvent.fromMessage(UUID.randomUUID().toString());
     }

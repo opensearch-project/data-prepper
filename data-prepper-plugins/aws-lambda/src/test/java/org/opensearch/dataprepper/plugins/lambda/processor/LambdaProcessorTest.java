@@ -68,6 +68,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -93,6 +94,7 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.createLambdaConfigurationFromYaml;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleEventRecords;
 import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleRecord;
+import static org.opensearch.dataprepper.plugins.lambda.utils.LambdaTestSetupUtil.getSampleRecordWithKeysAndValues;
 
 
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -229,6 +231,7 @@ public class LambdaProcessorTest {
         // Mock the invoke method to return a completed future
         CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(
                 invokeResponse);
+        lambdaAsyncClient = mock(LambdaAsyncClient.class);
         when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
 
     }
@@ -286,6 +289,238 @@ public class LambdaProcessorTest {
         // Test BatchOptions defaults
         BatchOptions batchOptions = defaultConfig.getBatchOptions();
         assertNotNull(batchOptions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-cache-string-key.yaml"})
+    public void testLambdaCachingWithOneStringKey(final String configFileName) throws Exception {
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+                configFileName);
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message1", lambdaProcessorConfig.getKeys(), List.of("value1")));
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value1\", \"key2\": \"value2\"}]"))
+                .statusCode(200)
+                .build();
+
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+
+
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+        // Assert
+        assertEquals(1, result.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message1"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+
+        List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), List.of("value1")));
+
+        Collection<Record<Event>> result2 = lambdaProcessor.doExecute(records2);
+        assertEquals(1, result2.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        resultEvent = ((Record<Event>)result2.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message2"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+
+        List<Record<Event>> records3 = Collections.singletonList(getSampleRecordWithKeysAndValues("message3", lambdaProcessorConfig.getKeys(), List.of("value11")));
+
+        Collection<Record<Event>> result3 = lambdaProcessor.doExecute(records3);
+        assertEquals(1, result3.size());
+        verify(numberOfRecordsSuccessCounter, times(2)).increment(1.0);
+        resultEvent = ((Record<Event>)result3.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message3"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", String.class), equalTo("value2"));
+        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-cache-multiple-type-keys.yaml"})
+    public void testLambdaCachingWithMultipleKeysOfDifferentType(final String configFileName) throws Exception {
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+                configFileName);
+        List<Object> values = new ArrayList<>();
+        values.add("value1");
+        values.add(1234567891230L);
+        values.add(222);
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message1", lambdaProcessorConfig.getKeys(), values));
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value1\", \"key2\": 1234567891230, \"key3\": 222, \"key4\": \"value4\"}]"))
+                .statusCode(200)
+                .build();
+
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+
+
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+        // Assert
+        assertEquals(1, result.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message1"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+        assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+
+        List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), values));
+
+        Collection<Record<Event>> result2 = lambdaProcessor.doExecute(records2);
+        assertEquals(1, result2.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        resultEvent = ((Record<Event>)result2.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message2"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+        assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+
+        List<Object> values3 = List.of("value1", 1234567891230L, 333);
+        List<Record<Event>> records3 = Collections.singletonList(getSampleRecordWithKeysAndValues("message3", lambdaProcessorConfig.getKeys(), values3));
+
+        Collection<Record<Event>> result3 = lambdaProcessor.doExecute(records3);
+        assertEquals(1, result3.size());
+        verify(numberOfRecordsSuccessCounter, times(2)).increment(1.0);
+        resultEvent = ((Record<Event>)result3.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message3"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+        assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        verify(lambdaAsyncClient, times(2)).invoke(any(InvokeRequest.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-cache-multiple-type-keys.yaml"})
+    public void testLambdaCachingWithEviction(final String configFileName) throws Exception {
+
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+                configFileName);
+        List<Object> values = new ArrayList<>();
+        values.add("value1");
+        values.add(1234567891230L);
+        values.add(222);
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message1", lambdaProcessorConfig.getKeys(), values));
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value1\", \"key2\": 1234567891230, \"key3\": 222, \"key4\": \"value4\"}]"))
+                .statusCode(200)
+                .build();
+
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+
+
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+        // Assert
+        assertEquals(1, result.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message1"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+        assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheEntries(), equalTo(1L));
+
+        List<Record<Event>> records2 = Collections.singletonList(getSampleRecordWithKeysAndValues("message2", lambdaProcessorConfig.getKeys(), values));
+
+        Collection<Record<Event>> result2 = lambdaProcessor.doExecute(records2);
+        assertEquals(1, result2.size());
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        resultEvent = ((Record<Event>)result2.toArray()[0]).getData();
+        assertThat(resultEvent.get("message", String.class), equalTo("message2"));
+        assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+        assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+        assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+        assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+        verify(lambdaAsyncClient, times(1)).invoke(any(InvokeRequest.class));
+        assertThat(lambdaProcessor.getCacheEntries(), equalTo(1L));
+
+        for (int i = 0; i < 20; i++) {
+            List<Object> values3 = List.of("value1", 2222567891230L, 333+i);
+            List<Record<Event>> records3 = Collections.singletonList(getSampleRecordWithKeysAndValues("message3", lambdaProcessorConfig.getKeys(), values3));
+            Collection<Record<Event>> result3 = lambdaProcessor.doExecute(records3);
+            assertEquals(1, result3.size());
+            verify(numberOfRecordsSuccessCounter, times(i+2)).increment(1.0);
+            resultEvent = ((Record<Event>) result3.toArray()[0]).getData();
+            assertThat(resultEvent.get("message", String.class), equalTo("message3"));
+            assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+            assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+            assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+            assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+            verify(lambdaAsyncClient, times(i+2)).invoke(any(InvokeRequest.class));
+        }
+        assertThat(lambdaProcessor.getCacheEntries(), equalTo(8L));
+        assertThat(lambdaProcessor.getCacheEvictionCount(), equalTo(13L));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-cache-multiple-type-keys-small-ttl.yaml"})
+    public void testLambdaCachingWithExpirations(final String configFileName) throws Exception {
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(
+                configFileName);
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator, circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value1\", \"key2\": 1234567891230, \"key3\": 222, \"key4\": \"value4\"}]"))
+                .statusCode(200)
+                .build();
+
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        when(lambdaAsyncClient.invoke(any(InvokeRequest.class))).thenReturn(invokeFuture);
+
+        for (int i = 1; i <= 10; i++) {
+            List<Object> values = new ArrayList<>();
+            values.add("value1");
+            values.add(1234567891230L);
+            values.add(222+i);
+            List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message1", lambdaProcessorConfig.getKeys(), values));
+
+            Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+            // Assert
+            assertEquals(1, result.size());
+            verify(numberOfRecordsSuccessCounter, times(i)).increment(1.0);
+            Event resultEvent = ((Record<Event>) result.toArray()[0]).getData();
+            assertThat(resultEvent.get("message", String.class), equalTo("message1"));
+            assertThat(resultEvent.get("key1", String.class), equalTo("value1"));
+            assertThat(resultEvent.get("key2", Long.class), equalTo(1234567891230L));
+            assertThat(resultEvent.get("key3", Integer.class), equalTo(222));
+            assertThat(resultEvent.get("key4", String.class), equalTo("value4"));
+            verify(lambdaAsyncClient, times(i)).invoke(any(InvokeRequest.class));
+            assertThat(lambdaProcessor.getCacheEntries(), equalTo((long)i));
+        }
+        try {
+            Thread.sleep(15000);
+        } catch (InterruptedException e) {}
+
+        assertThat(lambdaProcessor.getCacheEntries(), equalTo(0L));
+        assertThat(lambdaProcessor.getCacheEvictionCount(), equalTo(10L));
     }
 
     @ParameterizedTest
@@ -468,6 +703,107 @@ public class LambdaProcessorTest {
         verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config-with-keys.yaml"})
+    public void testDoExecute_SuccessfulProcessingWithKeysInReplaceMode(String configFileName) throws Exception {
+        // Arrange
+        int recordCount = 1;
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+
+        List<String> keys = List.of("key1", "key2", "key3");
+        List<Object> values = List.of("value1", "value2", "value3");
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message", keys, values));
+
+
+        // Mock the invoke method to return a completed future
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value11\", \"key2\": \"value22\"}]"))
+                .statusCode(200)
+                .build();
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        doAnswer(a-> {
+            InvokeRequest invokeRequest = a.getArgument(0);
+            SdkBytes payload = invokeRequest.payload();
+            JsonInputCodec codec = new JsonInputCodec( new JsonInputCodecConfig());
+            InputStream inputStream = payload.asInputStream();
+            codec.parse(inputStream, record -> {
+                        Event event = record.getData();
+                        assertThat(event.get("key1", String.class), equalTo("value1"));
+                        assertThat(event.get("key2", String.class), equalTo(null));
+                        assertThat(event.get("key3", String.class), equalTo(null));
+                    });
+            return invokeFuture;
+        }).when(lambdaAsyncClient).invoke(any(InvokeRequest.class));
+
+
+        // Act
+        // Instantiate the LambdaProcessor manually
+
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator,circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+
+        // Assert
+        assertEquals(recordCount, result.size(), "Result should contain one record.");
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+
+        assertThat(resultEvent.get("key1", String.class), equalTo("value11"));
+        assertThat(resultEvent.get("key2", String.class), equalTo("value22"));
+        assertThat(resultEvent.get("key3", String.class), equalTo(null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"lambda-processor-success-config-with-keys-merge-mode.yaml"})
+    public void testDoExecute_SuccessfulProcessingWithKeysInMergeMode(String configFileName) throws Exception {
+        // Arrange
+        int recordCount = 1;
+        LambdaProcessorConfig lambdaProcessorConfig = createLambdaConfigurationFromYaml(configFileName);
+
+        List<String> keys = List.of("key1", "key2", "key3");
+        List<Object> values = List.of("value1", "value2", "value3");
+        List<Record<Event>> records = Collections.singletonList(getSampleRecordWithKeysAndValues("message", keys, values));
+
+
+        // Mock the invoke method to return a completed future
+        InvokeResponse invokeResponse = InvokeResponse.builder()
+                .payload(SdkBytes.fromUtf8String("[{\"key1\": \"value11\", \"key2\": \"value22\"}]"))
+                .statusCode(200)
+                .build();
+        CompletableFuture<InvokeResponse> invokeFuture = CompletableFuture.completedFuture(invokeResponse);
+        doAnswer(a-> {
+            InvokeRequest invokeRequest = a.getArgument(0);
+            SdkBytes payload = invokeRequest.payload();
+            JsonInputCodec codec = new JsonInputCodec( new JsonInputCodecConfig());
+            InputStream inputStream = payload.asInputStream();
+            codec.parse(inputStream, record -> {
+                Event event = record.getData();
+                assertThat(event.get("key1", String.class), equalTo("value1"));
+                assertThat(event.get("key2", String.class), equalTo(null));
+                assertThat(event.get("key3", String.class), equalTo(null));
+            });
+            return invokeFuture;
+        }).when(lambdaAsyncClient).invoke(any(InvokeRequest.class));
+
+
+        // Act
+        // Instantiate the LambdaProcessor manually
+
+        LambdaProcessor lambdaProcessor = new LambdaProcessor(pluginFactory, pluginSetting, lambdaProcessorConfig,
+                awsCredentialsSupplier, expressionEvaluator,circuitBreaker);
+        populatePrivateFields(lambdaProcessor);
+        Collection<Record<Event>> result = lambdaProcessor.doExecute(records);
+
+        // Assert
+        assertEquals(recordCount, result.size(), "Result should contain one record.");
+        verify(numberOfRecordsSuccessCounter, times(1)).increment(1.0);
+        Event resultEvent = ((Record<Event>)result.toArray()[0]).getData();
+
+        assertThat(resultEvent.get("key1", String.class), equalTo("value11"));
+        assertThat(resultEvent.get("key2", String.class), equalTo("value22"));
+        assertThat(resultEvent.get("key3", String.class), equalTo("value3"));
+    }
     @ParameterizedTest
     @ValueSource(strings = {"lambda-processor-success-config.yaml"})
     public void testConvertLambdaResponseToEvent_WithEqualEventCounts_SuccessfulProcessing(String configFileName)
