@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.SinkForwardRecordsContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,6 +43,7 @@ public class FileSink implements Sink<Record<Object>> {
     private boolean isStopRequested;
     private boolean initialized;
     private final String tagsTargetKey;
+    private final SinkContext sinkContext;
 
     private final boolean appendMode;
 
@@ -61,16 +64,25 @@ public class FileSink implements Sink<Record<Object>> {
         initialized = false;
         lock = new ReentrantLock(true);
         tagsTargetKey = Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null;
+        this.sinkContext = sinkContext;
     }
 
     @Override
     public void output(final Collection<Record<Object>> records) {
+        SinkForwardRecordsContext sinkForwardRecordsContext = new SinkForwardRecordsContext(sinkContext);
         lock.lock();
+        Collection<Record<Event>> events = new ArrayList<>();
+
         try {
             if (isStopRequested)
                 return;
 
             for (final Record<Object> record : records) {
+                if (record.getData() instanceof Event) {
+                    Event event = (Event)record.getData();
+                    sinkForwardRecordsContext.addRecord(new Record<>(event));
+                }
+
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
                 } catch (final IOException ex) {
@@ -78,6 +90,7 @@ public class FileSink implements Sink<Record<Object>> {
                 }
             }
 
+            sinkContext.forwardRecords(sinkForwardRecordsContext, null, null);
             try {
                 writer.flush();
             } catch (final IOException ex) {
