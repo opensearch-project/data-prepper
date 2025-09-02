@@ -61,6 +61,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final String PARTITION_UPDATE_ERROR_COUNT = "PartitionUpdateErrors";
     static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
     static final Duration DEFAULT_RENEW_TIMEOUT = Duration.ofMinutes(3);
+    static final Duration OWNERSHIP_RENEWAL_INTERVAL = Duration.ofMinutes(3);
 
     private static final String hostName;
     static final String PARTITION_TYPE = "PARTITION";
@@ -208,7 +209,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         Instant lastOwnershipRenewal = Instant.now();
 
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
-            if (Instant.now().isAfter(lastOwnershipRenewal.plus(DEFAULT_RENEW_TIMEOUT))) {
+            if (Instant.now().isAfter(lastOwnershipRenewal.plus(OWNERSHIP_RENEWAL_INTERVAL))) {
                 LOG.info("Renewing global state ownership for partition creation");
                 renewGlobalStateOwnershipForPartitionCreation();
                 lastOwnershipRenewal = Instant.now();
@@ -526,7 +527,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         return globalStateItemForPartitionCreation;
     }
 
-    private void renewGlobalStateOwnershipForPartitionCreation() {
+    @Override
+    public void renewGlobalStateOwnershipForPartitionCreation() {
         try {
             final Optional<SourcePartitionStoreItem> globalStateItem = sourceCoordinationStore.getSourcePartitionItem(
                     sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS);

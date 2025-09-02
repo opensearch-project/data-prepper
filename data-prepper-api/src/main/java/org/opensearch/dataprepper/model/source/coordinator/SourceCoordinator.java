@@ -164,4 +164,9 @@ public interface SourceCoordinator<T> {
     void renewPartitionOwnership(final String partitionKey);
 
     void deletePartition(final String partitionKey);
+
+    /**
+     * Renews the global state ownership for partition creation to prevent timeout during long-running operations
+     */
+    void renewGlobalStateOwnershipForPartitionCreation();
 }
