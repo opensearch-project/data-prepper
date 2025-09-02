@@ -60,6 +60,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final String PARTITION_NOT_OWNED_ERROR_COUNT = "partitionNotOwnedErrors";
     static final String PARTITION_UPDATE_ERROR_COUNT = "PartitionUpdateErrors";
     static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
+    static final Duration DEFAULT_RENEW_TIMEOUT = Duration.ofMinutes(3);
 
     private static final String hostName;
     static final String PARTITION_TYPE = "PARTITION";
@@ -204,7 +205,17 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
+        Instant lastOwnershipRenewal = Instant.now();
+
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
+            if (Instant.now().isAfter(lastOwnershipRenewal.plus(DEFAULT_RENEW_TIMEOUT))) {
+                LOG.info("Renewing global state ownership for partition creation");
+                renewGlobalStateOwnershipForPartitionCreation();
+                lastOwnershipRenewal = Instant.now();
+            }
+            
+
+            
             final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionIdentifier.getPartitionKey());
 
             if (optionalPartitionItem.isPresent()) {
@@ -513,6 +524,20 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
 
         return globalStateItemForPartitionCreation;
+    }
+
+    private void renewGlobalStateOwnershipForPartitionCreation() {
+        try {
+            final Optional<SourcePartitionStoreItem> globalStateItem = sourceCoordinationStore.getSourcePartitionItem(
+                    sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS);
+            
+            if (globalStateItem.isPresent() && ownerId.equals(globalStateItem.get().getPartitionOwner())) {
+                globalStateItem.get().setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+                sourceCoordinationStore.tryUpdateSourcePartitionItem(globalStateItem.get());
+            }
+        } catch (final Exception e) {
+            LOG.warn("Failed to renew global state ownership for partition creation", e);
+        }
     }
 
     private void giveUpAndSaveGlobalStateForPartitionCreation(final SourcePartitionStoreItem globalStateItemForPartitionCreation, final Map<String, Object> globalStateMap) {
