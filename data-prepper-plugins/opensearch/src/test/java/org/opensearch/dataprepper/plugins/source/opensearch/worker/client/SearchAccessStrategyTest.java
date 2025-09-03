@@ -33,6 +33,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -270,14 +271,11 @@ public class SearchAccessStrategyTest {
         when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.OPENSEARCH);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
-        when(openSearchClient.info()).thenThrow(MissingRequiredPropertyException.class);
-        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
-
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
 
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.SCROLL));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 
     @Test
@@ -288,13 +286,95 @@ public class SearchAccessStrategyTest {
         when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.OPENSEARCH);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
-        when(openSearchClient.info()).thenThrow(MissingRequiredPropertyException.class);
-        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
 
         assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor, instanceOf(OpenSearchAccessor.class));
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void force_Elasticsearch_client_and_defaults_to_scroll_search_context_type_when_distribution_version_is_elasticsearch() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(null);
+
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.ES7);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration)).thenReturn(mock(ElasticsearchClient.class));
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor, instanceOf(ElasticsearchAccessor.class));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.SCROLL));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void force_Elasticsearch_client_and_uses_search_context_type_override_when_distribution_version_is_elasticsearch() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.POINT_IN_TIME);
+
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(DistributionVersion.ES7);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration)).thenReturn(mock(ElasticsearchClient.class));
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor, instanceOf(ElasticsearchAccessor.class));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void auto_detect_defaults_to_OpenSearch_when_both_clients_fail_to_connect_and_distribution_version_is_not_set() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(null); // Default to scroll or PIT based on version
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(null); // Ensure distribution_version is not set
+
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
+        OpenSearchClient mockedOpenSearchClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+        when(mockedOpenSearchClient.info()).thenThrow(new IOException("Simulated OpenSearch connection failure"));
+
+        when(openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration)).thenReturn(mock(ElasticsearchClient.class));
+        ElasticsearchClient mockedElasticsearchClient = openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration);
+        when(mockedElasticsearchClient.info()).thenThrow(new IOException("Simulated Elasticsearch connection failure"));
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor, instanceOf(OpenSearchAccessor.class));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
+    }
+
+    @Test
+    void auto_detect_defaults_to_OpenSearch_with_configured_search_context_when_both_clients_fail() throws IOException {
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.NONE);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+        when(openSearchSourceConfiguration.getDistributionVersion()).thenReturn(null);
+
+        when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
+        OpenSearchClient mockedOpenSearchClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+        when(mockedOpenSearchClient.info()).thenThrow(new IOException("Simulated OpenSearch connection failure"));
+
+        when(openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration)).thenReturn(mock(ElasticsearchClient.class));
+        ElasticsearchClient mockedElasticsearchClient = openSearchClientFactory.provideElasticSearchClient(openSearchSourceConfiguration);
+        when(mockedElasticsearchClient.info()).thenThrow(new IOException("Simulated Elasticsearch connection failure"));
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor, instanceOf(OpenSearchAccessor.class));
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+        verify(pluginConfigObservable).addPluginConfigObserver(any());
     }
 }
