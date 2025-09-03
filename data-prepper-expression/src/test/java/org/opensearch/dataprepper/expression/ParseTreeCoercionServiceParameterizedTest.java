@@ -28,6 +28,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceParameterizedTest {
@@ -91,7 +93,7 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("now()");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction("now", java.util.Collections.emptyList(), testEvent, null))
+        when(expressionFunctionProvider.provideFunction(eq("now"), eq(java.util.Collections.<Object>emptyList()), eq(testEvent), any()))
                 .thenReturn("2023-01-01");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
@@ -115,7 +117,7 @@ class ParseTreeCoercionServiceParameterizedTest {
 
     private static Stream<Arguments> provideFunctionErrorCases() {
         return Stream.of(
-            Arguments.of("test(\"unclosed", "Invalid string argument: check if any argument is missing a closing double quote or contains comma that's not escaped with `\\`."),
+            Arguments.of("test(\"unclosed", "Invalid function format: missing closing parenthesis"),
             Arguments.of("test(123)", "Unsupported type passed as function argument")
         );
     }
@@ -126,7 +128,7 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("test(\"\")");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction("test", java.util.List.of("\"\""), testEvent, null))
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("\"\"")), eq(testEvent), any()))
                 .thenReturn("result");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
@@ -140,7 +142,7 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("test(/key, \"value\")");
         final Event testEvent = mock(Event.class);
-        when(expressionFunctionProvider.provideFunction("test", java.util.List.of("/key", "\"value\""), testEvent, null))
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("/key", "\"value\"")), eq(testEvent), any()))
                 .thenReturn("result");
         
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);

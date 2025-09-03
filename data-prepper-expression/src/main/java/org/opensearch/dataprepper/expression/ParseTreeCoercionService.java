@@ -78,6 +78,8 @@ class ParseTreeCoercionService {
     public ParseTreeCoercionService(
             final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions,
             final ExpressionFunctionProvider expressionFunctionProvider) {
+        Objects.requireNonNull(literalTypeConversions, "literalTypeConversions cannot be null");
+        Objects.requireNonNull(expressionFunctionProvider, "expressionFunctionProvider cannot be null");
         this.literalTypeConversions = literalTypeConversions;
         convertLiteralType = (value) -> {
             if (literalTypeConversions.containsKey(value.getClass())) {
