@@ -137,6 +137,20 @@ class ParseTreeCoercionServiceParameterizedTest {
     }
 
     @Test
+    void testFunctionWithEmptyArgument() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn("test(/key, , \"value\")");
+        final Event testEvent = mock(Event.class);
+        when(expressionFunctionProvider.provideFunction(eq("test"), eq(java.util.List.<Object>of("/key", "\"value\"")), eq(testEvent), any()))
+                .thenReturn("result");
+        
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        
+        assertThat(result, equalTo("result"));
+    }
+
+    @Test
     void testFunctionWithMultipleArguments() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         when(terminalNode.getSymbol()).thenReturn(token);
