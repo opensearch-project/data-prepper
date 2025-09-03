@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.core.pipeline;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.core.livecapture.LiveCaptureManager;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.core.pipeline.common.FutureHelperResult;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -44,6 +45,11 @@ public class PipelineRunnerImpl implements PipelineRunner {
         this.pluginMetrics = PluginMetrics.fromNames("PipelineRunner", pipeline.getName());
         this.processorProvider = processorProvider;
         this.invalidEventHandlesCounter = pluginMetrics.counter(INVALID_EVENT_HANDLES);
+        
+        // Store the buffer for live capture injection (only if enabled and both name and buffer are available)
+        if (pipeline.getName() != null && pipeline.getBuffer() != null) {
+            LiveCaptureManager.storePipelineBuffer(pipeline.getName(), pipeline.getBuffer());
+        }
     }
 
     @Override
@@ -54,6 +60,11 @@ public class PipelineRunnerImpl implements PipelineRunner {
         List<Processor> currentProcessors = processorProvider.getProcessors();
         records = runProcessorsAndProcessAcknowledgements(currentProcessors, records);
         postToSink(getPipeline(), records);
+        
+        // process live capture data to be sent to configured sink after events are sent to sinks
+        if (LiveCaptureManager.getInstance().isEnabled()) {
+            LiveCaptureManager.processCompletedEvents(records);
+        }
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
         getBuffer().checkpoint(checkpointState);
     }
@@ -70,6 +81,11 @@ public class PipelineRunnerImpl implements PipelineRunner {
             }
         } else {
             LOG.debug(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+            
+            // live capture hook for source events
+            if (LiveCaptureManager.getInstance().isEnabled()) {
+                LiveCaptureManager.captureSourceEvents(records, pipeline.getSource(), pipeline.getName());
+            }
         }
         return readResult;
     }
@@ -103,6 +119,11 @@ public class PipelineRunnerImpl implements PipelineRunner {
 
             try {
                 records = processor.execute(records);
+                
+                // live capture hook for processor events
+                if (LiveCaptureManager.getInstance().isEnabled()) {
+                    LiveCaptureManager.captureProcessorEvents(records, processor);
+                }
                 // acknowledge missing events only if the processor is not holding events
                 if (!processor.holdsEvents() && inputEvents != null) {
                     processAcknowledgements(inputEvents, records);
