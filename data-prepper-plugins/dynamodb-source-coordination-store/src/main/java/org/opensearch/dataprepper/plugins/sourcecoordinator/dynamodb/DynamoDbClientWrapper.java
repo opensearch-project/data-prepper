@@ -165,7 +165,7 @@ public class DynamoDbClientWrapper {
         try {
             tryUpdateItem(dynamoDbSourcePartitionItem);
         } catch (final PartitionUpdateException e) {
-            LOG.warn(e.getMessage(), e);
+            LOG.debug(e.getMessage(), e);
             throw e;
         }
     }
