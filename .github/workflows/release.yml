@@ -110,7 +110,6 @@ jobs:
 
   promote:
     runs-on: ubuntu-latest
-    if: ${{ (success() || failure()) && needs.build.result == 'success' }}
     needs: [build, validate-docker, validate-archive]
     permissions:
       contents: write
