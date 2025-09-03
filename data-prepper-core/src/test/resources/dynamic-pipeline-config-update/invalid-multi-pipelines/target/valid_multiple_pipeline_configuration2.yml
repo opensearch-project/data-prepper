@@ -1,0 +1,11 @@
+# this configuration file is solely for testing formatting
+test-pipeline-2:
+  source:
+    pipeline:
+      name: "test-pipeline-1"
+  processor:
+    - test_processor:
+        delete_source: false
+  sink:
+    - pipeline:
+        name: "test-pipeline-3"

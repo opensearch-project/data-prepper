@@ -10,8 +10,10 @@ import org.opensearch.dataprepper.core.DataPrepper;
 import org.opensearch.dataprepper.core.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.core.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.core.pipeline.server.GetPipelinesHandler;
+import org.opensearch.dataprepper.core.pipeline.server.IsDynamicallyUpdatablePipelineHandler;
 import org.opensearch.dataprepper.core.pipeline.server.ListPipelinesHandler;
 import org.opensearch.dataprepper.core.pipeline.server.ShutdownHandler;
+import org.opensearch.dataprepper.core.pipeline.server.UpdatePipelineHandler;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -41,8 +43,7 @@ public class DataPrepperServerConfiguration {
                 printInsecurePluginModelWarning();
             }
             return new PluginSetting(pluginName, authentication.getPluginSettings());
-        }
-        else {
+        } else {
             printInsecurePluginModelWarning();
             return new PluginSetting(
                     DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME,
@@ -79,5 +80,15 @@ public class DataPrepperServerConfiguration {
     @Bean
     public GetPipelinesHandler GetPipelinesHandler(final PipelinesProvider pipelinesProvider) {
         return new GetPipelinesHandler(pipelinesProvider);
+    }
+
+    @Bean
+    public UpdatePipelineHandler updatePipelineHandler(final PipelinesProvider pipelinesProvider) {
+        return new UpdatePipelineHandler(pipelinesProvider);
+    }
+
+    @Bean
+    public IsDynamicallyUpdatablePipelineHandler isDynamicallyUpdatablePipelineHandler(final PipelinesProvider pipelinesProvider) {
+        return new IsDynamicallyUpdatablePipelineHandler(pipelinesProvider);
     }
 }
