@@ -56,7 +56,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator.DEFAULT_LEASE_TIMEOUT;
 import static org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator.FORCE_SUPPLIER_AFTER_DURATION;
 import static org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator.GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS;
 import static org.opensearch.dataprepper.core.sourcecoordination.LeaseBasedSourceCoordinator.GLOBAL_STATE_TYPE;
@@ -138,6 +137,7 @@ public class LeaseBasedSourceCoordinatorTest {
     private String sourceIdentifierWithPartitionPrefix;
     private String fullSourceIdentifierForPartition;
     private String fullSourceIdentifierForGlobalState;
+    private Duration leaseTimeout;
 
     @BeforeEach
     void setup() {
@@ -145,9 +145,12 @@ public class LeaseBasedSourceCoordinatorTest {
         sourceIdentifier = UUID.randomUUID().toString();
         sourceIdentifierWithPartitionPrefix = partitionPrefix + "|" + sourceIdentifier;
 
+        leaseTimeout = Duration.ofSeconds(1);
+
         fullSourceIdentifierForPartition = sourceIdentifierWithPartitionPrefix + "|" + PARTITION_TYPE;
         this.fullSourceIdentifierForGlobalState = sourceIdentifierWithPartitionPrefix + "|" + GLOBAL_STATE_TYPE;
         given(sourceCoordinationConfig.getPartitionPrefix()).willReturn(partitionPrefix);
+        given(sourceCoordinationConfig.getLeaseTimeout()).willReturn(leaseTimeout);
         given(pluginMetrics.counter(PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT)).willReturn(partitionCreationSupplierInvocationsCounter);
         given(pluginMetrics.counter(NO_PARTITIONS_ACQUIRED_COUNT)).willReturn(noPartitionsAcquiredCounter);
         given(pluginMetrics.counter(PARTITIONS_ACQUIRED_COUNT)).willReturn(partitionsAcquiredCounter);
@@ -746,7 +749,7 @@ public class LeaseBasedSourceCoordinatorTest {
             final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);
             verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(argumentCaptorForPartitionOwnershipTimeout.capture());
             final Instant newPartitionOwnershipTimeout = argumentCaptorForPartitionOwnershipTimeout.getValue();
-            assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(DEFAULT_LEASE_TIMEOUT)), equalTo(true));
+            assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(leaseTimeout)), equalTo(true));
 
             verify(sourcePartitionStoreItem).setPartitionProgressState("\"" + newProgressState + "\"");
 
@@ -810,7 +813,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
         doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
 
-        final Duration ackTimeout = Duration.ofSeconds(10);
+        final Duration ackTimeout = leaseTimeout;
         createObjectUnderTest().renewPartitionOwnership(sourcePartition.getPartitionKey());
 
         final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);

@@ -37,8 +37,6 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
     public static final String DEFAULT_FAILURE_PIPELINE_NAME = "dlq_pipeline";
 
-    private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
-
     static final int MAX_TAGS_NUMBER = 3;
     private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
     private static final PipelineShutdownOption DEFAULT_PIPELINE_SHUTDOWN = PipelineShutdownOption.ON_ANY_PIPELINE_FAILURE;
@@ -112,7 +110,7 @@ public class DataPrepperConfiguration implements ExtensionsConfiguration, EventC
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
         this.sourceCoordinationConfig = Objects.isNull(sourceCoordinationConfig)
-                ? new SourceCoordinationConfig(new PluginModel(DEFAULT_SOURCE_COORDINATION_STORE, Collections.emptyMap()), null)
+                ? SourceCoordinationConfig.getDefaultSourceCoordinationConfig()
                 : sourceCoordinationConfig;
         this.pipelineShutdown = pipelineShutdown != null ? pipelineShutdown : DEFAULT_PIPELINE_SHUTDOWN;
         this.eventConfiguration = eventConfiguration != null ? eventConfiguration : EventConfiguration.defaultConfiguration();

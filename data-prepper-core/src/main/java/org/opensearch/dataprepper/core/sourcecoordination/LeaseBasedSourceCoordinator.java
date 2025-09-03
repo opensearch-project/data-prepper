@@ -59,7 +59,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final String PARTITION_NOT_FOUND_ERROR_COUNT = "partitionNotFoundErrors";
     static final String PARTITION_NOT_OWNED_ERROR_COUNT = "partitionNotOwnedErrors";
     static final String PARTITION_UPDATE_ERROR_COUNT = "PartitionUpdateErrors";
-    static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
     private static final String hostName;
     static final String PARTITION_TYPE = "PARTITION";
@@ -74,6 +73,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final String sourceIdentifier;
     private final String sourceIdentifierWithPartitionType;
     private final String sourceIdentifierWithGlobalStateType;
+    private final Duration leaseTimeout;
     private boolean initialized = false;
 
     private final PluginMetrics pluginMetrics;
@@ -116,6 +116,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
                 sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier :
                 sourceIdentifier;
+        leaseTimeout = sourceCoordinationConfig.getLeaseTimeout();
         this.sourceIdentifierWithPartitionType = this.sourceIdentifier + "|" + PARTITION_TYPE;
         this.sourceIdentifierWithGlobalStateType = this.sourceIdentifier + "|" + GLOBAL_STATE_TYPE;
         this.ownerId = this.sourceIdentifier + ":" + hostName;
@@ -162,7 +163,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private Optional<SourcePartition<T>> getNextPartitionInternal(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier, final boolean forceSupplier) {
         validateIsInitialized();
 
-        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
+        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, leaseTimeout);
         try {
             if ((ownedPartitions.isEmpty() || forceSupplier) && lock.tryLock()) {
                 lastSupplierRunTime = Instant.now();
@@ -180,7 +181,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 lock.unlock();
             }
             if (ownedPartitions.isEmpty()) {
-                ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, DEFAULT_LEASE_TIMEOUT);
+                ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifierWithPartitionType, ownerId, leaseTimeout);
             }
         }
 
@@ -295,7 +296,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         final SourcePartitionStoreItem itemToUpdate = getSourcePartitionStoreItem(partitionKey, SAVE_STATE_ACTION);
         validatePartitionOwnership(itemToUpdate);
 
-        itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+        itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(leaseTimeout));
         itemToUpdate.setPartitionProgressState(convertPartitionProgressStateClasstoString(partitionProgressState));
 
         try {
@@ -325,7 +326,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     @Override
     public void renewPartitionOwnership(final String partitionKey) {
         try {
-            updatePartitionOwnership(partitionKey, DEFAULT_LEASE_TIMEOUT);
+            updatePartitionOwnership(partitionKey, leaseTimeout);
         } catch (final Exception e) {
             LOG.error("Exception while renewing partition ownership for the partition {}: {}", partitionKey, e.getMessage());
             throw e;
@@ -503,7 +504,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             try {
                 globalStateItemForPartitionCreation.get().setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
                 globalStateItemForPartitionCreation.get().setPartitionOwner(ownerId);
-                globalStateItemForPartitionCreation.get().setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
+                globalStateItemForPartitionCreation.get().setPartitionOwnershipTimeout(Instant.now().plus(leaseTimeout));
                 sourceCoordinationStore.tryUpdateSourcePartitionItem(globalStateItemForPartitionCreation.get());
             } catch (final PartitionUpdateException e) {
                 LOG.debug("Owner %s was not able to acquire the global state item to create new partitions. This means that another instance of Data Prepper has gained the responsibility of creating partitions at this time");
