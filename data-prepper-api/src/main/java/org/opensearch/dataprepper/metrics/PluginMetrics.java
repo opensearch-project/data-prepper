@@ -57,7 +57,7 @@ public class PluginMetrics {
         return new PluginMetrics(metricsPrefix);
     }
 
-    private  PluginMetrics(final String metricsPrefix) {
+    private PluginMetrics(final String metricsPrefix) {
         this.metricsPrefix = metricsPrefix;
     }
 
@@ -81,8 +81,16 @@ public class PluginMetrics {
         return Metrics.timer(getMeterName(name), tags);
     }
 
+    public Timer timer(final String name, final String metricsPrefix) {
+        return Metrics.timer(new StringJoiner(MetricNames.DELIMITER).add(metricsPrefix).add(name).toString());
+    }
+
     public DistributionSummary summary(final String name) {
         return Metrics.summary(getMeterName(name));
+    }
+
+    public DistributionSummary summary(final String name, final String metricsPrefix) {
+        return Metrics.summary(new StringJoiner(MetricNames.DELIMITER).add(metricsPrefix).add(name).toString());
     }
 
     public <T extends Number> T gauge(final String name, T number) {

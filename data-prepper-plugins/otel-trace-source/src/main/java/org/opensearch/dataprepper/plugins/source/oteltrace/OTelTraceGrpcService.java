@@ -68,6 +68,21 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
+    public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
+                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
+                                final Buffer<Record<Object>> buffer,
+                                final PluginMetrics pluginMetrics,
+                                final String metricsPrefix) {
+        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
+        this.buffer = buffer;
+        this.oTelProtoDecoder = oTelProtoDecoder;
+
+        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
+        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
+        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
+        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+    }
+
 
     @Override
     public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {

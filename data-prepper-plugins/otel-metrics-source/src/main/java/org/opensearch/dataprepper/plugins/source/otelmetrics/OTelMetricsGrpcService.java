@@ -67,6 +67,23 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
         this.oTelProtoDecoder = oTelProtoDecoder;
     }
 
+    public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
+                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
+                                  Buffer<Record<? extends Metric>> buffer,
+                                  final PluginMetrics pluginMetrics,
+                                  final String metricsPrefix) {
+        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
+        this.buffer = buffer;
+
+        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
+        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
+        recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED, metricsPrefix);
+        recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED, metricsPrefix);
+        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
+        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+        this.oTelProtoDecoder = oTelProtoDecoder;
+    }
+
     @Override
     public void export(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         requestsReceivedCounter.increment();
