@@ -93,6 +93,13 @@ subprojects {
         else if(targetJavaVersion == 'docker') {
             dependsOn ':release:docker:docker'
             imageId = "${project.rootProject.name}:${project.version}"
+            doLast {
+                println "\n=== Inspecting Docker Image: ${project.rootProject.name}:${project.version} ==="
+                exec {
+                    commandLine 'docker', 'inspect', "${project.rootProject.name}:${project.version}"
+                }
+                println "=== End of Docker Inspect ==="
+            }
         }
         else {
             dependsOn 'createDataPrepperDockerFile'
@@ -146,5 +153,14 @@ subprojects {
 
     dependencies {
         testImplementation testLibs.junit.vintage
+    }
+
+    tasks.register('inspectDataPrepperImage') {
+        dependsOn dataPrepperDockerImage
+        doLast {
+            exec {
+                commandLine 'docker', 'inspect', "${project.rootProject.name}:${project.version}"
+            }
+        }
     }
 }
