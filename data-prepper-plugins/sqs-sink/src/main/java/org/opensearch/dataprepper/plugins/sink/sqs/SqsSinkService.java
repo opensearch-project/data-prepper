@@ -266,13 +266,13 @@ public class SqsSinkService extends SqsSinkExecutor {
 
     @Override
     public boolean exceedsFlushTimeInterval() {
-        long now = Instant.now().getEpochSecond();
+        long nowMillis = Instant.now().toEpochMilli();
         boolean result = false;
 
         for (Map.Entry<String, SqsSinkBatch> qUrlEntry: batchUrlMap.entrySet()) {
             String qUrl = qUrlEntry.getKey();
             SqsSinkBatch batch = qUrlEntry.getValue();
-            if (now - batch.getLastFlushedTime() > thresholdConfig.getFlushInterval()) {
+            if (nowMillis - batch.getLastFlushedTime() > thresholdConfig.getFlushInterval() * 1000L) {
                 batch.setFlushReady();
                 result = true;
             }
