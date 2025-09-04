@@ -12,13 +12,16 @@ import org.opensearch.dataprepper.expression.ExpressionParsingException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.common.MLBatchJobCreator;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.common.MLBatchJobCreatorFactory;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.ServiceName;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +44,12 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
     private final Counter numberOfMLProcessorSuccessCounter;
     private final Counter numberOfMLProcessorFailedCounter;
     private final ExpressionEvaluator expressionEvaluator;
+    private final PluginSetting pluginSetting;
+
+    private DlqPushHandler dlqPushHandler = null;
 
     @DataPrepperPluginConstructor
-    public MLProcessor(final MLProcessorConfig mlProcessorConfig, final PluginMetrics pluginMetrics, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
+    public MLProcessor(final MLProcessorConfig mlProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.whenCondition = mlProcessorConfig.getWhenCondition();
         ServiceName serviceName = mlProcessorConfig.getServiceName();
@@ -52,9 +58,14 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
         this.numberOfMLProcessorFailedCounter = pluginMetrics.counter(
                 NUMBER_OF_ML_PROCESSOR_FAILED);
         this.expressionEvaluator = expressionEvaluator;
+        this.pluginSetting = pluginSetting;
+
+        if (mlProcessorConfig.getDlqPluginSetting() != null) {
+            this.dlqPushHandler = new DlqPushHandler(pluginFactory, pluginSetting, mlProcessorConfig.getDlq(), mlProcessorConfig.getAwsAuthenticationOptions());
+        }
 
         // Use factory to get the appropriate job creator
-        mlBatchJobCreator = MLBatchJobCreatorFactory.getJobCreator(serviceName, mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
+        mlBatchJobCreator = MLBatchJobCreatorFactory.getJobCreator(serviceName, mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
     }
 
     @Override

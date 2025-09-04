@@ -8,21 +8,25 @@ package org.opensearch.dataprepper.plugins.ml_inference.processor.common;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoffWithResult;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor.LOG;
-import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
 
 public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private final AwsCredentialsSupplier awsCredentialsSupplier;
@@ -30,34 +34,57 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private static final String BEDROCK_PAYLOAD_TEMPLATE = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://\"}}," +
             "\"jobName\": \"\", \"outputDataConfig\": {\"s3OutputDataConfig\": {\"s3Uri\": \"s3://\"}}}}";
 
-    public BedrockBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
-        super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
+    public BedrockBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics, final DlqPushHandler dlqPushHandler) {
+        super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
         this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
     @Override
     public void createMLBatchJob(List<Record<Event>> inputRecords, List<Record<Event>> resultRecords) {
         List<Record<Event>> failedRecords = new ArrayList<>();
+        List<DlqObject> dlqObjects = new ArrayList<>();  // Collect DLQ objects directly
+
         inputRecords.stream().forEach(record -> {
             try {
                 String s3Uri = generateS3Uri(record);
                 String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
 
-                boolean success = retryWithBackoff(() -> mlCommonRequester.sendRequestToMLCommons(payload), LOG);
-                if (success) {
+                RetryUtil.RetryResult result = retryWithBackoffWithResult(
+                        () -> mlCommonRequester.sendRequestToMLCommons(payload),
+                        LOG
+                );
+
+                if (result.isSuccess()) {
                     LOG.info("Successfully created Bedrock batch job for the S3Uri: {}", s3Uri);
                     resultRecords.add(record);
                     incrementSuccessCounter();
                 } else {
-                    handleFailure(record, resultRecords, failedRecords);
-                    LOG.error("Failed to create Bedrock batch job after multiple retries for: " + s3Uri);
+                    Exception e = result.getLastException();
+                    String errorMessage = String.format(
+                            "Failed to create Bedrock batch job after %d attempts for S3Uri: %s. Error: %s",
+                            result.getAttemptsMade(),
+                            s3Uri,
+                            e.getMessage()
+                    );
+
+                    int statusCode = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                    if (e instanceof MLBatchJobException) {
+                        MLBatchJobException mlException = (MLBatchJobException) e;
+                        statusCode = mlException.getStatusCode();
+                        LOG.error(NOISY, errorMessage);
+                    } else {
+                        LOG.error(NOISY, errorMessage, e);
+                    }
+
+                    handleFailure(record, resultRecords, failedRecords, dlqObjects, e, statusCode);
                 }
             } catch (IllegalArgumentException e) {
                 LOG.error(NOISY, "Invalid arguments for BedRock batch job. Error: {}", e.getMessage());
-                handleFailure(record, resultRecords, failedRecords);
+                handleFailure(record, resultRecords, failedRecords, dlqObjects, e, HttpURLConnection.HTTP_BAD_REQUEST);
             } catch (Exception e) {
-                LOG.error(NOISY, "Unexpected Error occurred while creating a batch job through BedRock. Error: {}", e.getMessage(), e);
-                handleFailure(record, resultRecords, failedRecords);
+                LOG.error(NOISY, "Unexpected Error occurred while creating a batch job through BedRock. Error: {}",
+                        e.getMessage(), e);
+                handleFailure(record, resultRecords, failedRecords, dlqObjects, e, HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
             // Add a 1ms delay to ensure next request is in a different millisecond
             try {
@@ -68,19 +95,58 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
             }
         });
 
+        numberOfRecordsSuccessCounter.increment(inputRecords.size() - failedRecords.size());
         // If there are any failed records, throw the exception after all records are processed
         if (!failedRecords.isEmpty()) {
+            pushToDlq(dlqObjects);
+            numberOfRecordsFailedCounter.increment(dlqObjects.size());
+
             throw new MLBatchJobException(
-                "Failed to process the following records: " + failedRecords,
+                    String.format("Failed to process %d records out of %d total records",
+                            failedRecords.size(),
+                            inputRecords.size()),
                 new Throwable("Batch job creation failed due to one or more failed records")
             );
         }
     }
 
-    private void handleFailure(Record<Event> record, List<Record<Event>> resultRecords, List<Record<Event>> failedRecords) {
+    private void handleFailure(Record<Event> record,
+                               List<Record<Event>> resultRecords,
+                               List<Record<Event>> failedRecords,
+                               List<DlqObject> dlqObjects,
+                               Throwable throwable,
+                               int statusCode) {
         resultRecords.addAll(addFailureTags(Collections.singletonList(record)));
         incrementFailureCounter();
         failedRecords.add(record); // Add to failed records
+
+        if (dlqPushHandler == null) {
+            return;
+        }
+        try {
+            if (record.getData() != null) {
+                dlqObjects.add(createDlqObjectFromEvent(
+                        record.getData(),
+                        statusCode,
+                        throwable.getMessage()
+                ));
+            }
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Exception occured during error handling: {}", ex.getMessage());
+        }
+    }
+
+    private void pushToDlq(List<DlqObject> dlqObjects) {
+        if (dlqPushHandler == null || dlqObjects.isEmpty()) {
+            return;
+        }
+
+        try {
+            dlqPushHandler.perform(dlqObjects);
+            LOG.info("Successfully pushed {} failed records to DLQ", dlqObjects.size());
+        } catch (Exception e) {
+            LOG.error("Failed to push {} records to DLQ: {}", dlqObjects.size(), e.getMessage(), e);
+        }
     }
 
     private String generateS3Uri(Record<Event> record) {
