@@ -58,6 +58,7 @@ public class ConfluenceClient implements CrawlerClient<PaginationCrawlerWorkerPr
     private final ExecutorService executorService;
     private final CrawlerSourceConfig configuration;
     private final int bufferWriteTimeoutInSeconds = 10;
+    private final boolean preserveContentFormatting;
 
     public ConfluenceClient(ConfluenceService service,
                             ConfluenceIterator confluenceIterator,
@@ -67,6 +68,7 @@ public class ConfluenceClient implements CrawlerClient<PaginationCrawlerWorkerPr
         this.confluenceIterator = confluenceIterator;
         this.executorService = executorServiceProvider.get();
         this.configuration = sourceConfig;
+        this.preserveContentFormatting = sourceConfig.isPreserveContentFormatting();
     }
 
     @Override
@@ -114,7 +116,11 @@ public class ConfluenceClient implements CrawlerClient<PaginationCrawlerWorkerPr
                     try {
                         ObjectNode contentJsonObj = objectMapper.readValue(contentJson, new TypeReference<>() {
                         });
-                        return HtmlToTextConversionUtil.convertHtmlToText(contentJsonObj, "body/view/value");
+                        if (preserveContentFormatting) {
+                            return contentJsonObj;
+                        } else {
+                            return HtmlToTextConversionUtil.convertHtmlToText(contentJsonObj, "body/view/value");
+                        }
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }

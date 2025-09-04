@@ -15,6 +15,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,6 +26,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
 import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -139,5 +143,33 @@ public class ConfluenceClientTest {
 
         doThrow(new RuntimeException()).when(buffer).writeAll(recordsCaptor.capture(), anyInt());
         assertThrows(RuntimeException.class, () -> confluenceClient.executePartition(saasWorkerProgressState, buffer, acknowledgementSet));
+    }
+
+
+    @ParameterizedTest
+    @CsvSource({
+            "true, '{\"body\":{\"view\":{\"value\":\"<p>HTML content</p>\"}}}', '{\"body\":{\"view\":{\"value\":\"<p>HTML content</p>\"}}}', true",
+            "false, '{\"body\":{\"view\":{\"value\":\"<p>HTML content</p>\"}}}', '{\"body\":{\"view\":{\"value\":\"HTML content\"}}}', false"
+    })
+    void testExecutePartitionWithPreserveContentFormatting(boolean preserveFormatting, String inputContent, String expectedContent) throws Exception {
+        when(confluenceSourceConfig.isPreserveContentFormatting()).thenReturn(preserveFormatting);
+        ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
+
+        Map<String, Object> keyAttributes = new HashMap<>();
+        keyAttributes.put("space", "test");
+        when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
+        List<String> itemIds = List.of("ID1");
+        when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);
+        when(saasWorkerProgressState.getExportStartTime()).thenReturn(Instant.now());
+        when(confluenceService.getContent(anyString())).thenReturn(inputContent);
+
+        ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
+        confluenceClient.executePartition(saasWorkerProgressState, buffer, acknowledgementSet);
+
+        verify(buffer).writeAll(recordsCaptor.capture(), anyInt());
+        Collection<Record<Event>> records = recordsCaptor.getValue();
+        String eventData = records.iterator().next().getData().toJsonString();
+        assertEquals(expectedContent, eventData);
+
     }
 }
