@@ -1,20 +1,36 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ */
+
 package org.opensearch.dataprepper.expression;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.inject.Named;
+
 import org.opensearch.dataprepper.model.event.Event;
 
 @Named
-public class DateTimeFormatExpressionFunction implements ExpressionFunction{
+public class FormatDateTimeExpressionFunction implements ExpressionFunction {
+
     @Override
     public String getFunctionName() {
-        return "dateTimeFormat";
+        return "formatDateTime";
     }
 
     @Override
@@ -36,11 +52,11 @@ public class DateTimeFormatExpressionFunction implements ExpressionFunction{
         }
 
         String eventKey = argStrings.get(0);
-        String pattern = argStrings.get(1); //TODO: handle Json Pointer?
+        String pattern = argStrings.get(1);
         pattern = unquote(pattern);
 
 
-        ZoneId destinationTimeZone = ZoneId.systemDefault();
+        ZoneId destinationTimeZone = ZoneOffset.UTC;
         if (argStrings.size() > 2) {
             String destinationZoneIdArg = unquote(argStrings.get(2));
             try {
@@ -50,7 +66,7 @@ public class DateTimeFormatExpressionFunction implements ExpressionFunction{
             }
         }
 
-        ZoneId sourceTimeZone = ZoneId.systemDefault();
+        ZoneId sourceTimeZone = ZoneOffset.UTC;
 
         if (argStrings.size() > 3) {
             String sourceTimeZoneArg = unquote(argStrings.get(3));
@@ -63,7 +79,7 @@ public class DateTimeFormatExpressionFunction implements ExpressionFunction{
 
         DateTimeFormatter formatter;
         try {
-            formatter =  DateTimeFormatter.ofPattern(pattern).withZone(destinationTimeZone); //TODO: Suport Zone as an argument
+            formatter = DateTimeFormatter.ofPattern(pattern).withZone(destinationTimeZone);
         } catch (Exception e) {
             throw new IllegalArgumentException("Date pattern [" + pattern + "] is invalid");
         }
@@ -73,15 +89,15 @@ public class DateTimeFormatExpressionFunction implements ExpressionFunction{
             return formatter.format(Instant.ofEpochMilli(((Number)target).longValue()).atZone(sourceTimeZone));
         }
         if (target instanceof String) {
-            return formatter.format(Instant.ofEpochMilli((Long.parseLong((String) target))).atZone(sourceTimeZone));
+            return formatter.format(DateTimeFormatter.ISO_DATE_TIME.withZone(sourceTimeZone).parse((String) target));
         }
-        if (target instanceof TemporalAccessor) {
-            return formatter.format((TemporalAccessor) target);
-        }
-        throw new IllegalArgumentException("Unsupported type passed as function argument");
+        throw new IllegalArgumentException("Unsupported type passed as function argument: " + target.getClass());
     }
 
     private static String unquote(String input) {
-        return input.substring(1, input.length() - 1);
+        if (input.startsWith("\"") && input.endsWith("\"")) {
+            return input.substring(1, input.length() - 1);
+        }
+        return input;
     }
 }
