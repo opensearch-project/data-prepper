@@ -14,5 +14,5 @@ repositories {
 }
 
 dependencies {
-    implementation('me.champeau.jmh:me.champeau.jmh.gradle.plugin:0.7.3')
+    implementation('me.champeau.jmh:me.champeau.jmh.gradle.plugin:0.7.2')
 }
