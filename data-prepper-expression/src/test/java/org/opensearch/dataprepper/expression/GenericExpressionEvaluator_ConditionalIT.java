@@ -255,7 +255,7 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
                 arguments("getEventType() == \"event\"",  longEvent, true),
                 arguments("getEventType() == \"LOG\"",  longEvent, false),
-                arguments("dateTimeFormat(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
+                arguments("formatDateTime(/time, \"'year='yyyy'/month='MM'/day='dd\", \"UTC-8\") == \"year=2025/month=04/day=01\"", event("{\"time\": " + LocalDateTime.of(2025, 4, 1, 23, 59).toInstant(ZoneOffset.UTC).toEpochMilli() + "}"), true)
         );
     }
 
