@@ -18,21 +18,22 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.CountDownLatch;
-import java.util.Collections;
 import org.opensearch.dataprepper.expression.util.TestObject;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -106,11 +107,13 @@ class ParseTreeCoercionServiceTest {
     @Mock
     private Token token;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration =
             new LiteralTypeConversionsConfiguration();
     private final ExpressionFunctionProvider expressionFunctionProvider = mock(ExpressionFunctionProvider.class);
     private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService(
-            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider);
+            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider, eventKeyFactory);
 
     @Test
     void testCoerceTerminalNodeStringType() {
