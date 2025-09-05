@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -52,6 +53,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -70,6 +72,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -1426,6 +1429,25 @@ public class LambdaProcessorTest {
                 .withEventType("test")
                 .build();
         return new Record<>(event);
+    }
+
+    @Test
+    void testNoClassCastExceptionWithAggregateEventHandle() {
+        // Simulate event from aggregate processor with AggregateEventHandle
+        Event mockEvent = mock(Event.class);
+        Record<Event> mockRecord = mock(Record.class);
+        AggregateEventHandle aggregateHandle = new AggregateEventHandle(Instant.now());
+        
+        when(mockEvent.getEventHandle()).thenReturn(aggregateHandle);
+        when(mockRecord.getData()).thenReturn(mockEvent);
+
+        AggregateResponseEventHandlingStrategy strategy = new AggregateResponseEventHandlingStrategy();
+        List<Event> parsedEvents = Collections.emptyList();
+        List<Record<Event>> originalRecords = Collections.singletonList(mockRecord);
+
+        assertDoesNotThrow(() -> {
+            strategy.handleEvents(parsedEvents, originalRecords, null);
+        });
     }
 
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
