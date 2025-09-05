@@ -154,7 +154,7 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), lessThanOrEqualTo(numRecords));
         });
-        assertTrue(inMemorySourceAccessor.getAckReceived());
+        assertThat(inMemorySourceAccessor.getAckReceived(), equalTo(true));
     }
 
     @Test
