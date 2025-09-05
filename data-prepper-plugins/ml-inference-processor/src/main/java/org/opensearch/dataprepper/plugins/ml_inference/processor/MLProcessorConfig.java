@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
@@ -22,6 +23,7 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.S
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @JsonPropertyOrder
@@ -80,6 +82,9 @@ public class MLProcessorConfig {
     @JsonProperty("max_batch_size")
     private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
 
+    @JsonProperty("dlq")
+    private PluginModel dlq;
+
     public ActionType getActionType() {
         return actionType;
     }
@@ -95,4 +100,12 @@ public class MLProcessorConfig {
     }
 
     public List<String> getTagsOnFailure() { return tagsOnFailure; }
+
+    public PluginModel getDlq() {
+        return dlq;
+    }
+
+    public Map<String, Object> getDlqPluginSetting() {
+        return dlq != null ? dlq.getPluginSettings() : null;
+    }
 }

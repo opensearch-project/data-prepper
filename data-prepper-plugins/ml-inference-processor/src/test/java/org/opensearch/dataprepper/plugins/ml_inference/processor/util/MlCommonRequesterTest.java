@@ -108,8 +108,7 @@ public class MlCommonRequesterTest {
         RuntimeException exception = assertThrows(
             RuntimeException.class, () -> mlCommonRequester.sendRequestToMLCommons("{\"data\":\"test\"}")
         );
-
-        assertTrue(exception.getMessage().contains("Failed to execute HTTP request using the ML Commons model"));
+        assertTrue(exception.getMessage().contains("Server error occurred with status code 500"));
     }
 
     @Test
