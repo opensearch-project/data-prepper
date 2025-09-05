@@ -58,6 +58,7 @@ public class ScanObjectWorker implements Runnable {
     private static final Integer MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET = 1;
     static final Integer MAX_RETRIES = 5;
     static final Duration CHECKPOINT_OWNERSHIP_INTERVAL = Duration.ofMinutes(2);
+    static final Duration OWNERSHIP_RENEWAL_INTERVAL = Duration.ofMinutes(3);
 
     static final Duration NO_OBJECTS_FOUND_BEFORE_PARTITION_DELETION_DURATION = Duration.ofHours(1);
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
@@ -156,7 +157,7 @@ public class ScanObjectWorker implements Runnable {
         this.folderPartitioningOptions = s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions();
         this.acknowledgmentSetTimeout = s3SourceConfig.getS3ScanScanOptions().getAcknowledgmentTimeout();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead());
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions, s3SourceConfig.getS3ScanScanOptions().getPartitioningOptions(), s3SourceConfig.isDeleteS3ObjectsOnRead(), sourceCoordinator);
         this.acknowledgmentsRemainingForPartitions = new ConcurrentHashMap<>();
         this.objectsToDeleteForAcknowledgmentSets = new ConcurrentHashMap<>();
     }
@@ -305,6 +306,7 @@ public class ScanObjectWorker implements Runnable {
         final String bucket = folderPartition.getPartitionKey().split("\\|")[0];
         final String s3Prefix = folderPartition.getPartitionKey().split("\\|")[1];
 
+        sourceCoordinator.renewGlobalStateOwnershipForPartitionCreation();
         final List<S3ObjectReference> objectsToProcess = getObjectsForPrefix(bucket, s3Prefix);
 
         Optional<S3SourceProgressState> folderPartitionState = folderPartition.getPartitionState();
@@ -337,12 +339,19 @@ public class ScanObjectWorker implements Runnable {
     private List<S3ObjectReference> getObjectsForPrefix(final String bucket, final String s3Prefix) {
         ListObjectsV2Response listObjectsV2Response = null;
         final List<S3ObjectReference> objectsToProcess = new ArrayList<>();
+        Instant lastOwnershipRenewal = Instant.now();
 
         final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
                 .bucket(bucket)
                 .prefix(s3Prefix);
 
         do {
+            // Renew ownership every 3 minutes during long listing operations
+            if (Duration.between(lastOwnershipRenewal, Instant.now()).compareTo(OWNERSHIP_RENEWAL_INTERVAL) >= 0) {
+                sourceCoordinator.renewGlobalStateOwnershipForPartitionCreation();
+                lastOwnershipRenewal = Instant.now();
+            }
+
             listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request
                     .fetchOwner(true)
                     .continuationToken(Objects.nonNull(listObjectsV2Response) ? listObjectsV2Response.nextContinuationToken() : null)
@@ -373,15 +382,19 @@ public class ScanObjectWorker implements Runnable {
         return false;
     }
 
-
     private void processObjectsForFolderPartition(final List<S3ObjectReference> objectsToProcess,
                                                   final SourcePartition<S3SourceProgressState> folderPartition) {
         int objectsProcessed = 0;
         int objectIndex = 0;
         String activeAcknowledgmentSetId = null;
         AcknowledgementSet acknowledgementSet = null;
+        Instant lastOwnershipRenewal = Instant.now();
 
         while (objectIndex < objectsToProcess.size() && objectsProcessed < folderPartitioningOptions.getMaxObjectsPerOwnership()) {
+            if (Duration.between(lastOwnershipRenewal, Instant.now()).compareTo(OWNERSHIP_RENEWAL_INTERVAL) >= 0) {
+                sourceCoordinator.renewGlobalStateOwnershipForPartitionCreation();
+                lastOwnershipRenewal = Instant.now();
+            }
             final S3ObjectReference s3ObjectReference = objectsToProcess.get(objectIndex);
             if (objectsProcessed % MAX_OBJECTS_PER_ACKNOWLEDGMENT_SET == 0) {
                 if (acknowledgementSet != null) {
