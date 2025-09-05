@@ -338,7 +338,6 @@ public class OTelTraceGrpcServiceTest {
         JSONAssert.assertEquals(expected, result, false);
     }
 
-
     private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelTraceGrpcService(
                 bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics);
