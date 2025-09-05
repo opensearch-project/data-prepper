@@ -28,7 +28,7 @@ public class SqsThresholdConfig {
     private ByteCount maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;
 
     @JsonProperty("flush_interval")
-    @DurationMin(seconds = 60)
+    @DurationMin(seconds = 0)
     @DurationMax(seconds = 3600)
     private Duration flushInterval = Duration.ofSeconds(DEFAULT_FLUSH_INTERVAL_TIME);
 
@@ -43,6 +43,5 @@ public class SqsThresholdConfig {
     public long getFlushInterval() {
         return flushInterval.getSeconds();
     }
-
 }
 

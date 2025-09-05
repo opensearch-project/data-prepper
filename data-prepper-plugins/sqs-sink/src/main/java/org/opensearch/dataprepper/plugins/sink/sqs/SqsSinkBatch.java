@@ -67,7 +67,7 @@ public class SqsSinkBatch {
         this.codecContext = codecContext;
         this.queueUrl = queueUrl;
         this.sqsClient = sqsClient;
-        lastFlushedTime = Instant.now().getEpochSecond();
+        lastFlushedTime = Instant.now().toEpochMilli();
         flushReady = false;
         fifoQueue = queueUrl.endsWith(SQS_FIFO_SUFFIX);
         entries = new HashMap<>();
@@ -268,7 +268,7 @@ public class SqsSinkBatch {
             entries.clear();
             entries = newEntries;
         }
-        lastFlushedTime = Instant.now().getEpochSecond();
+        lastFlushedTime = Instant.now().toEpochMilli();
         return entries.size() == 0;
     }
 
