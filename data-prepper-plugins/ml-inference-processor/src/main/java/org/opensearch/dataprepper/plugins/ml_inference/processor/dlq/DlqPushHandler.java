@@ -66,6 +66,9 @@ public class DlqPushHandler {
     public void perform(final List<DlqObject> dlqObjects) throws Exception {
         if (dlqWriter != null && dlqObjects != null && dlqObjects.size() > 0) {
             dlqWriter.write(dlqObjects, dlqPluginSetting.getPipelineName(), dlqPluginSetting.getName());
+            dlqObjects.forEach(dlqObject -> {
+                dlqObject.releaseEventHandle(true);
+            });
         }
     }
 }
