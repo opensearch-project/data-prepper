@@ -23,7 +23,10 @@ import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBat
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -173,6 +176,106 @@ public class BedrockBatchJobCreatorTest {
 
             assertTrue(Thread.interrupted()); // Ensure interrupted flag is reset
             assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_Throttled() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First attempt - gets throttled
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+
+            // Verify record was added to throttled queue and not to result records
+            assertTrue(resultRecords.isEmpty());
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify throttled record was processed
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(1, throttledRecord.getRetryCount());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_ThrottledMultipleTimes() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // Configure to return throttled response multiple times
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records - should get throttled again
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify retry count increased
+            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(1, throttledRecord.getRetryCount());
+
+            // Process again
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+            throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(2, throttledRecord.getRetryCount());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_ThrottledThenSuccess() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First return throttled, then success
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt - gets throttled
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertTrue(resultRecords.isEmpty());
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records - should succeed
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify record was processed successfully
+            assertTrue(bedrockBatchJobCreator.getThrottledRecords().isEmpty());
+            assertEquals(1, resultRecords.size());
+            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
         }
     }
 }
