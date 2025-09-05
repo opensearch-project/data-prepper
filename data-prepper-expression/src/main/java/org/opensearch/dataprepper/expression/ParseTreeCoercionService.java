@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -34,6 +36,7 @@ class ParseTreeCoercionService {
     private final ExpressionFunctionProvider expressionFunctionProvider;
     private final Function<Object, Object> convertLiteralType;
     private final ConcurrentMap<String, FunctionMetadata> cachedFunctionStrings = new ConcurrentHashMap<>(16, 0.75f);
+    private final EventKeyFactory eventKeyFactory;
 
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
         Objects.requireNonNull(node, "TerminalNode cannot be null");
@@ -77,7 +80,8 @@ class ParseTreeCoercionService {
     @Inject
     public ParseTreeCoercionService(
             final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions,
-            final ExpressionFunctionProvider expressionFunctionProvider) {
+            final ExpressionFunctionProvider expressionFunctionProvider,
+            final EventKeyFactory eventKeyFactory) {
         Objects.requireNonNull(literalTypeConversions, "literalTypeConversions cannot be null");
         Objects.requireNonNull(expressionFunctionProvider, "expressionFunctionProvider cannot be null");
         this.literalTypeConversions = literalTypeConversions;
@@ -89,6 +93,7 @@ class ParseTreeCoercionService {
             }
         };
         this.expressionFunctionProvider = expressionFunctionProvider;
+        this.eventKeyFactory = eventKeyFactory;
     }
 
     public <T> T coerce(final Object obj, Class<T> clazz) throws ExpressionCoercionException {
@@ -148,7 +153,8 @@ class ParseTreeCoercionService {
     }
 
     private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
-        final Object value = event.get(jsonPointer, Object.class);
+        EventKey eventKey = this.eventKeyFactory.createEventKey(jsonPointer);
+        final Object value = event.get(eventKey, Object.class);
         return value != null ? convertLiteralType.apply(value) : null;
     }
 }
