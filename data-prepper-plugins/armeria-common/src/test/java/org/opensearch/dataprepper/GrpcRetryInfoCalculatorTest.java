@@ -12,7 +12,7 @@ public class GrpcRetryInfoCalculatorTest {
 
     @Test
     public void testMinimumDelayOnFirstCall() {
-        RetryInfo retryInfo = new GrpcRetryInfoCalculator(Duration.ofMillis(100), Duration.ofSeconds(1)).createRetryInfo();
+        RetryInfo retryInfo = new RetryInfoCalculator(Duration.ofMillis(100), Duration.ofSeconds(1)).createRetryInfo();
 
         assertThat(retryInfo.getRetryDelay().getNanos(), equalTo(100_000_000));
         assertThat(retryInfo.getRetryDelay().getSeconds(), equalTo(0L));
@@ -20,8 +20,8 @@ public class GrpcRetryInfoCalculatorTest {
 
     @Test
     public void testExponentialBackoff() {
-        GrpcRetryInfoCalculator calculator =
-                new GrpcRetryInfoCalculator(Duration.ofSeconds(1), Duration.ofSeconds(10));
+        RetryInfoCalculator calculator =
+                new RetryInfoCalculator(Duration.ofSeconds(1), Duration.ofSeconds(10));
         RetryInfo retryInfo1 = calculator.createRetryInfo();
         RetryInfo retryInfo2 = calculator.createRetryInfo();
         RetryInfo retryInfo3 = calculator.createRetryInfo();
@@ -35,8 +35,8 @@ public class GrpcRetryInfoCalculatorTest {
 
     @Test
     public void testUsesMaximumAsLongestDelay() {
-        GrpcRetryInfoCalculator calculator =
-                new GrpcRetryInfoCalculator(Duration.ofSeconds(1), Duration.ofSeconds(2));
+        RetryInfoCalculator calculator =
+                new RetryInfoCalculator(Duration.ofSeconds(1), Duration.ofSeconds(2));
         RetryInfo retryInfo1 = calculator.createRetryInfo();
         RetryInfo retryInfo2 = calculator.createRetryInfo();
         RetryInfo retryInfo3 = calculator.createRetryInfo();
@@ -49,8 +49,8 @@ public class GrpcRetryInfoCalculatorTest {
     @Test
     public void testResetAfterDelayWearsOff() throws InterruptedException {
         int minDelayNanos = 1_000_000;
-        GrpcRetryInfoCalculator calculator =
-                new GrpcRetryInfoCalculator(Duration.ofNanos(minDelayNanos), Duration.ofSeconds(1));
+        RetryInfoCalculator calculator =
+                new RetryInfoCalculator(Duration.ofNanos(minDelayNanos), Duration.ofSeconds(1));
 
         RetryInfo retryInfo1 = calculator.createRetryInfo();
         RetryInfo retryInfo2 = calculator.createRetryInfo();
@@ -66,8 +66,8 @@ public class GrpcRetryInfoCalculatorTest {
 
     @Test
     public void testQuickFirstExceptionDoesNotTriggerBackoffCalculationEvenWithLongMinDelay() throws InterruptedException {
-        GrpcRetryInfoCalculator calculator =
-                new GrpcRetryInfoCalculator(Duration.ofSeconds(10), Duration.ofSeconds(20));
+        RetryInfoCalculator calculator =
+                new RetryInfoCalculator(Duration.ofSeconds(10), Duration.ofSeconds(20));
 
         RetryInfo retryInfo1 = calculator.createRetryInfo();
         RetryInfo retryInfo2 = calculator.createRetryInfo();
