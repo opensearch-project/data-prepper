@@ -49,21 +49,6 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
-
-    public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
-                               final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                               final Buffer<Record<Object>> buffer,
-                               final PluginMetrics pluginMetrics) {
-        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-        this.buffer = buffer;
-        this.oTelProtoDecoder = oTelProtoDecoder;
-
-        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
-        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
-        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
-    }
-
     public OTelLogsGrpcService(int bufferWriteTimeoutInMillis,
                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                final Buffer<Record<Object>> buffer,

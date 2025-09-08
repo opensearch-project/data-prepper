@@ -50,23 +50,6 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
-
-    public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
-                                  final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
-                                  Buffer<Record<? extends Metric>> buffer,
-                                  final PluginMetrics pluginMetrics) {
-        this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-        this.buffer = buffer;
-
-        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
-        recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED);
-        recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED);
-        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
-        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
-        this.oTelProtoDecoder = oTelProtoDecoder;
-    }
-
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
