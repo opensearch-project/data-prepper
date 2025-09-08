@@ -71,12 +71,20 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
                                final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.oTelProtoDecoder = oTelProtoDecoder;
 
-        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
-        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
-        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
-        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+        if (metricsPrefix != null) {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+        } else {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        }
+
+        this.oTelProtoDecoder = oTelProtoDecoder;
     }
 
     @Override
