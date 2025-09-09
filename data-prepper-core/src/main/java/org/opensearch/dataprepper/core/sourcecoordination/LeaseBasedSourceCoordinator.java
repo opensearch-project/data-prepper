@@ -523,8 +523,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         return globalStateItemForPartitionCreation;
     }
 
-    @Override
-    public void renewGlobalStateOwnershipForPartitionCreation() {
+    private void renewGlobalStateOwnershipForPartitionCreation() {
         try {
             final Optional<SourcePartitionStoreItem> globalStateItem = sourceCoordinationStore.getSourcePartitionItem(
                     sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS);
