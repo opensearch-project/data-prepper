@@ -85,7 +85,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     oTelTraceSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
-                    pluginMetrics
+                    pluginMetrics,
+                    null
             );
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelTraceSourceConfig);
