@@ -5,7 +5,7 @@
 
 plugins {
     id 'java'
-    id 'io.gatling.gradle' version '3.13.5'
+    id 'io.gatling.gradle' version '3.14.3.7'
     id 'com.gradleup.shadow' version '8.3.8'
 }
 
