@@ -96,6 +96,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private final ReentrantLock lock;
 
     private Instant lastSupplierRunTime;
+    private Instant lastGlobalOwnershipRenewal;
 
     static final Duration FORCE_SUPPLIER_AFTER_DURATION = Duration.ofMinutes(5);
 
@@ -138,6 +139,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         this.partitionsDeleted = pluginMetrics.counter(PARTITIONS_DELETED);
         this.lock = new ReentrantLock();
         this.lastSupplierRunTime = Instant.now();
+        this.lastGlobalOwnershipRenewal = Instant.now();
     }
 
     @Override
@@ -206,16 +208,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
-        Instant lastOwnershipRenewal = Instant.now();
+        renewGlobalOwnershipIfNeeded();
 
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
-            if (Instant.now().isAfter(lastOwnershipRenewal.plus(OWNERSHIP_RENEWAL_INTERVAL))) {
-                LOG.info("Renewing global state ownership for partition creation");
-                renewGlobalStateOwnershipForPartitionCreation();
-                lastOwnershipRenewal = Instant.now();
-            }
-            
-
+            renewGlobalOwnershipIfNeeded();
             
             final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionIdentifier.getPartitionKey());
 
@@ -539,6 +535,14 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             }
         } catch (final Exception e) {
             LOG.warn("Failed to renew global state ownership for partition creation", e);
+        }
+    }
+
+    private void renewGlobalOwnershipIfNeeded() {
+        if (Instant.now().isAfter(lastGlobalOwnershipRenewal.plus(OWNERSHIP_RENEWAL_INTERVAL))) {
+            LOG.info("Renewing global state ownership for partition creation");
+            renewGlobalStateOwnershipForPartitionCreation();
+            lastGlobalOwnershipRenewal = Instant.now();
         }
     }
 
