@@ -1062,6 +1062,21 @@ public class AddEntryProcessorTests {
                 key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
                 iterateOn, flattenKey, addToElementWhen);
     }
+    private AddEntryProcessorConfig.Entry createEntry(
+            final String key,
+            final String metadataKey,
+            final Object value,
+            final String format,
+            final String valueExpression,
+            final boolean overwriteIfKeyExists,
+            final boolean appendIfKeyExists,
+            final String addWhen,
+            final String iterateOn, 
+            final String addToElementWhen) {
+        return new AddEntryProcessorConfig.Entry(
+                key, metadataKey, value, format, valueExpression, overwriteIfKeyExists, appendIfKeyExists, addWhen,
+                iterateOn, addToElementWhen);
+    }
 
     private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {
         return new LinkedList<>(Arrays.asList(entries));
