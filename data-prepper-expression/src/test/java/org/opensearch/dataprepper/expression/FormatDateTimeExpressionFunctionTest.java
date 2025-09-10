@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -30,6 +31,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import static java.util.function.Function.identity;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class FormatDateTimeExpressionFunctionTest {
@@ -129,5 +131,118 @@ class FormatDateTimeExpressionFunctionTest {
                         "16:00:00"
                 )
         );
+    }
+
+    // Negative and edge cases below are to satisfy 100% JaCoCo coverage
+
+    @Test
+    void unquoteShouldNotModifyStringsWithoutQuotes() {
+        assertThat(FormatDateTimeExpressionFunction.unquote("noquotes"), is("noquotes"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTooFewArguments() {
+        List<Object> args = List.of("/time");
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("formatDateTime() takes at least 2 arguments"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTooManyArguments() {
+        List<Object> args = List.of("/time", "\"yyyy-MM-dd\"", "\"UTC\"", "\"UTC\"", "\"extra\"");
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("formatDateTime() takes at most 4 arguments"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenArgumentsAreNotStrings() {
+        List<Object> args = List.of("/time", 123);
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("Arguments in formatDateTime() function should be of Json Pointer type or String type"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInvalidDestinationTimeZone() {
+        List<Object> args = List.of("/time", "\"yyyy-MM-dd\"", "\"Invalid/TimeZone\"");
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("Destination time zone [Invalid/TimeZone] is invalid"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInvalidSourceTimeZone() {
+        List<Object> args = List.of("/time", "\"yyyy-MM-dd\"", "\"UTC\"", "\"Invalid/TimeZone\"");
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("Source time zone [Invalid/TimeZone] is invalid"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInvalidDatePattern() {
+        List<Object> args = List.of("/time", "\"[invalid pattern\"");
+        Event event = eventWithTime(123456789L);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage(), is("Date pattern [[invalid pattern] is invalid"));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUnsupportedTargetType() {
+        List<Object> args = List.of("/time", "\"yyyy-MM-dd\"");
+        JacksonEvent event = JacksonEvent.builder().withEventType("event").build();
+        event.put("time", new int[5]);
+        
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> target.evaluate(args, event, identity())
+        );
+        assertThat(exception.getMessage().startsWith("Unsupported type passed as function argument:"), is(true));
+    }
+
+    @Test
+    void unquoteShouldRemoveQuotesFromQuotedString() {
+        assertThat(FormatDateTimeExpressionFunction.unquote("\"quoted\""), is("quoted"));
+    }
+
+    @Test
+    void unquoteShouldHandleEmptyString() {
+        assertThat(FormatDateTimeExpressionFunction.unquote(""), is(""));
+    }
+
+    @Test
+    void unquoteShouldHandleStringWithOnlyOneQuote() {
+        assertThat(FormatDateTimeExpressionFunction.unquote("\"onlystart"), is("\"onlystart"));
+        assertThat(FormatDateTimeExpressionFunction.unquote("onlyend\""), is("onlyend\""));
+    }
+
+    @Test
+    void unquoteShouldHandleStringWithJustTwoQuotes() {
+        assertThat(FormatDateTimeExpressionFunction.unquote("\"\""), is(""));
     }
 }

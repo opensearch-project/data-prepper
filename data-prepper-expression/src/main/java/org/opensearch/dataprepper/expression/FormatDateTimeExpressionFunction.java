@@ -90,7 +90,7 @@ public class FormatDateTimeExpressionFunction implements ExpressionFunction {
         throw new IllegalArgumentException("Unsupported type passed as function argument: " + target.getClass());
     }
 
-    private static String unquote(String input) {
+    static String unquote(String input) {
         if (input.startsWith("\"") && input.endsWith("\"")) {
             return input.substring(1, input.length() - 1);
         }
