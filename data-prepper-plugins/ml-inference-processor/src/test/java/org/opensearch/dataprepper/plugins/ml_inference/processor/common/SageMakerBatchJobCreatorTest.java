@@ -49,8 +49,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -537,6 +541,17 @@ public class SageMakerBatchJobCreatorTest {
         // Verify results
         assertEquals(NUM_THREADS, processAttemptsCount.get(), "All threads should have attempted processing");
         assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(), "Batch should be empty after processing");
+    }
+
+    @Test
+    void generateJobName_ReturnsValidJobName() {
+        // when
+        String jobName = sageMakerBatchJobCreator.generateJobName();
+
+        // then
+        assertNotNull(jobName);
+        assertThat(jobName.length(), lessThanOrEqualTo(63));
+        assertThat(jobName, matchesPattern("^batch-job-\\d{17}-[a-f0-9-]{1,36}$"));
     }
 
     // Helper methods

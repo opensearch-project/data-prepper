@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 public interface MLBatchJobCreator {
@@ -22,7 +23,8 @@ public interface MLBatchJobCreator {
 
     default String generateJobName() {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
-        String jobName = "DataPrepper-batch-job-" + timestamp;
+        String instanceId = UUID.randomUUID().toString();
+        String jobName = String.format("batch-job-%s-%s", timestamp, instanceId);
 
         jobName = JOB_NAME_PATTERN.matcher(jobName).replaceAll("");
         return jobName.substring(0, Math.min(63, jobName.length()));
