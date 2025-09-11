@@ -176,7 +176,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                     LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
                     createPartitions(partitionCreationSupplier.apply(globalStateMap));
                     partitionCreationSupplierInvocationsCounter.increment();
-                    giveUpAndSaveGlobalStateForPartitionCreation(acquiredGlobalStateForPartitionCreation.get(), globalStateMap);
+                    giveUpAndSaveGlobalStateForPartitionCreation(globalStateMap);
                 }
             }
         } finally {
@@ -545,7 +545,12 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
     }
 
-    private void giveUpAndSaveGlobalStateForPartitionCreation(final SourcePartitionStoreItem globalStateItemForPartitionCreation, final Map<String, Object> globalStateMap) {
+    private void giveUpAndSaveGlobalStateForPartitionCreation(final Map<String, Object> globalStateMap) {
+
+        final Optional<SourcePartitionStoreItem> globalStateItem = sourceCoordinationStore.getSourcePartitionItem(
+                sourceIdentifierWithGlobalStateType, GLOBAL_STATE_SOURCE_PARTITION_KEY_FOR_CREATING_PARTITIONS);
+
+        final SourcePartitionStoreItem globalStateItemForPartitionCreation = globalStateItem.get();
 
         globalStateItemForPartitionCreation.setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
         globalStateItemForPartitionCreation.setPartitionOwner(null);
