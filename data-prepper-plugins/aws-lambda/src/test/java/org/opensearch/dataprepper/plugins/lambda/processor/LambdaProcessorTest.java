@@ -28,6 +28,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.AggregateEventHandle;
 import org.opensearch.dataprepper.model.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -1432,22 +1433,27 @@ public class LambdaProcessorTest {
     }
 
     @Test
-    void testNoClassCastExceptionWithAggregateEventHandle() {
-        // Simulate event from aggregate processor with AggregateEventHandle
+    void testAggregateEventHandleAddsResponseEventHandles() {
         Event mockEvent = mock(Event.class);
         Record<Event> mockRecord = mock(Record.class);
-        AggregateEventHandle aggregateHandle = new AggregateEventHandle(Instant.now());
+        AggregateEventHandle aggregateHandle = mock(AggregateEventHandle.class);
+        
+        Event responseEvent = mock(Event.class);
+        EventHandle responseEventHandle = mock(EventHandle.class);
+        when(responseEvent.getEventHandle()).thenReturn(responseEventHandle);
         
         when(mockEvent.getEventHandle()).thenReturn(aggregateHandle);
         when(mockRecord.getData()).thenReturn(mockEvent);
 
         AggregateResponseEventHandlingStrategy strategy = new AggregateResponseEventHandlingStrategy();
-        List<Event> parsedEvents = Collections.emptyList();
+        List<Event> parsedEvents = Collections.singletonList(responseEvent);
         List<Record<Event>> originalRecords = Collections.singletonList(mockRecord);
 
         assertDoesNotThrow(() -> {
             strategy.handleEvents(parsedEvents, originalRecords, null);
         });
+        
+        verify(aggregateHandle).addEventHandle(responseEventHandle);
     }
 
     private LambdaProcessor createObjectUnderTest(LambdaProcessorConfig processorConfig) {
