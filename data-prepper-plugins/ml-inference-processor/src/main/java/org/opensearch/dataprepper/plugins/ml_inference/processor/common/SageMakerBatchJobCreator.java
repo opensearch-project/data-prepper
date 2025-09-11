@@ -27,8 +27,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.net.HttpURLConnection;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,7 +44,6 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final S3Client s3Client;
-    private final DateTimeFormatter dateTimeFormatter;
     private final Lock batchProcessingLock;
     // Added batch processing fields
     @Getter
@@ -66,7 +63,6 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.s3Client = createS3Client(mlProcessorConfig, awsCredentialsSupplier);
-        this.dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         this.maxBatchSize = mlProcessorConfig.getMaxBatchSize();
         this.batchProcessingLock = new ReentrantLock();
     }
@@ -294,9 +290,9 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private String generateManifest(Collection<Record<Event>> records, String customerBucket, String prefix) {
         try {
             // Generate timestamp
-            String timestamp = LocalDateTime.now().format(dateTimeFormatter);
-            String folderName = prefix + "batch-" + timestamp;
-            String fileName = folderName + "/batch-" + timestamp + ".manifest";
+            String jobName = generateJobName();
+            String folderName = prefix + jobName;
+            String fileName = folderName + "/" + jobName + ".manifest";
 
             // Construct JSON output
             JSONArray manifestArray = new JSONArray();
