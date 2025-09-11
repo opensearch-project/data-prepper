@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.HashMap;
@@ -205,8 +206,8 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("/nonexistent");
         final Event testEvent = mock(Event.class);
-        when(testEvent.get("/nonexistent", Object.class)).thenReturn(null);
-        
+        when(testEvent.get(any(EventKey.class), eq(Object.class))).thenReturn(null);
+
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         
         assertThat(result, equalTo(null));
@@ -223,8 +224,8 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("/key");
         final Event testEvent = mock(Event.class);
-        when(testEvent.get("/key", Object.class)).thenReturn("unsupported");
-        
+        when(testEvent.get(any(EventKey.class), eq(Object.class))).thenReturn("unsupported");
+
         assertThrows(ExpressionCoercionException.class,
                 () -> limitedService.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
