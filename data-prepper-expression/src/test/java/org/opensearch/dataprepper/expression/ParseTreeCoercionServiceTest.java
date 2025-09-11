@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.math.BigDecimal;
@@ -45,7 +46,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -414,11 +414,11 @@ class ParseTreeCoercionServiceTest {
     private Event createTestEvent(final Object data) {
         final Event event = mock(Event.class);
         final JsonNode node = mapper.valueToTree(data);
-        lenient().when(event.get(anyString(), any())).thenAnswer(invocation -> {
+        lenient().when(event.get(any(EventKey.class), any())).thenAnswer(invocation -> {
             Object[] args = invocation.getArguments();
-            final String jsonPointer = (String) args[0];
+            final EventKey eventKey = (EventKey) args[0];
             final Class<?> clazz = (Class<?>) args[1];
-            final JsonNode childNode = node.at(jsonPointer);
+            final JsonNode childNode = node.at(eventKey.getKey());
             if (childNode.isMissingNode()) {
                 return null;
             }
@@ -429,7 +429,7 @@ class ParseTreeCoercionServiceTest {
 
     private Event createInvalidTestEvent(final Object data) {
         final Event event = mock(Event.class);
-        lenient().when(event.get(anyString(), any())).thenReturn(new AtomicBoolean());
+        lenient().when(event.get(any(EventKey.class), any())).thenReturn(new AtomicBoolean());
         return event;
     }
 
@@ -437,7 +437,7 @@ class ParseTreeCoercionServiceTest {
         return Stream.of(
                 Arguments.of("test key", "\"/test key\""),
                 Arguments.of("test/key", "\"/test~1key\""),
-                Arguments.of("test\\key", "\"/test\\key\""),
+                Arguments.of("test/key", "\"/test~1key\""),
                 Arguments.of("test~0key", "\"/test~00key\"")
         );
     }
