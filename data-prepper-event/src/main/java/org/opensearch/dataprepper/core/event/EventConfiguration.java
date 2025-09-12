@@ -23,7 +23,7 @@ public class EventConfiguration {
      *
      * @return the cache maximum count
      */
-    Integer getMaximumCachedKeys() {
+    public Integer getMaximumCachedKeys() {
         return maximumCachedKeys;
     }
 
