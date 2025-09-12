@@ -14,14 +14,19 @@ import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +37,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.OBJECT_MAPPER;
 
@@ -45,6 +52,12 @@ public class BedrockBatchJobCreatorTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private DlqPushHandler dlqPushHandler;
+
+    @Mock
+    private PluginSetting pluginSetting;
 
     private BedrockBatchJobCreator bedrockBatchJobCreator;
     private Counter counter;
@@ -69,7 +82,11 @@ public class BedrockBatchJobCreatorTest {
         };
         when(pluginMetrics.counter(NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION)).thenReturn(counter);
         when(pluginMetrics.counter(NUMBER_OF_FAILED_BATCH_JOBS_CREATION)).thenReturn(counter);
-        bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB)).thenReturn(counter);
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB)).thenReturn(counter);
+        when(pluginSetting.getPipelineName()).thenReturn("pipeline_bedrock");
+        when(pluginSetting.getName()).thenReturn("pipeline_bedrock");
+        bedrockBatchJobCreator = spy(new BedrockBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
     }
 
     @Test
@@ -82,7 +99,7 @@ public class BedrockBatchJobCreatorTest {
                 .put("key", "input.jsonl"));
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
 
             bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
             verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
@@ -97,16 +114,19 @@ public class BedrockBatchJobCreatorTest {
         when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
                 .put("bucket", "test-bucket")
                 .put("key", "input.jsonl"));
+        when(event.toJsonString()).thenReturn("event");
+
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
 
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "errorMessage") , 1));
 
             MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
                 bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
             });
 
             verify(bedrockBatchJobCreator, times(1)).incrementFailureCounter();
-            assertTrue(exception.getMessage().contains("Failed to process the following records"));
+            assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
         }
     }
 
@@ -119,8 +139,11 @@ public class BedrockBatchJobCreatorTest {
                 .put("bucket", "test-bucket")
                 .put("key", "input.jsonl"));
 
+        when(event.toJsonString()).thenReturn("event");
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+
         try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
-            mockedStatic.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "errorMessage") , 1));
 
             Thread.currentThread().interrupt();
             MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
@@ -128,7 +151,131 @@ public class BedrockBatchJobCreatorTest {
             });
 
             assertTrue(Thread.interrupted()); // Ensure interrupted flag is reset
-            assertTrue(exception.getMessage().contains("Failed to process the following records"));
+            assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_IllegalArgumentException() throws Exception {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", ""));
+
+        when(event.toJsonString()).thenReturn("event");
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            Thread.currentThread().interrupt();
+            MLBatchJobException exception = assertThrows(MLBatchJobException.class, () -> {
+                bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), new ArrayList<>());
+            });
+
+            assertTrue(Thread.interrupted()); // Ensure interrupted flag is reset
+            assertTrue(exception.getMessage().contains("Failed to process 1 records out of 1 total records"));
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_Throttled() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First attempt - gets throttled
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+
+            // Verify record was added to throttled queue and not to result records
+            assertTrue(resultRecords.isEmpty());
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify throttled record was processed
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(1, throttledRecord.getRetryCount());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_ThrottledMultipleTimes() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // Configure to return throttled response multiple times
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records - should get throttled again
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify retry count increased
+            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(1, throttledRecord.getRetryCount());
+
+            // Process again
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+            throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            assertNotNull(throttledRecord);
+            assertEquals(2, throttledRecord.getRetryCount());
+        }
+    }
+
+    @Test
+    void testCreateMLBatchJob_ThrottledThenSuccess() {
+        Event event = mock(Event.class);
+        Record<Event> record = new Record<>(event);
+
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+
+        try (MockedStatic<RetryUtil> mockedStatic = mockStatic(RetryUtil.class)) {
+            // First return throttled, then success
+            mockedStatic.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "throttled"), 1))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+
+            List<Record<Event>> resultRecords = new ArrayList<>();
+
+            // First attempt - gets throttled
+            bedrockBatchJobCreator.createMLBatchJob(Arrays.asList(record), resultRecords);
+            assertTrue(resultRecords.isEmpty());
+            assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
+
+            // Process throttled records - should succeed
+            bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
+
+            // Verify record was processed successfully
+            assertTrue(bedrockBatchJobCreator.getThrottledRecords().isEmpty());
+            assertEquals(1, resultRecords.size());
+            verify(bedrockBatchJobCreator, times(1)).incrementSuccessCounter();
         }
     }
 }

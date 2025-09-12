@@ -13,17 +13,20 @@ import lombok.Getter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.common.utils.RetryUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -33,7 +36,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.common.utils.RetryUtil.retryWithBackoff;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor.LOG;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory.createS3Client;
@@ -42,9 +44,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final S3Client s3Client;
-    private final DateTimeFormatter dateTimeFormatter;
     private final Lock batchProcessingLock;
-
     // Added batch processing fields
     @Getter
     private final ConcurrentLinkedQueue<Record<Event>> batch_records = new ConcurrentLinkedQueue<>();
@@ -59,11 +59,10 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             + "\"TransformOutput\":{\"AssembleWith\":\"Line\",\"Accept\":\"application/json\","
             + "\"S3OutputPath\":\"s3://\"}}}";
 
-    public SageMakerBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics) {
-        super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics);
+    public SageMakerBatchJobCreator(final MLProcessorConfig mlProcessorConfig, final AwsCredentialsSupplier awsCredentialsSupplier, final PluginMetrics pluginMetrics, final DlqPushHandler dlqPushHandler) {
+        super(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler);
         this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.s3Client = createS3Client(mlProcessorConfig, awsCredentialsSupplier);
-        this.dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         this.maxBatchSize = mlProcessorConfig.getMaxBatchSize();
         this.batchProcessingLock = new ReentrantLock();
     }
@@ -158,30 +157,69 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             String manifestUrl = generateManifest(currentBatch, customerBucket, commonPrefix);
             String payload = createPayloadSageMaker(manifestUrl, mlProcessorConfig);
 
-            boolean success = retryWithBackoff(() -> mlCommonRequester.sendRequestToMLCommons(payload), LOG);
-            if (success) {
+            RetryUtil.RetryResult result = RetryUtil.retryWithBackoffWithResult(
+                    () -> mlCommonRequester.sendRequestToMLCommons(payload),
+                    LOG
+            );
+
+            if (result.isSuccess()) {
                 LOG.info("Successfully created SageMaker batch job for manifest URL: {}", manifestUrl);
                 processedBatchRecords.addAll(currentBatch);
                 incrementSuccessCounter();
+                numberOfRecordsSuccessCounter.increment(currentBatch.size());
             } else {
-                handleFailure(currentBatch, processedBatchRecords);
-                LOG.error("SageMaker batch job failed after multiple retries for manifest URL: {}", manifestUrl);
+                Exception lastException = result.getLastException();
+                int statusCode;
+                String errorMessage;
+
+                if (lastException instanceof MLBatchJobException) {
+                    MLBatchJobException mlException = (MLBatchJobException) lastException;
+                    statusCode = mlException.getStatusCode();
+                    errorMessage = String.format("Failed to Create SageMaker batch job after %d attempts: %s",
+                            result.getAttemptsMade(), mlException.getMessage());
+                } else {
+                    statusCode = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                    errorMessage = String.format("Failed to Create SageMaker batch job after %d attempts: %s",
+                            result.getAttemptsMade(), lastException.getMessage());
+                }
+
+                handleFailure(currentBatch, processedBatchRecords, new MLBatchJobException(statusCode, errorMessage), statusCode);
+                LOG.error("SageMaker batch job failed for manifest URL: {}. Status: {}, Error: {}", manifestUrl, statusCode, errorMessage);
             }
         } catch (IllegalArgumentException e) {
             LOG.error(NOISY, "Invalid arguments for SageMaker batch job. Error: {}", e.getMessage());
-            handleFailure(currentBatch, processedBatchRecords);
+            handleFailure(currentBatch, processedBatchRecords, e, HttpURLConnection.HTTP_BAD_REQUEST);
         } catch (RuntimeException e) {
             LOG.error(NOISY, "Runtime Exception for SageMaker batch job. Error: {}", e.getMessage());
-            handleFailure(currentBatch, processedBatchRecords);
+            handleFailure(currentBatch, processedBatchRecords, e, HttpURLConnection.HTTP_INTERNAL_ERROR);
         } catch (Exception e) {
             LOG.error(NOISY, "Unexpected Error occurred while creating a batch job through SageMaker: {}", e.getMessage(), e);
-            handleFailure(currentBatch, processedBatchRecords);
+            handleFailure(currentBatch, processedBatchRecords, e, HttpURLConnection.HTTP_INTERNAL_ERROR);
         }
     }
 
-    private void handleFailure(List<Record<Event>> record, ConcurrentLinkedQueue<Record<Event>> resultRecords) {
-        resultRecords.addAll(addFailureTags(record));
+    private void handleFailure(List<Record<Event>> failedRecords, ConcurrentLinkedQueue<Record<Event>> resultRecords, Throwable throwable, int statusCode) {
+        if (failedRecords.isEmpty()) {
+            incrementFailureCounter();
+            return;
+        }
+        resultRecords.addAll(addFailureTags(failedRecords));
         incrementFailureCounter();
+        numberOfRecordsFailedCounter.increment(failedRecords.size());
+        if (dlqPushHandler == null) {
+            return;
+        }
+        try {
+            final List<DlqObject> dlqObjects = new ArrayList<>();
+            for (Record<Event> record: failedRecords) {
+                if (record.getData() != null) {
+                    dlqObjects.add(createDlqObjectFromEvent(record.getData(), statusCode, throwable.getMessage()));
+                }
+            }
+            dlqPushHandler.perform(dlqObjects);
+        } catch (Exception ex) {
+            LOG.error(NOISY, "Exception occured during error handling: {}", ex.getMessage());
+        }
     }
 
     // Shutdown methods
@@ -252,9 +290,9 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private String generateManifest(Collection<Record<Event>> records, String customerBucket, String prefix) {
         try {
             // Generate timestamp
-            String timestamp = LocalDateTime.now().format(dateTimeFormatter);
-            String folderName = prefix + "batch-" + timestamp;
-            String fileName = folderName + "/batch-" + timestamp + ".manifest";
+            String jobName = generateJobName();
+            String folderName = prefix + jobName;
+            String fileName = folderName + "/" + jobName + ".manifest";
 
             // Construct JSON output
             JSONArray manifestArray = new JSONArray();

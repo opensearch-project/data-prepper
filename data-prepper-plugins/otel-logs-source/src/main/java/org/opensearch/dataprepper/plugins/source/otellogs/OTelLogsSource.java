@@ -87,7 +87,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
                     (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     oTelLogsSourceConfig.getOutputFormat() == OTelOutputFormat.OPENSEARCH ? new OTelProtoOpensearchCodec.OTelProtoDecoder() : new OTelProtoStandardCodec.OTelProtoDecoder(),
                     buffer,
-                    pluginMetrics
+                    pluginMetrics,
+                    null
             );
 
             ServerConfiguration serverConfiguration = ConvertConfiguration.convertConfiguration(oTelLogsSourceConfig);

@@ -10,20 +10,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.event.TestEventKeyFactory;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.client.S3ClientFactory;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.common.utils.RetryUtil;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.dlq.MLBatchJobFailedDlqData;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -32,6 +38,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,8 +49,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,7 +65,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.OBJECT_MAPPER;
 
 public class SageMakerBatchJobCreatorTest {
     @Mock
@@ -74,6 +88,12 @@ public class SageMakerBatchJobCreatorTest {
 
     @Mock
     private S3Client s3Client;
+
+    @Mock
+    private DlqPushHandler dlqPushHandler;
+
+    @Mock
+    private PluginSetting pluginSetting;
 
     private SageMakerBatchJobCreator sageMakerBatchJobCreator;
 
@@ -97,12 +117,16 @@ public class SageMakerBatchJobCreatorTest {
         counter = mock(Counter.class);
         when(pluginMetrics.counter(NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION)).thenReturn(counter);
         when(pluginMetrics.counter(NUMBER_OF_FAILED_BATCH_JOBS_CREATION)).thenReturn(counter);
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB)).thenReturn(counter);
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB)).thenReturn(counter);
+        when(pluginSetting.getPipelineName()).thenReturn("pipeline_sagemaker");
+        when(pluginSetting.getName()).thenReturn("pipeline_sagemaker");
 
         try (MockedStatic<S3ClientFactory> mockedS3ClientFactory = mockStatic(S3ClientFactory.class)) {
             mockedS3ClientFactory.when(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier)).thenReturn(s3Client);
 
             // Create a spy of the real object
-            sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics));
+            sageMakerBatchJobCreator = spy(new SageMakerBatchJobCreator(mlProcessorConfig, awsCredentialsSupplier, pluginMetrics, dlqPushHandler));
 
             // Get access to the private queues for testing
             Field batchRecordsField = SageMakerBatchJobCreator.class.getDeclaredField("batch_records");
@@ -166,7 +190,7 @@ public class SageMakerBatchJobCreatorTest {
              MockedStatic<S3ClientFactory> mockedS3ClientFactory = mockStatic(S3ClientFactory.class)) {
 
             // Make RetryUtil actually execute the supplier
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
 
             mockedS3ClientFactory.when(() -> S3ClientFactory.createS3Client(mlProcessorConfig, awsCredentialsSupplier)).thenReturn(s3Client);
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
@@ -195,7 +219,7 @@ public class SageMakerBatchJobCreatorTest {
 
         // Mock RetryUtil to return success
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act
@@ -210,6 +234,51 @@ public class SageMakerBatchJobCreatorTest {
     }
 
     @Test
+    void testHandleFailure_NonMLBatchJobException() throws Exception {
+        // Arrange
+        Event event = createMockEvent("test-bucket", "input.jsonl");
+        Record<Event> record = new Record<>(event);
+        batch_records.add(record);
+        when(event.getJsonNode()).thenReturn(OBJECT_MAPPER.createObjectNode()
+                .put("bucket", "test-bucket")
+                .put("key", "input.jsonl"));
+        when(event.toJsonString()).thenReturn("event");
+
+        // Create a generic RuntimeException
+        RuntimeException genericException = new RuntimeException("Generic error message");
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // RetryUtil returns false with a non-MLBatchJobException
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, genericException, 3));  // 3 attempts made
+
+            when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
+
+            // Act
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Assert
+            verify(sageMakerBatchJobCreator).incrementFailureCounter();
+            verify(counter).increment();
+
+            // Verify DLQ handling
+            ArgumentCaptor<List<DlqObject>> dlqCaptor = ArgumentCaptor.forClass(List.class);
+            verify(dlqPushHandler).perform(dlqCaptor.capture());
+
+            List<DlqObject> dlqObjects = dlqCaptor.getValue();
+            assertEquals(1, dlqObjects.size());
+            DlqObject dlqObject = dlqObjects.get(0);
+            MLBatchJobFailedDlqData mlBatchJobFailedDlqData = (MLBatchJobFailedDlqData)dlqObject.getFailedData();
+            assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, mlBatchJobFailedDlqData.getStatus());
+            assertTrue(mlBatchJobFailedDlqData.getMessage().contains("Generic error message"));
+
+            assertEquals(1, processedBatchRecords.size());
+            assertTrue(batch_records.isEmpty());
+        }
+    }
+
+    @Test
     void testProcessRemainingBatch() throws Exception {
         // Arrange
         Event event = createMockEvent("test-bucket", "input.jsonl");
@@ -217,7 +286,7 @@ public class SageMakerBatchJobCreatorTest {
 
         // Mock RetryUtil to return success
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(true);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(true, null, 1));
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act
@@ -281,7 +350,7 @@ public class SageMakerBatchJobCreatorTest {
 
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
             // RetryUtil returns false indicating failure
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "errorMessage") , 1));
 
             // Act
             sageMakerBatchJobCreator.checkAndProcessBatch();
@@ -323,7 +392,7 @@ public class SageMakerBatchJobCreatorTest {
         }
         // Mock RetryUtil to return failure
         try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
-            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoff(any(), any())).thenReturn(false);
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(Runnable.class), any())).thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(500, "errorMessage") , 1));
             when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(null);
 
             // Act - trigger batch processing with a batch that will fail
@@ -472,6 +541,17 @@ public class SageMakerBatchJobCreatorTest {
         // Verify results
         assertEquals(NUM_THREADS, processAttemptsCount.get(), "All threads should have attempted processing");
         assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(), "Batch should be empty after processing");
+    }
+
+    @Test
+    void generateJobName_ReturnsValidJobName() {
+        // when
+        String jobName = sageMakerBatchJobCreator.generateJobName();
+
+        // then
+        assertNotNull(jobName);
+        assertThat(jobName.length(), lessThanOrEqualTo(63));
+        assertThat(jobName, matchesPattern("^batch-job-\\d{17}-[a-f0-9-]{1,36}$"));
     }
 
     // Helper methods

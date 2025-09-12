@@ -5,6 +5,7 @@
 
 dependencies {
     implementation project(path: ':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:failures-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:sdk-core'
     implementation 'software.amazon.awssdk:sts'

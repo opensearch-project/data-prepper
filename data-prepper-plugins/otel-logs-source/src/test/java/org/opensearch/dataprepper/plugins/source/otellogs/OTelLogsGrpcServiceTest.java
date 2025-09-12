@@ -385,10 +385,9 @@ public class OTelLogsGrpcServiceTest {
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
     }
 
-
     private OTelLogsGrpcService generateOTelLogsGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelLogsGrpcService(
-                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics);
+                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics, null);
     }
 
     private static Stream<Arguments> getDecoderArguments() {

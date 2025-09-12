@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessor;
 import org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig;
+import org.opensearch.dataprepper.plugins.ml_inference.processor.exception.MLBatchJobException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -25,6 +26,7 @@ import software.amazon.awssdk.regions.Region;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
@@ -51,7 +53,7 @@ public class MlCommonRequester {
         this.httpClientExecutor = httpClientExecutor;
     }
 
-    public void sendRequestToMLCommons(String payload) {
+    public void sendRequestToMLCommons(String payload) throws MLBatchJobException {
         String host = mlProcessorConfig.getHostUrl();
         String modelId = mlProcessorConfig.getModelId();
         String path = "/_plugins/_ml/models/" + modelId + "/" + mlProcessorConfig.getActionType().getMlCommonsActionValue();
@@ -78,7 +80,7 @@ public class MlCommonRequester {
         executeHttpRequest(executeRequest);
     }
 
-    private void executeHttpRequest(HttpExecuteRequest executeRequest) {
+    private void executeHttpRequest(HttpExecuteRequest executeRequest) throws MLBatchJobException {
         try {
             HttpExecuteResponse response = httpClientExecutor.execute(executeRequest);
 
@@ -86,31 +88,36 @@ public class MlCommonRequester {
         } catch (IOException e) {
             // Catch IOExceptions (e.g., network issues, unable to read response)
             LOG.error("IOException occurred while executing HTTP request to ML Commons due to {}", e.getMessage());
-            throw new RuntimeException("Failed to execute HTTP request due to IO issue", e);
+            throw new MLBatchJobException(HttpURLConnection.HTTP_INTERNAL_ERROR,
+                    "Failed to execute HTTP request due to IO issue: " + e.getMessage());
+        } catch (MLBatchJobException e) {
+            // Rethrow MLCommonsException as is
+            throw e;
         } catch (Exception e) {
             LOG.error("Error occurred while executing HTTP request to ML Commons. Request details: {}", executeRequest, e);
-            throw new RuntimeException("Failed to execute HTTP request using the ML Commons model", e);
+                throw new MLBatchJobException(HttpURLConnection.HTTP_INTERNAL_ERROR,
+                        "Failed to execute HTTP request: " + e.getMessage());
         }
     }
 
-    private void handleHttpResponse(HttpExecuteResponse response) throws IOException {
+    private void handleHttpResponse(HttpExecuteResponse response) throws IOException, MLBatchJobException {
         int statusCode = response.httpResponse().statusCode();
         String modelResponse = response.responseBody().map(this::readStream).orElse("No response");
 
         if (statusCode == 429) {
             LOG.warn("Request was throttled with status code 429: {}", modelResponse);
-            throw new RuntimeException("Request was throttled with status code 429: " + modelResponse);
+            throw new MLBatchJobException(statusCode, "Request was throttled : " + modelResponse);
         } else if (statusCode >= 400 && statusCode < 500) {
             // client errors (e.g., 400 Bad Request, 404 Not Found)
             LOG.error("Client error occurred with status code {}: {}", statusCode, modelResponse);
-            throw new RuntimeException("Client error occurred with status code " + statusCode + ": " + modelResponse);
+            throw new MLBatchJobException(statusCode, "Client error occurred with status code " + statusCode + ": " + modelResponse);
         } else if (statusCode >= 500 && statusCode < 600) {
             // server errors (e.g., 500 Internal Server Error)
             LOG.error("Server error occurred with status code {}: {}", statusCode, modelResponse);
-            throw new RuntimeException("Server error occurred with status code " + statusCode + ": " + modelResponse);
+            throw new MLBatchJobException(statusCode, "Server error occurred with status code " + statusCode + ": " + modelResponse);
         } else if (statusCode != 200) {
             LOG.error("Unexpected status code {}: {}", statusCode, modelResponse);
-            throw new RuntimeException("Request failed with status code: " + statusCode);
+            throw new MLBatchJobException(statusCode, "Request failed with status code: " + statusCode);
         }
     }
 

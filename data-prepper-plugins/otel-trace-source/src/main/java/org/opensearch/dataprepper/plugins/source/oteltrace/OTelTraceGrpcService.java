@@ -57,15 +57,24 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
                                 final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                 final Buffer<Record<Object>> buffer,
-                                final PluginMetrics pluginMetrics) {
+                                final PluginMetrics pluginMetrics,
+                                final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.oTelProtoDecoder = oTelProtoDecoder;
 
-        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
-        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
-        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        if (metricsPrefix != null) {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+        } else {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        }
+
+        this.oTelProtoDecoder = oTelProtoDecoder;
     }
 
 

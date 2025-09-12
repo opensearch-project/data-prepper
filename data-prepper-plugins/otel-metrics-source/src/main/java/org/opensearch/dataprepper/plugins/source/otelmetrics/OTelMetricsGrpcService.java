@@ -50,20 +50,30 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
-
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
                                   final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                   Buffer<Record<? extends Metric>> buffer,
-                                  final PluginMetrics pluginMetrics) {
+                                  final PluginMetrics pluginMetrics,
+                                  final String metricsPrefix) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
 
-        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
-        recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED);
-        recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED);
-        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
-        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        if (metricsPrefix != null) {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED, metricsPrefix);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS, metricsPrefix);
+            recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED, metricsPrefix);
+            recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED, metricsPrefix);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE, metricsPrefix);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION, metricsPrefix);
+        } else {
+            requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
+            successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+            recordsCreatedCounter = pluginMetrics.counter(RECORDS_CREATED);
+            recordsDroppedCounter = pluginMetrics.counter(RECORDS_DROPPED);
+            payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
+            requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
+        }
+
         this.oTelProtoDecoder = oTelProtoDecoder;
     }
 
