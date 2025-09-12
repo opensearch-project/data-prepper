@@ -164,6 +164,7 @@ public class CloudWatchLogsDispatcher {
                     dlqObjects = getDlqObjectsFromResponse(putLogEventsResponse);
                 }
                 cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount - dlqObjects.size());
+                releaseEventHandles(putLogEventsResponse);
             }
             CloudWatchLogsSinkUtils.handleDlqObjects(dlqObjects, dlqPushHandler);
         }
@@ -200,5 +201,23 @@ public class CloudWatchLogsDispatcher {
             return dlqObjects;
         }
 
+        private void releaseEventHandles(final PutLogEventsResponse putLogEventsResponse) {
+            if (putLogEventsResponse == null || putLogEventsResponse.rejectedLogEventsInfo() == null) {
+                eventHandles.forEach(eventHandle -> eventHandle.release(true));
+                return;
+            }
+
+            final Integer tooOldEndIndex = putLogEventsResponse.rejectedLogEventsInfo().tooOldLogEventEndIndex();
+            final Integer tooNewStartIndex = putLogEventsResponse.rejectedLogEventsInfo().tooNewLogEventStartIndex();
+
+            for (int i = 0; i < eventHandles.size(); i++) {
+                boolean isRejected = (tooOldEndIndex != null && i < tooOldEndIndex) ||
+                        (tooNewStartIndex != null && i >= tooNewStartIndex);
+
+                if (!isRejected) {
+                    eventHandles.get(i).release(true);
+                }
+            }
+        }
     }
 }
