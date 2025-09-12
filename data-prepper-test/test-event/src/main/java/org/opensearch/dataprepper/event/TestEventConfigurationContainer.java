@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.core.event;
+package org.opensearch.dataprepper.event;
 
 public class TestEventConfigurationContainer {
     public static EventConfiguration testEventConfiguration() {

@@ -29,7 +29,10 @@ public abstract class AbstractContextManager {
             BASE_DATA_PREPPER_PACKAGE + ".core",
             BASE_DATA_PREPPER_PACKAGE + ".plugin"
     };
-    private static final String EXPRESSION_PACKAGE =   BASE_DATA_PREPPER_PACKAGE + ".expression";
+    private static final String[] PRE_BASE_DATA_PREPPER_PACKAGES = {
+            BASE_DATA_PREPPER_PACKAGE + ".event",
+            BASE_DATA_PREPPER_PACKAGE + ".expression"
+    };
 
     private final AnnotationConfigApplicationContext publicApplicationContext;
     private final AnnotationConfigApplicationContext coreApplicationContext;
@@ -53,7 +56,7 @@ public abstract class AbstractContextManager {
     }
 
     private void start() {
-        publicApplicationContext.scan(EXPRESSION_PACKAGE);
+        publicApplicationContext.scan(PRE_BASE_DATA_PREPPER_PACKAGES);
         preRefreshPublicApplicationContext(publicApplicationContext);
 
         publicApplicationContext.refresh();
