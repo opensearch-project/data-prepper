@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.event;
 
-import org.opensearch.dataprepper.core.event.EventConfiguration;
-import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;

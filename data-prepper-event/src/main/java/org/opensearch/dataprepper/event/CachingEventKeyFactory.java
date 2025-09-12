@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.event;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.opensearch.dataprepper.core.event.EventConfiguration;
 import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.slf4j.Logger;

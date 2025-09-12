@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.event;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.core.event.EventConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
