@@ -36,18 +36,21 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
@@ -64,11 +67,11 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_WINDOW;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION;
-import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.OBJECT_MAPPER;
 
 public class SageMakerBatchJobCreatorTest {
     @Mock
@@ -95,6 +98,12 @@ public class SageMakerBatchJobCreatorTest {
     @Mock
     private PluginSetting pluginSetting;
 
+    @Mock
+    private Counter recordsSuccessCounter;
+
+    @Mock
+    private Counter recordsFailedCounter;
+
     private SageMakerBatchJobCreator sageMakerBatchJobCreator;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -112,13 +121,14 @@ public class SageMakerBatchJobCreatorTest {
         when(mlProcessorConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         final EventKey sourceKey = eventKeyFactory.createEventKey("key");
         when(mlProcessorConfig.getInputKey()).thenReturn(sourceKey);
+        when(mlProcessorConfig.getRetryTimeWindow()).thenReturn(DEFAULT_RETRY_WINDOW);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
         counter = mock(Counter.class);
         when(pluginMetrics.counter(NUMBER_OF_SUCCESSFUL_BATCH_JOBS_CREATION)).thenReturn(counter);
         when(pluginMetrics.counter(NUMBER_OF_FAILED_BATCH_JOBS_CREATION)).thenReturn(counter);
-        when(pluginMetrics.counter(NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB)).thenReturn(counter);
-        when(pluginMetrics.counter(NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB)).thenReturn(counter);
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB)).thenReturn(recordsFailedCounter);
+        when(pluginMetrics.counter(NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB)).thenReturn(recordsSuccessCounter);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline_sagemaker");
         when(pluginSetting.getName()).thenReturn("pipeline_sagemaker");
 
@@ -544,6 +554,298 @@ public class SageMakerBatchJobCreatorTest {
     }
 
     @Test
+    void testRetryLogic_ThrottlingFailure() throws Exception {
+        // Arrange
+        Event event = createMockEvent("test-bucket", "input.jsonl");
+        Record<Event> record = new Record<>(event);
+        batch_records.add(record);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // Mock RetryUtil to simulate throttling failure
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "Rate limited"), 1));
+
+            // Act
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Assert
+            ConcurrentLinkedQueue<AbstractBatchJobCreator.RetryRecord> retryQueue = sageMakerBatchJobCreator.getRetryQueue();
+            assertEquals(1, retryQueue.size());
+            assertTrue(batch_records.isEmpty());
+            assertTrue(processedBatchRecords.isEmpty());
+            verify(counter, times(0)).increment();
+        }
+    }
+
+    @Test
+    void testRetryLogic_SuccessfulRetry() throws Exception {
+        // Arrange
+        Event event = createMockEvent("test-bucket", "input.jsonl");
+        Record<Event> record = new Record<>(event);
+        batch_records.add(record);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // RetryUtil returns failure with 429 status
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "Rate limited"), 1))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 1));
+            // Act
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Assert
+            ConcurrentLinkedQueue<AbstractBatchJobCreator.RetryRecord> retryQueue = sageMakerBatchJobCreator.getRetryQueue();
+            assertEquals(1, retryQueue.size());
+            assertTrue(batch_records.isEmpty());
+
+            // Act - Second attempt
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+            // Assert
+            assertTrue(retryQueue.isEmpty());
+            assertEquals(1, processedBatchRecords.size());
+            verify(counter, times(1)).increment();
+        }
+    }
+
+    @Test
+    void testRetryLogic_FailedRetry() throws Exception {
+        // Arrange
+        Event event = createMockEvent("test-bucket", "input.jsonl");
+        Record<Event> record = new Record<>(event);
+        batch_records.add(record);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // RetryUtil returns failure with 429 status
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "Rate limited"), 1))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(404, "timeout"), 1));
+            // Act
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Assert
+            ConcurrentLinkedQueue<AbstractBatchJobCreator.RetryRecord> retryQueue = sageMakerBatchJobCreator.getRetryQueue();
+            assertEquals(1, retryQueue.size());
+            assertTrue(batch_records.isEmpty());
+
+            // Act - Second attempt
+            when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+            when(event.toJsonString()).thenReturn("event"); // Add this
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+            // Assert
+            assertTrue(retryQueue.isEmpty());
+            assertEquals(1, processedBatchRecords.size());
+            verify(dlqPushHandler).perform(any());
+            verify(counter, times(1)).increment();
+        }
+    }
+
+    @Test
+    void testRetryLogic_ExpiredRetry() throws Exception {
+        // Arrange
+        Event event = createMockEvent("test-bucket", "input.jsonl");
+        Record<Event> record = new Record<>(event);
+        batch_records.add(record);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // Mock initial failure
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "Rate limited"), 1));
+
+            // First attempt - adds to retry queue
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Get retry queue and simulate record expiration
+            ConcurrentLinkedQueue<AbstractBatchJobCreator.RetryRecord> retryQueue = sageMakerBatchJobCreator.getRetryQueue();
+            AbstractBatchJobCreator.RetryRecord retryRecord = retryQueue.peek();
+            setPrivateField(retryRecord, "createdTime", System.currentTimeMillis() - (mlProcessorConfig.getRetryTimeWindow().toMillis() + 1));
+
+            // Act - Process expired record
+            when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+            when(event.toJsonString()).thenReturn("event"); // Add this
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Assert
+            assertTrue(retryQueue.isEmpty());
+            assertEquals(1, processedBatchRecords.size());
+            verify(dlqPushHandler).perform(any());
+            verify(counter, times(1)).increment();
+        }
+    }
+
+    @Test
+    void testProcessBothRetryAndNewRecords() throws Exception {
+        // Create record A for retry queue
+        Event eventA = createMockEvent("test-bucket", "inputA.jsonl");
+        Record<Event> recordA = new Record<>(eventA);
+
+        // Create RetryRecord using reflection
+        Object retryRecordA = createRetryRecord(recordA);
+        sageMakerBatchJobCreator.getRetryQueue().add((AbstractBatchJobCreator.RetryRecord) retryRecordA);
+
+        // Create record B for batch_records
+        Event eventB = createMockEvent("test-bucket", "inputB.jsonl");
+        Record<Event> recordB = new Record<>(eventB);
+        List<Record<Event>> newRecords = Collections.singletonList(recordB);
+        List<Record<Event>> resultRecords = new ArrayList<>();
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // Mock successful processing
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(true, null, 3));
+
+            // Add record B to batch_records
+            sageMakerBatchJobCreator.createMLBatchJob(newRecords, resultRecords);
+            // Verify initial state
+            assertEquals(1, sageMakerBatchJobCreator.getRetryQueue().size(), "Retry queue should have record A");
+            assertEquals(1, sageMakerBatchJobCreator.getBatch_records().size(), "Batch records should have record B");
+
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+            // Verify final state
+
+            // Verify retry queue is empty
+            assertTrue(sageMakerBatchJobCreator.getRetryQueue().isEmpty(),
+                    "Retry queue should be empty after processing");
+
+            // Verify batch_records is empty
+            assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(),
+                    "Batch records should be empty after processing");
+
+            // Verify success counters
+            verify(counter).increment();
+            verify(recordsSuccessCounter).increment(2); // Both records A and B
+        }
+    }
+
+    @Test
+    void testProcessBothRetryAndNewRecords_WithThrottledAgain() throws Exception {
+        // Create record A for retry queue
+        Event eventA = createMockEvent("test-bucket", "inputA.jsonl");
+        Record<Event> recordA = new Record<>(eventA);
+        Object retryRecordA = createRetryRecord(recordA);
+        sageMakerBatchJobCreator.getRetryQueue().add((AbstractBatchJobCreator.RetryRecord) retryRecordA);
+
+        // Create record B for batch_records
+        Event eventB = createMockEvent("test-bucket", "inputB.jsonl");
+        Record<Event> recordB = new Record<>(eventB);
+        List<Record<Event>> newRecords = Collections.singletonList(recordB);
+        List<Record<Event>> resultRecords = new ArrayList<>();
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // Mock failure with throttling
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(429, "Rate limited"), 1));
+
+            sageMakerBatchJobCreator.createMLBatchJob(newRecords, resultRecords);
+
+            // Verify initial state
+            assertEquals(1, sageMakerBatchJobCreator.getRetryQueue().size(),
+                    "Retry queue should have record A");
+            assertEquals(1, sageMakerBatchJobCreator.getBatch_records().size(),
+                    "Batch records should have record B");
+            // Get retry count of record A before processing
+            AbstractBatchJobCreator.RetryRecord retryRecordBefore =
+                    sageMakerBatchJobCreator.getRetryQueue().peek();
+            int initialRetryCount = getRetryCount(retryRecordBefore);
+
+            // Process both records - should be throttled
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Verify retry queue contains both records
+            assertEquals(2, sageMakerBatchJobCreator.getRetryQueue().size(),
+                    "Retry queue should contain both records after throttling");
+            assertEquals(0, sageMakerBatchJobCreator.getProcessedBatchRecords().size(),
+                    "Retry queue should contain both records after throttling");
+            // Verify batch_records is empty
+            assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(),
+                    "Batch records should be empty after processing");
+            // Verify record A's retry count was incremented
+            AbstractBatchJobCreator.RetryRecord updatedRetryRecordA =
+                    sageMakerBatchJobCreator.getRetryQueue().stream()
+                    .filter(r -> getRecordFromRetryRecord(r).getData().getJsonNode().get("key").asText().equals("inputA.jsonl"))
+                    .findFirst()
+                    .orElse(null);
+
+            assertNotNull(updatedRetryRecordA, "Record A should still be in retry queue");
+            assertEquals(initialRetryCount + 1, getRetryCount(updatedRetryRecordA),
+                    "Retry count for record A should be incremented");
+
+            // Verify record B was added to retry queue
+            boolean recordBInRetryQueue = sageMakerBatchJobCreator.getRetryQueue().stream()
+                    .anyMatch(r -> getRecordFromRetryRecord(r).getData().getJsonNode().get("key").asText().equals("inputB.jsonl"));
+            assertTrue(recordBInRetryQueue, "Record B should be in retry queue");
+        }
+    }
+
+    @Test
+    void testProcessBothRetryAndNewRecords_WithFailure() throws Exception {
+        // Create record A for retry queue
+        Event eventA = createMockEvent("test-bucket", "inputA.jsonl");
+        Record<Event> recordA = new Record<>(eventA);
+        Object retryRecordA = createRetryRecord(recordA);
+        sageMakerBatchJobCreator.getRetryQueue().add((AbstractBatchJobCreator.RetryRecord) retryRecordA);
+        when(eventA.toJsonString()).thenReturn("eventA");
+
+        // Create record B for batch_records
+        Event eventB = createMockEvent("test-bucket", "inputB.jsonl");
+        Record<Event> recordB = new Record<>(eventB);
+        List<Record<Event>> newRecords = Collections.singletonList(recordB);
+        List<Record<Event>> resultRecords = new ArrayList<>();
+        when(eventB.toJsonString()).thenReturn("eventB");
+
+        when(dlqPushHandler.getDlqPluginSetting()).thenReturn(pluginSetting);
+        // Capture DLQ objects
+        ArgumentCaptor<List<DlqObject>> dlqObjectsCaptor = ArgumentCaptor.forClass(List.class);
+
+        try (MockedStatic<RetryUtil> mockedRetryUtil = mockStatic(RetryUtil.class)) {
+            // Mock 404 failure response
+            mockedRetryUtil.when(() -> RetryUtil.retryWithBackoffWithResult(any(), any()))
+                    .thenReturn(new RetryUtil.RetryResult(false, new MLBatchJobException(404, "Not Found"), 3));
+            // Add record B to batch_records
+            sageMakerBatchJobCreator.createMLBatchJob(newRecords, resultRecords);
+
+            // Verify initial state
+            assertEquals(1, sageMakerBatchJobCreator.getRetryQueue().size(),
+                    "Retry queue should have record A");
+            assertEquals(1, sageMakerBatchJobCreator.getBatch_records().size(),
+                    "Batch records should have record B");
+
+            // Process both records - should fail with 404
+            sageMakerBatchJobCreator.checkAndProcessBatch();
+
+            // Verify final state
+            // Both records should be removed from their respective queues
+            assertTrue(sageMakerBatchJobCreator.getRetryQueue().isEmpty(),
+                    "Retry queue should be empty after failure");
+            assertTrue(sageMakerBatchJobCreator.getBatch_records().isEmpty(),
+                    "Batch records should be empty after failure");
+
+            // Verify both records were added to processedBatchRecords with failure tags
+            assertEquals(2, sageMakerBatchJobCreator.getProcessedBatchRecords().size(),
+                    "Both records should be in result records");
+
+            // Verify DLQ handling
+            verify(dlqPushHandler).perform(dlqObjectsCaptor.capture());
+            List<DlqObject> dlqObjects = dlqObjectsCaptor.getValue();
+            assertEquals(2, dlqObjects.size(), "Both records should be sent to DLQ");
+
+            // Verify DLQ objects content
+            Set<String> dlqKeys = dlqObjects.stream()
+                    .map(dlqObject -> ((MLBatchJobFailedDlqData) dlqObject.getFailedData()).getS3Key())
+                    .collect(Collectors.toSet());
+            assertTrue(dlqKeys.contains("inputA.jsonl"), "DLQ should contain record A");
+            assertTrue(dlqKeys.contains("inputB.jsonl"), "DLQ should contain record B");
+            // Verify all DLQ objects have correct status code
+            dlqObjects.forEach(dlqObject -> {
+                MLBatchJobFailedDlqData failedData = (MLBatchJobFailedDlqData) dlqObject.getFailedData();
+                assertEquals(404, failedData.getStatus(), "DLQ object should have 404 status code");
+                assertEquals("Failed to Create SageMaker batch job after 3 attempts: Not Found", failedData.getMessage(), "DLQ object should have correct error message");
+            });
+            // Verify counters
+            verify(counter).increment(); // Failure counter
+            verify(recordsFailedCounter).increment(2); // Both records failed
+        }
+    }
+
+    @Test
     void generateJobName_ReturnsValidJobName() {
         // when
         String jobName = sageMakerBatchJobCreator.generateJobName();
@@ -570,5 +872,49 @@ public class SageMakerBatchJobCreatorTest {
         java.lang.reflect.Method method = SageMakerBatchJobCreator.class.getDeclaredMethod("processRemainingBatch");
         method.setAccessible(true);
         method.invoke(sageMakerBatchJobCreator);
+    }
+
+    private void setPrivateField(Object object, String fieldName, Object value) {
+        try {
+            Field field = object.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(object, value);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set private field: " + fieldName, e);
+        }
+    }
+
+    private Object createRetryRecord(Record<Event> record) throws Exception {
+        // Get RetryRecord class
+        Class<?> retryRecordClass = Class.forName(
+                "org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator$RetryRecord");
+
+        // Get constructor
+        Constructor<?> constructor = retryRecordClass.getDeclaredConstructor(
+                AbstractBatchJobCreator.class, Record.class);
+        constructor.setAccessible(true);
+
+        // Create instance
+        return constructor.newInstance(sageMakerBatchJobCreator, record);
+    }
+
+    private int getRetryCount(Object retryRecord) {
+        try {
+            Field retryCountField = retryRecord.getClass().getDeclaredField("retryCount");
+            retryCountField.setAccessible(true);
+            return (int) retryCountField.get(retryRecord);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get retry count", e);
+        }
+    }
+
+    private Record<Event> getRecordFromRetryRecord(Object retryRecord) {
+        try {
+            Field recordField = retryRecord.getClass().getDeclaredField("record");
+            recordField.setAccessible(true);
+            return (Record<Event>) recordField.get(retryRecord);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get record from RetryRecord", e);
+        }
     }
 }

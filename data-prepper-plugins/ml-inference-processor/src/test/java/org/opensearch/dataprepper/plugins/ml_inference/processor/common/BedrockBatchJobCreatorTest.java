@@ -36,6 +36,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProcessorConfig.DEFAULT_RETRY_WINDOW;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_FAILED_BATCH_JOBS_CREATION;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB;
 import static org.opensearch.dataprepper.plugins.ml_inference.processor.common.AbstractBatchJobCreator.NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB;
@@ -66,6 +67,7 @@ public class BedrockBatchJobCreatorTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         when(mlProcessorConfig.getOutputPath()).thenReturn("s3://offlinebatch/output");
+        when(mlProcessorConfig.getRetryTimeWindow()).thenReturn(DEFAULT_RETRY_WINDOW);
         counter = new Counter() {
             @Override
             public void increment(double v) {}
@@ -205,7 +207,7 @@ public class BedrockBatchJobCreatorTest {
 
             // Verify throttled record was processed
             assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
-            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
             assertNotNull(throttledRecord);
             assertEquals(1, throttledRecord.getRetryCount());
         }
@@ -235,7 +237,7 @@ public class BedrockBatchJobCreatorTest {
             bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
 
             // Verify retry count increased
-            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
             assertNotNull(throttledRecord);
             assertEquals(1, throttledRecord.getRetryCount());
 

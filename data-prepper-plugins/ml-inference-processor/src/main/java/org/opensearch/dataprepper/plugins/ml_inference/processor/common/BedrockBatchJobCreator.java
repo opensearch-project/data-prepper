@@ -35,9 +35,8 @@ import static org.opensearch.dataprepper.plugins.ml_inference.processor.MLProces
 
 public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     private final AwsCredentialsSupplier awsCredentialsSupplier;
-    private static final long MAX_RETRY_WINDOW_MS = 300_000; // 5 minutes
     @Getter
-    private final ConcurrentLinkedQueue<ThrottledRecord> throttledRecords = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<RetryRecord> throttledRecords = new ConcurrentLinkedQueue<>();
     private final Lock processingLock;
 
     private static final String BEDROCK_PAYLOAD_TEMPLATE = "{\"parameters\": {\"inputDataConfig\": {\"s3InputDataConfig\": {\"s3Uri\": \"s3://\"}}," +
@@ -55,13 +54,13 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     }
 
     private void processRecords(List<Record<Event>> records, List<Record<Event>> resultRecords,
-                                List<ThrottledRecord> throttledRecords) {
+                                List<RetryRecord> throttledRecords) {
         List<Record<Event>> failedRecords = new ArrayList<>();
         List<DlqObject> dlqObjects = new ArrayList<>();
 
         for (int i = 0; i < records.size(); i++) {
             Record<Event> record = records.get(i);
-            ThrottledRecord throttledRecord = throttledRecords != null ? throttledRecords.get(i) : null;
+            RetryRecord throttledRecord = throttledRecords != null ? throttledRecords.get(i) : null;
 
             processRecord(record, resultRecords, failedRecords, dlqObjects, throttledRecord);
 
@@ -89,7 +88,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
 
     private void processRecord(Record<Event> record, List<Record<Event>> resultRecords,
                                List<Record<Event>> failedRecords, List<DlqObject> dlqObjects,
-                               ThrottledRecord throttledRecord) {
+                               RetryRecord throttledRecord) {
         try {
             String s3Uri = generateS3Uri(record);
             String payload = createPayloadBedrock(s3Uri, mlProcessorConfig);
@@ -122,9 +121,9 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
                 if (e instanceof MLBatchJobException) {
                     MLBatchJobException mlException = (MLBatchJobException) e;
                     statusCode = mlException.getStatusCode();
-                    if (statusCode == 429) {
-                        ThrottledRecord newThrottledRecord = throttledRecord != null ?
-                                throttledRecord : new ThrottledRecord(record);
+                    if (shouldRetry(statusCode, mlException.getMessage())) {
+                        RetryRecord newThrottledRecord = throttledRecord != null ?
+                                throttledRecord : new RetryRecord(record);
                         throttledRecords.offer(newThrottledRecord);
                         LOG.info("Request {} throttled{}, added to retry queue: {}",
                                 throttledRecord != null ? "still" : "",
@@ -158,9 +157,27 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
 
         try {
             processThrottledRecords(resultRecords);
+        } catch (Exception e) {
+            LOG.error("Error in batch processing throttled records. Error: {}", e.getMessage());
         } finally {
             processingLock.unlock();
         }
+    }
+
+    private boolean shouldRetry(int statusCode, String errorMessage) {
+        if (statusCode == TOO_MANY_REQUESTS) {
+            return true;
+        }
+
+        if (errorMessage == null) {
+            return false;
+        }
+
+        // Check for quota-related messages
+        return (statusCode == HttpURLConnection.HTTP_BAD_REQUEST) &&
+                (errorMessage.contains("quota for number of concurrent invoke-model jobs") ||
+                        errorMessage.contains("throttling") ||
+                        errorMessage.contains("request was denied due to remote server throttling"));
     }
 
     private void handleFailure(Record<Event> record,
@@ -203,11 +220,11 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
     }
 
     private void processThrottledRecords(List<Record<Event>> resultRecords) {
-        List<ThrottledRecord> expiredRecords = new ArrayList<>();
-        List<ThrottledRecord> recordsToRetry = new ArrayList<>();
+        List<RetryRecord> expiredRecords = new ArrayList<>();
+        List<RetryRecord> recordsToRetry = new ArrayList<>();
 
         // Process throttled records
-        ThrottledRecord throttledRecord;
+        RetryRecord throttledRecord;
         while ((throttledRecord = throttledRecords.poll()) != null) {
             if (throttledRecord.isExpired()) {
                 expiredRecords.add(throttledRecord);
@@ -224,7 +241,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         retryThrottledRecords(recordsToRetry, resultRecords);
     }
 
-    private void retryThrottledRecords(List<ThrottledRecord> recordsToRetry, List<Record<Event>> resultRecords) {
+    private void retryThrottledRecords(List<RetryRecord> recordsToRetry, List<Record<Event>> resultRecords) {
         if (recordsToRetry.isEmpty()) {
             return;
         }
@@ -232,14 +249,14 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         LOG.info("Retrying {} throttled records", recordsToRetry.size());
         processRecords(
                 recordsToRetry.stream()
-                        .map(ThrottledRecord::getRecord)
+                        .map(RetryRecord::getRecord)
                         .collect(Collectors.toCollection(ArrayList::new)),
                 resultRecords,
                 recordsToRetry
         );
     }
 
-    private void handleExpiredRecords(List<ThrottledRecord> expiredRecords, List<Record<Event>> resultRecords) {
+    private void handleExpiredRecords(List<RetryRecord> expiredRecords, List<Record<Event>> resultRecords) {
         if (expiredRecords.isEmpty()) {
             return;
         }
@@ -247,11 +264,11 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         List<Record<Event>> failedRecords = new ArrayList<>();
         List<DlqObject> dlqObjects = new ArrayList<>();
 
-        for (ThrottledRecord expiredRecord : expiredRecords) {
+        for (RetryRecord expiredRecord : expiredRecords) {
             String errorMessage = String.format(
                     "Record expired after %d retries over %d minutes",
                     expiredRecord.getRetryCount(),
-                    MAX_RETRY_WINDOW_MS / 60000
+                    maxRetryTimeWindow / 60000
             );
 
             LOG.error(NOISY, "Record expired from throttle queue: {}", errorMessage);
@@ -300,34 +317,6 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
         } catch (Exception e) {
             LOG.error("Failed to create BedRock batch job payload with input {}.", S3Uri, e);
             throw new RuntimeException("Failed to create payload for BedRock batch job", e);
-        }
-    }
-
-    class ThrottledRecord {
-        private final Record<Event> record;
-        private final long createdTime;
-        private int retryCount;
-
-        ThrottledRecord(Record<Event> record) {
-            this.record = record;
-            this.createdTime = System.currentTimeMillis();
-            this.retryCount = 0;
-        }
-
-        boolean isExpired() {
-            return System.currentTimeMillis() - createdTime > MAX_RETRY_WINDOW_MS;
-        }
-
-        void incrementRetryCount() {
-            retryCount++;
-        }
-
-        Record<Event> getRecord() {
-            return record;
-        }
-
-        int getRetryCount() {
-            return retryCount;
         }
     }
 }

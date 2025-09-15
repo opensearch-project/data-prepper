@@ -29,7 +29,9 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -42,16 +44,21 @@ import static org.opensearch.dataprepper.plugins.ml_inference.processor.client.S
 
 public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final S3Client s3Client;
     private final Lock batchProcessingLock;
     // Added batch processing fields
     @Getter
     private final ConcurrentLinkedQueue<Record<Event>> batch_records = new ConcurrentLinkedQueue<>();
+    @Getter
     private final ConcurrentLinkedQueue<Record<Event>> processedBatchRecords = new ConcurrentLinkedQueue<>();
+    @Getter
+    private final ConcurrentLinkedQueue<RetryRecord> retryQueue = new ConcurrentLinkedQueue<>();
     private final int maxBatchSize;
     private final AtomicLong lastUpdateTimestamp = new AtomicLong(-1);
     private static final long INACTIVITY_TIMEOUT_MS = 60000; // 1 minute in milliseconds
+    private volatile boolean retryRecordsAddedToBatch = false;
 
     private static final String SAGEMAKER_PAYLOAD_TEMPLATE = "{\"parameters\":{\"TransformInput\":{\"ContentType\":\"application/json\","
             + "\"DataSource\":{\"S3DataSource\":{\"S3DataType\":\"ManifestFile\",\"S3Uri\":\"\"}},"
@@ -111,6 +118,11 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         }
 
         try {
+            // First, process any records in the retry queue if retry records haven't been added to the current batch
+            if (!retryRecordsAddedToBatch) {
+                processRetryQueue();
+            }
+
             if (batch_records.isEmpty()) {
                 return;
             }
@@ -134,6 +146,8 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
                 List<Record<Event>> currentBatch = new ArrayList<>(batch_records);
                 batch_records.clear();
                 lastUpdateTimestamp.set(-1);
+                // Reset the flag when we process the batch
+                retryRecordsAddedToBatch = false;
 
                 processCurrentBatch(currentBatch);
             }
@@ -163,28 +177,9 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             );
 
             if (result.isSuccess()) {
-                LOG.info("Successfully created SageMaker batch job for manifest URL: {}", manifestUrl);
-                processedBatchRecords.addAll(currentBatch);
-                incrementSuccessCounter();
-                numberOfRecordsSuccessCounter.increment(currentBatch.size());
+                handleSuccess(currentBatch, manifestUrl);
             } else {
-                Exception lastException = result.getLastException();
-                int statusCode;
-                String errorMessage;
-
-                if (lastException instanceof MLBatchJobException) {
-                    MLBatchJobException mlException = (MLBatchJobException) lastException;
-                    statusCode = mlException.getStatusCode();
-                    errorMessage = String.format("Failed to Create SageMaker batch job after %d attempts: %s",
-                            result.getAttemptsMade(), mlException.getMessage());
-                } else {
-                    statusCode = HttpURLConnection.HTTP_INTERNAL_ERROR;
-                    errorMessage = String.format("Failed to Create SageMaker batch job after %d attempts: %s",
-                            result.getAttemptsMade(), lastException.getMessage());
-                }
-
-                handleFailure(currentBatch, processedBatchRecords, new MLBatchJobException(statusCode, errorMessage), statusCode);
-                LOG.error("SageMaker batch job failed for manifest URL: {}. Status: {}, Error: {}", manifestUrl, statusCode, errorMessage);
+                handleRetryOrFailure(currentBatch, result, manifestUrl);
             }
         } catch (IllegalArgumentException e) {
             LOG.error(NOISY, "Invalid arguments for SageMaker batch job. Error: {}", e.getMessage());
@@ -198,11 +193,75 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
         }
     }
 
+    private void handleSuccess(List<Record<Event>> currentBatch, String manifestUrl) {
+        LOG.info("Successfully created SageMaker batch job for manifest URL: {}", manifestUrl);
+        removeCurrentBatchFromRetryQueue(currentBatch);
+        // Add to processed records and update counters
+        processedBatchRecords.addAll(currentBatch);
+        incrementSuccessCounter();
+        numberOfRecordsSuccessCounter.increment(currentBatch.size());
+    }
+
+    private void handleRetryOrFailure(List<Record<Event>> currentBatch,
+                                      RetryUtil.RetryResult result, String manifestUrl) {
+        Exception lastException = result.getLastException();
+
+        if (lastException instanceof MLBatchJobException) {
+            MLBatchJobException mlException = (MLBatchJobException) lastException;
+            int statusCode = mlException.getStatusCode();
+
+            if (statusCode == TOO_MANY_REQUESTS ||
+                    (statusCode == HttpURLConnection.HTTP_BAD_REQUEST && isThrottlingError(mlException.getMessage()))) {
+                handleThrottling(currentBatch);
+                return;
+            }
+
+            String errorMessage = String.format("Failed to Create SageMaker batch job after %d attempts: %s",
+                    result.getAttemptsMade(), mlException.getMessage());
+            handleFailure(currentBatch, processedBatchRecords,
+                    new MLBatchJobException(statusCode, errorMessage), statusCode);
+            LOG.error("SageMaker batch job failed for manifest URL: {}. Status: {}, Error: {}", manifestUrl, statusCode, errorMessage);
+        } else {
+            handleFailure(currentBatch, processedBatchRecords, lastException,
+                    HttpURLConnection.HTTP_INTERNAL_ERROR);
+            LOG.error("SageMaker batch job failed for manifest URL: {}. Status: {}, Error: {}", manifestUrl, HttpURLConnection.HTTP_INTERNAL_ERROR, lastException.getMessage());
+        }
+    }
+
+    private boolean isThrottlingError(String errorMessage) {
+        if (errorMessage == null) {
+            return false;
+        }
+
+        return errorMessage.toLowerCase().contains("throttling") ||
+                errorMessage.toLowerCase().contains("request was denied due to remote server throttling");
+    }
+
+    private void handleThrottling(List<Record<Event>> currentBatch) {
+        LOG.warn("Rate limited (429). Adding {} records to retry queue", currentBatch.size());
+
+        // Create a set of records already in retry queue
+        if (!retryQueue.isEmpty()) {
+            Set<Record<Event>> existingRetryRecords = retryQueue.stream()
+                    .map(RetryRecord::getRecord)
+                    .collect(Collectors.toSet());
+
+            currentBatch.forEach(record -> {
+                if (!existingRetryRecords.contains(record)) {
+                    retryQueue.add(new RetryRecord(record));
+                }
+            });
+        } else {
+            currentBatch.forEach(record -> {retryQueue.add(new RetryRecord(record));});
+        }
+    }
+
     private void handleFailure(List<Record<Event>> failedRecords, ConcurrentLinkedQueue<Record<Event>> resultRecords, Throwable throwable, int statusCode) {
         if (failedRecords.isEmpty()) {
             incrementFailureCounter();
             return;
         }
+        removeCurrentBatchFromRetryQueue(failedRecords);
         resultRecords.addAll(addFailureTags(failedRecords));
         incrementFailureCounter();
         numberOfRecordsFailedCounter.increment(failedRecords.size());
@@ -219,6 +278,61 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
             dlqPushHandler.perform(dlqObjects);
         } catch (Exception ex) {
             LOG.error(NOISY, "Exception occured during error handling: {}", ex.getMessage());
+        }
+    }
+
+    private void processRetryQueue() {
+        List<Record<Event>> expiredRecords = new ArrayList<>();
+        retryQueue.removeIf(retryRecord -> {
+            if (retryRecord.isExpired()) {
+                expiredRecords.add(retryRecord.getRecord());
+                LOG.debug("Record expired after {} attempts over {} ms",
+                        retryRecord.getRetryCount(),
+                        maxRetryTimeWindow);
+                return true;
+            }
+            return false;
+        });
+
+        if (!expiredRecords.isEmpty()) {
+            handleExpiredRecords(expiredRecords);
+        }
+
+        // Add non-expired records to batch_records
+        retryQueue.forEach(retryRecord -> {
+            batch_records.add(retryRecord.getRecord());
+            retryRecord.incrementRetryCount();
+        });
+        retryRecordsAddedToBatch = true; // Set the flag
+        if (!retryQueue.isEmpty()) {
+            lastUpdateTimestamp.set(System.currentTimeMillis());
+            LOG.info("Added {} records to batch for retry, retry queue size: {}",
+                    retryQueue.size(), retryQueue.size());
+        }
+    }
+
+    private void handleExpiredRecords(List<Record<Event>> expiredRecords) {
+        LOG.warn("{} records expired from retry queue after {} ms timeout",
+                expiredRecords.size(), maxRetryTimeWindow);
+        handleFailure(expiredRecords, processedBatchRecords,
+                new MLBatchJobException(HttpURLConnection.HTTP_BAD_REQUEST,
+                        "Records expired after " + maxRetryTimeWindow/(60*1000) + " minute retry window"),
+                HttpURLConnection.HTTP_BAD_REQUEST);
+    }
+
+    private void removeCurrentBatchFromRetryQueue(List<Record<Event>> currentBatch) {
+        // Remove processed records from retry queue
+        int initialRetryQueueSize = retryQueue.size();
+        if (initialRetryQueueSize > 0) {
+            Set<Record<Event>> processedRecords = new HashSet<>(currentBatch);
+            retryQueue.removeIf(retryRecord ->
+                    processedRecords.contains(retryRecord.getRecord()));
+
+            int removedCount = initialRetryQueueSize - retryQueue.size();
+            if (removedCount > 0) {
+                LOG.info("Removed {} processed records from retry queue. Remaining: {}",
+                        removedCount, retryQueue.size());
+            }
         }
     }
 
