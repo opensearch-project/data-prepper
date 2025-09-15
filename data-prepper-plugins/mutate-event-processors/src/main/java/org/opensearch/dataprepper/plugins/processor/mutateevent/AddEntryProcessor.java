@@ -362,19 +362,14 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private void mergeValue(final Object value, Supplier<Object> getter, Consumer<Object> setter) {
         final Object currentValue = getter.get();
-        final List<Object> mergedValue;
+        final List<Object> mergedValue = new ArrayList<>();
         if (currentValue instanceof List) {
-            mergedValue = new ArrayList<>((List<Object>)currentValue);
+            mergedValue.addAll((List<Object>) currentValue);
         } else {
-            mergedValue = new ArrayList<>(2);
             mergedValue.add(currentValue);
         }
-        
-        if (value instanceof List) {
-            mergedValue.addAll((List<Object>)value);
-        } else {
-            mergedValue.add(value);
-        }
+
+        mergedValue.add(value);
         setter.accept(mergedValue);
     }
 }
