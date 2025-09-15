@@ -37,6 +37,7 @@ public class S3ClientBuilderFactory {
         LOG.info("Creating S3 client");
             return S3Client.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .crossRegionAccessEnabled(true)
                 .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(ClientOverrideConfiguration.builder()
                             .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
@@ -52,6 +53,7 @@ public class S3ClientBuilderFactory {
         LOG.info("Creating S3 Async client");
         return S3AsyncClient.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .crossRegionAccessEnabled(true)
                 .httpClient(NettyNioAsyncHttpClient.builder()
                         .maxConcurrency(200)
                         .connectionTimeout(Duration.ofMinutes(1)).build())
