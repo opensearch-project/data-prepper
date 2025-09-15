@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -62,6 +63,43 @@ public class AddEntryProcessorTests {
         when(expressionEvaluator.isValidExpressionStatement(addWhen)).thenReturn(false);
 
         assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    public void test_add_empty_array_followed_by_list_of_map_to_the_same_key() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("actor/user/groups", null, new ArrayList<>(), null, null, false, false, null, null, true, null),
+                createEntry("actor/user/groups", null, List.of(Map.of("name", "")), null, null, false, true, null, null, true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = getEvent(mapList);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        System.out.println();
+        assertEquals("{\"message\":[{\"testKey\":\"testValue\"}],\"actor\":{\"user\":{\"groups\":[[{\"name\":\"\"}]]}}}",
+                editedRecords.get(0).getData().toJsonString());
+    }
+
+    @Test
+    public void test_add_list_of_map_followed_by_empty_array_to_the_same_key() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+                createEntry("actor/user/groups", null, List.of(Map.of("name", "")), null, null, false, true, null, null, true, null),
+                createEntry("actor/user/groups", null, new ArrayList<>(), null, null, false, false, null, null, true, null),
+                createEntry("actor/user/groups", null, List.of(Map.of("second", "slistval")), null, null, false, true, null, null, true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of("testKey", "testValue"));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = getEvent(mapList);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        System.out.println();
+        assertEquals("{\"message\":[{\"testKey\":\"testValue\"}],\"actor\":{\"user\":{\"groups\":[{\"name\":\"\"},[{\"second\":\"slistval\"}]]}}}",
+                editedRecords.get(0).getData().toJsonString());
     }
 
     @Test
@@ -359,7 +397,7 @@ public class AddEntryProcessorTests {
         final Record<Event> record = getEvent(currentList);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(Arrays.asList(1, 2, 3, 4, 5)));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(Arrays.asList(1, 2, 3, Arrays.asList(4, 5))));
     }
 
     @Test
