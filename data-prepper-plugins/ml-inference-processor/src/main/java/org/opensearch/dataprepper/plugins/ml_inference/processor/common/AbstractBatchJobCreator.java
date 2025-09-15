@@ -31,6 +31,8 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
     public static final String NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB = "recordsFailedInBatchJobCreation";
     public static final String NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB = "recordsSucceededInBatchJobCreation";
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    protected static final long MAX_RETRY_WINDOW_MS = 600_000; // 10 minutes
+    protected static final int TOO_MANY_REQUESTS = 429;
     protected final MLProcessorConfig mlProcessorConfig;
     protected final AwsCredentialsSupplier awsCredentialsSupplier;
     protected final Counter numberOfBatchJobsSuccessCounter;
@@ -40,7 +42,6 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
     protected final List<String> tagsOnFailure;
     protected final MlCommonRequester mlCommonRequester;
     protected DlqPushHandler dlqPushHandler = null;
-
     private static final Aws4Signer signer;
     static {
         signer = Aws4Signer.create();
@@ -118,5 +119,33 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
                 .withPipelineName(dlqPushHandler.getDlqPluginSetting().getPipelineName())
                 .withPluginId(dlqPushHandler.getDlqPluginSetting().getName())
                 .build();
+    }
+
+    class RetryRecord {
+        private final Record<Event> record;
+        private final long createdTime;
+        private int retryCount;
+
+        RetryRecord(Record<Event> record) {
+            this.record = record;
+            this.createdTime = System.currentTimeMillis();
+            this.retryCount = 0;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - createdTime > MAX_RETRY_WINDOW_MS;
+        }
+
+        void incrementRetryCount() {
+            retryCount++;
+        }
+
+        Record<Event> getRecord() {
+            return record;
+        }
+
+        int getRetryCount() {
+            return retryCount;
+        }
     }
 }

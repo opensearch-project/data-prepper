@@ -205,7 +205,7 @@ public class BedrockBatchJobCreatorTest {
 
             // Verify throttled record was processed
             assertEquals(1, bedrockBatchJobCreator.getThrottledRecords().size());
-            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
             assertNotNull(throttledRecord);
             assertEquals(1, throttledRecord.getRetryCount());
         }
@@ -235,7 +235,7 @@ public class BedrockBatchJobCreatorTest {
             bedrockBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
 
             // Verify retry count increased
-            BedrockBatchJobCreator.ThrottledRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
+            BedrockBatchJobCreator.RetryRecord throttledRecord = bedrockBatchJobCreator.getThrottledRecords().peek();
             assertNotNull(throttledRecord);
             assertEquals(1, throttledRecord.getRetryCount());
 
