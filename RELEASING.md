@@ -168,8 +168,6 @@ Once approved by two maintainers, the release build will be promoted to producti
 
 You can also deny a release by using _deny_ or _denied_ in the comment.
 
-**NOTE** The smoke tests currently report a build failure, even when they succeed. Thus, you need to manually verify the output.
-
 ### OpenSearch CI server build
 
 After two maintainers approve the GitHub issue, the [OpenSearch CI server](https://build.ci.opensearch.org/) will start a build.
