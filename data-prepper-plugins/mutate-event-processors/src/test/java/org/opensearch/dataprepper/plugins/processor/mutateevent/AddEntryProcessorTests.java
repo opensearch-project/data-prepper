@@ -77,8 +77,6 @@ public class AddEntryProcessorTests {
         final Record<Event> record = getEvent(mapList);
 
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        System.out.println();
         assertEquals("{\"message\":[{\"testKey\":\"testValue\"}],\"actor\":{\"user\":{\"groups\":[[{\"name\":\"\"}]]}}}",
                 editedRecords.get(0).getData().toJsonString());
     }
