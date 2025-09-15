@@ -15,8 +15,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,10 +29,10 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceParameterizedTest {
@@ -40,11 +43,13 @@ class ParseTreeCoercionServiceParameterizedTest {
     @Mock
     private Token token;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration =
             new LiteralTypeConversionsConfiguration();
     private final ExpressionFunctionProvider expressionFunctionProvider = mock(ExpressionFunctionProvider.class);
     private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService(
-            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider);
+            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider, eventKeyFactory);
 
     @ParameterizedTest
     @MethodSource("provideTerminalNodeTypes")
@@ -167,8 +172,8 @@ class ParseTreeCoercionServiceParameterizedTest {
     @ParameterizedTest
     @MethodSource("provideConstructorNullParameters")
     void testConstructorWithNullParameters(Map<Class<? extends java.io.Serializable>, Function<Object, Object>> conversions, ExpressionFunctionProvider provider) {
-        assertThrows(NullPointerException.class, 
-                () -> new ParseTreeCoercionService(conversions, provider));
+        assertThrows(NullPointerException.class,
+                () -> new ParseTreeCoercionService(conversions, provider, eventKeyFactory));
     }
 
     private static Stream<Arguments> provideConstructorNullParameters() {
@@ -201,8 +206,8 @@ class ParseTreeCoercionServiceParameterizedTest {
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("/nonexistent");
         final Event testEvent = mock(Event.class);
-        when(testEvent.get("/nonexistent", Object.class)).thenReturn(null);
-        
+        when(testEvent.get(any(EventKey.class), eq(Object.class))).thenReturn(null);
+
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         
         assertThat(result, equalTo(null));
@@ -212,14 +217,15 @@ class ParseTreeCoercionServiceParameterizedTest {
     void testConvertLiteralTypeWithUnsupportedType() {
         // Create a service with limited type conversions to test the error path
         Map<Class<? extends java.io.Serializable>, Function<Object, Object>> limitedConversions = new HashMap<>();
-        ParseTreeCoercionService limitedService = new ParseTreeCoercionService(limitedConversions, expressionFunctionProvider);
+        ParseTreeCoercionService limitedService =
+                new ParseTreeCoercionService(limitedConversions, expressionFunctionProvider, eventKeyFactory);
         
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("/key");
         final Event testEvent = mock(Event.class);
-        when(testEvent.get("/key", Object.class)).thenReturn("unsupported");
-        
+        when(testEvent.get(any(EventKey.class), eq(Object.class))).thenReturn("unsupported");
+
         assertThrows(ExpressionCoercionException.class,
                 () -> limitedService.coercePrimaryTerminalNode(terminalNode, testEvent));
     }

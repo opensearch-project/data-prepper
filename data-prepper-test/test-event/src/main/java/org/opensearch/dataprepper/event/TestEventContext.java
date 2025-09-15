@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.event;
 
-import org.opensearch.dataprepper.core.event.EventConfigurationContainer;
-import org.opensearch.dataprepper.core.event.EventFactoryApplicationContextMarker;
-import org.opensearch.dataprepper.core.event.TestEventConfigurationContainer;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class TestEventContext {
