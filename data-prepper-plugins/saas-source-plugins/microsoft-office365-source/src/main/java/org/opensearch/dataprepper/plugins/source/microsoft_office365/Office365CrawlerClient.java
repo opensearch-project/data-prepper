@@ -56,6 +56,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private static final String BUFFER_WRITE_RETRY_SUCCESS = "bufferWriteRetrySuccess";
     private static final String BUFFER_WRITE_RETRY_ATTEMPTS = "bufferWriteRetryAttempts";
     private static final String BUFFER_WRITE_FAILURES = "bufferWriteFailures";
+    private static final String NON_RETRYABLE_ERRORS = "nonRetryableErrors";
     private static final int BUFFER_TIMEOUT_IN_SECONDS = 10;
     private static final String CONTENT_ID = "contentId";
     private static final String CONTENT_URI = "contentUri";
@@ -68,6 +69,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
     private final Counter bufferWriteRetrySuccessCounter;
     private final Counter bufferWriteRetryAttemptsCounter;
     private final Counter bufferWriteFailuresCounter;
+    private final Counter nonRetryableErrorsCounter;
     private ObjectMapper objectMapper;
 
     public Office365CrawlerClient(final Office365Service service,
@@ -84,6 +86,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         this.bufferWriteRetrySuccessCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_SUCCESS);
         this.bufferWriteRetryAttemptsCounter = pluginMetrics.counter(BUFFER_WRITE_RETRY_ATTEMPTS);
         this.bufferWriteFailuresCounter = pluginMetrics.counter(BUFFER_WRITE_FAILURES);
+        this.nonRetryableErrorsCounter = pluginMetrics.counter(NON_RETRYABLE_ERRORS);
     }
 
     @VisibleForTesting
@@ -128,6 +131,7 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                                 throw new RuntimeException("Retryable error processing audit log: " + logId, e);
                             } else {
                                 // TODO: When pipeline DLQ is ready, add this record to DLQ instead of dropping the record
+                                nonRetryableErrorsCounter.increment();
                                 log.error(NOISY, "Non-retryable error - record will be dropped. Error processing audit log: {}", logId, e);
                             }
                         } catch (Exception e) {
