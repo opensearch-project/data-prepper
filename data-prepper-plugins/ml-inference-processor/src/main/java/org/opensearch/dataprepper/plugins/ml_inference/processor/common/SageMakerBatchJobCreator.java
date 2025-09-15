@@ -51,6 +51,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
     // Added batch processing fields
     @Getter
     private final ConcurrentLinkedQueue<Record<Event>> batch_records = new ConcurrentLinkedQueue<>();
+    @Getter
     private final ConcurrentLinkedQueue<Record<Event>> processedBatchRecords = new ConcurrentLinkedQueue<>();
     @Getter
     private final ConcurrentLinkedQueue<RetryRecord> retryQueue = new ConcurrentLinkedQueue<>();
@@ -287,7 +288,7 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
                 expiredRecords.add(retryRecord.getRecord());
                 LOG.debug("Record expired after {} attempts over {} ms",
                         retryRecord.getRetryCount(),
-                        MAX_RETRY_WINDOW_MS);
+                        maxRetryTimeWindow);
                 return true;
             }
             return false;
@@ -312,10 +313,10 @@ public class SageMakerBatchJobCreator extends AbstractBatchJobCreator {
 
     private void handleExpiredRecords(List<Record<Event>> expiredRecords) {
         LOG.warn("{} records expired from retry queue after {} ms timeout",
-                expiredRecords.size(), MAX_RETRY_WINDOW_MS);
+                expiredRecords.size(), maxRetryTimeWindow);
         handleFailure(expiredRecords, processedBatchRecords,
                 new MLBatchJobException(HttpURLConnection.HTTP_BAD_REQUEST,
-                        "Records expired after " + MAX_RETRY_WINDOW_MS/(60*1000) + " minute retry window"),
+                        "Records expired after " + maxRetryTimeWindow/(60*1000) + " minute retry window"),
                 HttpURLConnection.HTTP_BAD_REQUEST);
     }
 

@@ -268,7 +268,7 @@ public class BedrockBatchJobCreator extends AbstractBatchJobCreator {
             String errorMessage = String.format(
                     "Record expired after %d retries over %d minutes",
                     expiredRecord.getRetryCount(),
-                    MAX_RETRY_WINDOW_MS / 60000
+                    maxRetryTimeWindow / 60000
             );
 
             LOG.error(NOISY, "Record expired from throttle queue: {}", errorMessage);

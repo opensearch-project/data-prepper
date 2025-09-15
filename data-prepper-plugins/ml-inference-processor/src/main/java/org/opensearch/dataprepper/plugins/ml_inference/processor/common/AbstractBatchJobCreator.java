@@ -31,7 +31,6 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
     public static final String NUMBER_OF_RECORDS_FAILED_IN_BATCH_JOB = "recordsFailedInBatchJobCreation";
     public static final String NUMBER_OF_RECORDS_SUCCEEDED_IN_BATCH_JOB = "recordsSucceededInBatchJobCreation";
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    protected static final long MAX_RETRY_WINDOW_MS = 600_000; // 10 minutes
     protected static final int TOO_MANY_REQUESTS = 429;
     protected final MLProcessorConfig mlProcessorConfig;
     protected final AwsCredentialsSupplier awsCredentialsSupplier;
@@ -42,6 +41,7 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
     protected final List<String> tagsOnFailure;
     protected final MlCommonRequester mlCommonRequester;
     protected DlqPushHandler dlqPushHandler = null;
+    protected final long maxRetryTimeWindow;
     private static final Aws4Signer signer;
     static {
         signer = Aws4Signer.create();
@@ -61,6 +61,7 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
         this.tagsOnFailure = mlProcessorConfig.getTagsOnFailure();
         this.mlCommonRequester = new MlCommonRequester(signer, mlProcessorConfig, awsCredentialsSupplier);
         this.dlqPushHandler = dlqPushHandler;
+        this.maxRetryTimeWindow = mlProcessorConfig.getRetryTimeWindow().toMillis();
     }
 
     // Add common logic here that both subclasses can share
@@ -133,7 +134,7 @@ public abstract class AbstractBatchJobCreator implements MLBatchJobCreator {
         }
 
         boolean isExpired() {
-            return System.currentTimeMillis() - createdTime > MAX_RETRY_WINDOW_MS;
+            return System.currentTimeMillis() - createdTime > maxRetryTimeWindow;
         }
 
         void incrementRetryCount() {
