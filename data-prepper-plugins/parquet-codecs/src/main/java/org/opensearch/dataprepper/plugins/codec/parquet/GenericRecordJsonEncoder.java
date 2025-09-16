@@ -92,6 +92,9 @@ public class GenericRecordJsonEncoder {
                             }
                         }
                     }
+                } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
+                    serialize(logicalTypeConverter.apply(getField(datum, f.name(), f.pos())), buffer, seenObjects, ((LogicalTypes.Decimal) fieldSchema.getLogicalType()).getScale());
+                    serializedDecimal = true;
                 }
 
                 if (!serializedDecimal) {

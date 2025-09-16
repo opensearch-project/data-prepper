@@ -261,6 +261,46 @@ class GenericRecordJsonEncoderTest {
     }
 
     @Test
+    void serialize_WithNonNullableDecimalLogicalType_UsesScaleFromSchema() {
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": {\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+
+        BigDecimal value = new BigDecimal("12.34").setScale(2);
+        byte[] decimalBytes = value.unscaledValue().toByteArray();
+        record.put("amount", ByteBuffer.wrap(decimalBytes));
+
+        String json = encoder.serialize(record);
+
+        // Should output the scaled decimal number (double form) from schema
+        assertEquals("{\"amount\": 12.34}", json);
+    }
+
+    @Test
+    void serialize_WithDecimalLogicalType_UsesScaleFromSchema_with_scale_three() {
+        Schema decimalSchema = new Schema.Parser().parse(
+                "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
+                        "{\"name\": \"amount\", \"type\": [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":3}]}" +
+                        "] }"
+        );
+
+        GenericRecord record = new GenericData.Record(decimalSchema);
+
+        BigDecimal value = new BigDecimal("12.345").setScale(3);
+        byte[] decimalBytes = value.unscaledValue().toByteArray();
+        record.put("amount", ByteBuffer.wrap(decimalBytes));
+
+        String json = encoder.serialize(record);
+
+        // Should output the scaled decimal number (double form) from schema
+        assertEquals("{\"amount\": 12.345}", json);
+    }
+
+    @Test
     void serialize_WithNullDecimalLogicalType_ReturnsNull() {
         Schema decimalSchema = new Schema.Parser().parse(
                 "{ \"type\": \"record\", \"name\": \"DecimalRecord\", \"fields\": [" +
