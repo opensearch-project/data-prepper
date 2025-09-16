@@ -32,7 +32,7 @@ import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.
 @Named
 public class JiraRestClient extends AtlassianRestClient {
 
-    public static final String REST_API_SEARCH = "rest/api/3/search";
+    public static final String REST_API_SEARCH = "rest/api/3/search/jql";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
     public static final String FIFTY = "50";
     public static final String START_AT = "startAt";
