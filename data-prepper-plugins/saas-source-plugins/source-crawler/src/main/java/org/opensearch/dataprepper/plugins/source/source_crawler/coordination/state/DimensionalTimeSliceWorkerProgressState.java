@@ -17,4 +17,7 @@ public class DimensionalTimeSliceWorkerProgressState implements SaasWorkerProgre
 
     @JsonProperty("dimensionType")
     private String dimensionType;
+
+    @JsonProperty("partitionCreationTime")
+    private Instant partitionCreationTime;
 }

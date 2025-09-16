@@ -32,6 +32,7 @@ public class DimensionalTimeSliceWorkerProgressStateTest {
         assertNull(state.getStartTime());
         assertNull(state.getEndTime());
         assertNull(state.getDimensionType());
+        assertNull(state.getPartitionCreationTime());
     }
 
     @Test
@@ -40,12 +41,14 @@ public class DimensionalTimeSliceWorkerProgressStateTest {
                 "  \"@class\": \"org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.DimensionalTimeSliceWorkerProgressState\",\n" +
                 "  \"startTime\": \"2024-10-20T02:27:15.717Z\",\n" +
                 "  \"endTime\": \"2024-10-20T03:27:15.717Z\",\n" +
+                "  \"partitionCreationTime\": \"2024-11-21T04:29:15.719Z\",\n" +
                 "  \"dimensionType\": \"Exchange\"\n" +
                 "}";
 
         DimensionalTimeSliceWorkerProgressState state = objectMapper.readValue(json, DimensionalTimeSliceWorkerProgressState.class);
         assertEquals(Instant.parse("2024-10-20T02:27:15.717Z"), state.getStartTime());
         assertEquals(Instant.parse("2024-10-20T03:27:15.717Z"), state.getEndTime());
+        assertEquals(Instant.parse("2024-11-21T04:29:15.719Z"), state.getPartitionCreationTime());
         assertEquals("Exchange", state.getDimensionType());
     }
 }

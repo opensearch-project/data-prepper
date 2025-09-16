@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -36,10 +37,14 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSliceWorkerProgressState> {
     private static final Logger log = LoggerFactory.getLogger(DimensionalTimeSliceCrawler.class);
     private static final String DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED = "DimensionalTimeSliceWorkerPartitionsCreated";
+    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
     private static final Duration HOUR_DURATION = Duration.ofHours(1);
 
     private final CrawlerClient client;
     private final Counter partitionsCreatedCounter;
+    private final Timer partitionWaitTimeTimer;
+    private final Timer partitionProcessLatencyTimer;
     private List<String> dimensionTypes;
     private static final String LAST_UPDATED_KEY = "last_updated|";
 
@@ -47,6 +52,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
                                        PluginMetrics pluginMetrics) {
         this.client = client;
         this.partitionsCreatedCounter = pluginMetrics.counter(DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED);
+        this.partitionWaitTimeTimer = pluginMetrics.timer(WORKER_PARTITION_WAIT_TIME);
+        this.partitionProcessLatencyTimer = pluginMetrics.timer(WORKER_PARTITION_PROCESS_LATENCY);
     }
 
     /**
@@ -78,7 +85,8 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
 
     @Override
     public void executePartition(DimensionalTimeSliceWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
-        client.executePartition(state, buffer, acknowledgementSet);
+        partitionWaitTimeTimer.record(Duration.between(state.getPartitionCreationTime(), Instant.now()));
+        partitionProcessLatencyTimer.record(() -> client.executePartition(state, buffer, acknowledgementSet));
     }
 
     private void createPartitionsForDimensionTypes(LeaderPartition leaderPartition,
@@ -149,6 +157,7 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
     void createWorkerPartition(Instant startTime, Instant endTime,
                                String dimensionType, EnhancedSourceCoordinator coordinator) {
         DimensionalTimeSliceWorkerProgressState workerState = new DimensionalTimeSliceWorkerProgressState();
+        workerState.setPartitionCreationTime(Instant.now());
         workerState.setStartTime(startTime);
         workerState.setEndTime(endTime);
         workerState.setDimensionType(dimensionType);

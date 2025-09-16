@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.source_crawler.base;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 
 @ExtendWith(MockitoExtension.class)
 public class DimensionalTimeSliceCrawlerTest {
@@ -49,6 +52,12 @@ public class DimensionalTimeSliceCrawlerTest {
 
     @Mock
     private Counter partitionsCreatedCounter;
+
+    @Mock
+    private Timer partitionWaitTimeTimer;
+
+    @Mock
+    private Timer partitionProcessLatencyTimer;
 
     @Mock
     private EnhancedSourceCoordinator coordinator;
@@ -64,6 +73,8 @@ public class DimensionalTimeSliceCrawlerTest {
     @BeforeEach
     void setUp() {
         when(pluginMetrics.counter(anyString())).thenReturn(partitionsCreatedCounter);
+        when(pluginMetrics.timer("WorkerPartitionWaitTime")).thenReturn(partitionWaitTimeTimer);
+        when(pluginMetrics.timer("WorkerPartitionProcessLatency")).thenReturn(partitionProcessLatencyTimer);
         crawler = new DimensionalTimeSliceCrawler(client, pluginMetrics);
         crawler.initialize(LOG_TYPES);
     }
@@ -144,12 +155,22 @@ public class DimensionalTimeSliceCrawlerTest {
     @Test
     void testExecutePartition() {
         DimensionalTimeSliceWorkerProgressState state = new DimensionalTimeSliceWorkerProgressState();
+        state.setPartitionCreationTime(Instant.now().minusSeconds(1));
         Buffer<Record<Event>> buffer = mock(Buffer.class);
         AcknowledgementSet ackSet = mock(AcknowledgementSet.class);
+
+        doAnswer(invocation -> {
+            Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(partitionProcessLatencyTimer).record(any(Runnable.class));
+        doNothing().when(partitionWaitTimeTimer).record(any(Duration.class));
 
         crawler.executePartition(state, buffer, ackSet);
 
         verify(client).executePartition(eq(state), eq(buffer), eq(ackSet));
+        verify(partitionProcessLatencyTimer).record(any(Runnable.class));
+        verify(partitionWaitTimeTimer).record(any(Duration.class));
     }
 
     @Test
