@@ -54,10 +54,10 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+        if(Objects.isNull(mappingsConfig)){
+            return records;
+        }
         for (final Record<Event> record : records) {
-            if(Objects.isNull(mappingsConfig)){
-                continue;
-            }
             final Event recordEvent = record.getData();
             for (MappingsParameterConfig mappingConfig : mappingsConfig) {
                 try {
