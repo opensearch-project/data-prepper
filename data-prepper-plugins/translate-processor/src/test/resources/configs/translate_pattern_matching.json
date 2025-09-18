@@ -8,8 +8,10 @@
           "regex": {
             "exact": true,
             "patterns": {
-              "^(1[0-9]|20)$": "patternValue1",
-              "^key[0-9]$": "matched_single_digit"
+              "^key[0-4]$": "matched_single_digit",
+              "^key[5-9]$": "matched_single_digit_high",
+              "^key\\d{2}$": "matched_double_digit",
+              "^special_.*$": "matched_special"
             }
           }
         }

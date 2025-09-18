@@ -1,7 +1,7 @@
 {
   "mappings": [
     {
-      "source": "user.%{type}.id",
+      "source": "user.${type}.id",
       "targets": [
         {
           "target": "targetField",

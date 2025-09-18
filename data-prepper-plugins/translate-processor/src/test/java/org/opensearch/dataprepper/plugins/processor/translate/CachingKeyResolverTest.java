@@ -16,11 +16,11 @@ import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +44,7 @@ class CachingKeyResolverTest {
     @BeforeEach
     void setUp() {
         resolver = new CachingKeyResolver(eventKeyFactory);
-        when(eventKeyFactory.createEventKey(anyString())).thenReturn(mockEventKey);
+        lenient().when(eventKeyFactory.createEventKey(anyString())).thenReturn(mockEventKey);
     }
 
     @Test
