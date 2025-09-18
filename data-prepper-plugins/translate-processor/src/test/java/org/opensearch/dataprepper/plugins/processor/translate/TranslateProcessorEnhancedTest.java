@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
@@ -51,6 +53,8 @@ class TranslateProcessorEnhancedTest {
     @Mock
     private RegexParameterConfiguration mockRegexConfig;
 
+    private final EventKeyFactory eventKeyFactory = TestEventKeyFactory.getTestEventFactory();
+
     @BeforeEach
     void setup() {
         lenient().when(mappingsParameterConfig.getSource()).thenReturn("sourceField");
@@ -68,10 +72,10 @@ class TranslateProcessorEnhancedTest {
     @Test
     void test_invalid_source_object_type_throws_exception() {
         lenient().when(mappingsParameterConfig.getSource()).thenReturn(123); // Invalid type
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
         // Exception is caught and logged, record remains unchanged
         assertFalse(record.getData().containsKey("targetField"));
@@ -117,12 +121,12 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.getTranslateWhen()).thenReturn("/sourceField == 'test'");
         lenient().when(expressionEvaluator.evaluateConditional(anyString(), any(Event.class))).thenReturn(true);
         lenient().when(targetsParameterConfig.fetchIndividualMappings()).thenReturn(Map.of("test", "translated"));
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         verify(expressionEvaluator).evaluateConditional("/sourceField == 'test'", record.getData());
     }
 
@@ -130,12 +134,12 @@ class TranslateProcessorEnhancedTest {
     void test_translate_when_condition_false() {
         lenient().when(targetsParameterConfig.getTranslateWhen()).thenReturn("/sourceField == 'other'");
         lenient().when(expressionEvaluator.evaluateConditional(anyString(), any(Event.class))).thenReturn(false);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
@@ -144,10 +148,10 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.getTranslateWhen()).thenReturn("invalid_expression");
         lenient().when(expressionEvaluator.evaluateConditional(anyString(), any(Event.class)))
                 .thenThrow(new RuntimeException("Expression error"));
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
     }
 
@@ -157,13 +161,13 @@ class TranslateProcessorEnhancedTest {
         lenient().when(expressionEvaluator.evaluateConditional(anyString(), any(Event.class))).thenReturn(true);
         lenient().when(targetsParameterConfig.fetchIndividualMappings()).thenReturn(Map.of("test", "translated"));
         lenient().when(mappingsParameterConfig.getSource()).thenReturn("nested/sourceField");
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Map<String, Object> data = Map.of("nested", List.of(Map.of("sourceField", "test")));
         Record<Event> record = buildRecordWithEvent(data);
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         verify(expressionEvaluator, atLeastOnce()).evaluateConditional(anyString(), any(Event.class));
     }
 
@@ -172,25 +176,25 @@ class TranslateProcessorEnhancedTest {
     @Test
     void test_missing_root_field() {
         lenient().when(mappingsParameterConfig.getSource()).thenReturn("missing/sourceField");
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
     @Test
     void test_empty_target_objects_from_path() {
         lenient().when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField");
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Map<String, Object> data = Map.of("collection", Collections.emptyList());
         Record<Event> record = buildRecordWithEvent(data);
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
@@ -202,12 +206,12 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.fetchIndividualMappings()).thenReturn(Collections.emptyMap());
         lenient().when(targetsParameterConfig.fetchRangeMappings()).thenReturn(new LinkedHashMap<>());
         lenient().when(targetsParameterConfig.getDefaultValue()).thenReturn(null);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
@@ -218,12 +222,12 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.fetchCompiledPatterns()).thenReturn(patterns);
         lenient().when(targetsParameterConfig.getRegexParameterConfiguration()).thenReturn(mockRegexConfig);
         lenient().when(mockRegexConfig.getExact()).thenReturn(true);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("validtest");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         // Should handle pattern matching without throwing exception
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
     }
@@ -235,12 +239,12 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.fetchCompiledPatterns()).thenReturn(Collections.emptyMap());
         lenient().when(targetsParameterConfig.getDefaultValue()).thenReturn("default");
         lenient().when(targetsParameterConfig.getTarget()).thenReturn("targetField");
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("not_a_number");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         // Since no mappings match but default is provided, target field should be set with default value
         assertTrue(record.getData().containsKey("targetField"));
         assertEquals("default", record.getData().get("targetField", String.class));
@@ -254,12 +258,12 @@ class TranslateProcessorEnhancedTest {
         lenient().when(targetsParameterConfig.fetchRangeMappings()).thenReturn(new LinkedHashMap<>());
         lenient().when(targetsParameterConfig.fetchCompiledPatterns()).thenReturn(Collections.emptyMap());
         lenient().when(targetsParameterConfig.getDefaultValue()).thenReturn(null);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("no_match");
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
@@ -267,10 +271,10 @@ class TranslateProcessorEnhancedTest {
     void test_type_conversion_failure_handling() {
         lenient().when(targetsParameterConfig.fetchIndividualMappings()).thenReturn(Map.of("test", "invalid_number"));
         lenient().when(targetsParameterConfig.getTargetType()).thenReturn(TargetType.INTEGER);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         // Should handle conversion failure gracefully
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
     }
@@ -296,7 +300,7 @@ class TranslateProcessorEnhancedTest {
         TranslateProcessor processor = createObjectUnderTest();
         ExecutorService executor = Executors.newFixedThreadPool(5);
         List<CompletableFuture<Void>> futures = new ArrayList<>();
-        
+
         for (int i = 0; i < 10; i++) {
             futures.add(CompletableFuture.runAsync(() -> {
                 Record<Event> record = getEvent("test");
@@ -305,7 +309,7 @@ class TranslateProcessorEnhancedTest {
         }
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
         executor.shutdown();
-        
+
         // Should complete without exceptions
         assertTrue(futures.stream().allMatch(f -> f.isDone() && !f.isCompletedExceptionally()));
     }
@@ -314,9 +318,9 @@ class TranslateProcessorEnhancedTest {
     void test_deeply_nested_structure() {
         lenient().when(mappingsParameterConfig.getSource()).thenReturn("level1/level2/level3/sourceField");
         lenient().when(targetsParameterConfig.fetchIndividualMappings()).thenReturn(Map.of("test", "translated"));
-        
+
         TranslateProcessor processor = createObjectUnderTest();
-        
+
         Map<String, Object> deepData = Map.of(
             "level1", List.of(
                 Map.of("level2", List.of(
@@ -326,9 +330,9 @@ class TranslateProcessorEnhancedTest {
                 ))
             )
         );
-        
+
         Record<Event> record = buildRecordWithEvent(deepData);
-        
+
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
     }
 
@@ -337,11 +341,11 @@ class TranslateProcessorEnhancedTest {
         Map<String, Object> data = new HashMap<>();
         data.put("sourceField", null);
         Record<Event> record = buildRecordWithEvent(data);
-        
+
         TranslateProcessor processor = createObjectUnderTest();
-        
+
         processor.doExecute(Collections.singletonList(record));
-        
+
         assertFalse(record.getData().containsKey("targetField"));
     }
 
@@ -349,10 +353,10 @@ class TranslateProcessorEnhancedTest {
     void test_exception_in_mapping_config_processing() {
         lenient().when(mappingsParameterConfig.getTargetsParameterConfigs())
                 .thenThrow(new RuntimeException("Config error"));
-        
+
         TranslateProcessor processor = createObjectUnderTest();
         Record<Event> record = getEvent("test");
-        
+
         // Should handle exception gracefully and continue processing
         assertDoesNotThrow(() -> processor.doExecute(Collections.singletonList(record)));
     }
@@ -360,7 +364,7 @@ class TranslateProcessorEnhancedTest {
     // Helper methods
 
     private TranslateProcessor createObjectUnderTest() {
-        return new TranslateProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        return new TranslateProcessor(pluginMetrics, mockConfig, expressionEvaluator, eventKeyFactory);
     }
 
     private Record<Event> getEvent(Object sourceField) {

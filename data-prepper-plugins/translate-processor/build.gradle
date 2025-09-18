@@ -18,6 +18,7 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:mutate-event-processors')
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-test:test-event')
     implementation libs.commons.lang3
 
     jmh project(':data-prepper-api')

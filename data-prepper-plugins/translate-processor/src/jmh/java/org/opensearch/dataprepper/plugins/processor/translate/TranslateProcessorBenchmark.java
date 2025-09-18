@@ -16,6 +16,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.opensearch.dataprepper.event.TestEventKeyFactory;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -100,7 +101,7 @@ public class TranslateProcessorBenchmark {
         ) throws IOException {
             try (InputStream is = getClass().getResourceAsStream("/jmh/" + configFile)) {
                 TranslateProcessorConfig config = objectMapper.readValue(is, TranslateProcessorConfig.class);
-                return new TranslateProcessor(pluginMetrics, config, expressionEvaluator);
+                return new TranslateProcessor(pluginMetrics, config, expressionEvaluator, TestEventKeyFactory.getTestEventFactory());
             }
         }
     }
