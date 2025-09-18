@@ -26,16 +26,18 @@ import java.net.URI;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.FIELDS_FIELD;
+import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.FIELDS_VALUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
 
 @Slf4j
 @Named
 public class JiraRestClient extends AtlassianRestClient {
 
-    public static final String REST_API_SEARCH = "rest/api/3/search";
+    public static final String REST_API_SEARCH = "rest/api/3/search/jql";
     public static final String REST_API_FETCH_ISSUE = "rest/api/3/issue";
     public static final String FIFTY = "50";
-    public static final String START_AT = "startAt";
+    public static final String NEXT_PAGE_TOKEN = "nextPageToken";
     public static final String MAX_RESULT = "maxResults";
     private static final String TICKET_FETCH_LATENCY_TIMER = "ticketFetchLatency";
     private static final String SEARCH_CALL_LATENCY_TIMER = "searchCallLatency";
@@ -72,16 +74,30 @@ public class JiraRestClient extends AtlassianRestClient {
      * @param startAt the start at
      * @return InputStream input stream
      */
-    public SearchResults getAllIssues(StringBuilder jql, int startAt) {
+    public SearchResults getAllIssues(StringBuilder jql, String nextPageToken) {
 
         String url = authConfig.getUrl() + REST_API_SEARCH;
 
-        URI uri = UriComponentsBuilder.fromHttpUrl(url)
-                .queryParam(MAX_RESULT, FIFTY)
-                .queryParam(START_AT, startAt)
-                .queryParam(JQL_FIELD, jql)
-                .queryParam(EXPAND_FIELD, EXPAND_VALUE)
-                .buildAndExpand().toUri();
+        URI uri;
+
+        if(nextPageToken!= null && !nextPageToken.isBlank() && !nextPageToken.isEmpty()){
+            uri = UriComponentsBuilder.fromHttpUrl(url)
+                    .queryParam(MAX_RESULT, FIFTY)
+                    .queryParam(NEXT_PAGE_TOKEN, nextPageToken)
+                    .queryParam(JQL_FIELD, jql)
+                    .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                    .queryParam(FIELDS_FIELD, FIELDS_VALUE)
+                    .buildAndExpand().toUri();
+        }
+        else{
+            uri = UriComponentsBuilder.fromHttpUrl(url)
+                    .queryParam(MAX_RESULT, FIFTY)
+                    .queryParam(JQL_FIELD, jql)
+                    .queryParam(EXPAND_FIELD, EXPAND_VALUE)
+                    .queryParam(FIELDS_FIELD, FIELDS_VALUE)
+                    .buildAndExpand().toUri();
+        }
+
         return searchCallLatencyTimer.record(
                 () -> {
                     try {
