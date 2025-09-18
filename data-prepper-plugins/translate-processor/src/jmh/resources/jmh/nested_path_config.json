@@ -1,0 +1,19 @@
+{
+  "mappings": [
+    {
+      "source": "parent/items/sourceField",
+      "targets": [
+        {
+          "target": "targetField",
+          "map": {
+            "key0": "value0",
+            "key1": "value1",
+            "key2": "value2",
+            "key3": "value3",
+            "key4": "value4"
+          }
+        }
+      ]
+    }
+  ]
+}
