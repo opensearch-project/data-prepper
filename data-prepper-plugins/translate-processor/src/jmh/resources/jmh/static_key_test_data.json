@@ -1,0 +1,14 @@
+{
+  "testRecords": [
+    {"sourceField": "key0"},
+    {"sourceField": "key1"},
+    {"sourceField": "key2"},
+    {"sourceField": "key3"},
+    {"sourceField": "key4"},
+    {"sourceField": "key0"},
+    {"sourceField": "key1"},
+    {"sourceField": "key2"},
+    {"sourceField": "key3"},
+    {"sourceField": "key4"}
+  ]
+}

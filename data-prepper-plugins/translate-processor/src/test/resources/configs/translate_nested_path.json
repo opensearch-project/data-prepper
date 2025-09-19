@@ -1,0 +1,16 @@
+{
+  "mappings": [
+    {
+      "source": "collection/sourceField",
+      "targets": [
+        {
+          "target": "targetField",
+          "map": {
+            "key1": "mappedValue1",
+            "key2": "mappedValue2"
+          }
+        }
+      ]
+    }
+  ]
+}
