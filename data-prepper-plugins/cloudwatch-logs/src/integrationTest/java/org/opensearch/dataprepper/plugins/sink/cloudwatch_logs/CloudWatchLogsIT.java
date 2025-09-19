@@ -40,6 +40,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.regions.Region;
@@ -50,6 +51,8 @@ import org.junit.jupiter.api.Test;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
@@ -87,6 +90,9 @@ public class CloudWatchLogsIT {
 
     @Mock
     private ThresholdConfig thresholdConfig;
+
+    @Mock
+    private EventHandle eventHandle;
 
     @Mock
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
@@ -127,6 +133,7 @@ public class CloudWatchLogsIT {
         requestsFailedCount = new AtomicInteger(0);
         dlqSuccessCount = new AtomicInteger(0);
         objectMapper = new ObjectMapper();
+        eventHandle = mock(EventHandle.class);
         pluginSetting = mock(PluginSetting.class);
         pluginFactory = mock(PluginFactory.class);
         when(pluginSetting.getPipelineName()).thenReturn("pipeline");
@@ -208,6 +215,7 @@ public class CloudWatchLogsIT {
         when(thresholdConfig.getFlushInterval()).thenReturn(60L);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
+        when(cloudWatchLogsSinkConfig.getWorkers()).thenReturn(3);
     }
 
     private List<String> listObjectsWithPrefix(String bucketName, String prefix) {
@@ -297,7 +305,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
-
+        verify(eventHandle, times(NUM_RECORDS)).release(true);
     }
 
     @Test
@@ -333,6 +341,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(dlqSuccessCount.get(), equalTo(0));
+        verify(eventHandle, times(NUM_RECORDS)).release(true);
 
     }
 
@@ -368,6 +377,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(0));
+        verify(eventHandle, times(NUM_RECORDS)).release(true);
 
     }
 
@@ -423,6 +433,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(1));
+        verify(eventHandle, times(NUM_RECORDS+1)).release(true);
 
     }
 
@@ -461,6 +472,7 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(0));
         assertThat(requestsSuccessCount.get(), equalTo(0));
         assertThat(dlqSuccessCount.get(), equalTo(NUM_RECORDS));
+        verify(eventHandle, times(NUM_RECORDS)).release(true);
 
     }
 
@@ -468,14 +480,20 @@ public class CloudWatchLogsIT {
         final Collection<Record<Event>> recordList = new ArrayList<>();
         List<HashMap> records = generateRecords(numberOfRecords);
         for (int i = 0; i < numberOfRecords; i++) {
-            final Event event = JacksonLog.builder().withData(records.get(i)).build();
+            final Event event = JacksonLog.builder()
+                                .withData(records.get(i))
+                                .withEventHandle(eventHandle)
+                                .build();
             recordList.add(new Record<>(event));
         }
         return recordList;
     }
 
     private Record<Event> getLargeRecord(int size) {
-        final Event event = JacksonLog.builder().withData(Map.of("key", RandomStringUtils.randomAlphabetic(size))).build();
+        final Event event = JacksonLog.builder()
+                            .withData(Map.of("key", RandomStringUtils.randomAlphabetic(size)))
+                            .withEventHandle(eventHandle)
+                            .build();
         return new Record<>(event);
     }
 
