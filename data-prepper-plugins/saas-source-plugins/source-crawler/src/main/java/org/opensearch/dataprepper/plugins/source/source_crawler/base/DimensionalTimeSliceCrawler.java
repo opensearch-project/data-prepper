@@ -36,6 +36,9 @@ import static org.opensearch.dataprepper.plugins.source.source_crawler.coordinat
 @Named
 public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSliceWorkerProgressState> {
     private static final Logger log = LoggerFactory.getLogger(DimensionalTimeSliceCrawler.class);
+    // delay five minutes for partition creation on latest time duration to ensure the newly generated events are queryable
+    // In general, newly generated events become queryable after 30 ~ 120 second
+    protected static final long WAIT_SECONDS_BEFORE_PARTITION_CREATION = 300;
     private static final String DIMENSIONAL_TIME_SLICE_WORKER_PARTITIONS_CREATED = "DimensionalTimeSliceWorkerPartitionsCreated";
     private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
     private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
@@ -73,10 +76,9 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
      */
     @Override
     public Instant crawl(LeaderPartition leaderPartition, EnhancedSourceCoordinator coordinator) {
-        Instant latestModifiedTime = Instant.now();
         double startCount = partitionsCreatedCounter.count();
 
-        createPartitionsForDimensionTypes(leaderPartition, coordinator, latestModifiedTime, dimensionTypes);
+        Instant latestModifiedTime = createPartitions(leaderPartition, coordinator);
 
         double partitionsInThisCrawl = partitionsCreatedCounter.count() - startCount;
         log.info("Total partitions created in this crawl: {}", partitionsInThisCrawl);
@@ -89,19 +91,15 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
         partitionProcessLatencyTimer.record(() -> client.executePartition(state, buffer, acknowledgementSet));
     }
 
-    private void createPartitionsForDimensionTypes(LeaderPartition leaderPartition,
-                                             EnhancedSourceCoordinator coordinator,
-                                             Instant latestModifiedTime,
-                                             List<String> dimensionTypes) {
+    private Instant createPartitions(LeaderPartition leaderPartition,
+                                     EnhancedSourceCoordinator coordinator) {
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
 
         if (leaderProgressState.getRemainingHours() == 0) {
-            createPartitionForIncrementalSync(leaderPartition, coordinator,
-                    latestModifiedTime, dimensionTypes);
+            return createPartitionsForIncrementalSync(leaderPartition, coordinator);
         } else {
-            createPartitionForHistoricalPull(leaderPartition, coordinator,
-                    latestModifiedTime, dimensionTypes);
+            return createPartitionsForHistoricalPull(leaderPartition, coordinator);
         }
     }
 
@@ -109,62 +107,69 @@ public class DimensionalTimeSliceCrawler implements Crawler<DimensionalTimeSlice
      * Creates partitions for historical data pull. Creates hourly partitions
      * for each dimension type, working backwards from the current time.
      */
-    private void createPartitionForHistoricalPull(LeaderPartition leaderPartition,
-                                                  EnhancedSourceCoordinator coordinator,
-                                                  Instant latestModifiedTime,
-                                                  List<String> dimensionTypes) {
+    private Instant createPartitionsForHistoricalPull(LeaderPartition leaderPartition,
+                                                      EnhancedSourceCoordinator coordinator) {
         DimensionalTimeSliceLeaderProgressState leaderProgressState =
                 (DimensionalTimeSliceLeaderProgressState) leaderPartition.getProgressState().get();
         int remainingHours = leaderProgressState.getRemainingHours();
         Instant initialTime = leaderProgressState.getLastPollTime();
-        Instant nowUtc = initialTime.truncatedTo(ChronoUnit.HOURS);
-        for (int i = remainingHours; i > 0; i-- ) {
-            Instant startTime = nowUtc.minus(Duration.ofHours(i));;
+        Instant latestHour = initialTime.truncatedTo(ChronoUnit.HOURS);
+        for (int i = remainingHours; i > 1; i--) {
+            Instant startTime = latestHour.minus(Duration.ofHours(i));
             Instant endTime = startTime.plus(HOUR_DURATION);
 
-            for (String dimensionType : dimensionTypes) {
-                createWorkerPartition(startTime, endTime, dimensionType, coordinator);
-            }
+            createWorkerPartitionsForDimensionTypes(startTime, endTime, coordinator);
         }
 
-        // Create final partitions from last hour to now
-        for (String dimensionType : dimensionTypes) {
-            createWorkerPartition(nowUtc, latestModifiedTime, dimensionType, coordinator);
+        Instant latestModifiedTime = initialTime.minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
+        if (latestModifiedTime.isAfter(latestHour)) {
+            // if checkpointing time is after the latest hour, creat one partition for last hour
+            // and one from latest hour to checkpointing time
+            createWorkerPartitionsForDimensionTypes(latestHour.minus(Duration.ofHours(1)), latestHour, coordinator);
+            createWorkerPartitionsForDimensionTypes(latestHour, latestModifiedTime, coordinator);
+        } else {
+            // if checkpointing time is not later than the latest hour, create one partition from 1 hour ago to checkpointing time
+            createWorkerPartitionsForDimensionTypes(latestHour.minus(Duration.ofHours(1)), latestModifiedTime, coordinator);
         }
 
         updateLeaderProgressState(leaderPartition, 0, latestModifiedTime, coordinator);
+
+        return latestModifiedTime;
     }
 
     /**
      * Creates partitions for incremental sync. Creates one partition per dimension type
      * from the last poll time to current time.
      */
-    private void createPartitionForIncrementalSync(LeaderPartition leaderPartition,
-                                                   EnhancedSourceCoordinator coordinator,
-                                                   Instant latestModifiedTime,
-                                                   List<String> dimensionTypes) {
+    private Instant createPartitionsForIncrementalSync(LeaderPartition leaderPartition,
+                                                    EnhancedSourceCoordinator coordinator) {
+        Instant latestModifiedTime = Instant.now().minusSeconds(WAIT_SECONDS_BEFORE_PARTITION_CREATION);
         LeaderProgressState leaderProgressState = leaderPartition.getProgressState().get();
         Instant lastPollTime = leaderProgressState.getLastPollTime();
 
-        // Create one partition from lastPollTime to latestModifiedTime for each type
-        for (String dimensionType : dimensionTypes) {
-            createWorkerPartition(lastPollTime, latestModifiedTime, dimensionType, coordinator);
+        if (lastPollTime.isBefore(latestModifiedTime)) {
+            // Create one partition from lastPollTime to latestModifiedTime for each type
+            createWorkerPartitionsForDimensionTypes(lastPollTime, latestModifiedTime, coordinator);
+
+            updateLeaderProgressState(leaderPartition, 0, latestModifiedTime, coordinator);
+            return latestModifiedTime;
         }
 
-        updateLeaderProgressState(leaderPartition, 0, latestModifiedTime, coordinator);
+        return lastPollTime;
     }
 
-    void createWorkerPartition(Instant startTime, Instant endTime,
-                               String dimensionType, EnhancedSourceCoordinator coordinator) {
-        DimensionalTimeSliceWorkerProgressState workerState = new DimensionalTimeSliceWorkerProgressState();
-        workerState.setPartitionCreationTime(Instant.now());
-        workerState.setStartTime(startTime);
-        workerState.setEndTime(endTime);
-        workerState.setDimensionType(dimensionType);
+    void createWorkerPartitionsForDimensionTypes(Instant startTime, Instant endTime, EnhancedSourceCoordinator coordinator) {
+        for (String dimensionType : dimensionTypes) {
+            DimensionalTimeSliceWorkerProgressState workerState = new DimensionalTimeSliceWorkerProgressState();
+            workerState.setPartitionCreationTime(Instant.now());
+            workerState.setStartTime(startTime);
+            workerState.setEndTime(endTime);
+            workerState.setDimensionType(dimensionType);
 
-        SaasSourcePartition partition = new SaasSourcePartition(workerState, LAST_UPDATED_KEY + UUID.randomUUID());
-        coordinator.createPartition(partition);
-        partitionsCreatedCounter.increment();
+            SaasSourcePartition partition = new SaasSourcePartition(workerState, LAST_UPDATED_KEY + UUID.randomUUID());
+            coordinator.createPartition(partition);
+            partitionsCreatedCounter.increment();
+        }
     }
 
     /**
