@@ -249,11 +249,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     openSearchClientRefresher = new OpenSearchClientRefresher(
             pluginMetrics, connectionConfiguration, clientFunction);
 
-    if (queryExecutorService != null) {
-      existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
-      queryExecutorService.submit(existingDocumentQueryManager);
-    }
-
     pluginConfigObservable.addPluginConfigObserver(
             newOpenSearchSinkConfig -> openSearchClientRefresher.update((OpenSearchSinkConfig) newOpenSearchSinkConfig));
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
@@ -303,6 +298,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             pipeline,
             PLUGIN_NAME,
             openSearchSinkConfig.getIndexConfiguration().getQueryOnBulkFailures() ? existingDocumentQueryManager : null);
+
+    if (queryExecutorService != null) {
+      existingDocumentQueryManager = new ExistingDocumentQueryManager(openSearchSinkConfig.getIndexConfiguration(), pluginMetrics, openSearchClient);
+      queryExecutorService.submit(existingDocumentQueryManager);
+    }
 
     this.initialized = true;
     LOG.info("Initialized OpenSearch sink");
@@ -649,7 +649,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super.shutdown();
     closeFiles();
     openSearchClient.shutdown();
-    if (queryExecutorService != null) {
+    if (queryExecutorService != null && existingDocumentQueryManager != null) {
       existingDocumentQueryManager.stop();
       queryExecutorService.shutdown();
     }
