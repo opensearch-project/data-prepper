@@ -57,6 +57,6 @@ class Office365SourceConfigTest {
         Office365SourceConfig config = createConfig();
 
         assertFalse(config.isAcknowledgments());
-        assertEquals(1, config.getNumberOfWorkers());
+        assertEquals(7, config.getNumberOfWorkers());
     }
 }
