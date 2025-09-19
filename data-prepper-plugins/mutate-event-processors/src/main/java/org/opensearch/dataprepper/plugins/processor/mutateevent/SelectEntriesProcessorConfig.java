@@ -6,24 +6,37 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.annotations.ExampleValues;
 import org.opensearch.dataprepper.model.annotations.ExampleValues.Example;
 
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 @JsonPropertyOrder
 @JsonClassDescription("The <code>select_entries</code> processor selects entries from an event.")
 public class SelectEntriesProcessorConfig {
-    @NotEmpty
-    @NotNull
+
     @JsonProperty("include_keys")
     @JsonPropertyDescription("A list of keys to be selected from an event.")
     private List<String> includeKeys;
+
+    @JsonProperty("include_keys_regex")
+    @JsonPropertyDescription("A list of regex patterns to match keys be selected from an event.")
+    private List<String> includeKeysRegex;
+
+    @JsonIgnore
+    private List<Pattern> includeKeysRegexPatterns;
+
+    // The processor is implemented to support this, but can be made configurable when there is a feature request
+    @JsonIgnore
+    private String includeKeysRegexPointer;
 
     @JsonProperty("select_when")
     @JsonPropertyDescription("A <a href=\"https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/\">conditional expression</a>, " +
@@ -38,8 +51,34 @@ public class SelectEntriesProcessorConfig {
         return includeKeys;
     }
 
+    public List<Pattern> getIncludeKeysRegex() {
+        return includeKeysRegexPatterns;
+    }
+
+    public String getIncludeKeysRegexPointer() {
+        return includeKeysRegexPointer;
+    }
+
     public String getSelectWhen() {
         return selectWhen;
+    }
+
+    @AssertTrue(message = "At least one of include_keys and include_keys_regex is required.")
+    boolean isValidIncludeKeys() {
+        return (includeKeys != null && !includeKeys.isEmpty()) || (includeKeysRegex != null && !includeKeysRegex.isEmpty());
+    }
+
+    @AssertTrue(message = "Invalid regex pattern found in include_keys_regex.")
+    boolean isValidIncludeKeysRegex() {
+        if (includeKeysRegex != null && !includeKeysRegex.isEmpty()) {
+            try {
+                includeKeysRegexPatterns = includeKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+            } catch (final PatternSyntaxException e) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
