@@ -49,7 +49,7 @@ public class Office365Source extends CrawlerSourcePlugin {
     private final Office365AuthenticationInterface office365AuthProvider;
     private final Office365Service office365Service;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
-    private static final int OFFICE365_LOOKBACK_HOURS = 7 * 24;
+    private static final int OFFICE365_LOOKBACK_HOURS = 0;
 
     @DataPrepperPluginConstructor
     public Office365Source(final PluginMetrics pluginMetrics,
