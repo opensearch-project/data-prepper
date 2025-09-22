@@ -35,7 +35,7 @@ import static org.mockito.Mockito.mock;
 @State(Scope.Benchmark)
 @Fork(2)
 @Warmup(iterations = 1, time = 2)
-@Measurement(iterations = 3, time = 5)
+@Measurement(iterations = 5, time = 10)
 public class TranslateProcessorBenchmark {
 
     @State(Scope.Benchmark)
