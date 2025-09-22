@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anEmptyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -195,6 +199,40 @@ class NdjsonOutputCodecTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void writer_write_with_empty_values_writes_each_empty_event(final int numberOfEvents) throws IOException {
+        final NdjsonOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final OutputCodec.Writer writer = objectUnderTest.createWriter(outputStream, null, codecContext);
+
+        IntStream.range(0, numberOfEvents)
+                .mapToObj(eventMap -> eventFactory.eventBuilder(EventBuilder.class).withData(Collections.emptyMap()).build())
+                .forEach(event -> {
+                    try {
+                        writer.writeEvent(event);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+        objectUnderTest.complete(outputStream);
+
+        final String jsonLinesCombined = new String(outputStream.toByteArray());
+
+        final String[] jsonLines = jsonLinesCombined.split("\n");
+
+        assertThat(jsonLines.length, equalTo(numberOfEvents));
+
+        for (int i = 0; i < numberOfEvents; i++) {
+            final String jsonLine = jsonLines[i];
+            final Map<?, ?> serializedMap = OBJECT_MAPPER.readValue(jsonLine, Map.class);
+
+            assertThat(serializedMap, notNullValue());
+            assertThat(serializedMap, is(anEmptyMap()));
+        }
+    }
 
     private static Map<String, Object> generateEventMap() {
         final Map<String, Object> jsonObject = new LinkedHashMap<>();
