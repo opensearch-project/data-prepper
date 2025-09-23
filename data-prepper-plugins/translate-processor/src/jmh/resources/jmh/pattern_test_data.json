@@ -1,0 +1,20 @@
+{
+  "testRecords": [
+    {"sourceField": "key0"},
+    {"sourceField": "key1"},
+    {"sourceField": "key2"},
+    {"sourceField": "key3"},
+    {"sourceField": "key4"},
+    {"sourceField": "key5"},
+    {"sourceField": "key6"},
+    {"sourceField": "key7"},
+    {"sourceField": "key10"},
+    {"sourceField": "key11"},
+    {"sourceField": "special_case1"},
+    {"sourceField": "special_case2"},
+    {"sourceField": "key2"},
+    {"sourceField": "key5"},
+    {"sourceField": "key11"},
+    {"sourceField": "special_case1"}
+  ]
+}

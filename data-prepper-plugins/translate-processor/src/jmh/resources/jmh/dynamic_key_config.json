@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    {
+      "source": "%{type}.%{value}",
+      "targets": [
+        {
+          "target": "targetField",
+          "map": {
+            "type0.key0": "value0",
+            "type0.key1": "value1",
+            "type1.key0": "value2",
+            "type1.key1": "value3",
+            "type2.key0": "value4",
+            "type2.key1": "value5"
+          }
+        }
+      ]
+    }
+  ]
+}

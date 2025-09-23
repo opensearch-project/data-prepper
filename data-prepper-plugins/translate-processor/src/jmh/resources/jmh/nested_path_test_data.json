@@ -1,0 +1,40 @@
+{
+  "testRecords": [
+    {
+      "parent": {
+        "items": [
+          {"sourceField": "key0"},
+          {"sourceField": "key1"},
+          {"sourceField": "key2"}
+        ]
+      }
+    },
+    {
+      "parent": {
+        "items": [
+          {"sourceField": "key2"},
+          {"sourceField": "key3"},
+          {"sourceField": "key4"}
+        ]
+      }
+    },
+    {
+      "parent": {
+        "items": [
+          {"sourceField": "key0"},
+          {"sourceField": "key2"},
+          {"sourceField": "key4"}
+        ]
+      }
+    },
+    {
+      "parent": {
+        "items": [
+          {"sourceField": "key1"},
+          {"sourceField": "key3"},
+          {"sourceField": "key0"}
+        ]
+      }
+    }
+  ]
+}

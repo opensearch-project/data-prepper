@@ -8,12 +8,12 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventKey;
+import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
@@ -34,30 +34,39 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 
 @DataPrepperPlugin(name = "translate", pluginType = Processor.class, pluginConfigurationType = TranslateProcessorConfig.class)
 public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(TranslateProcessor.class);
     private final ExpressionEvaluator expressionEvaluator;
     private final List<MappingsParameterConfig> mappingsConfig;
-    private final JacksonEvent.Builder eventBuilder= JacksonEvent.builder();
+    private final JacksonEvent.Builder eventBuilder = JacksonEvent.builder();
     private final JsonExtractor jsonExtractor = new JsonExtractor();
+    private final KeyResolver keyResolver;
 
     @DataPrepperPluginConstructor
-    public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
+    public TranslateProcessor(
+            final PluginMetrics pluginMetrics,
+            final TranslateProcessorConfig translateProcessorConfig,
+            final ExpressionEvaluator expressionEvaluator,
+            final EventKeyFactory eventKeyFactory) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
-        mappingsConfig = translateProcessorConfig.getCombinedMappingsConfigs();
+        this.mappingsConfig = translateProcessorConfig.getCombinedMappingsConfigs();
+        this.keyResolver = new CachingKeyResolver(eventKeyFactory);
         Optional.ofNullable(mappingsConfig)
                 .ifPresent(configs -> configs.forEach(MappingsParameterConfig::parseMappings));
     }
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+        if(Objects.isNull(mappingsConfig)){
+            return records;
+        }
         for (final Record<Event> record : records) {
-            if(Objects.isNull(mappingsConfig)){
-                continue;
-            }
             final Event recordEvent = record.getData();
             for (MappingsParameterConfig mappingConfig : mappingsConfig) {
                 try {
@@ -112,14 +121,15 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
 
         String rootField = jsonExtractor.getRootField(commonPath);
-        if (!recordEvent.containsKey(rootField)) {
+        EventKey rootKey = keyResolver.resolveKey(rootField, recordEvent, expressionEvaluator);
+        if (rootKey == null || !recordEvent.containsKey(rootKey)) {
             return;
         }
-        Map<String, Object> recordObject =  recordEvent.toMap();
+        Map<String, Object> recordObject = recordEvent.toMap();
         List<Object> targetObjects = jsonExtractor.getObjectFromPath(commonPath, recordObject);
         if(!targetObjects.isEmpty()) {
             targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, sourceObject, targetConfig));
-            recordEvent.put(rootField,recordObject.get(rootField));
+            recordEvent.put(rootKey, recordObject.get(rootField));
         }
     }
 
@@ -128,7 +138,9 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         if (recordObject instanceof Map) {
             sourceValue = Optional.ofNullable(((Map<?, ?>) recordObject).get(sourceKey));
         } else {
-            sourceValue = Optional.ofNullable(((Event) recordObject).get(sourceKey, String.class));
+            Event event = (Event) recordObject;
+            EventKey key = keyResolver.resolveKey(sourceKey, event, expressionEvaluator);
+            sourceValue = key != null ? Optional.ofNullable(event.get(key, String.class)) : Optional.empty();
         }
         return sourceValue.map(Object::toString).orElse(null);
     }
@@ -238,13 +250,15 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
             recordMap.put(targetField, getTargetValue(sourceObject, targetValues, targetMappings));
         } else if (recordObject instanceof Event) {
             Event event = (Event) recordObject;
-            event.put(targetField, getTargetValue(sourceObject, targetValues, targetMappings));
+            EventKey targetKey = keyResolver.resolveKey(targetField, event, expressionEvaluator);
+            if (targetKey != null) {
+                event.put(targetKey, getTargetValue(sourceObject, targetValues, targetMappings));
+            }
         }
     }
 
     @Override
     public void prepareForShutdown() {
-
     }
 
     @Override
@@ -254,6 +268,5 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @Override
     public void shutdown() {
-
     }
 }
