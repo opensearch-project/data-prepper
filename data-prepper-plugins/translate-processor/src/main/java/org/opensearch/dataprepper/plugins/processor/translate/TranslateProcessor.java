@@ -8,8 +8,6 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -36,6 +34,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 
 @DataPrepperPlugin(name = "translate", pluginType = Processor.class, pluginConfigurationType = TranslateProcessorConfig.class)
 public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -48,7 +49,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @DataPrepperPluginConstructor
     public TranslateProcessor(
-            PluginMetrics pluginMetrics,
+            final PluginMetrics pluginMetrics,
             final TranslateProcessorConfig translateProcessorConfig,
             final ExpressionEvaluator expressionEvaluator,
             final EventKeyFactory eventKeyFactory) {
