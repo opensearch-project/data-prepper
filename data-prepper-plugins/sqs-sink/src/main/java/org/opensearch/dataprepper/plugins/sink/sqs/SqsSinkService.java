@@ -30,11 +30,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
+import org.opensearch.dataprepper.common.sink.RetrySinkOutputStrategy;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
-public class SqsSinkService extends SqsSinkExecutor {
+public class SqsSinkService extends RetrySinkOutputStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(SqsSinkService.class);
     public static final int MAX_BYTES_IN_BATCH = 256*1024;
     public static final int MAX_EVENT_SIZE = 256*1024;
@@ -48,7 +48,6 @@ public class SqsSinkService extends SqsSinkExecutor {
     private final boolean isDynamicDeDupId;
     private final boolean isDynamicQueueUrl;
     private final ExpressionEvaluator expressionEvaluator;
-    private final ReentrantLock reentrantLock;
     private final SqsThresholdConfig thresholdConfig;
     private final SqsSinkConfig sqsSinkConfig;
     private final SinkContext sinkContext;
@@ -75,7 +74,6 @@ public class SqsSinkService extends SqsSinkExecutor {
         this.thresholdConfig = sqsSinkConfig.getThresholdConfig();
         this.codec = codec;
         this.sqsSinkConfig = sqsSinkConfig;
-        reentrantLock = new ReentrantLock();
         this.sinkMetrics = new SqsSinkMetrics(pluginMetrics);
 
         queueUrl = sqsSinkConfig.getQueueUrl();
@@ -124,7 +122,7 @@ public class SqsSinkService extends SqsSinkExecutor {
     }
 
     @Override
-    public void pushFailedObjectsToDlq(Object object) {
+    public void addFailedObjectsToDlqList(Object object) {
         List<SqsSinkBatch> failedBatches = (List<SqsSinkBatch>) object;
         for (SqsSinkBatch failedBatch: failedBatches) {
             for (Map.Entry<String, SqsSinkBatchEntry> entry: failedBatch.getEntries().entrySet()) {
@@ -140,7 +138,7 @@ public class SqsSinkService extends SqsSinkExecutor {
     }
 
     @Override
-    public boolean willExceedMaxBatchSize(final Event event, final long estimatedSize) throws Exception {
+    public boolean willExceedMaxRequestSizeBytes(final Event event, final long estimatedSize) throws Exception {
         String qUrl = getQueueUrl(event, false);
         if (qUrl == null)
             return false;
@@ -306,16 +304,6 @@ public class SqsSinkService extends SqsSinkExecutor {
         List<EventHandle> eventHandles = new ArrayList<>();
         eventHandles.add(event.getEventHandle());
         addMessageToDLQ(event.toJsonString(), eventHandles, ex.getMessage());
-    }
-
-    @Override
-    public void lock() {
-        reentrantLock.lock();
-    }
-
-    @Override
-    public void unlock() {
-        reentrantLock.unlock();
     }
 
     void output(Collection<Record<Event>> records) {
