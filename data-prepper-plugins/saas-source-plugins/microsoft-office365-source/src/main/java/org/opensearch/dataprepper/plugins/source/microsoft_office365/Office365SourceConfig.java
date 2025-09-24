@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSour
  */
 @Getter
 public class Office365SourceConfig implements CrawlerSourceConfig {
-    private static final int NUMBER_OF_WORKERS = 7;
+    private static final int NUMBER_OF_WORKERS = 2;
 
     /**
      * The Office 365 tenant ID that uniquely identifies the Microsoft Entra organization.
