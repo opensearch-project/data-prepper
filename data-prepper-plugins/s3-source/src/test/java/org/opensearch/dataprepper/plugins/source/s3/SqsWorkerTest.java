@@ -86,6 +86,7 @@ import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_FAILED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_MESSAGE_DELAY_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.s3.SqsWorker.SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME;
 
 @ExtendWith(MockitoExtension.class)
@@ -97,6 +98,7 @@ class SqsWorkerTest {
     private PluginMetrics pluginMetrics;
     private Backoff backoff;
     private Counter sqsMessagesReceivedCounter;
+    private Counter sqsReceiveMessageFailedCounter;
     private Counter sqsMessagesDeletedCounter;
     private Counter sqsMessagesFailedCounter;
     private Counter sqsMessagesDeleteFailedCounter;
@@ -132,6 +134,7 @@ class SqsWorkerTest {
         sqsMessagesDeletedCounter = mock(Counter.class);
         sqsMessagesFailedCounter = mock(Counter.class);
         sqsMessagesDeleteFailedCounter = mock(Counter.class);
+        sqsReceiveMessageFailedCounter = mock(Counter.class);
         s3ObjectsEmptyCounter = mock(Counter.class);
         sqsMessageDelayTimer = mock(Timer.class);
         when(pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(sqsMessagesReceivedCounter);
@@ -141,6 +144,7 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(S3_OBJECTS_EMPTY_METRIC_NAME)).thenReturn(s3ObjectsEmptyCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
         when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(mock(Counter.class));
+        when(pluginMetrics.counter(SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsReceiveMessageFailedCounter);
         when(pluginMetrics.counter(SQS_VISIBILITY_TIMEOUT_CHANGED_COUNT_METRIC_NAME)).thenReturn(sqsVisibilityTimeoutChangedCount);
     }
 
@@ -531,6 +535,7 @@ class SqsWorkerTest {
         final int messagesProcessed = createObjectUnderTest().processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsReceiveMessageFailedCounter).increment();
     }
 
     @Test
