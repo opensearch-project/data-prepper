@@ -9,10 +9,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 
@@ -36,7 +39,7 @@ class ObjectKeyTest {
     private Event event;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
     }
 
@@ -85,4 +88,19 @@ class ObjectKeyTest {
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".json"));
     }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void test_buildingPathPrefix_with_null_formatString_result(final String pathPrefix) {
+        when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix);
+        Event event = JacksonEvent.builder()
+                .withData("{}")
+                .withEventType("event")
+                .build();
+        Assertions.assertDoesNotThrow(() -> {
+            String pathPrefixResult = ObjectKey.buildingPathPrefix(s3SinkConfig, event, expressionEvaluator);
+            Assertions.assertEquals("", pathPrefixResult);
+        });
+    }
+
 }
