@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -136,6 +137,129 @@ public class SelectEntriesProcessorTests {
 
         assertThat(editedRecords.get(0).getData().get("nested/key1", String.class), equalTo(value1));
         assertThat(editedRecords.get(0).getData().get("nested/nested2/key2", String.class), equalTo(value2));
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithIncludeKeysRegex() {
+        when(mockConfig.getIncludeKeys()).thenReturn(null);
+        when(mockConfig.getIncludeKeysRegex()).thenReturn(List.of(Pattern.compile("include.*"), Pattern.compile("other.*")));
+        when(mockConfig.getSelectWhen()).thenReturn(null);
+        final String value1 = UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final SelectEntriesProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("include-key", value1);
+        record.getData().put("include-key2", value2);
+        record.getData().put("other-key1", value2);
+        record.getData().put("exclude-key", value1);
+        record.getData().put("exclude-key2", value2);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("other-key1"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key2"), is(false));
+
+        assertThat(editedRecords.get(0).getData().get("include-key", String.class), equalTo(value1));
+        assertThat(editedRecords.get(0).getData().get("include-key2", String.class), equalTo(value2));
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithIncludeKeys_and_IncludeKeysRegex() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("exclude-key", "message"));
+        when(mockConfig.getIncludeKeysRegex()).thenReturn(List.of(Pattern.compile("include.*")));
+        when(mockConfig.getSelectWhen()).thenReturn(null);
+        final String value1 = UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final SelectEntriesProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("include-key", value1);
+        record.getData().put("include-key2", value2);
+        record.getData().put("exclude-key", value1);
+        record.getData().put("exclude-key2", value2);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key2"), is(false));
+
+        assertThat(editedRecords.get(0).getData().get("include-key", String.class), equalTo(value1));
+        assertThat(editedRecords.get(0).getData().get("include-key2", String.class), equalTo(value2));
+        assertThat(editedRecords.get(0).getData().get("exclude-key", String.class), equalTo(value1));
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithIncludeKeysRegexPointerThatDoesNotExist() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("message"));
+        when(mockConfig.getIncludeKeysRegex()).thenReturn(List.of(Pattern.compile("include.*")));
+        when(mockConfig.getSelectWhen()).thenReturn(null);
+        when(mockConfig.getIncludeKeysRegexPointer()).thenReturn("/nested");
+        final String value1 = UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final SelectEntriesProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("include-key", value1);
+        record.getData().put("include-key2", value2);
+        record.getData().put("exclude-key", value1);
+        record.getData().put("exclude-key2", value2);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("include-key2"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key2"), is(false));
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithIncludeKeysRegexPointerThatDoesExist() {
+        when(mockConfig.getIncludeKeys()).thenReturn(Collections.emptyList());
+        when(mockConfig.getIncludeKeysRegex()).thenReturn(List.of(Pattern.compile("include.*")));
+        when(mockConfig.getSelectWhen()).thenReturn(null);
+        when(mockConfig.getIncludeKeysRegexPointer()).thenReturn("/nested");
+        final String value1 = UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final SelectEntriesProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final Map<String, Object> nestedData = new HashMap<>();
+        nestedData.put("include-key", value1);
+        nestedData.put("include-key2", value2);
+        nestedData.put("exclude-key", value1);
+        nestedData.put("exclude-key2", value2);
+
+        record.getData().put("/nested", nestedData);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/include-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/include-key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/exclude-key"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/exclude-key2"), is(false));
+    }
+
+    @Test
+    public void testSelectEntriesProcessorWithIncludeKeysRegexPointerThatDoesExist_and_include_keys() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of("message", "/nested/exclude-key"));
+        when(mockConfig.getIncludeKeysRegex()).thenReturn(List.of(Pattern.compile("include.*")));
+        when(mockConfig.getSelectWhen()).thenReturn(null);
+        when(mockConfig.getIncludeKeysRegexPointer()).thenReturn("/nested");
+        final String value1 = UUID.randomUUID().toString();
+        final String value2 = UUID.randomUUID().toString();
+        final SelectEntriesProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final Map<String, Object> nestedData = new HashMap<>();
+        nestedData.put("include-key", value1);
+        nestedData.put("include-key2", value2);
+        nestedData.put("exclude-key", value1);
+        nestedData.put("exclude-key2", value2);
+
+        record.getData().put("/nested", nestedData);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/include-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/include-key2"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("/nested/exclude-key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("exclude-key2"), is(false));
     }
 
 
