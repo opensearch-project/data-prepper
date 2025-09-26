@@ -14,6 +14,7 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:buffer-common')
     implementation project(path: ':data-prepper-plugins:common')
+    implementation project(path: ':data-prepper-plugins:aws-plugin')
 
     // Microsoft Graph API dependencies
     implementation 'com.microsoft.graph:microsoft-graph:5.65.0'

@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.RetryHandler;
+import org.opensearch.dataprepper.plugins.aws.AwsPluginConfigVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Map;
@@ -38,19 +40,18 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             "&scope=%s";
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String clientId;
-    private final String clientSecret;
     private final String tenantId;
+    private final Office365SourceConfig office365SourceConfig;
+    private String accessToken;
     private final Object lock = new Object();
+    private final Object accessTokenFetchLock = new Object();
 
     @Getter
-    private String accessToken;
     private Instant expireTime = Instant.ofEpochMilli(0);
 
     public Office365AuthenticationProvider(Office365SourceConfig config) {
-        this.clientId = config.getAuthenticationConfiguration().getOauth2().getClientId();
-        this.clientSecret = config.getAuthenticationConfiguration().getOauth2().getClientSecret();
         this.tenantId = config.getTenantId();
+        this.office365SourceConfig = config;
     }
 
     @Override
@@ -72,10 +73,13 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, clientId, clientSecret, MANAGEMENT_API_SCOPE);
+            Oauth2Config oAuthConfig = office365SourceConfig.getAuthenticationConfiguration().getOauth2();
+            ((AwsPluginConfigVariable) oAuthConfig.getClientId()).refreshAndRetrieveValue();
+            ((AwsPluginConfigVariable) oAuthConfig.getClientSecret()).refreshAndRetrieveValue();
+            String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, (String) oAuthConfig.getClientId().getValue(), (String) oAuthConfig.getClientSecret().getValue(), MANAGEMENT_API_SCOPE);
 
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-            String tokenEndpoint = String.format(TOKEN_URL, tenantId);
+            String tokenEndpoint = String.format(TOKEN_URL, office365SourceConfig.getTenantId());
 
             ResponseEntity<Map> response = RetryHandler.executeWithRetry(
                     () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
@@ -94,5 +98,17 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             this.expireTime = Instant.now().plusSeconds(expiresIn);
             log.info("Received new access token. Expires in {} seconds", expiresIn);
         }
+    }
+
+    @Override
+    public String getAccessToken() {
+        if (!StringUtils.hasLength(accessToken)) {
+            synchronized (accessTokenFetchLock) {
+                if (!StringUtils.hasLength(accessToken)) {
+                    initCredentials();
+                }
+            }
+        }
+        return accessToken;
     }
 }
