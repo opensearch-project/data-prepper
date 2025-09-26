@@ -71,9 +71,6 @@ class Office365SourceTest {
     private AuthenticationConfiguration authenticationConfiguration;
 
     @Mock
-    private AuthenticationConfiguration.OAuth2Credentials oauth2Credentials;
-
-    @Mock
     private EnhancedSourceCoordinator sourceCoordinator;
 
     @Mock

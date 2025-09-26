@@ -52,6 +52,12 @@ public class AwsPluginConfigVariable implements PluginConfigVariable {
         secretsSupplier.refresh(secretId);
     }
 
+    @Override
+    public void refreshAndRetrieveValue() {
+        secretsSupplier.refresh(secretId);
+        this.secretValue = secretsSupplier.retrieveValue(secretId, secretKey);
+    }
+
 
     @Override
     public boolean isUpdatable() {

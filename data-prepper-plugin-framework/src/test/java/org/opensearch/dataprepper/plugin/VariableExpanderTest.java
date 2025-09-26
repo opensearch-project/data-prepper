@@ -168,6 +168,10 @@ class VariableExpanderTest {
             }
 
             @Override
+            public void refreshAndRetrieveValue() {
+            }
+
+            @Override
             public boolean isUpdatable() {
                 return true;
             }

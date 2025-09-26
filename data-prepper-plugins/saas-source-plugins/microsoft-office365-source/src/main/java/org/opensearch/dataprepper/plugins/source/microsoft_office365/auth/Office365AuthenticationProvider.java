@@ -12,6 +12,7 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.RetryHandler;
+import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -19,10 +20,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * OAuth2 implementation of the Office365AuthProvider.
@@ -37,20 +45,22 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             "&client_secret=%s" +
             "&scope=%s";
 
+    private static final long RETRY_INTERVAL_MINUTES = 10;
+    
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String clientId;
-    private final String clientSecret;
     private final String tenantId;
+    private final Office365SourceConfig office365SourceConfig;
+    private String accessToken;
     private final Object lock = new Object();
+    private final Object accessTokenFetchLock = new Object();
+    private final AtomicBoolean isCredentialsInitialized = new AtomicBoolean(false);
 
     @Getter
-    private String accessToken;
     private Instant expireTime = Instant.ofEpochMilli(0);
 
     public Office365AuthenticationProvider(Office365SourceConfig config) {
-        this.clientId = config.getAuthenticationConfiguration().getOauth2().getClientId();
-        this.clientSecret = config.getAuthenticationConfiguration().getOauth2().getClientSecret();
         this.tenantId = config.getTenantId();
+        this.office365SourceConfig = config;
     }
 
     @Override
@@ -61,7 +71,33 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     @Override
     public void initCredentials() {
         log.info("Initializing credentials.");
-        renewCredentials();
+        
+        // Keep trying until credentials are successfully initialized
+        while (!isCredentialsInitialized.get()) {
+            try {
+                renewCredentials();
+                isCredentialsInitialized.set(true);
+                log.info("Successfully initialized Office 365 credentials.");
+            } catch (HttpClientErrorException | HttpServerErrorException | SecurityException ex) {
+                log.error("Failed to initialize Office 365 credentials due to HTTP error: {}. Will retry in {} minutes.", 
+                         ex.getMessage(), RETRY_INTERVAL_MINUTES, ex);
+                // Wait before retrying
+                try {
+                    Thread.sleep(RETRY_INTERVAL_MINUTES * 60 * 1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while waiting to retry credential initialization", ie);
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if credentials have been successfully initialized.
+     * @return true if credentials are initialized, false otherwise
+     */
+    public boolean isCredentialsInitialized() {
+        return isCredentialsInitialized.get();
     }
 
     @Override
@@ -72,10 +108,13 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, clientId, clientSecret, MANAGEMENT_API_SCOPE);
+            Oauth2Config oAuthConfig = office365SourceConfig.getAuthenticationConfiguration().getOauth2();
+            oAuthConfig.getClientId().refreshAndRetrieveValue();
+            oAuthConfig.getClientSecret().refreshAndRetrieveValue();
+            String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, (String) oAuthConfig.getClientId().getValue(), (String) oAuthConfig.getClientSecret().getValue(), MANAGEMENT_API_SCOPE);
 
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-            String tokenEndpoint = String.format(TOKEN_URL, tenantId);
+            String tokenEndpoint = String.format(TOKEN_URL, office365SourceConfig.getTenantId());
 
             ResponseEntity<Map> response = RetryHandler.executeWithRetry(
                     () -> restTemplate.postForEntity(tokenEndpoint, entity, Map.class),
@@ -94,5 +133,17 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             this.expireTime = Instant.now().plusSeconds(expiresIn);
             log.info("Received new access token. Expires in {} seconds", expiresIn);
         }
+    }
+
+    @Override
+    public String getAccessToken() {
+        if (!StringUtils.hasLength(accessToken)) {
+            synchronized (accessTokenFetchLock) {
+                if (!StringUtils.hasLength(accessToken)) {
+                    initCredentials();
+                }
+            }
+        }
+        return accessToken;
     }
 }
