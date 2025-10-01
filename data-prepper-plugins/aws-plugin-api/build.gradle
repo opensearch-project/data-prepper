@@ -3,7 +3,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:sts'
-    implementation 'org.apache.httpcomponents.client5:httpclient5:5.5'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.5.1'
     implementation 'com.fasterxml.jackson.core:jackson-annotations' 
     testImplementation libs.commons.lang3
     testImplementation 'org.hibernate.validator:hibernate-validator:8.0.2.Final'
