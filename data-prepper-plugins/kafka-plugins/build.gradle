@@ -64,8 +64,8 @@ dependencies {
     testImplementation project(':data-prepper-event')
     testImplementation project(':data-prepper-plugin-framework')
     testImplementation project(':data-prepper-pipeline-parser')
-    testImplementation 'org.apache.kafka:kafka_2.13:3.6.1'
-    testImplementation 'org.apache.kafka:kafka_2.13:3.6.1:test'
+    testImplementation 'org.apache.kafka:kafka_2.13:4.1.0'
+    testImplementation 'org.apache.kafka:kafka_2.13:4.1.0:test'
     testImplementation 'org.apache.curator:curator-test:5.7.1'
     testImplementation('com.kjetland:mbknor-jackson-jsonschema_2.13:1.0.39')
     testImplementation project(':data-prepper-plugins:otel-metrics-source')
