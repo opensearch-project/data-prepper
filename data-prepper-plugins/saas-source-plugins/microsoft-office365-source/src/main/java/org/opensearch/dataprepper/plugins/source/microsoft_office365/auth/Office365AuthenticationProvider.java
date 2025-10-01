@@ -20,16 +20,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -44,8 +39,6 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             "&client_id=%s" +
             "&client_secret=%s" +
             "&scope=%s";
-
-    private static final long RETRY_INTERVAL_MINUTES = 10;
     
     private final RestTemplate restTemplate = new RestTemplate();
     private final String tenantId;
@@ -53,7 +46,7 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     private String accessToken;
     private final Object lock = new Object();
     private final Object accessTokenFetchLock = new Object();
-    private final AtomicBoolean isCredentialsInitialized = new AtomicBoolean(false);
+    private final AtomicBoolean credentialsInitialized = new AtomicBoolean(false);
 
     @Getter
     private Instant expireTime = Instant.ofEpochMilli(0);
@@ -66,38 +59,6 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
     @Override
     public String getTenantId() {
         return this.tenantId;
-    }
-
-    @Override
-    public void initCredentials() {
-        log.info("Initializing credentials.");
-        
-        // Keep trying until credentials are successfully initialized
-        while (!isCredentialsInitialized.get()) {
-            try {
-                renewCredentials();
-                isCredentialsInitialized.set(true);
-                log.info("Successfully initialized Office 365 credentials.");
-            } catch (HttpClientErrorException | HttpServerErrorException | SecurityException ex) {
-                log.error("Failed to initialize Office 365 credentials due to HTTP error: {}. Will retry in {} minutes.", 
-                         ex.getMessage(), RETRY_INTERVAL_MINUTES, ex);
-                // Wait before retrying
-                try {
-                    Thread.sleep(RETRY_INTERVAL_MINUTES * 60 * 1000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while waiting to retry credential initialization", ie);
-                }
-            }
-        }
-    }
-
-    /**
-     * Checks if credentials have been successfully initialized.
-     * @return true if credentials are initialized, false otherwise
-     */
-    public boolean isCredentialsInitialized() {
-        return isCredentialsInitialized.get();
     }
 
     @Override
@@ -145,5 +106,15 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             }
         }
         return accessToken;
+    }
+
+    @Override
+    public boolean isCredentialsInitialized() {
+        return credentialsInitialized.get();
+    }
+
+    @Override
+    public void setCredentialsInitialized(boolean initialized) {
+        credentialsInitialized.set(initialized);
     }
 }

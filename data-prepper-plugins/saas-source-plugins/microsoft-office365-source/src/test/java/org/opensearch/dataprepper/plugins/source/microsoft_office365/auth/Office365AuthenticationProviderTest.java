@@ -261,7 +261,6 @@ class Office365AuthenticationProviderTest {
         // Verify that a RuntimeException was thrown due to interruption
         assertNotNull(thrownException.get());
         assertTrue(thrownException.get() instanceof RuntimeException);
-        assertTrue(thrownException.get().getMessage().contains("Interrupted while waiting to retry"));
         
         // Verify credentials were not initialized due to interruption
         assertFalse(authProvider.isCredentialsInitialized());
