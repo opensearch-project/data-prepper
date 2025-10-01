@@ -16,14 +16,14 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.opensearch.dataprepper.plugin.ClasspathPluginProvider;
 import org.opensearch.dataprepper.plugin.PluginProvider;
 
-public class PluginProviderParameterResolver implements ParameterResolver {
+class PluginProviderParameterResolver implements ParameterResolver {
     @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
+    public boolean supportsParameter(final ParameterContext parameterContext, final ExtensionContext extensionContext) throws ParameterResolutionException {
         return PluginProvider.class.equals(parameterContext.getParameter().getType());
     }
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
+    public Object resolveParameter(final ParameterContext parameterContext, final ExtensionContext extensionContext) throws ParameterResolutionException {
         return new ClasspathPluginProvider();
     }
 }
