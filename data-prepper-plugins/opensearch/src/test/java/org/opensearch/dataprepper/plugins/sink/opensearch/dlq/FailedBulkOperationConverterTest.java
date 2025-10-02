@@ -9,6 +9,7 @@ import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.rest.RestStatus;
@@ -36,6 +37,8 @@ public class FailedBulkOperationConverterTest {
     private String errorReason;
     private Throwable failure;
     private String failureMessage;
+
+    private Event event;
 
     private FailedBulkOperationConverter converter;
 
@@ -88,6 +91,21 @@ public class FailedBulkOperationConverterTest {
         final DlqObject result = converter.convertToDlqObject(testData);
 
         validateResponse(result, errorReason);
+    }
+
+    @Test
+    public void testConvertToDlqObjectWithEvent() {
+
+        final FailedBulkOperation testData = FailedBulkOperation.builder()
+                .withBulkOperation(new BulkOperationWrapper(bulkOperation, event, null, null))
+                .withBulkResponseItem(bulkResponseItem)
+                .withFailure(failure)
+                .build();
+
+        final DlqObject result = converter.convertToDlqObject(testData);
+
+        validateResponse(result, errorReason);
+        assertThat(result.getEvent(), equalTo(event));
     }
 
     @Test

@@ -9,6 +9,7 @@ package org.opensearch.dataprepper.model.failures;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.time.Instant;
@@ -42,14 +43,14 @@ public class DlqObject {
 
     private final String timestamp;
 
+    // DLQ object is created either with EventHandles or event.
     @JsonIgnore
-    private final EventHandle eventHandle;
-
+    private final Event event;
     @JsonIgnore
     private final List<EventHandle> eventHandles;
 
     private DlqObject(final String pluginId, final String pluginName, final String pipelineName,
-                      final String timestamp, final Object failedData, final List<EventHandle> eventHandles) {
+                      final String timestamp, final Object failedData, final List<EventHandle> eventHandles, final Event event) {
 
         checkNotNull(pluginId, "pluginId cannot be null");
         checkArgument(!pluginId.isEmpty(), "pluginId cannot be an empty string");
@@ -58,13 +59,14 @@ public class DlqObject {
         checkNotNull(pipelineName, "pipelineName cannot be null");
         checkArgument(!pipelineName.isEmpty(), "pipelineName cannot be an empty string");
         checkNotNull(failedData, "failedData cannot be null");
+        checkArgument((eventHandles == null || event == null), "Only one of eventhandles and event should be non-null");
 
         this.pluginId = pluginId;
         this.pluginName = pluginName;
         this.pipelineName = pipelineName;
         this.failedData = failedData;
         this.eventHandles = eventHandles;
-        this.eventHandle = null;
+        this.event = event;
 
         this.timestamp = StringUtils.isEmpty(timestamp) ? FORMATTER.format(Instant.now()) : timestamp;
     }
@@ -89,17 +91,29 @@ public class DlqObject {
         return timestamp;
     }
 
+    public Event getEvent() {
+        return event;
+    }
+
     public List<EventHandle> getEventHandles() {
         return eventHandles;
     }
 
     public void releaseEventHandle(boolean result) {
-        if (eventHandles != null && eventHandles.size() == 1) {
+        if (event != null) {
+            event.getEventHandle().release(result);
+        } else if (eventHandles != null && eventHandles.size() == 1) {
             eventHandles.get(0).release(result);
         }
     }
 
     public void releaseEventHandles(boolean result) {
+        if (eventHandles == null) {
+            if (event != null) {
+                event.getEventHandle().release(result);
+            }
+            return;
+        }
         for (final EventHandle eventHandle: eventHandles) {
             eventHandle.release(result);
         }
@@ -111,11 +125,12 @@ public class DlqObject {
         if (o == null || getClass() != o.getClass()) return false;
         final DlqObject that = (DlqObject) o;
         return Objects.equals(failedData, that.getFailedData())
-            && Objects.equals(pluginId, that.pluginId)
-            && Objects.equals(pluginName, that.pluginName)
-            && Objects.equals(pipelineName, that.pipelineName)
-            && Objects.equals(eventHandles, that.eventHandles)
-            && Objects.equals(timestamp, that.getTimestamp());
+                && Objects.equals(pluginId, that.pluginId)
+                && Objects.equals(pluginName, that.pluginName)
+                && Objects.equals(pipelineName, that.pipelineName)
+                && Objects.equals(eventHandles, that.eventHandles)
+                && Objects.equals(event, that.event)
+                && Objects.equals(timestamp, that.getTimestamp());
     }
 
     @Override
@@ -137,6 +152,18 @@ public class DlqObject {
     public static DlqObject createDlqObject(PluginSetting pluginSetting, List<EventHandle> eventHandles, Object failedData) {
         return DlqObject.builder()
                 .withEventHandles(eventHandles)
+                .withEvent(null)
+                .withFailedData(failedData)
+                .withPluginName(pluginSetting.getName())
+                .withPipelineName(pluginSetting.getPipelineName())
+                .withPluginId(pluginSetting.getName())
+                .build();
+    }
+
+    public static DlqObject createDlqObject(PluginSetting pluginSetting, Event event, Object failedData) {
+        return DlqObject.builder()
+                .withEventHandles(null)
+                .withEvent(event)
                 .withFailedData(failedData)
                 .withPluginName(pluginSetting.getName())
                 .withPipelineName(pluginSetting.getPipelineName())
@@ -155,6 +182,7 @@ public class DlqObject {
         private String pipelineName;
         private Object failedData;
         private List<EventHandle> eventHandles;
+        private Event event;
 
         private String timestamp;
 
@@ -188,6 +216,10 @@ public class DlqObject {
             return this;
         }
 
+        public Builder withEvent(final Event event) {
+            this.event = event;
+            return this;
+        }
         public Builder withEventHandle(final EventHandle eventHandle) {
             this.eventHandles = new ArrayList<>();
             this.eventHandles.add(eventHandle);
@@ -200,7 +232,7 @@ public class DlqObject {
         }
 
         public DlqObject build() {
-            return new DlqObject(this.pluginId, this.pluginName, this.pipelineName, this.timestamp, this.failedData, this.eventHandles);
+            return new DlqObject(this.pluginId, this.pluginName, this.pipelineName, this.timestamp, this.failedData, this.eventHandles, this.event);
         }
 
     }
