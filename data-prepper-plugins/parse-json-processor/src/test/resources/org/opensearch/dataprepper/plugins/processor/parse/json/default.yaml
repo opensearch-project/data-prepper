@@ -1,0 +1,7 @@
+test-pipeline:
+  source:
+    unused:
+  processor:
+    - parse_json:
+  sink:
+    - unused:
