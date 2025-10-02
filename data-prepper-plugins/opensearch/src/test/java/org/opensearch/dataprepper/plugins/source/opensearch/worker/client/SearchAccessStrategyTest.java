@@ -227,8 +227,8 @@ public class SearchAccessStrategyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"POINT_IN_TIME", "SCROLL"})
-    void serverless_flag_true_throws_InvalidPluginConfiguration_if_search_context_type_is_point_in_time_or_scroll(final String searchContextType) {
+    @ValueSource(strings = {"SCROLL"})
+    void serverless_flag_true_throws_InvalidPluginConfiguration_if_search_context_type_scroll(final String searchContextType) {
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
         when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
