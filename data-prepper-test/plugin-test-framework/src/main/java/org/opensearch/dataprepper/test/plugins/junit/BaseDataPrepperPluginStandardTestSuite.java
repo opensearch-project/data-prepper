@@ -11,7 +11,6 @@ package org.opensearch.dataprepper.test.plugins.junit;
 
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.opensearch.dataprepper.plugin.PluginProvider;
 
 import java.util.stream.Stream;
@@ -22,7 +21,6 @@ import java.util.stream.Stream;
  *
  * @since 2.13
  */
-@ExtendWith(DataPrepperPluginTestFrameworkExtension.class)
 public class BaseDataPrepperPluginStandardTestSuite {
     @TestFactory
     Stream<DynamicTest> standardDataPrepperPluginTests(

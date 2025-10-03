@@ -22,6 +22,7 @@ import java.util.Set;
 /**
  * A JUnit extension for using the Data Prepper plugin test framework.
  */
+@Deprecated
 public class DataPrepperPluginTestFrameworkExtension implements ParameterResolver {
     private static final Set<Class<?>> SUPPORTED_CLASSES = Set.of(
             DataPrepperPluginTestContext.class,

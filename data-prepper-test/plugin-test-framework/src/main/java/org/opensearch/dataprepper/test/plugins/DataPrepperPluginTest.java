@@ -9,6 +9,8 @@
 
 package org.opensearch.dataprepper.test.plugins;
 
+import org.opensearch.dataprepper.test.plugins.junit.DataPrepperPluginTestFramework;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -21,6 +23,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@DataPrepperPluginTestFramework
 public @interface DataPrepperPluginTest {
     /**
      * Provides the name of the plugin.
