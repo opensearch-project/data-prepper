@@ -81,8 +81,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -589,7 +591,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     if (getFailurePipeline() != null) {
       List<Record<Event>> records = new ArrayList<>();
       for (DlqObject dlqObject : dlqObjects) {
-        if (dlqObject.getEvent() != null) {
+        Event event = dlqObject.getEvent();
+
+        if (event != null) {
+          Map<String, Object> failureMetadata = new HashMap<>();
+          failureMetadata.put("pluginId", dlqObject.getPluginId());
+          failureMetadata.put("pluginaName", dlqObject.getPluginName());
+          failureMetadata.put("pipelineName", dlqObject.getPipelineName());
+          failureMetadata.put("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage());
+          failureMetadata.put("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus());
+          failureMetadata.put("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex());
+          failureMetadata.put("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
+          event.put("_failure_metadata", failureMetadata);
           records.add(new Record<>(dlqObject.getEvent()));
         }
       }
