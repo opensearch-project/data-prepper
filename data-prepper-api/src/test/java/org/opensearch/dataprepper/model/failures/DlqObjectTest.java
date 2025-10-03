@@ -34,7 +34,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 
 public class DlqObjectTest {
 
@@ -280,7 +284,7 @@ public class DlqObjectTest {
                     .build();
             assertThat(testObject.getEvent(), equalTo(event));
             testObject.releaseEventHandle(true);
-            verify(eventHandle).release(any(Boolean.class));
+            verify(eventHandle, times(0)).release(any(Boolean.class));
         }
 
 

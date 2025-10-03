@@ -115,7 +115,8 @@ public class DlqObject {
     public void releaseEventHandles(boolean result) {
         if (eventHandles == null) {
             if (event != null) {
-                event.getEventHandle().release(result);
+                // This should not happen. DLQ objects with event should be sent to DLQ pipeline and should not be released.
+                LOG.warn(NOISY, "Attempted to release DLQObject with event");
             }
             return;
         }
