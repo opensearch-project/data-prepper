@@ -14,6 +14,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import java.time.Duration;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 /**
  * Generic authentication interface for SaaS source plugins.
  * Provides common authentication functionality including credential initialization and renewal.
@@ -22,12 +26,12 @@ public interface AuthenticationInterface {
     Logger log = LoggerFactory.getLogger(AuthenticationInterface.class);
 
     /**
-     * Gets the retry interval in minutes for credential initialization.
+     * Gets the retry interval for credential initialization.
      * This method can be overridden by implementing classes to customize the retry interval.
-     * @return the retry interval in minutes (default is 10 minutes)
+     * @return the retry interval (default is 10 minutes)
      */
-    default long getRetryIntervalMinutes() {
-        return 10;
+    default Duration getRetryInterval() {
+        return Duration.ofMinutes(10);
     }
 
     /**
@@ -43,13 +47,16 @@ public interface AuthenticationInterface {
                 log.info("Credentials initialized successfully");
                 break;
             } catch (HttpClientErrorException | HttpServerErrorException | SecurityException ex) {
-                log.error("Failed to initialize credentials, retrying in {} minute(s)...", getRetryIntervalMinutes(), ex);
-                try {
-                    Thread.sleep(getRetryIntervalMinutes() * 60 * 1000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Credential initialization interrupted", ie);
-                }
+                log.error(NOISY, "Failed to initialize credentials, retrying in {} min. Reason for failure: {}", getRetryInterval().toMinutes(), ex.getMessage());
+            } catch (Exception ex) {
+                log.error(NOISY, "Failed to initialize credentials due to unexpected error, retrying in {} min. Reason for failure:", getRetryInterval().toMinutes(), ex);
+            }
+            // Sleep and retry
+            try {
+                Thread.sleep(getRetryInterval().toMillis());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Credential initialization interrupted", ie);
             }
         }
     }

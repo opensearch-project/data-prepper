@@ -37,11 +37,6 @@ public interface PluginConfigVariable {
     void refresh();
 
     /**
-     * Refresh the secret value and updates the object's secretValue
-     */
-    void refreshAndRetrieveValue();
-
-    /**
      * Returns if the variable is updatable.
      *
      * @return true if this variable is updatable, false otherwise

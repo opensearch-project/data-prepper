@@ -9,8 +9,6 @@
 
 package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
-import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;

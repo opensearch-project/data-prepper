@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -15,27 +16,27 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,205 +65,204 @@ class Office365AuthenticationProviderTest {
 
     @BeforeEach
     void setUp() throws NoSuchFieldException, IllegalAccessException {
-        // Use lenient mocks to avoid UnnecessaryStubbingException
-        lenient().when(config.getAuthenticationConfiguration()).thenReturn(authConfig);
-        lenient().when(authConfig.getOauth2()).thenReturn(oAuth2Config);
-        lenient().when(oAuth2Config.getClientId()).thenReturn(clientIdVariable);
-        lenient().when(oAuth2Config.getClientSecret()).thenReturn(clientSecretVariable);
-        lenient().when(clientIdVariable.getValue()).thenReturn("testClientId");
-        lenient().when(clientSecretVariable.getValue()).thenReturn("testClientSecret");
-        lenient().when(config.getTenantId()).thenReturn("testTenantId");
-
         authProvider = new Office365AuthenticationProvider(config);
         ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "restTemplate", restTemplate);
     }
 
-    @Test
-    void testCredentialRetrieval() throws NoSuchFieldException, IllegalAccessException {
-        mockSuccessfulTokenResponse();
+    @Nested
+    class WithAuthMocks {
+        
+        @BeforeEach
+        void setupAuthMocks() {
+            when(config.getAuthenticationConfiguration()).thenReturn(authConfig);
+            when(authConfig.getOauth2()).thenReturn(oAuth2Config);
+            when(oAuth2Config.getClientId()).thenReturn(clientIdVariable);
+            when(oAuth2Config.getClientSecret()).thenReturn(clientSecretVariable);
+            when(clientIdVariable.getValue()).thenReturn("testClientId");
+            when(clientSecretVariable.getValue()).thenReturn("testClientSecret");
+            when(config.getTenantId()).thenReturn("testTenantId");
+        }
 
-        // Test init
-        authProvider.initCredentials();
-        assertEquals("testAccessToken", authProvider.getAccessToken());
+        @Test
+        void testCredentialRetrieval() throws NoSuchFieldException, IllegalAccessException {
+            mockSuccessfulTokenResponse();
 
-        // Verify that refreshAndRetrieveValue was called on both config variables
-        verify(clientIdVariable).refreshAndRetrieveValue();
-        verify(clientSecretVariable).refreshAndRetrieveValue();
+            // Test init
+            authProvider.initCredentials();
+            assertEquals("testAccessToken", authProvider.getAccessToken());
 
-        // Clear the token and test renew directly
-        ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
-        authProvider.renewCredentials();
-        assertEquals("testAccessToken", authProvider.getAccessToken());
-    }
+            verify(clientIdVariable).refresh();
+            verify(clientSecretVariable).refresh();
 
-    @Test
-    void testRenewCredentialsWithRetry() {
-        // Mock a failure followed by a success
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
-                .thenReturn(createSuccessfulTokenResponse());
+            ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
+            authProvider.renewCredentials();
+            assertEquals("testAccessToken", authProvider.getAccessToken());
+        }
 
-        authProvider.renewCredentials();
+        @Test
+        void testGetAccessTokenWithLazyInitialization() throws NoSuchFieldException, IllegalAccessException {
+            mockSuccessfulTokenResponse();
 
-        assertEquals("testAccessToken", authProvider.getAccessToken());
-        verify(restTemplate, times(2)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
-    }
+            // Ensure access token is null initially
+            ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
 
-    @Test
-    void testRenewCredentialsWithPermanentFailure() {
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+            // Call getAccessToken which should trigger initialization
+            String token = authProvider.getAccessToken();
 
-        assertThrows(RuntimeException.class, () -> authProvider.renewCredentials());
-    }
+            assertEquals("testAccessToken", token);
+            verify(clientIdVariable).refresh();
+            verify(clientSecretVariable).refresh();
+        }
 
-    @Test
-    void testRenewCredentialsWithInvalidResponse() {
-        // Mock response without access_token
-        Map<String, Object> tokenResponse = new HashMap<>();
-        tokenResponse.put("expires_in", 3600);
-        ResponseEntity<Map> responseEntity = new ResponseEntity<>(tokenResponse, HttpStatus.OK);
+        @Test
+        void testConcurrentAccessTokenInitialization() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+            mockSuccessfulTokenResponse();
 
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenReturn(responseEntity);
+            // Ensure access token is null initially
+            ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> authProvider.renewCredentials());
-        assertEquals("Invalid token response: missing access_token", exception.getMessage());
-    }
+            int threadCount = 10;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            String[] results = new String[threadCount];
 
-    @Test
-    void testGetAccessTokenWithLazyInitialization() throws NoSuchFieldException, IllegalAccessException {
-        mockSuccessfulTokenResponse();
+            // Start multiple threads trying to get access token simultaneously
+            for (int i = 0; i < threadCount; i++) {
+                final int index = i;
+                executor.submit(() -> {
+                    try {
+                        results[index] = authProvider.getAccessToken();
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
 
-        // Ensure access token is null initially
-        ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
+            // Wait for all threads to complete
+            assertTrue(latch.await(5, TimeUnit.SECONDS));
+            executor.shutdown();
 
-        // Call getAccessToken which should trigger initialization
-        String token = authProvider.getAccessToken();
+            // Verify we have the expected number of results
+            assertEquals(threadCount, results.length);
+            
+            // Verify all threads got the same token
+            for (String result : results) {
+                assertEquals("testAccessToken", result);
+            }
 
-        assertEquals("testAccessToken", token);
-        verify(clientIdVariable).refreshAndRetrieveValue();
-        verify(clientSecretVariable).refreshAndRetrieveValue();
-    }
+            // Verify initCredentials was called only once due to double-checked locking
+            verify(clientIdVariable, times(1)).refresh();
+            verify(clientSecretVariable, times(1)).refresh();
+        }
 
-    @Test
-    void testConcurrentAccessTokenInitialization() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
-        mockSuccessfulTokenResponse();
+        @Test
+        void testIsCredentialsInitializedReturnsTrueAfterSuccessfulInit() {
+            mockSuccessfulTokenResponse();
 
-        // Ensure access token is null initially
-        ReflectivelySetField.setField(Office365AuthenticationProvider.class, authProvider, "accessToken", null);
+            // Initialize credentials
+            authProvider.initCredentials();
 
-        int threadCount = 10;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
-        String[] results = new String[threadCount];
+            // Should return true after successful initialization
+            assertTrue(authProvider.isCredentialsInitialized());
+        }
 
-        // Start multiple threads trying to get access token simultaneously
-        for (int i = 0; i < threadCount; i++) {
-            final int index = i;
-            executor.submit(() -> {
+        @Test
+        void testRenewCredentialsWithRetry() {
+            // Mock a failure followed by a success
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+                    .thenReturn(createSuccessfulTokenResponse());
+
+            authProvider.renewCredentials();
+
+            assertEquals("testAccessToken", authProvider.getAccessToken());
+            verify(restTemplate, times(2)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
+        }
+
+        @Test
+        void testRenewCredentialsWithPermanentFailure() {
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+
+            assertThrows(RuntimeException.class, () -> authProvider.renewCredentials());
+        }
+
+        @Test
+        void testRenewCredentialsWithInvalidResponse() {
+            // Mock response without access_token
+            Map<String, Object> tokenResponse = new HashMap<>();
+            tokenResponse.put("expires_in", 3600);
+            ResponseEntity<Map> responseEntity = new ResponseEntity<>(tokenResponse, HttpStatus.OK);
+
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenReturn(responseEntity);
+
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> authProvider.renewCredentials());
+            assertEquals("Invalid token response: missing access_token", exception.getMessage());
+        }
+
+        @Test
+        void testInitCredentialsBlocksUntilSuccessfulInitialization() throws InterruptedException {
+            // Mock failures within RetryHandler followed by success in next renewCredentials call
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
+                    .thenThrow(new RuntimeException())
+                    .thenReturn(createSuccessfulTokenResponse());
+
+            // Start initialization in a separate thread
+            Thread initThread = new Thread(() -> authProvider.initCredentials());
+            initThread.start();
+
+            await().atMost(java.time.Duration.ofSeconds(10))
+                    .untilAsserted(() -> {
+                        // Verify that multiple REST calls were made
+                        verify(restTemplate, atLeast(2)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
+                    });
+
+            // Wait for thread to complete
+            initThread.join(2000);
+
+            assertEquals("testAccessToken", authProvider.getAccessToken());
+            assertTrue(authProvider.isCredentialsInitialized());
+        }
+
+        @Test
+        void testInitCredentialsHandlesInterruptedException() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+            when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
+                    .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+            AtomicReference<Exception> thrownException = new AtomicReference<>();
+            
+            Thread initThread = new Thread(() -> {
                 try {
-                    results[index] = authProvider.getAccessToken();
-                } finally {
-                    latch.countDown();
+                    authProvider.initCredentials();
+                } catch (Exception e) {
+                    thrownException.set(e);
                 }
             });
+
+            initThread.start();
+            
+            // Give the thread a moment to start and enter the retry loop
+            Thread.sleep(100);
+            
+            // Interrupt the thread while it's sleeping
+            initThread.interrupt();
+            initThread.join(1000); // Wait for thread to finish
+
+            // Verify that a RuntimeException was thrown due to interruption
+            assertNotNull(thrownException.get());
+            assertThat(thrownException.get(), instanceOf(RuntimeException.class));
+            
+            // Verify credentials were not initialized due to interruption
+            assertFalse(authProvider.isCredentialsInitialized());
         }
-
-        // Wait for all threads to complete
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-        executor.shutdown();
-
-        // Verify all threads got the same token
-        for (String result : results) {
-            assertEquals("testAccessToken", result);
-        }
-
-        // Verify initCredentials was called only once due to double-checked locking
-        verify(clientIdVariable, times(1)).refreshAndRetrieveValue();
-        verify(clientSecretVariable, times(1)).refreshAndRetrieveValue();
     }
 
     @Test
     void testIsCredentialsInitializedReturnsFalseInitially() {
         // Credentials should not be initialized initially
-        assertFalse(authProvider.isCredentialsInitialized());
-    }
-
-    @Test
-    void testIsCredentialsInitializedReturnsTrueAfterSuccessfulInit() {
-        mockSuccessfulTokenResponse();
-
-        // Initialize credentials
-        authProvider.initCredentials();
-
-        // Should return true after successful initialization
-        assertTrue(authProvider.isCredentialsInitialized());
-    }
-
-    @Test
-    void testInitCredentialsBlocksUntilSuccessfulInitialization() throws InterruptedException {
-        // Mock multiple failures followed by success
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST))
-                .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR))
-                .thenReturn(createSuccessfulTokenResponse());
-
-        // Use a separate thread to test the retry behavior
-        AtomicReference<Exception> thrownException = new AtomicReference<>();
-        
-        Thread initThread = new Thread(() -> {
-            try {
-                authProvider.initCredentials();
-            } catch (Exception e) {
-                thrownException.set(e);
-            }
-        });
-
-        initThread.start();
-        
-        // Wait a bit for the first attempt to fail and the retry to start
-        Thread.sleep(500);
-        
-        // Interrupt the thread to stop the long wait
-        initThread.interrupt();
-        initThread.join(2000); // Wait for thread to finish
-
-        // Verify that the REST call was made at least once (the first failure)
-        verify(restTemplate, times(1)).postForEntity(anyString(), any(HttpEntity.class), eq(Map.class));
-    }
-
-    @Test
-    void testInitCredentialsHandlesInterruptedException() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
-        // Mock to always fail to trigger retry logic
-        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
-
-        AtomicReference<Exception> thrownException = new AtomicReference<>();
-        
-        Thread initThread = new Thread(() -> {
-            try {
-                authProvider.initCredentials();
-            } catch (Exception e) {
-                thrownException.set(e);
-            }
-        });
-
-        initThread.start();
-        
-        // Give the thread a moment to start and enter the retry loop
-        Thread.sleep(100);
-        
-        // Interrupt the thread while it's sleeping
-        initThread.interrupt();
-        initThread.join(1000); // Wait for thread to finish
-
-        // Verify that a RuntimeException was thrown due to interruption
-        assertNotNull(thrownException.get());
-        assertTrue(thrownException.get() instanceof RuntimeException);
-        
-        // Verify credentials were not initialized due to interruption
         assertFalse(authProvider.isCredentialsInitialized());
     }
 

@@ -88,13 +88,6 @@ class AwsPluginConfigVariableTest {
     void testRefreshSecretsWithKey() {
         objectUnderTest.refresh();
         verify(secretsSupplier, times(1)).refresh(secretId);
-    }
-
-
-    @Test
-    void testRefreshAndRetrieveValue() {
-        objectUnderTest.refreshAndRetrieveValue();
-        verify(secretsSupplier, times(1)).refresh(secretId);
         verify(secretsSupplier, times(1)).retrieveValue(secretId, secretKey);
     }
 

@@ -12,7 +12,6 @@ package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 import lombok.Getter;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.Office365SourceConfig;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.RetryHandler;
-import org.opensearch.dataprepper.model.plugin.PluginConfigVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -70,8 +69,8 @@ public class Office365AuthenticationProvider implements Office365AuthenticationI
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
             Oauth2Config oAuthConfig = office365SourceConfig.getAuthenticationConfiguration().getOauth2();
-            oAuthConfig.getClientId().refreshAndRetrieveValue();
-            oAuthConfig.getClientSecret().refreshAndRetrieveValue();
+            oAuthConfig.getClientId().refresh();
+            oAuthConfig.getClientSecret().refresh();
             String payload = String.format(ACCESS_TOKEN_REQUEST_BODY, (String) oAuthConfig.getClientId().getValue(), (String) oAuthConfig.getClientSecret().getValue(), MANAGEMENT_API_SCOPE);
 
             HttpEntity<String> entity = new HttpEntity<>(payload, headers);
