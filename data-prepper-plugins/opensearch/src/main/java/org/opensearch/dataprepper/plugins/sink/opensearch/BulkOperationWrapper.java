@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 
@@ -42,6 +43,8 @@ public class BulkOperationWrapper {
             IS_DELETE_OPERATION, operation -> operation.delete().id()
     );
 
+    private final Event event;
+
     private final EventHandle eventHandle;
     private final BulkOperation bulkOperation;
     private final SerializedJson jsonNode;
@@ -49,7 +52,17 @@ public class BulkOperationWrapper {
     private final String queryTerm;
 
     public BulkOperationWrapper(final BulkOperation bulkOperation) {
-        this(bulkOperation, null, null, null);
+        this(bulkOperation, (Event)null, null, null);
+    }
+
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final Event event, final SerializedJson jsonNode,
+                                final String queryTerm) {
+        checkNotNull(bulkOperation);
+        this.bulkOperation = bulkOperation;
+        this.event = event;
+        this.eventHandle = null;
+        this.jsonNode = jsonNode;
+        this.queryTerm = queryTerm;
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle, final SerializedJson jsonNode,
@@ -57,24 +70,40 @@ public class BulkOperationWrapper {
         checkNotNull(bulkOperation);
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
+        this.event = null;
         this.jsonNode = jsonNode;
         this.queryTerm = queryTerm;
+    }
+
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final Event event) {
+        this(bulkOperation, event, null, null);
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
         this(bulkOperation, eventHandle, null, null);
     }
-
     public BulkOperation getBulkOperation() {
         return bulkOperation;
     }
 
+    public Event getEvent() {
+        return event;
+    }
+
     public EventHandle getEventHandle() {
-        return eventHandle;
+        if (event != null) {
+            return event.getEventHandle();
+        }  else {
+            return eventHandle;
+        }
     }
 
     public void releaseEventHandle(boolean result) {
-        eventHandle.release(result);
+        if (event != null) {
+            event.getEventHandle().release(result);
+        } else if (eventHandle != null) {
+            eventHandle.release(result);
+        }
     }
 
     public Object getDocument() {
