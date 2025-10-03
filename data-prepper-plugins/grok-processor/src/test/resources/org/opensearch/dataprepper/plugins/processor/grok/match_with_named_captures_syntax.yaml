@@ -1,0 +1,10 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"]
+
+  sink:
+    - unused:

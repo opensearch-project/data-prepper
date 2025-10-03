@@ -1,0 +1,14 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message:
+            - "My phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"
+        patterns_directories:
+          - ./src/test/resources/test_patterns
+        patterns_files_glob: "*1.txt"
+
+  sink:
+    - unused:

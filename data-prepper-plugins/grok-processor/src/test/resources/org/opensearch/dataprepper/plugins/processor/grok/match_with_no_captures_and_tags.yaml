@@ -1,0 +1,13 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"]
+        tags_on_match_failure:
+          - some_test_tag_1
+          - some_test_tag_2
+
+  sink:
+    - unused:

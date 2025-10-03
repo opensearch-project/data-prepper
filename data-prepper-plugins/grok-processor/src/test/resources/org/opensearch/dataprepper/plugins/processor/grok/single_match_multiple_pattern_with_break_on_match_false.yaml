@@ -1,0 +1,13 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message:
+            - "%{COMMONAPACHELOG}"
+            - "%{IPORHOST:custom_client_field}"
+        break_on_match: false
+
+  sink:
+    - unused:

@@ -1,0 +1,13 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message:
+            - "My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday} and my phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"
+        patterns_directories:
+          - ./src/test/resources/test_patterns
+
+  sink:
+    - unused:

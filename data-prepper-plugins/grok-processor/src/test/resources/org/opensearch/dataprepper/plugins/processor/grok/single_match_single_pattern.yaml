@@ -1,0 +1,10 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{COMMONAPACHELOG}"]
+
+  sink:
+    - unused:
