@@ -16,7 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationProvider;
+import org.opensearch.dataprepper.plugins.source.microsoft_office365.auth.Office365AuthenticationInterface;
 import org.opensearch.dataprepper.plugins.source.microsoft_office365.models.AuditLogsResponse;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import org.springframework.core.ParameterizedTypeReference;
@@ -54,7 +54,7 @@ class Office365RestClientTest {
     @Mock
     private RestTemplate restTemplate;
     @Mock
-    private Office365AuthenticationProvider authConfig;
+    private Office365AuthenticationInterface authConfig;
 
     private final PluginMetrics pluginMetrics = PluginMetrics.fromNames("Office365RestClientTest", "microsoft-office365");
 

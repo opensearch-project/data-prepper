@@ -73,7 +73,11 @@ public class Office365Source extends CrawlerSourcePlugin {
     public void start(Buffer<Record<Event>> buffer) {
         LOG.info("Starting Office365 Source Plugin...");
         try {
+            // Initialize credentials with retry logic - this will not throw exceptions
+            // but will retry infinitely
             office365AuthProvider.initCredentials();
+            
+            // Only proceed with service initialization if credentials are available
             office365Service.initializeSubscriptions();
             super.start(buffer);
         } catch (Exception e) {

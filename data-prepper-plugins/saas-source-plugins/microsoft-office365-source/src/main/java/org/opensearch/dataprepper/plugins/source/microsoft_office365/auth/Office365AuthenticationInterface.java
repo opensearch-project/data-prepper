@@ -9,10 +9,13 @@
 
 package org.opensearch.dataprepper.plugins.source.microsoft_office365.auth;
 
+import org.opensearch.dataprepper.plugins.source.source_crawler.auth.AuthenticationInterface;
+
 /**
  * Interface for Office 365 authentication provider.
+ * Extends the generic SaasAuthenticationProvider with Office 365-specific methods.
  */
-public interface Office365AuthenticationInterface {
+public interface Office365AuthenticationInterface extends AuthenticationInterface {
     /**
      * Gets the tenant ID for the Office 365 application.
      *
@@ -26,14 +29,4 @@ public interface Office365AuthenticationInterface {
      * @return The access token
      */
     String getAccessToken();
-
-    /**
-     * Initializes the credentials.
-     */
-    void initCredentials();
-
-    /**
-     * Renews the credentials.
-     */
-    void renewCredentials();
 }
