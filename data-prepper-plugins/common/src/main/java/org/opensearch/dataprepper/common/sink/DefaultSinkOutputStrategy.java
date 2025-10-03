@@ -18,41 +18,43 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class DefaultSinkOutputStrategy implements SinkOutputStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultSinkOutputStrategy.class);
-    private final ReentrantLock reentrantLock;
+    private final LockStrategy lockStrategy;
+    private final BufferStrategy bufferStrategy;
 
-    public DefaultSinkOutputStrategy() {
-        reentrantLock = new ReentrantLock();
+    public DefaultSinkOutputStrategy(LockStrategy lockStrategy, BufferStrategy bufferStrategy) {
+        this.lockStrategy = lockStrategy;
+        this.bufferStrategy = bufferStrategy;
     }
 
     public void execute(Collection<Record<Event>> records) {
         // If records are empty check if buffer needs to be flushed based on flush interval
         if (records.isEmpty()) {
-            lock();
+            lockStrategy.lock();
             try {
-                if (exceedsFlushTimeInterval()) {
-                    flushBuffer();
+                if (bufferStrategy.exceedsFlushTimeInterval()) {
+                    bufferStrategy.flushBuffer();
                 }
             } finally {
-                unlock();
+                lockStrategy.unlock();
             }
             pushDLQList();
             return;
         }
-        lock();
+        lockStrategy.lock();
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
                 try {
-                    long estimatedSize = getEstimatedSize(event);
-                    if (exceedsMaxEventSizeThreshold(estimatedSize)) {
+                    long estimatedSize = bufferStrategy.getEstimatedSize(event);
+                    if (bufferStrategy.exceedsMaxEventSizeThreshold(estimatedSize)) {
                         throw new RuntimeException("Event size exceeds max allowed event size");
                     }
-                    if (willExceedMaxRequestSizeBytes(event, estimatedSize)) {
-                        flushBuffer();
+                    if (bufferStrategy.willExceedMaxRequestSizeBytes(event, estimatedSize)) {
+                        bufferStrategy.flushBuffer();
                     }
-                    boolean reachedMaxEventsLimit = addToBuffer(event, estimatedSize);
+                    boolean reachedMaxEventsLimit = bufferStrategy.addToBuffer(event, estimatedSize);
                     if (reachedMaxEventsLimit) {
-                        flushBuffer();
+                        bufferStrategy.flushBuffer();
                     } 
                 } catch (Exception ex) {
                     addEventToDLQList(event, ex);
@@ -61,28 +63,11 @@ public abstract class DefaultSinkOutputStrategy implements SinkOutputStrategy {
             pushDLQList();
         } finally {
             pushDLQList();
-            unlock();
+            lockStrategy.unlock();
         }
     }
 
-    public abstract void flushBuffer();
     public abstract void pushDLQList();
     public abstract void addEventToDLQList(final Event event, Throwable ex);
-    public abstract boolean addToBuffer(final Event event, final long estimatedSize) throws Exception;
-    public abstract boolean exceedsFlushTimeInterval();
-    public abstract boolean willExceedMaxRequestSizeBytes(final Event event, final long estimatedSize) throws Exception;
-    public abstract boolean exceedsMaxEventSizeThreshold(final long estimatedSize);
-    public abstract long getEstimatedSize(final Event event) throws Exception;
-    public abstract void recordLatency(double latency);
-
-    @Override
-    public void lock() {
-        reentrantLock.lock();
-    }
-
-    @Override
-    public void unlock() {
-        reentrantLock.unlock();
-    }
 
 }
