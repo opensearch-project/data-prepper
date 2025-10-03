@@ -347,9 +347,9 @@ class PipelineTransformerTests {
         final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final Map<String, Pipeline> connectedPipelines =pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel);
-        assertThat(connectedPipelines.size(), equalTo(0));
-        assertThat(pluginErrorCollector.getPluginErrors().size(), equalTo(2));
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> pipelineTransformer.transformConfiguration(this.pipelinesDataFlowModel));
+        assertThat(actualException.getMessage(),
+                        equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
     }
 
     @Test

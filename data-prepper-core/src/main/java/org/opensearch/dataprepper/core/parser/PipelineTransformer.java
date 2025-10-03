@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDeco
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
 import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
@@ -72,6 +73,7 @@ public class PipelineTransformer {
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final PluginErrorCollector pluginErrorCollector;
     private final PluginErrorsHandler pluginErrorsHandler;
+    private final Map<Sink, SinkContext> sinkToSinkContextMap;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -98,6 +100,7 @@ public class PipelineTransformer {
         this.pluginErrorCollector = pluginErrorCollector;
         this.pluginErrorsHandler = pluginErrorsHandler;
         this.expressionEvaluator = expressionEvaluator;
+        this.sinkToSinkContextMap = new LinkedHashMap<>();
     }
 
     public Map<String, Pipeline> transformConfiguration(final PipelinesDataFlowModel pipelinesDataFlowModel) {
@@ -119,6 +122,17 @@ public class PipelineTransformer {
                 buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
             }
         }
+        Map<String, HeadlessPipeline> headlessPipelines = new LinkedHashMap<>();
+        for (Map.Entry<String, Pipeline> pipeline: pipelineMap.entrySet()){
+            if (pipeline.getValue().getSource() instanceof HeadlessPipelineSource) {
+                headlessPipelines.put(pipeline.getKey(), pipeline.getValue());
+            }
+        }
+
+        for (Map.Entry<String, Pipeline> pipelineEntry: pipelineMap.entrySet()) {
+            final Pipeline pipeline = pipelineEntry.getValue();
+            pipeline.getSinks().forEach(sink -> sinkToSinkContextMap.get(sink).setForwardToPipelines(headlessPipelines));
+        }
         return pipelineMap;
     }
 
@@ -131,19 +145,8 @@ public class PipelineTransformer {
         final String failurePipelineName = dataPrepperConfiguration.getFailurePipelineName();
         try {
             Source source;
-            if (!pipelineName.equals(failurePipelineName)) {
-                final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-                if (sourceSetting == null) {
-                    Exception e = new IllegalArgumentException(String.format("{}: Source must not be null", pipelineName));
-                    final PluginError pluginError = PluginError.builder()
-                            .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
-                            .pipelineName(pipelineName)
-                            .pluginName("UNKNOWN")
-                            .exception(e)
-                            .build();
-                    pluginErrorCollector.collectPluginError(pluginError);
-                    return;
-                }
+            final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+            if (sourceSetting != null) {
                 final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                         pipelineMap, pipelineConfigurationMap);
                 source = pipelineSource.orElseGet(() -> {
@@ -161,16 +164,15 @@ public class PipelineTransformer {
                     }
                 });
             } else {
-                source = new HeadlessPipelineSource(failurePipelineName, "");
+                source = new HeadlessPipelineSource(pipelineName, "");
             }
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             Buffer pipelineDefinedBuffer = null;
             final PluginSetting bufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
             try {
-                if (source != null) {
-                    pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, bufferPluginSetting, source.getDecoder());
-                }
+                pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, bufferPluginSetting,
+                        source != null ? source.getDecoder() : null);
             } catch (Exception e) {
                 final PluginError pluginError = PluginError.builder()
                         .componentType(PipelineModel.BUFFER_PLUGIN_TYPE)
@@ -354,6 +356,7 @@ public class PipelineTransformer {
         try {
             final Sink sink = buildSinkOrConnector(pluginSetting, pluginSetting.getSinkContext());
 
+            sinkToSinkContextMap.put(sink, pluginSetting.getSinkContext());
             return new DataFlowComponent<>(sink, pluginSetting.getSinkContext().getRoutes());
         } catch (Exception e) {
             final PluginError pluginError = PluginError.builder()

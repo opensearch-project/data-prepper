@@ -171,6 +171,18 @@ class SinkModelTest {
     }
 
     @Test
+    void sinkModel_with_forward_pipelines() {
+        SinkForwardConfig sinkForwardConfig = mock(SinkForwardConfig.class);
+        List<String> forwardPipelineList = List.of("forward-pipeline1", "forward-pipeline2");
+        when(sinkForwardConfig.getPipelineNames()).thenReturn(forwardPipelineList);
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), Arrays.asList("abc", "bcd", "efg"), sinkForwardConfig, pluginSettings);
+
+        assertThat(sinkModel.getForwardConfig().getPipelineNames(), equalTo(forwardPipelineList));
+    }
+
+    @Test
     void sinkModel_with_invalid_exclude_keys() {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of(), List.of("/bcd"), pluginSettings));
@@ -213,7 +225,7 @@ class SinkModelTest {
             assertThat(actualSinkModel.getExcludeKeys(), notNullValue());
             assertThat(actualSinkModel.getExcludeKeys(), empty());
             assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
-            assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
+            assertThat(actualSinkModel.getForwardConfig(), nullValue());
 
         }
     }

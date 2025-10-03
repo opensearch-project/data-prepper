@@ -109,6 +109,7 @@ public class PipelineRunnerImpl implements PipelineRunner {
                 }
             } catch (final Exception e) {
                 if (pipeline.getFailurePipeline() != null) {
+                    LOG.error("A processor threw an exception. This batch of Events will be sent to DLQ. ", e);
                     pipeline.getFailurePipeline().sendEvents(records);
                 } else if (inputEvents != null) {
                     LOG.error("A processor threw an exception. This batch of Events will be dropped, and their EventHandles will be released: ", e);
