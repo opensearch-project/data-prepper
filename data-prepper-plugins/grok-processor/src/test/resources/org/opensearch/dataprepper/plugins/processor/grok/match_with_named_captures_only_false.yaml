@@ -1,0 +1,11 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{GREEDYDATA} %{IPORHOST:host} %{NUMBER}"]
+        named_captures_only: false
+
+  sink:
+    - unused:
