@@ -130,19 +130,15 @@ class Office365CrawlerClientTest {
             return null;
         }).when(bufferWriteLatencyTimer).record(any(Runnable.class));
 
-        ArgumentCaptor<Collection<Record<Event>>> recordsCaptor = ArgumentCaptor.forClass((Class) Collection.class);
+        ArgumentCaptor<Record<Event>> recordCaptor = ArgumentCaptor.forClass(Record.class);
 
         client.executePartition(state, buffer, acknowledgementSet);
 
-        verify(buffer).writeAll(recordsCaptor.capture(), anyInt());
-        Collection<Record<Event>> capturedRecords = recordsCaptor.getValue();
+        verify(buffer).write(recordCaptor.capture(), anyInt());
+        Record<Event> capturedRecord = recordCaptor.getValue();
 
-        assertFalse(capturedRecords.isEmpty());
-        assertEquals(1, capturedRecords.size());
-        for (Record<Event> record : capturedRecords) {
-            assertNotNull(record.getData());
-            assertEquals("Exchange", record.getData().getMetadata().getAttribute("contentType"));
-        }
+        assertNotNull(capturedRecord.getData());
+        assertEquals("Exchange", capturedRecord.getData().getMetadata().getAttribute("contentType"));
     }
 
     @Test
@@ -175,7 +171,8 @@ class Office365CrawlerClientTest {
 
         client.executePartition(state, buffer, acknowledgementSet);
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        // With individual record processing, no records should be written due to JSON processing error
+        verify(buffer, org.mockito.Mockito.never()).write(any(Record.class), anyInt());
     }
 
     @Test
@@ -209,7 +206,7 @@ class Office365CrawlerClientTest {
 
         verify(acknowledgementSet).add(any(Event.class));
         verify(acknowledgementSet).complete();
-        verify(buffer).writeAll(any(), anyInt());
+        verify(buffer).write(any(Record.class), anyInt());
     }
 
     @Test
@@ -240,13 +237,14 @@ class Office365CrawlerClientTest {
 
         doThrow(new RuntimeException("Error writing to buffer"))
                 .when(buffer)
-                .writeAll(any(), anyInt());
+                .write(any(Record.class), anyInt());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> client.executePartition(state, buffer, acknowledgementSet));
 
-        assertEquals("Error writing to buffer", exception.getMessage());
-        verify(buffer).writeAll(any(), anyInt());
+        // With individual record processing, the exception gets wrapped with the log ID
+        assertEquals("Unexpected error processing audit log: ID1", exception.getMessage());
+        verify(buffer).write(any(Record.class), anyInt());
     }
 
     @Test
@@ -275,7 +273,8 @@ class Office365CrawlerClientTest {
 
         client.executePartition(state, buffer, acknowledgementSet);
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        // With individual record processing, no records should be written due to null content
+        verify(buffer, org.mockito.Mockito.never()).write(any(Record.class), anyInt());
     }
 
     @Test
@@ -305,6 +304,7 @@ class Office365CrawlerClientTest {
 
         client.executePartition(state, buffer, acknowledgementSet);
 
-        verify(buffer).writeAll(argThat(list -> list.isEmpty()), anyInt());
+        // With individual record processing, no records should be written due to missing Workload field
+        verify(buffer, org.mockito.Mockito.never()).write(any(Record.class), anyInt());
     }
 }
