@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.common.sink;
 
-import org.opensearch.dataprepper.model.event.Event;
 import com.linecorp.armeria.client.retry.Backoff;
 
 import org.slf4j.Logger;
@@ -17,14 +16,18 @@ public abstract class RetryBufferStrategy extends DefaultBufferStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(RetryBufferStrategy.class);
     private static final long INITIAL_DELAY_MS = 10;
     private static final long MAXIMUM_DELAY_MS = Duration.ofMinutes(10).toMillis();
+    private final int maxRetries;
+
+    public RetryBufferStrategy(final long maxEventSize, final long maxRequestSize, final long flushIntervalMs, final int maxRetries) {
+        super(maxEventSize, maxRequestSize, flushIntervalMs);
+        this.maxRetries = maxRetries;
+    }
 
     @Override
-    public void flushBuffer() {
+    public boolean flushBuffer(final SinkMetrics sinkMetrics) {
         int retryCount = 1;
         Object failedStatus = null;
-        int maxRetries = getMaxRetries();
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY_MS, MAXIMUM_DELAY_MS).withMaxAttempts(maxRetries);
-        long startTime = System.nanoTime();
         while (retryCount <= maxRetries) {
             failedStatus = doFlushOnce(failedStatus);
             if (failedStatus == null) {
@@ -39,14 +42,13 @@ public abstract class RetryBufferStrategy extends DefaultBufferStrategy {
             } catch (final InterruptedException e){}
             retryCount++;
         }
+        sinkMetrics.incrementRetries(retryCount);
         if (failedStatus != null) {
             addFailedObjectsToDlqList(failedStatus);
-        } else {
-            recordLatency((double)System.nanoTime() - startTime);
-        }
+            return false;
+        } 
+        return true;
     }
     
     public abstract void addFailedObjectsToDlqList(Object failedStatus);
-    public abstract Object doFlushOnce(Object failedStatus);
-    public abstract int getMaxRetries();
 }
