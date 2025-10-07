@@ -204,6 +204,10 @@ public class JacksonEvent implements Event {
         put(key, value);
     }
 
+    public EventFailureMetadata updateFailureMetadata() {
+        return new DefaultEventFailureMetadata(this);
+    }
+
     /**
      * Adds or updates the key with a given value in the Event.
      *

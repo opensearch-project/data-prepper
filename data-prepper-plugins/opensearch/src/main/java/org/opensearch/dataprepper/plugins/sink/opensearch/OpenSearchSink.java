@@ -594,15 +594,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         Event event = dlqObject.getEvent();
 
         if (event != null) {
-          Map<String, Object> failureMetadata = new HashMap<>();
-          failureMetadata.put("pluginId", dlqObject.getPluginId());
-          failureMetadata.put("pluginaName", dlqObject.getPluginName());
-          failureMetadata.put("pipelineName", dlqObject.getPipelineName());
-          failureMetadata.put("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage());
-          failureMetadata.put("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus());
-          failureMetadata.put("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex());
-          failureMetadata.put("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
-          event.put("_failure_metadata", failureMetadata);
+            event.updateFailureMetadata()
+                .with("pluginId", dlqObject.getPluginId())
+                .with("pluginName", dlqObject.getPluginName())
+                .with("pipelineName", dlqObject.getPipelineName())
+                .with("message",  ((FailedDlqData) dlqObject.getFailedData()).getMessage())
+                .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
+                .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
+                .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
           records.add(new Record<>(dlqObject.getEvent()));
         }
       }

@@ -37,6 +37,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -184,6 +185,13 @@ public class JacksonEventTest {
 
         final String resultValue = event.get(key, String.class);
         assertThat(resultValue, equalTo(newValue));
+    }
+
+    @Test
+    void testUpdateFailureMetadata() {
+        Object failureMetadata = event.updateFailureMetadata();
+        assertTrue(failureMetadata instanceof DefaultEventFailureMetadata);
+        assertThat(event.get(DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(notNullValue()));
     }
 
     @Test

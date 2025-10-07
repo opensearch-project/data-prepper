@@ -274,6 +274,8 @@ public interface Event extends Serializable {
 
     JsonStringBuilder jsonBuilder();
 
+    EventFailureMetadata updateFailureMetadata();
+
     abstract class JsonStringBuilder {
         private String tagsKey;
 
