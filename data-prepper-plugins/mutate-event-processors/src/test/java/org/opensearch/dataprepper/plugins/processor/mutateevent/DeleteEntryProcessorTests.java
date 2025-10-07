@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -241,7 +242,7 @@ public class DeleteEntryProcessorTests {
     }
 
     @Test
-    public void testWithKeyDneDeleteProcessorTest() {
+    public void testWithKeyOneDeleteProcessorTest() {
         when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message2", EventKeyFactory.EventAction.DELETE)));
         when(mockConfig.getDeleteWhen()).thenReturn(null);
 
@@ -310,9 +311,9 @@ public class DeleteEntryProcessorTests {
     @Test
     public void test_multiple_entries_with_different_delete_when_conditions() {
         final DeleteEntryProcessorConfig.Entry entry1 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)), "condition1", null, null);
+                , EventKeyFactory.EventAction.DELETE)), null, null, "condition1", null, null);
         final DeleteEntryProcessorConfig.Entry entry2 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key2"
-                , EventKeyFactory.EventAction.DELETE)), "condition2", null, null);
+                , EventKeyFactory.EventAction.DELETE)), null, null, "condition2", null, null);
 
         when(mockConfig.getEntries()).thenReturn(List.of(entry1, entry2));
         when(expressionEvaluator.isValidExpressionStatement("condition1")).thenReturn(true);
@@ -351,7 +352,7 @@ public class DeleteEntryProcessorTests {
     @Test
     public void invalid_delete_when_with_entries_format_throws_InvalidPluginConfigurationException() {
         DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1",
-                EventKeyFactory.EventAction.DELETE)), "invalid_condition", null, null);
+                EventKeyFactory.EventAction.DELETE)), null, null, "invalid_condition", null, null);
 
         when(mockConfig.getEntries()).thenReturn(List.of(entry));
         when(expressionEvaluator.isValidExpressionStatement("invalid_condition")).thenReturn(false);
@@ -363,7 +364,7 @@ public class DeleteEntryProcessorTests {
     public void test_both_configurations_used_together() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
         final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)), "condition", null, null);
+                , EventKeyFactory.EventAction.DELETE)), null, null, "condition", null, null);
 
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("message",
                 EventKeyFactory.EventAction.DELETE)));
@@ -377,9 +378,221 @@ public class DeleteEntryProcessorTests {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
 
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", null);
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", null);
         ReflectionTestUtils.setField(configObjectUnderTest, "entries", null);
 
         assertThat(configObjectUnderTest.isConfigurationPresent(), is(false));
+    }
+
+
+    @Test
+    public void test_has_both_configs_returns_true_when_entries_and_with_keys_regex_used_together() {
+        final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
+        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(null, List.of("^ran.*"), null, "condition", null, null);
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", List.of("^test.*"));
+        ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
+
+        assertThat(configObjectUnderTest.hasBothConfigurations(), is(true));
+    }
+
+    @Test
+    public void test_exclude_from_delete_without_with_key_regex_throws_InvalidPluginConfigurationException() {
+        final String testKey = UUID.randomUUID().toString();
+        final String excludeKey = UUID.randomUUID().toString();
+
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getExcludeFromDelete()).thenReturn(Set.of(eventKeyFactory.createEventKey(excludeKey)));
+
+        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    public void test_one_event_deletion_using_with_keys_regex() {
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("random_key", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("random_key"), is(false));
+    }
+
+    @Test
+    public void test_multiple_events_deletion_using_with_keys_regex() {
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("random", "test");
+        record.getData().put("arrange", "test");
+        record.getData().put("range", "test");
+        record.getData().put("ran", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("random"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("arrange"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("range"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("ran"), is(false));
+    }
+
+    @Test
+    public void test_with_keys_regex_and_exclude_from_delete_used_together() {
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
+        when(mockConfig.getExcludeFromDelete()).thenReturn(Set.of(eventKeyFactory.createEventKey("random_key")));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("random_key", "test");
+        record.getData().put("randomKey", "test2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("random_key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
+    }
+
+    @Test
+    public void test_with_keys_and_with_keys_regex_used_together() {
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("randomKey", "test2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
+    }
+
+    @Test
+    public void test_with_keys_and_with_keys_regex_used_together_with_exclude_from_delete() {
+        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
+        when(mockConfig.getExcludeFromDelete()).thenReturn(Set.of(eventKeyFactory.createEventKey("random_key")));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("random_key", "test");
+        record.getData().put("randomKey", "test2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("random_key"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
+    }
+
+    @Test
+    public void test_with_keys_regex_and_iterative_key_used_together() {
+        final String testKey = "testKey";
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^test.*"));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(null);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    public void test_with_keys_regex_and_iterate_on_with_delete_from_element_when_condition_true_deletes_key() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        final String deleteFromElementWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^test.*"));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+        when(mockConfig.getDeleteFromElementWhen()).thenReturn(deleteFromElementWhen);
+
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.isValidExpressionStatement(deleteFromElementWhen)).thenReturn(true);
+
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteFromElementWhen), any(Event.class))).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(
+                "condition", true,
+                testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of("message", mapList);
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Map.of("condition", true))));
+    }
+
+    @Test
+    public void testSingleEntryIterativeDeleteKeyRegex_applyEventLevelDeleteWhen_when_deleteWhen_returns_true() {
+        final String testKey = "testKey";
+        final String deleteWhen = "/condition == true";
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(eq(deleteWhen), any(Event.class))).thenAnswer(invocation -> {
+            Event eventArg = invocation.getArgument(1);
+            return eventArg.get("condition", Boolean.class);
+        });
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^test.*"));
+        when(mockConfig.getIterateOn()).thenReturn("message");
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final List<Map<String, Object>> mapList = List.of(Map.of(testKey, UUID.randomUUID().toString()));
+        final Map<String, Object> data = Map.of(
+                "condition", true,
+                "message", mapList
+        );
+        final Record<Event> record = buildRecordWithEvent(data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("condition"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
+                List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    public void test_multi_delete_processor_using_with_keys_regex() {
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*", "^test.*"));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("testKey", "test");
+        record.getData().put("randomKey", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("testKey"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+    }
+
+    @Test
+    public void testKeyIsNotDeleted_when_deleteWhen_returns_false_using_with_keys_regex() {
+        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^test.*"));
+        final String deleteWhen = UUID.randomUUID().toString();
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+        when(expressionEvaluator.isValidExpressionStatement(deleteWhen)).thenReturn(true);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("message");
+        record.getData().put("testKey", "test");
+
+        when(expressionEvaluator.evaluateConditional(deleteWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("testKey"), is(true));
     }
 
     private DeleteEntryProcessor createObjectUnderTest() {

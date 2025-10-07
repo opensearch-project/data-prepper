@@ -22,15 +22,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "delete_entries", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeleteEntryProcessor.class);
     private final List<EventKey> withKeys;
+    private final List<String> withKeysRegex;
+    private final List<Pattern> withKeysRegexPattern;
+    private final Set<EventKey> excludeFromDelete;
     private final String deleteWhen;
     private final List<DeleteEntryProcessorConfig.Entry> entries;
 
@@ -41,6 +48,9 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.withKeys = config.getWithKeys();
+        this.withKeysRegex = config.getWithKeysRegex();
+        this.withKeysRegexPattern = config.getWithKeysRegexPattern();
+        this.excludeFromDelete = config.getExcludeFromDelete();
         this.deleteEntryProcessorConfig = config;
         this.deleteWhen = config.getDeleteWhen();
         this.expressionEvaluator = expressionEvaluator;
@@ -52,8 +62,12 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                             ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
 
-        if (this.withKeys != null && !this.withKeys.isEmpty()) {
-            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
+        if ((!this.excludeFromDelete.isEmpty() && this.withKeysRegex.isEmpty())) {
+            throw new InvalidPluginConfigurationException("exclude_from_delete only applies when with_keys_regex is configured.");
+        }
+
+        if ((this.withKeys != null && !this.withKeys.isEmpty()) || (this.withKeysRegex != null && !this.withKeysRegex.isEmpty())) {
+            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, this.withKeysRegex, this.excludeFromDelete, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
             this.entries = List.of(entry);
         } else {
             this.entries = config.getEntries();
@@ -66,6 +80,10 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                         String.format("delete_when %s is not a valid expression statement. See https://opensearch" +
                                         ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                                 entry.getDeleteWhen()));
+            }
+
+            if (!entry.isValidWithKeysRegexPattern()) {
+                throw new InvalidPluginConfigurationException("Invalid regex pattern in with_keys_regex");
             }
 
             if (entry.getIterateOn() == null && entry.getDeleteFromElementWhen() != null) {
@@ -94,10 +112,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
 
                     final String iterateOn = deleteEntryProcessorConfig.getIterateOn();
                     if (Objects.isNull(iterateOn)) {
-
-                        for (final EventKey entryKey : entry.getWithKeys()) {
-                            recordEvent.delete(entryKey);
-                        }
+                        deleteKeysFromEvent(recordEvent, entry);
                     } else {
                         handleForIterateOn(recordEvent, entry, iterateOn);
                     }
@@ -128,6 +143,34 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     public void shutdown() {
     }
 
+    private void deleteKeysFromEvent(final Event event, final DeleteEntryProcessorConfig.Entry entry) {
+        if (entry.getWithKeys() != null) {
+            for (final EventKey entryKey : entry.getWithKeys()) {
+                event.delete(entryKey);
+            }
+        }
+        
+        if (entry.getWithKeysRegex() != null && !entry.getWithKeysRegex().isEmpty()) {
+            final Set<String> excludeKeys = entry.getExcludeFromDelete() == null ? Collections.emptySet()
+                : entry.getExcludeFromDelete().stream()
+                    .map(EventKey::getKey)
+                    .collect(Collectors.toSet());
+
+            final List<Pattern> validRegexPatterns = entry.getWithKeysRegexPattern();
+
+            for (final String key : event.toMap().keySet()) {
+                for (final Pattern regexPattern : validRegexPatterns) {
+                    if (regexPattern.matcher(key).matches()) {
+                        if (!excludeKeys.contains(key)) {
+                            event.delete(key);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     private void handleForIterateOn(final Event recordEvent,
                                     final DeleteEntryProcessorConfig.Entry entry,
                                     final String iterateOn) {
@@ -144,9 +187,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                     continue;
                 }
 
-                for (final EventKey entryKey : entry.getWithKeys()) {
-                    context.delete(entryKey);
-                }
+                deleteKeysFromEvent(context, entry);
                 iterateOnList.set(i, context.toMap());
             }
             recordEvent.put(iterateOn, iterateOnList);

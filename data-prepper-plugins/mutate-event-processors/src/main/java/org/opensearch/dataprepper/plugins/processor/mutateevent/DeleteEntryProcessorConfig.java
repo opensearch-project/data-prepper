@@ -6,14 +6,13 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertFalse;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.IfThenElse;
 import org.opensearch.dataprepper.model.annotations.ConditionalRequired.SchemaProperty;
@@ -24,31 +23,42 @@ import org.opensearch.dataprepper.model.event.EventKeyConfiguration;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 @ConditionalRequired(value = {
         @IfThenElse(
                 ifFulfilled = {@SchemaProperty(field = "entries", value = "null")},
-                thenExpect = {@SchemaProperty(field = "with_keys")}
+                thenExpect = {@SchemaProperty(field = "with_keys"), @SchemaProperty(field = "with_keys_regex")}
         ),
         @IfThenElse(
-                ifFulfilled = {@SchemaProperty(field = "with_keys", value = "null")},
+                ifFulfilled = {@SchemaProperty(field = "with_keys", value = "null"), @SchemaProperty(field = "with_keys_regex", value = "null")},
                 thenExpect = {@SchemaProperty(field = "entries")}
         )
 })
 @JsonPropertyOrder
 @JsonClassDescription("The <code>delete_entries</code> processor deletes fields from events. " +
-        "You can define the keys you want to delete in the <code>with_keys</code> configuration. " +
-        "Those keys and their values are deleted from events.")
+        "You can specify the keys of the fields you want to delete using the <code>with_keys</code> " +
+        "or <code>with_keys_regex</code> configuration options. You can use one or both options together. " +
+        "Those keys and their values are deleted from the events.")
 public class DeleteEntryProcessorConfig {
 
     @JsonPropertyOrder
     public static class Entry {
-        @NotEmpty
-        @NotNull
         @JsonProperty("with_keys")
         @EventKeyConfiguration(EventKeyFactory.EventAction.DELETE)
         @JsonPropertyDescription("A list of keys to be deleted.")
-        private List<@NotNull @NotEmpty EventKey> withKeys;
+        private List<EventKey> withKeys;
+
+        @JsonProperty("with_keys_regex")
+        @JsonPropertyDescription("A list of regex patterns to match keys to be deleted.")
+        private List<String> withKeysRegex;
+
+        @JsonProperty("exclude_from_delete")
+        @JsonPropertyDescription("A list of keys to exclude from deletion when using with_keys_regex.")
+        private Set<EventKey> excludeFromDelete;
 
         @JsonProperty("delete_when")
         @JsonPropertyDescription("Specifies under what condition the deletion should be performed. " +
@@ -67,9 +77,30 @@ public class DeleteEntryProcessorConfig {
         @JsonProperty("iterate_on")
         private String iterateOn;
 
+        @JsonIgnore
+        private List<Pattern> withKeysRegexPatterns;
+
+        @AssertTrue(message = "Invalid regex pattern found in with_keys_regex.")
+        boolean isValidWithKeysRegexPattern() {
+            if (withKeysRegex != null && !withKeysRegex.isEmpty()) {
+                try {
+                    withKeysRegexPatterns = withKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+                } catch (final PatternSyntaxException e) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public List<EventKey> getWithKeys() {
             return withKeys;
         }
+
+        public List<String> getWithKeysRegex() { return withKeysRegex; }
+        
+        public List<Pattern> getWithKeysRegexPattern() { return withKeysRegexPatterns; }
+
+        public Set<EventKey> getExcludeFromDelete() { return excludeFromDelete; }
 
         public String getDeleteWhen() {
             return deleteWhen;
@@ -82,10 +113,14 @@ public class DeleteEntryProcessorConfig {
         }
 
         public Entry(final List<EventKey> withKeys,
+                     final List<String> withKeysRegex,
+                     final Set<EventKey> excludeFromDelete,
                      final String deleteWhen,
                      final String iterateOn,
                      final String deleteFromElementWhen) {
             this.withKeys = withKeys;
+            this.withKeysRegex = withKeysRegex;
+            this.excludeFromDelete = excludeFromDelete;
             this.deleteWhen = deleteWhen;
             this.deleteFromElementWhen = deleteFromElementWhen;
             this.iterateOn = iterateOn;
@@ -99,7 +134,15 @@ public class DeleteEntryProcessorConfig {
     @JsonProperty("with_keys")
     @EventKeyConfiguration(EventKeyFactory.EventAction.DELETE)
     @JsonPropertyDescription("A list of keys to be deleted. May not be used with entries.")
-    private List<@NotNull @NotEmpty EventKey> withKeys;
+    private List<EventKey> withKeys;
+
+    @JsonProperty("with_keys_regex")
+    @JsonPropertyDescription("A list of regex patterns that match keys to be deleted from an event. May not be used with entries.")
+    private List<String> withKeysRegex;
+
+    @JsonProperty("exclude_from_delete")
+    @JsonPropertyDescription("A list of keys to exclude from deletion when using with_keys_regex.")
+    private Set<EventKey> excludeFromDelete;
 
     @JsonProperty("delete_when")
     @JsonPropertyDescription("Specifies under what condition the deletion should be performed.")
@@ -110,14 +153,37 @@ public class DeleteEntryProcessorConfig {
     @JsonPropertyDescription("A list of entries to delete from the event.")
     private List<Entry> entries;
 
-    @AssertTrue(message = "Either 'entries' or 'with_keys' must be specified, but neither was found")
+    @AssertTrue(message = "Either 'entries' OR one of the 'with_keys' or 'with_keys_regex' must be specified, but neither was found")
     boolean isConfigurationPresent() {
-        return entries != null || withKeys != null;
+        return entries != null || (withKeys != null || withKeysRegex != null);
     }
 
-    @AssertFalse(message = "Either use 'entries' OR 'with_keys' with 'delete_when' configuration, but not both")
+    @AssertFalse(message = "Either use 'entries' OR at least one of the 'with_keys' or 'with_keys_regex' configuration, but not both")
     boolean hasBothConfigurations() {
-        return entries != null && withKeys != null;
+        return entries != null && (withKeys != null || withKeysRegex != null);
+    }
+    @JsonIgnore
+    private List<Pattern> withKeysRegexPatterns;
+
+    @AssertTrue(message = "Invalid regex pattern in 'with_keys_regex'")
+    boolean isValidWithKeysRegexPattern() {
+        if (entries != null) {
+            for (final DeleteEntryProcessorConfig.Entry entry : entries) {
+                try {
+                    entry.withKeysRegexPatterns = entry.withKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+                } catch (PatternSyntaxException e) {
+                    return false;
+                }
+            }
+        }
+        if (withKeysRegex != null && !withKeysRegex.isEmpty()) {
+            try {
+                withKeysRegexPatterns = withKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        }
+        return true;
     }
     @JsonPropertyDescription(
             "Specifies the key of the list of object to iterate over and delete the keys specified in with_keys.")
@@ -131,6 +197,12 @@ public class DeleteEntryProcessorConfig {
     public List<EventKey> getWithKeys() {
         return withKeys;
     }
+
+    public List<String> getWithKeysRegex() { return withKeysRegex; }
+
+    public List<Pattern> getWithKeysRegexPattern() { return withKeysRegexPatterns; }
+
+    public Set<EventKey> getExcludeFromDelete() { return excludeFromDelete; }
 
     public String getDeleteWhen() {
         return deleteWhen;
