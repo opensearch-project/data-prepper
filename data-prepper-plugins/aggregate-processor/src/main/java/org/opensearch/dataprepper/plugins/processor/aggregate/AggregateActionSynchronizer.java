@@ -65,7 +65,7 @@ class AggregateActionSynchronizer {
                     aggregateGroupManager.closeGroup(hash, aggregateGroup);
                 }
             } catch (final Exception e) {
-                LOG.debug("Error while concluding group: ", e);
+                LOG.error("Error while concluding group: ", e);
                 actionConcludeGroupEventsProcessingErrors.increment();
             } finally {
                 handleEventForGroupLock.unlock();
@@ -89,7 +89,7 @@ class AggregateActionSynchronizer {
             handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
-            LOG.debug("Error while handling event, event will be processed by remainder of the pipeline: ", e);
+            LOG.error("Error while handling event, event will be processed by remainder of the pipeline: ", e);
             actionHandleEventsProcessingErrors.increment();
             handleEventResponse = new AggregateActionResponse(event);
         } finally {
