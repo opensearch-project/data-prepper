@@ -602,7 +602,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .with("status", ((FailedDlqData) dlqObject.getFailedData()).getStatus())
                 .with("index", ((FailedDlqData) dlqObject.getFailedData()).getIndex())
                 .with("indexId", ((FailedDlqData) dlqObject.getFailedData()).getIndexId());
-          records.add(new Record<>(dlqObject.getEvent()));
+          records.add(new Record<>(event));
         }
       }
       getFailurePipeline().sendEvents(records);
