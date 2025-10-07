@@ -1,0 +1,17 @@
+pipeline:
+source:
+  http:
+processor:
+  - obfuscate:
+      source: "log"
+      target: "new_log"
+      patterns:
+        - "[A-Za-z0-9+_.-]+@([\\w-]+\\.)+[\\w-]{2,4}"
+      action:
+        mask:
+          mask_character: "#"
+          mask_character_length: 6
+  - obfuscate:
+      source: "phone"
+sink:
+  - stdout:

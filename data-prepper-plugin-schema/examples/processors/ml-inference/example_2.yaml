@@ -1,0 +1,5 @@
+scan:
+buckets:
+  - bucket:
+      name: test-offlinebatch
+      data_selection: metadata_only

@@ -1,0 +1,5 @@
+processor:
+  - add_entries:
+      entries:
+        - key: "date"
+          format: "${month}-${day}"

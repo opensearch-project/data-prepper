@@ -1,0 +1,7 @@
+processor:
+  - add_entries:
+      entries:
+        - key: "name"
+          value: "John"
+        - key: "age"
+          value: 20

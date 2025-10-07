@@ -1,0 +1,3 @@
+source:
+- otel_trace_source:
+    output_format: otel

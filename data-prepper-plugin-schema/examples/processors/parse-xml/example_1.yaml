@@ -1,0 +1,8 @@
+parse-xml-pipeline:
+source:
+  stdin:
+processor:
+  - parse_xml:
+      source: "my_xml"
+sink:
+  - stdout:

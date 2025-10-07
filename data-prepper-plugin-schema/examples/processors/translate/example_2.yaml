@@ -1,0 +1,23 @@
+processor:
+- translate:
+    mappings:
+      - source: "status"
+        targets:
+          - target: "translated_result"
+            map:
+              404: "Not Found"
+            default: "default"
+            type: "string"
+            translate_when: "/response != null"
+          - target: "another_translated_result"
+            regex:
+              exact: false
+              patterns:
+                "2[0-9]{2}" : "Success" # Matches ranges from 200-299
+                "5[0-9]{2}": "Error"    # Matches ranges form 500-599
+    file: 
+      name: "path/to/file.yaml"
+      aws:
+        bucket: my_bucket
+        region: us-east-1
+        sts_role_arn: arn:aws:iam::123456789012:role/MyS3Role

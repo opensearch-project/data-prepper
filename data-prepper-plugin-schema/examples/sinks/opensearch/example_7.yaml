@@ -1,0 +1,43 @@
+log-pipeline:
+source:
+  http:
+processor:
+  - date:
+      from_time_received: true
+      destination: "@timestamp"
+sink:
+  - opensearch:
+      hosts: [ "https://<serverless-public-collection-endpoint>" ]
+      index: "my-serverless-index"
+      template_type: index-template
+      template_content: >
+        {
+          "template" : {
+            "mappings" : {
+              "properties" : {
+                "Data" : {
+                  "type" : "binary"
+                },
+                "EncodedColors" : {
+                  "type" : "binary"
+                },
+                "Type" : {
+                  "type" : "keyword"
+                },
+                "LargeDouble" : {
+                  "type" : "double"
+                }          
+              }
+            }
+          }
+        }
+      # index is the default case  
+      actions:
+       - type: "delete"
+         when: '/operation == "delete"'
+       - type: "update"
+         when: '/operation == "update"'
+       - type: "index"
+      aws:
+        sts_role_arn: "arn:aws:iam::<AccountId>:role/PipelineRole"
+        region: "us-east-1"

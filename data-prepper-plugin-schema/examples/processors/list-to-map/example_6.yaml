@@ -1,0 +1,13 @@
+pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - list_to_map:
+      source: "mylist"
+      use_source_key: true
+      extract_value: true
+sink:
+  - stdout:

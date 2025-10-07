@@ -1,0 +1,4 @@
+sample-pipeline:
+source:
+  - pipeline:
+      name: "movies"

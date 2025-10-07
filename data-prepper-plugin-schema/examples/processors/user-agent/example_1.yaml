@@ -1,0 +1,4 @@
+processor:
+- user_agent:
+    source: "ua"
+    target: "user_agent"

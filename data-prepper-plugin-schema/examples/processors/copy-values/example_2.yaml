@@ -1,0 +1,8 @@
+processor:
+  - copy_values:
+      entries:
+        - from_key: "message1"
+          to_key: "message2"
+          overwrite_if_to_key_exists: true
+        - from_key: "message1"
+          to_key: "message3"

@@ -1,0 +1,11 @@
+processor:
+  grok:
+    match:
+      message: ["%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{JAVACLASS:class}: %{GREEDYDATA:message}"]
+    pattern_definitions:
+      JAVACLASS: "[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*"
+    named_captures_only: true
+    break_on_match: false
+    keep_empty_captures: true
+    keys_to_overwrite: ["timestamp", "level"]
+    target_key: parsed_log

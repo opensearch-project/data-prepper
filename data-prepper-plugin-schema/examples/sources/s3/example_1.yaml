@@ -1,0 +1,11 @@
+source:
+s3:
+  notification_type: sqs
+  codec:
+    newline:
+  compression: none
+  sqs:
+    queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
+  aws:
+    region: "us-east-1"
+    sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"

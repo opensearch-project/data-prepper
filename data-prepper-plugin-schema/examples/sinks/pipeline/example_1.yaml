@@ -1,0 +1,4 @@
+sample-pipeline:
+sink:
+  - pipeline:
+      name: movies

@@ -1,0 +1,20 @@
+version: "2"
+rds-pipeline:
+  source:
+    rds:
+      db_identifier: "my-rds-instance"
+      engine: "aurora-mysql"
+      database: "mydb"
+      authentication:
+        username: "myuser"
+        password: "mypassword"
+      s3_bucket: "my-export-bucket"
+      s3_region: "us-west-2"
+      s3_prefix: "rds-exports"
+      export:
+        kms_key_id: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+        export_role_arn: "arn:aws:iam::123456789012:role/rds-export-role"
+      stream: true
+      aws:
+        region: "us-west-2"
+        sts_role_arn: "arn:aws:iam::123456789012:role/my-pipeline-role"

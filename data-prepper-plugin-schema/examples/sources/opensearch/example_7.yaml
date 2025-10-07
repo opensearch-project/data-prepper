@@ -1,0 +1,14 @@
+opensearch-source-pipeline:
+source:
+  opensearch:
+    hosts: [ "https://<serverless-public-collection-endpoint>" ]
+    aws:
+      serverless: true
+      sts_role_arn: "arn:aws:iam::<AccountId>:role/PipelineRole"
+      region: "us-east-1"
+processor:
+  - date:
+      from_time_received: true
+      destination: "@timestamp"
+sink:
+  - stdout:
