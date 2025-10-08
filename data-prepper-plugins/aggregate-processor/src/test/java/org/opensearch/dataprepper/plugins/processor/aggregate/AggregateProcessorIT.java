@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSe
 import org.opensearch.dataprepper.core.acknowledgements.DefaultAcknowledgementSetMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -604,6 +605,57 @@ public class AggregateProcessorIT {
         EventHandle eventHandle = record.getData().getEventHandle();
         assertTrue(eventHandle instanceof AggregateEventHandle);
         assertTrue(((AggregateEventHandle)eventHandle).hasAcknowledgementSet());
+    }
+
+    @Test
+    void aggregateWithHistogramAggregateActionWithNullKey() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+
+        HistogramAggregateActionConfig histogramAggregateActionConfig = new HistogramAggregateActionConfig();
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW);
+        final String testKey = RandomStringUtils.randomAlphabetic(5);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
+        final String testKeyPrefix = RandomStringUtils.randomAlphabetic(4)+"_";
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
+        final String testUnits = RandomStringUtils.randomAlphabetic(3);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", testUnits);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
+        List<Number> testBuckets = new ArrayList<Number>();
+        final double TEST_VALUE_RANGE_MIN = 0.0;
+        final double TEST_VALUE_RANGE_MAX = 40.0;
+        final double TEST_VALUE_RANGE_STEP = 10.0;
+        for (double d = TEST_VALUE_RANGE_MIN; d <= TEST_VALUE_RANGE_MAX; d += TEST_VALUE_RANGE_STEP) {
+            testBuckets.add(d);
+        }
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", testBuckets);
+
+        aggregateAction = new HistogramAggregateAction(histogramAggregateActionConfig);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        eventBatch = getBatchOfEvents(true);
+        final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(scheduledExecutorService, (result) -> {}, Duration.ofSeconds(10), new DefaultAcknowledgementSetMetrics(pluginMetrics));
+        for (final Record<Event> record : eventBatch) {
+            final double value = ThreadLocalRandom.current().nextDouble(TEST_VALUE_RANGE_MIN-TEST_VALUE_RANGE_STEP, TEST_VALUE_RANGE_MAX+TEST_VALUE_RANGE_STEP);
+            Event event = record.getData();
+            acknowledgementSet.add(event.getEventHandle());
+        }
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                countDownLatch.countDown();
+            });
+        }
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1500);
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
+        Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+        assertThat(results.size(), equalTo(0));
     }
 
     @ParameterizedTest
