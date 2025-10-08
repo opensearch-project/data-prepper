@@ -136,7 +136,7 @@ public class ScanObjectWorker implements Runnable {
                     S3DataSelection dataSelection = s3ScanBucketOption.getDataSelection();
                     if (scanFilter != null && scanFilter.getS3scanIncludePrefixOptions() != null) {
                         for (final String prefix : scanFilter.getS3scanIncludePrefixOptions()) {
-                            prefixMap.put(prefix, dataSelection == null ? S3DataSelection.DATA_AND_METADATA : dataSelection);
+                            prefixMap.put(prefix, dataSelection == null ? s3SourceConfig.getDataSelection() : dataSelection);
                         }
                         bucketDataSelectionMap.put(bucketName, prefixMap);
                     }

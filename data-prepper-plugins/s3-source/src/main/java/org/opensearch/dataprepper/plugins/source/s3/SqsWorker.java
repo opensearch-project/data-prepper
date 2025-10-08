@@ -350,7 +350,7 @@ public class SqsWorker implements Runnable {
             final AcknowledgementSet acknowledgementSet) {
         // SQS messages won't be deleted if we are unable to process S3Objects because of an exception
         try {
-            s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
+            s3Service.addS3Object(s3ObjectReference, s3SourceConfig.getDataSelection(), acknowledgementSet);
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
         } catch (final Exception e) {
             LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());

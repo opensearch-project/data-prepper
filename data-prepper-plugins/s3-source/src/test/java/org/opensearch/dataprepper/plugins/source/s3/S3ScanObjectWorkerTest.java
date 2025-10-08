@@ -194,6 +194,7 @@ class S3ScanObjectWorkerTest {
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
         when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(false);
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
 
         final String objectKey = UUID.randomUUID().toString();
         final String partitionKey1 = bucket + "|" + "prefix1/"+objectKey;

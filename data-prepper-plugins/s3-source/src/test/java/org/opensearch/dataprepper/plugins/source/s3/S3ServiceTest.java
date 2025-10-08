@@ -25,17 +25,18 @@ public class S3ServiceTest {
     }
 
     @Test
-    void addS3Object_calls_parseS3Object_on_S3ObjectHandler() throws IOException {
+    void addS3Object_with_dataSelection_calls_processS3Object_on_S3ObjectHandler() throws IOException {
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         final S3ObjectReference s3ObjectReference = mock(S3ObjectReference.class);
+        final S3DataSelection dataSelection = S3DataSelection.DATA_ONLY;
 
-        doNothing().when(s3ObjectHandler).processS3Object(eq(s3ObjectReference), eq(S3DataSelection.DATA_AND_METADATA), eq(acknowledgementSet), eq(null), eq(null));
+        doNothing().when(s3ObjectHandler).processS3Object(eq(s3ObjectReference), eq(dataSelection), eq(acknowledgementSet), eq(null), eq(null));
 
         final S3Service objectUnderTest = createObjectUnderTest();
 
-        objectUnderTest.addS3Object(s3ObjectReference, acknowledgementSet);
+        objectUnderTest.addS3Object(s3ObjectReference, dataSelection, acknowledgementSet);
 
-        verify(s3ObjectHandler).processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
+        verify(s3ObjectHandler).processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, null, null);
     }
 
     @Test
