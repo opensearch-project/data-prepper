@@ -87,7 +87,7 @@ public class TailSamplerAggregateActionTests {
     }
 
     @Test
-    void testCountAggregationWithEmptyGroupState() {
+    void testTailSamplerAggregationWithEmptyGroupStateReturnsNull() {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
         final int testPercent = 100;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);

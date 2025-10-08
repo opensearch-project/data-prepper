@@ -297,7 +297,7 @@ public class AppendAggregateActionTest {
     }
 
     @Test
-    void concludeGroup_with_empty_groupState_handled_correctly() throws NoSuchFieldException, IllegalAccessException {
+    void concludeGroup_with_empty_groupState_returns_null() throws NoSuchFieldException, IllegalAccessException {
         AppendAggregateActionConfig appendAggregateActionConfig = new AppendAggregateActionConfig();
         final List<String> testKeysToAppend = new ArrayList<>();
         testKeysToAppend.add(UUID.randomUUID().toString());

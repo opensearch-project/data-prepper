@@ -416,6 +416,7 @@ public class AggregateProcessorTest {
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
+
         @Test
         void handleEvent_returning_with_event_adds_event_to_records_out_with_output_unaggregated_events() {
             when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(true);
@@ -442,6 +443,21 @@ public class AggregateProcessorTest {
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+
+        @Test
+        void test_conclude_group_returning_null_results_in_events_dropped() {
+            when(aggregateProcessorConfig.getOutputUnaggregatedEvents()).thenReturn(false);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            final Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateActionResponse.getEvent()).thenReturn(null);
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(null);
+
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
+
+            assertThat(recordsOut.size(), equalTo(0));
+            verify(actionHandleEventsDroppedCounter).increment(1);
         }
 
         @Test

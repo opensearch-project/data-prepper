@@ -81,7 +81,7 @@ public class HistogramAggregateActionTests {
     }
 
     @Test
-    void testHistogramAggregationWithEmptyGroupState() throws NoSuchFieldException, IllegalAccessException {
+    void testHistogramAggregationWithEmptyGroupStateReturnsNull() throws NoSuchFieldException, IllegalAccessException {
         histogramAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Map.of());
         final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);

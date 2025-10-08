@@ -49,7 +49,7 @@ public class CountAggregateActionTest {
     }
 
     @Test
-    void testCountAggregationWithEmptyGroupState() {
+    void testCountAggregationWithEmptyGroupStateReturnsNull() {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Map.of());
