@@ -58,6 +58,14 @@ import static org.opensearch.dataprepper.model.event.JacksonEventKey.trimTrailin
  * @since 1.2
  */
 public class JacksonEvent implements Event {
+    class DefaultEventFailureMetadata implements EventFailureMetadata {
+        static final String FAILURE_METADATA = "_failure_metadata";
+
+        public DefaultEventFailureMetadata with(String key, Object value) {
+            put(FAILURE_METADATA+"/"+key, value);
+            return this;
+        }
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
 
@@ -205,7 +213,7 @@ public class JacksonEvent implements Event {
     }
 
     public EventFailureMetadata updateFailureMetadata() {
-        return new DefaultEventFailureMetadata(this);
+        return new DefaultEventFailureMetadata();
     }
 
     /**

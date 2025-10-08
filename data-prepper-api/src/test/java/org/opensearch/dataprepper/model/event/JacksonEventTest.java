@@ -37,7 +37,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -190,8 +189,24 @@ public class JacksonEventTest {
     @Test
     void testUpdateFailureMetadata() {
         Object failureMetadata = event.updateFailureMetadata();
-        assertTrue(failureMetadata instanceof DefaultEventFailureMetadata);
-        assertThat(event.get(DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(notNullValue()));
+        assertThat(failureMetadata, instanceOf(JacksonEvent.DefaultEventFailureMetadata.class));
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(nullValue()));
+        ((EventFailureMetadata)failureMetadata).with("key", "value");
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(notNullValue()));
+    }
+
+    @Test
+    public void testDefaultEventFailureMetadata() {
+        String eventType = UUID.randomUUID().toString();
+
+        Event event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .build();
+
+        EventFailureMetadata eventFailureMetadata = event.updateFailureMetadata();
+        eventFailureMetadata.with("key1", "value1").with("key2", 2);
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key1", String.class), equalTo("value1"));
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key2", Integer.class), equalTo(2));
     }
 
     @Test
