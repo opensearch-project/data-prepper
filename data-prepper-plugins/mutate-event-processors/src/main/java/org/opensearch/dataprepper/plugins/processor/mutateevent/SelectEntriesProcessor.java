@@ -58,15 +58,7 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
             }
             // To handle nested case, just get the values and store
             // in a temporary map.
-            Map<String, Object> outMap = new HashMap<>();
-            if (keysToInclude != null) {
-                for (String keyToInclude: keysToInclude) {
-                    Object value = recordEvent.get(keyToInclude, Object.class);
-                    if (value != null) {
-                        outMap.put(keyToInclude, value);
-                    }
-                }
-            }
+            Map<String, Object> outMap = getIncludeKeysOutputMap(recordEvent);
 
             Map<String, Object> regexOutMap = getIncludeKeysRegexOutputMap(recordEvent);
 
@@ -98,6 +90,20 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
     public void shutdown() {
     }
 
+    private Map<String, Object> getIncludeKeysOutputMap(final Event event) {
+        Map<String, Object> outMap = new HashMap<>();
+        if (keysToInclude != null) {
+            for (String keyToInclude: keysToInclude) {
+                Object value = event.get(keyToInclude, Object.class);
+                if (value != null) {
+                    outMap.put(keyToInclude, value);
+                }
+            }
+        }
+
+        return outMap;
+    }
+
     private Map<String, Object> getIncludeKeysRegexOutputMap(final Event event) {
         if (includeKeysRegex == null || includeKeysRegex.isEmpty()) {
             return Collections.emptyMap();
@@ -107,7 +113,7 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
 
         Map<String, Object> eventMap;
 
-        if (includeKeysRegexPointer != null) {
+        if (includeKeysRegexPointer != null && !includeKeysRegexPointer.equals("/")) {
             if (!event.containsKey(includeKeysRegexPointer)) {
                 return Collections.emptyMap();
             }
@@ -124,7 +130,7 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
 
             for (final Pattern includeKeyRegex : includeKeysRegex) {
                 if (includeKeyRegex.matcher(entry.getKey()).matches()) {
-                    final String fullKey = includeKeysRegexPointer != null ? includeKeysRegexPointer + "/" + entry.getKey() : entry.getKey();
+                    final String fullKey = getFullKey(entry.getKey(), includeKeysRegexPointer);
                     outputMap.put(fullKey, entry.getValue());
                     break;
                 }
@@ -132,6 +138,10 @@ public class SelectEntriesProcessor extends AbstractProcessor<Record<Event>, Rec
         }
 
         return outputMap;
+    }
+
+    private String getFullKey(final String key, final String includeKeysRegexPointer) {
+        return includeKeysRegexPointer != null ? includeKeysRegexPointer + "/" + key : key;
     }
 }
 

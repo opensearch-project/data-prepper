@@ -63,6 +63,11 @@ public class SelectEntriesProcessorConfig {
         return selectWhen;
     }
 
+    private void setIncludeKeysRegex() {
+        includeKeysRegexPatterns = includeKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+    }
+
+
     @AssertTrue(message = "At least one of include_keys and include_keys_regex is required.")
     boolean isValidIncludeKeys() {
         return (includeKeys != null && !includeKeys.isEmpty()) || (includeKeysRegex != null && !includeKeysRegex.isEmpty());
@@ -72,7 +77,7 @@ public class SelectEntriesProcessorConfig {
     boolean isValidIncludeKeysRegex() {
         if (includeKeysRegex != null && !includeKeysRegex.isEmpty()) {
             try {
-                includeKeysRegexPatterns = includeKeysRegex.stream().map(Pattern::compile).collect(Collectors.toList());
+                setIncludeKeysRegex();
             } catch (final PatternSyntaxException e) {
                 return false;
             }
