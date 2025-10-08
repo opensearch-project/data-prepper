@@ -46,39 +46,51 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 
 @ExtendWith(MockitoExtension.class)
 public class HistogramAggregateActionTests {
+    private static final double TEST_VALUE_RANGE_MIN = 0.0;
+    private static final double TEST_VALUE_RANGE_MAX = 6.0;
+    private static final double TEST_VALUE_RANGE_STEP = 2.0;
+    private static final double bucket1 = TEST_VALUE_RANGE_MIN;
+    private static final double bucket2 = bucket1 + TEST_VALUE_RANGE_STEP;
+    private static final double bucket3 = bucket2 + TEST_VALUE_RANGE_STEP;
     private AggregateAction histogramAggregateAction;
     private HistogramAggregateActionConfig histogramAggregateActionConfig;
+    private List<Number> buckets;
+    private String testUnits;
+    private String testKey;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws NoSuchFieldException, IllegalAccessException {
+        buckets = new ArrayList<Number>();
+        buckets.add(bucket1);
+        buckets.add(bucket2);
+        buckets.add(bucket3);
         histogramAggregateActionConfig = new HistogramAggregateActionConfig();
+        testUnits = "ms";
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", testUnits);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", buckets);
+        final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW);
+        testKey = RandomStringUtils.randomAlphabetic(10);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
     }
 
     private AggregateAction createObjectUnderTest() {
         return new HistogramAggregateAction(histogramAggregateActionConfig);
     }
 
+    @Test
+    void testHistogramAggregationWithEmptyGroupState() throws NoSuchFieldException, IllegalAccessException {
+        histogramAggregateAction = createObjectUnderTest();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Map.of());
+        final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        assertThat(actionOutput, equalTo(null));
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {10, 20, 50, 100})
     void testHistogramAggregate(final int testCount) throws NoSuchFieldException, IllegalAccessException {
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW);
-        final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", "ms");
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
-        final double TEST_VALUE_RANGE_MIN = 0.0;
-        final double TEST_VALUE_RANGE_MAX = 6.0;
-        final double TEST_VALUE_RANGE_STEP = 2.0;
-        final double bucket1 = TEST_VALUE_RANGE_MIN;
-        final double bucket2 = bucket1 + TEST_VALUE_RANGE_STEP;
-        final double bucket3 = bucket2 + TEST_VALUE_RANGE_STEP;
-        List<Double> buckets = new ArrayList<Double>();
-        buckets.add(bucket1);
-        buckets.add(bucket2);
-        buckets.add(bucket3);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", buckets);
-        final String testKey = RandomStringUtils.randomAlphabetic(10);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
         histogramAggregateAction = createObjectUnderTest();
         final String dataKey = RandomStringUtils.randomAlphabetic(10);
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
@@ -142,24 +154,8 @@ public class HistogramAggregateActionTests {
     @ParameterizedTest
     @ValueSource(ints = {10, 20, 50, 100})
     void testHistogramAggregateOTelFormat(final int testCount) throws NoSuchFieldException, IllegalAccessException {
-        final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
-        final String testUnits = "ms";
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", testUnits);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
-        final double TEST_VALUE_RANGE_MIN = 0.0;
-        final double TEST_VALUE_RANGE_MAX = 6.0;
-        final double TEST_VALUE_RANGE_STEP = 2.0;
-        final double bucket1 = TEST_VALUE_RANGE_MIN;
-        final double bucket2 = bucket1 + TEST_VALUE_RANGE_STEP;
-        final double bucket3 = bucket2 + TEST_VALUE_RANGE_STEP;
-        List<Double> buckets = new ArrayList<Double>();
-        buckets.add(bucket1);
-        buckets.add(bucket2);
-        buckets.add(bucket3);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", buckets);
-        final String testKey = RandomStringUtils.randomAlphabetic(10);
-        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.OTEL_METRICS);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", "");
         histogramAggregateAction = createObjectUnderTest();
         final String dataKey = RandomStringUtils.randomAlphabetic(10);
         final String dataValue = RandomStringUtils.randomAlphabetic(15);
@@ -208,7 +204,9 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put("bucketCounts", expectedBucketCounts.length);
         expectedEventMap.put("explicitBoundsCount", expectedBucketCounts.length-1);
         
-        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k, v)));
+        expectedEventMap.forEach((k, v) -> {
+            assertThat(result.get(0).toMap(), hasEntry(k, v));
+        });
         assertThat(result.get(0).toMap(), hasKey("startTime"));
         assertThat(result.get(0).toMap(), hasKey("time"));
         final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get(0).toMap().get("bucketCountsList");
@@ -257,19 +255,8 @@ public class HistogramAggregateActionTests {
         when(histogramAggregateActionConfig.getMetricName()).thenReturn(testName);
         when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.OTEL_METRICS);
         String keyPrefix = UUID.randomUUID().toString();
-        final String testUnits = "ms";
         when(histogramAggregateActionConfig.getUnits()).thenReturn(testUnits);
         when(histogramAggregateActionConfig.getRecordMinMax()).thenReturn(true);
-        final double TEST_VALUE_RANGE_MIN = 0.0;
-        final double TEST_VALUE_RANGE_MAX = 6.0;
-        final double TEST_VALUE_RANGE_STEP = 2.0;
-        final double bucket1 = TEST_VALUE_RANGE_MIN;
-        final double bucket2 = bucket1 + TEST_VALUE_RANGE_STEP;
-        final double bucket3 = bucket2 + TEST_VALUE_RANGE_STEP;
-        List<Number> buckets = new ArrayList<Number>();
-        buckets.add(bucket1);
-        buckets.add(bucket2);
-        buckets.add(bucket3);
         when(histogramAggregateActionConfig.getBuckets()).thenReturn(buckets);
         final String testKey = RandomStringUtils.randomAlphabetic(10);
         when(histogramAggregateActionConfig.getKey()).thenReturn(testKey);
@@ -385,16 +372,6 @@ public class HistogramAggregateActionTests {
         final String testUnits = "ms";
         when(histogramAggregateActionConfig.getUnits()).thenReturn(testUnits);
         when(histogramAggregateActionConfig.getRecordMinMax()).thenReturn(true);
-        final double TEST_VALUE_RANGE_MIN = 0.0;
-        final double TEST_VALUE_RANGE_MAX = 6.0;
-        final double TEST_VALUE_RANGE_STEP = 2.0;
-        final double bucket1 = TEST_VALUE_RANGE_MIN;
-        final double bucket2 = bucket1 + TEST_VALUE_RANGE_STEP;
-        final double bucket3 = bucket2 + TEST_VALUE_RANGE_STEP;
-        List<Number> buckets = new ArrayList<Number>();
-        buckets.add(bucket1);
-        buckets.add(bucket2);
-        buckets.add(bucket3);
         when(histogramAggregateActionConfig.getBuckets()).thenReturn(buckets);
         final String testKey = RandomStringUtils.randomAlphabetic(10);
         when(histogramAggregateActionConfig.getKey()).thenReturn(testKey);

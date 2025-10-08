@@ -80,6 +80,9 @@ public class AppendAggregateAction implements AggregateAction {
 
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
+        if (aggregateActionInput.getGroupState().isEmpty()) {
+            return null;
+        }
 
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)

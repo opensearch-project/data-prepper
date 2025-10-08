@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
+import org.junit.jupiter.api.Test;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -45,6 +46,15 @@ public class CountAggregateActionTest {
 
     private AggregateAction createObjectUnderTest(CountAggregateActionConfig config) {
         return new CountAggregateAction(config);
+    }
+
+    @Test
+    void testCountAggregationWithEmptyGroupState() {
+        CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Map.of());
+        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        assertThat(actionOutput, equalTo(null));
     }
 
     @ParameterizedTest
