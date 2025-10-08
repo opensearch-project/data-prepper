@@ -29,6 +29,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.acknowledgements.ProgressCheck;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.s3.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.source.s3.filter.S3EventFilter;
@@ -70,6 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -174,6 +176,7 @@ class SqsWorkerTest {
         @ParameterizedTest
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
         void processSqsMessages_should_return_number_of_messages_processed(final String eventName) throws IOException {
+            when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
             when(message.body()).thenReturn(createEventNotification(eventName, startTime));
@@ -200,7 +203,7 @@ class SqsWorkerTest {
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
             assertThat(messagesProcessed, equalTo(1));
-            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
             verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
@@ -365,6 +368,7 @@ class SqsWorkerTest {
 
         @Test
         void processSqsMessages_should_return_number_of_messages_processed_when_using_EventBridge() throws IOException {
+            when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
             when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.EVENTBRIDGE);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
@@ -392,7 +396,7 @@ class SqsWorkerTest {
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
             assertThat(messagesProcessed, equalTo(1));
-            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
             verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
@@ -402,6 +406,7 @@ class SqsWorkerTest {
 
         @Test
         void processSqsMessages_should_return_number_of_messages_processed_when_using_SecurityLake() throws IOException {
+            when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
             when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.EVENTBRIDGE);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
@@ -429,7 +434,7 @@ class SqsWorkerTest {
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
             assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
             assertThat(messagesProcessed, equalTo(1));
-            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
             verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
             verify(sqsMessagesReceivedCounter).increment(1);
             verify(sqsMessagesDeletedCounter).increment(1);
@@ -441,6 +446,7 @@ class SqsWorkerTest {
 
     @Test
     void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_some_succeed_and_some_fail() throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         final List<Message> messages = IntStream.range(0, 6).mapToObj(i -> {
                     final Message message = mock(Message.class);
@@ -479,7 +485,7 @@ class SqsWorkerTest {
         assertThat(actualDeleteMessageBatchRequest, notNullValue());
         assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(6));
         assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
-        verify(s3Service, times(6)).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service, times(6)).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter).increment(6);
         verify(sqsMessagesDeletedCounter).increment(3);
@@ -492,6 +498,7 @@ class SqsWorkerTest {
     @ArgumentsSource(DeleteExceptionToBackoffCalls.class)
     void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_request_fails(
             final Class<Exception> exClass, final int timesToCallBackoff) throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         final List<Message> messages = IntStream.range(0, 6).mapToObj(i -> {
                     final Message message = mock(Message.class);
@@ -519,7 +526,7 @@ class SqsWorkerTest {
         assertThat(actualDeleteMessageBatchRequest, notNullValue());
         assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(6));
         assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
-        verify(s3Service, times(6)).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service, times(6)).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter).increment(6);
         verifyNoInteractions(sqsMessagesDeletedCounter);
@@ -601,6 +608,7 @@ class SqsWorkerTest {
     @ParameterizedTest
     @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
     void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements(final String eventName) throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
@@ -622,7 +630,7 @@ class SqsWorkerTest {
         Duration actualDelay = durationArgumentCaptor.getValue();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
         verify(sqsMessagesReceivedCounter).increment(1);
         verifyNoInteractions(sqsMessagesDeletedCounter);
@@ -633,6 +641,7 @@ class SqsWorkerTest {
     @ParameterizedTest
     @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
     void processSqsMessages_should_call_s3Service_to_delete_objects_if_deleteS3ObjectsOnRead_is_enabled_on_acknowledgment_callback(final String eventName) throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
         when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(true);
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
@@ -658,7 +667,7 @@ class SqsWorkerTest {
         Duration actualDelay = durationArgumentCaptor.getValue();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
 
         verify(acknowledgementSetManager).create(ackCallbackArgumentCaptor.capture(), any(Duration.class));
 
@@ -682,6 +691,7 @@ class SqsWorkerTest {
     @ParameterizedTest
     @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
     void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements_and_progress_check(final String eventName) throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(6));
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
@@ -705,7 +715,7 @@ class SqsWorkerTest {
         Duration actualDelay = durationArgumentCaptor.getValue();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
         verify(acknowledgementSet).addProgressCheck(any(), any(Duration.class));
         verify(sqsMessagesReceivedCounter).increment(1);
@@ -736,6 +746,7 @@ class SqsWorkerTest {
 
     @Test
     void processSqsMessages_should_update_visibility_timeout_when_progress_changes() throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofMillis(1));
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
@@ -754,7 +765,7 @@ class SqsWorkerTest {
         final int messagesProcessed = createObjectUnderTest().processSqsMessages();
 
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+        verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
 
         ArgumentCaptor<Consumer<ProgressCheck>> progressConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -774,6 +785,7 @@ class SqsWorkerTest {
 
     @Test
     void processSqsMessages_should_stop_updating_visibility_timeout_after_stop() throws IOException {
+        when(s3SourceConfig.getDataSelection()).thenReturn(S3DataSelection.DATA_AND_METADATA);
         when(sqsOptions.getVisibilityDuplicateProtection()).thenReturn(true);
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofMillis(1));
         when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
@@ -797,7 +809,7 @@ class SqsWorkerTest {
 
         final InOrder inOrder = inOrder(s3Service, sqsMessageDelayTimer);
         inOrder.verify(sqsMessageDelayTimer).record(any(Duration.class));
-        inOrder.verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+        inOrder.verify(s3Service).addS3Object(any(S3ObjectReference.class), eq(S3DataSelection.DATA_AND_METADATA), any());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));
 
         ArgumentCaptor<Consumer<ProgressCheck>> progressConsumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);

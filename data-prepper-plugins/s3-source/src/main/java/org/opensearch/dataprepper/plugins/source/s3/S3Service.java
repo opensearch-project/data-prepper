@@ -16,8 +16,8 @@ public class S3Service {
         this.s3ObjectHandler = s3ObjectHandler;
     }
 
-    void addS3Object(final S3ObjectReference s3ObjectReference, AcknowledgementSet acknowledgementSet) throws IOException {
-        s3ObjectHandler.processS3Object(s3ObjectReference, S3DataSelection.DATA_AND_METADATA, acknowledgementSet, null, null);
+    void addS3Object(final S3ObjectReference s3ObjectReference, final S3DataSelection dataSelection, AcknowledgementSet acknowledgementSet) throws IOException {
+        s3ObjectHandler.processS3Object(s3ObjectReference, dataSelection, acknowledgementSet, null, null);
     }
 
     void deleteS3Object(final S3ObjectReference s3ObjectReference) throws IOException {

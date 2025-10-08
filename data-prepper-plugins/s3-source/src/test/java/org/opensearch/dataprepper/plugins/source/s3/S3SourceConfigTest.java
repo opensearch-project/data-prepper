@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.FolderPartitioningOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.S3SelectOptions;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.HashMap;
@@ -124,5 +125,18 @@ class S3SourceConfigTest {
         ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"s3SelectOptions", s3SelectOptions);
 
         assertFalse(s3SourceConfig.isS3SelectNotUsingDeleteS3ObjectsOnRead());
+    }
+
+    @Test
+    void getDataSelection_returns_default_value() {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();
+        assertThat(s3SourceConfig.getDataSelection(), equalTo(S3DataSelection.DATA_AND_METADATA));
+    }
+
+    @Test
+    void getDataSelection_returns_configured_value() throws NoSuchFieldException, IllegalAccessException {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();
+        ReflectivelySetField.setField(S3SourceConfig.class, s3SourceConfig, "dataSelection", S3DataSelection.METADATA_ONLY);
+        assertThat(s3SourceConfig.getDataSelection(), equalTo(S3DataSelection.METADATA_ONLY));
     }
 }

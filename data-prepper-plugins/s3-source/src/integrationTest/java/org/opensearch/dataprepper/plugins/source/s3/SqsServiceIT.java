@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.plugins.source.s3.configuration.S3DataSelection;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.s3.configuration.AwsAuthenticationOptions;
@@ -148,7 +149,7 @@ class SqsServiceIT {
         assertThat(numMessages.get(), equalTo(numberOfObjectsToWrite));
         });
         final ArgumentCaptor<S3ObjectReference> s3ObjectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        verify(s3Service, atLeastOnce()).addS3Object(s3ObjectReferenceArgumentCaptor.capture(), eq(null));
+        verify(s3Service, atLeastOnce()).addS3Object(s3ObjectReferenceArgumentCaptor.capture(), eq(S3DataSelection.DATA_AND_METADATA), eq(null));
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getBucketName(), equalTo(bucket));
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getKey(), startsWith("s3 source/sqs/"));
         objectUnderTest.stop();
