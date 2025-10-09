@@ -47,13 +47,18 @@ public class FailedBulkOperationConverter {
             failedDlqDataBuilder.withMessage(failedBulkOperation.getFailure().getMessage());
         }
 
-        return DlqObject.builder()
+        DlqObject.Builder builder = DlqObject.builder()
             .withFailedData(failedDlqDataBuilder.build())
             .withPluginName(pluginName)
             .withPipelineName(pipelineName)
-            .withPluginId(pluginName)
-            .withEventHandle(bulkOperationWithHandle.getEventHandle())
-            .build();
+            .withPluginId(pluginName);
+        if (bulkOperationWithHandle.getEvent() != null) {
+            builder.withEvent(bulkOperationWithHandle.getEvent());
+        } else {
+            builder.withEventHandle(bulkOperationWithHandle.getEventHandle());
+        }
+
+        return builder.build();
     }
 
     private Object convertDocumentToGenericMap(final BulkOperationWrapper bulkOperation) {

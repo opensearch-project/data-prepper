@@ -187,6 +187,29 @@ public class JacksonEventTest {
     }
 
     @Test
+    void testUpdateFailureMetadata() {
+        Object failureMetadata = event.updateFailureMetadata();
+        assertThat(failureMetadata, instanceOf(JacksonEvent.DefaultEventFailureMetadata.class));
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(nullValue()));
+        ((EventFailureMetadata)failureMetadata).with("key", "value");
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA, Map.class), is(notNullValue()));
+    }
+
+    @Test
+    public void testDefaultEventFailureMetadata() {
+        String eventType = UUID.randomUUID().toString();
+
+        Event event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .build();
+
+        EventFailureMetadata eventFailureMetadata = event.updateFailureMetadata();
+        eventFailureMetadata.with("key1", "value1").with("key2", 2);
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key1", String.class), equalTo("value1"));
+        assertThat(event.get(JacksonEvent.DefaultEventFailureMetadata.FAILURE_METADATA+"/key2", Integer.class), equalTo(2));
+    }
+
+    @Test
     void testPutAndGet_withArrays_out_of_bounds_on_end_of_list_creates_new_element() {
 
         final String key = "list-key/1/foo";
