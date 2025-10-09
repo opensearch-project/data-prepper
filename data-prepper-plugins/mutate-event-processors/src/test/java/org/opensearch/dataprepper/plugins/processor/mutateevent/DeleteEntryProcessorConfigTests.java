@@ -1,12 +1,15 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.EventKey;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
 
 public class DeleteEntryProcessorConfigTests {
 
@@ -26,5 +29,27 @@ public class DeleteEntryProcessorConfigTests {
         ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", invalidPatterns);
 
         assertThat(objectUnderTest.isValidWithKeysRegexPattern(), equalTo(false));
+    }
+    
+    @Test
+    void testisExcludeFromDeleteValid_with_valid_config() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+        final List<String> regexKeys = List.of("test.*");
+        final Set<EventKey> excludeKeys = Set.of(mock(EventKey.class));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeysRegex", regexKeys);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", excludeKeys);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
+    void testisExcludeFromDeleteValid_with_invalid_config() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+        final List<EventKey> testKeys = List.of(mock(EventKey.class));
+        final Set<EventKey> excludeKeys = Set.of(mock(EventKey.class));
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", testKeys);
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "excludeFromDelete", excludeKeys);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(false));
     }
 }

@@ -62,11 +62,14 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                             ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
 
-        if (!this.withKeys.isEmpty()) {
-            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, null, null, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
-            this.entries = List.of(entry);
-        } else if (!this.withKeysRegex.isEmpty()) {
-            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(null, this.withKeysRegex, this.excludeFromDelete, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
+        if (!this.withKeys.isEmpty() || !this.withKeysRegex.isEmpty()) {
+            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
+                    this.withKeys,
+                    this.withKeysRegex,
+                    this.excludeFromDelete,
+                    this.deleteWhen,
+                    config.getIterateOn(),
+                    config.getDeleteFromElementWhen());
             this.entries = List.of(entry);
         } else {
             this.entries = config.getEntries();

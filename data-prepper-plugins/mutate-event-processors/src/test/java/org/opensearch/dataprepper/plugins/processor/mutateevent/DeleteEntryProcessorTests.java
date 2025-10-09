@@ -310,10 +310,12 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void test_multiple_entries_with_different_delete_when_conditions() {
-        final DeleteEntryProcessorConfig.Entry entry1 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)), null, null, "condition1", null, null);
-        final DeleteEntryProcessorConfig.Entry entry2 = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key2"
-                , EventKeyFactory.EventAction.DELETE)), null, null, "condition2", null, null);
+        final DeleteEntryProcessorConfig.Entry entry1 = new DeleteEntryProcessorConfig.Entry(
+                List.of(eventKeyFactory.createEventKey("key1", EventKeyFactory.EventAction.DELETE)),
+                null, null, "condition1", null, null);
+        final DeleteEntryProcessorConfig.Entry entry2 = new DeleteEntryProcessorConfig.Entry(
+                List.of(eventKeyFactory.createEventKey("key2", EventKeyFactory.EventAction.DELETE)),
+                null, null, "condition2", null, null);
 
         when(mockConfig.getEntries()).thenReturn(List.of(entry1, entry2));
         when(expressionEvaluator.isValidExpressionStatement("condition1")).thenReturn(true);
@@ -351,8 +353,9 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void invalid_delete_when_with_entries_format_throws_InvalidPluginConfigurationException() {
-        DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1",
-                EventKeyFactory.EventAction.DELETE)), null, null, "invalid_condition", null, null);
+        DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
+                List.of(eventKeyFactory.createEventKey("key1", EventKeyFactory.EventAction.DELETE)),
+                null, null, "invalid_condition", null, null);
 
         when(mockConfig.getEntries()).thenReturn(List.of(entry));
         when(expressionEvaluator.isValidExpressionStatement("invalid_condition")).thenReturn(false);
@@ -363,8 +366,9 @@ public class DeleteEntryProcessorTests {
     @Test
     public void test_both_configurations_used_together() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
-        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)), null, null, "condition", null, null);
+        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
+                List.of(eventKeyFactory.createEventKey("key1", EventKeyFactory.EventAction.DELETE)),
+                null, null, "condition", null, null);
 
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("message",
                 EventKeyFactory.EventAction.DELETE)));
@@ -388,7 +392,8 @@ public class DeleteEntryProcessorTests {
     @Test
     public void test_has_only_one_config_returns_false_when_entries_and_with_keys_regex_used_together() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
-        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(null, List.of("^ran.*"), null, "condition", null, null);
+        final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(
+                null, List.of("^ran.*"), null, "condition", null, null);
 
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", List.of("^test.*"));
         ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
@@ -400,8 +405,8 @@ public class DeleteEntryProcessorTests {
     public void test_has_only_one_config_returns_false_when_with_keys_and_with_keys_regex_used_together() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
 
-        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(
+                eventKeyFactory.createEventKey("key1",EventKeyFactory.EventAction.DELETE)));
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", List.of("^test.*"));
 
         assertThat(configObjectUnderTest.hasOnlyOneConfiguration(), is(false));
@@ -411,9 +416,10 @@ public class DeleteEntryProcessorTests {
     public void test_exclude_from_delete_without_with_key_regex() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
 
-        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("key1"
-                , EventKeyFactory.EventAction.DELETE)));
-        ReflectionTestUtils.setField(configObjectUnderTest, "excludeFromDelete", Set.of(eventKeyFactory.createEventKey("excludeKey")));
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(
+                eventKeyFactory.createEventKey("key1", EventKeyFactory.EventAction.DELETE)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "excludeFromDelete", Set.of(
+                eventKeyFactory.createEventKey("excludeKey")));
 
         assertThat(configObjectUnderTest.isExcludeFromDeleteValid(), is(false));
     }
