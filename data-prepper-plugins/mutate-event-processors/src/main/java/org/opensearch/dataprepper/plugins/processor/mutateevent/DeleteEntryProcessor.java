@@ -62,12 +62,11 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                             ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax", deleteWhen));
         }
 
-        if ((!this.excludeFromDelete.isEmpty() && this.withKeysRegex.isEmpty())) {
-            throw new InvalidPluginConfigurationException("exclude_from_delete only applies when with_keys_regex is configured.");
-        }
-
-        if ((this.withKeys != null && !this.withKeys.isEmpty()) || (this.withKeysRegex != null && !this.withKeysRegex.isEmpty())) {
-            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, this.withKeysRegex, this.excludeFromDelete, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
+        if (!this.withKeys.isEmpty()) {
+            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(this.withKeys, null, null, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
+            this.entries = List.of(entry);
+        } else if (!this.withKeysRegex.isEmpty()) {
+            DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(null, this.withKeysRegex, this.excludeFromDelete, this.deleteWhen, config.getIterateOn(), config.getDeleteFromElementWhen());
             this.entries = List.of(entry);
         } else {
             this.entries = config.getEntries();
@@ -80,10 +79,6 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                         String.format("delete_when %s is not a valid expression statement. See https://opensearch" +
                                         ".org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax",
                                 entry.getDeleteWhen()));
-            }
-
-            if (!entry.isValidWithKeysRegexPattern()) {
-                throw new InvalidPluginConfigurationException("Invalid regex pattern in with_keys_regex");
             }
 
             if (entry.getIterateOn() == null && entry.getDeleteFromElementWhen() != null) {
@@ -110,7 +105,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
                         continue;
                     }
 
-                    final String iterateOn = deleteEntryProcessorConfig.getIterateOn();
+                    final String iterateOn = entry.getIterateOn();
                     if (Objects.isNull(iterateOn)) {
                         deleteKeysFromEvent(recordEvent, entry);
                     } else {
@@ -144,13 +139,13 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     }
 
     private void deleteKeysFromEvent(final Event event, final DeleteEntryProcessorConfig.Entry entry) {
-        if (entry.getWithKeys() != null) {
+        if (!entry.getWithKeys().isEmpty()) {
             for (final EventKey entryKey : entry.getWithKeys()) {
                 event.delete(entryKey);
             }
         }
         
-        if (entry.getWithKeysRegex() != null && !entry.getWithKeysRegex().isEmpty()) {
+        if (!entry.getWithKeysRegex().isEmpty()) {
             final Set<String> excludeKeys = entry.getExcludeFromDelete() == null ? Collections.emptySet()
                 : entry.getExcludeFromDelete().stream()
                     .map(EventKey::getKey)
@@ -160,11 +155,10 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
 
             for (final String key : event.toMap().keySet()) {
                 for (final Pattern regexPattern : validRegexPatterns) {
-                    if (regexPattern.matcher(key).matches()) {
-                        if (!excludeKeys.contains(key)) {
+                    if (!excludeKeys.contains(key)) {
+                        if (regexPattern.matcher(key).matches()) {
                             event.delete(key);
                         }
-                        break;
                     }
                 }
             }

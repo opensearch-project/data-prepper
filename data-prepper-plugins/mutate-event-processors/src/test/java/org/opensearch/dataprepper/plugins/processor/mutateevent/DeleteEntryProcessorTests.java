@@ -370,7 +370,7 @@ public class DeleteEntryProcessorTests {
                 EventKeyFactory.EventAction.DELETE)));
         ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
 
-        assertThat(configObjectUnderTest.hasBothConfigurations(), is(true));
+        assertThat(configObjectUnderTest.hasOnlyOneConfiguration(), is(false));
     }
 
     @Test
@@ -386,25 +386,36 @@ public class DeleteEntryProcessorTests {
 
 
     @Test
-    public void test_has_both_configs_returns_true_when_entries_and_with_keys_regex_used_together() {
+    public void test_has_only_one_config_returns_false_when_entries_and_with_keys_regex_used_together() {
         final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
         final DeleteEntryProcessorConfig.Entry entry = new DeleteEntryProcessorConfig.Entry(null, List.of("^ran.*"), null, "condition", null, null);
 
         ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", List.of("^test.*"));
         ReflectionTestUtils.setField(configObjectUnderTest, "entries", List.of(entry));
 
-        assertThat(configObjectUnderTest.hasBothConfigurations(), is(true));
+        assertThat(configObjectUnderTest.hasOnlyOneConfiguration(), is(false));
     }
 
     @Test
-    public void test_exclude_from_delete_without_with_key_regex_throws_InvalidPluginConfigurationException() {
-        final String testKey = UUID.randomUUID().toString();
-        final String excludeKey = UUID.randomUUID().toString();
+    public void test_has_only_one_config_returns_false_when_with_keys_and_with_keys_regex_used_together() {
+        final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
 
-        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey(testKey, EventKeyFactory.EventAction.DELETE)));
-        when(mockConfig.getExcludeFromDelete()).thenReturn(Set.of(eventKeyFactory.createEventKey(excludeKey)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("key1"
+                , EventKeyFactory.EventAction.DELETE)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeysRegex", List.of("^test.*"));
 
-        assertThrows(InvalidPluginConfigurationException.class, this::createObjectUnderTest);
+        assertThat(configObjectUnderTest.hasOnlyOneConfiguration(), is(false));
+    }
+
+    @Test
+    public void test_exclude_from_delete_without_with_key_regex() {
+        final DeleteEntryProcessorConfig configObjectUnderTest = new DeleteEntryProcessorConfig();
+
+        ReflectionTestUtils.setField(configObjectUnderTest, "withKeys", List.of(eventKeyFactory.createEventKey("key1"
+                , EventKeyFactory.EventAction.DELETE)));
+        ReflectionTestUtils.setField(configObjectUnderTest, "excludeFromDelete", Set.of(eventKeyFactory.createEventKey("excludeKey")));
+
+        assertThat(configObjectUnderTest.isExcludeFromDeleteValid(), is(false));
     }
 
     @Test
@@ -451,37 +462,6 @@ public class DeleteEntryProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
-        assertThat(editedRecords.get(0).getData().containsKey("random_key"), is(true));
-        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
-    }
-
-    @Test
-    public void test_with_keys_and_with_keys_regex_used_together() {
-        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
-        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
-
-        final DeleteEntryProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("message");
-        record.getData().put("randomKey", "test2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
-        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
-    }
-
-    @Test
-    public void test_with_keys_and_with_keys_regex_used_together_with_exclude_from_delete() {
-        when(mockConfig.getWithKeys()).thenReturn(List.of(eventKeyFactory.createEventKey("message", EventKeyFactory.EventAction.DELETE)));
-        when(mockConfig.getWithKeysRegex()).thenReturn(List.of("^ran.*"));
-        when(mockConfig.getExcludeFromDelete()).thenReturn(Set.of(eventKeyFactory.createEventKey("random_key")));
-
-        final DeleteEntryProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("message");
-        record.getData().put("random_key", "test");
-        record.getData().put("randomKey", "test2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
         assertThat(editedRecords.get(0).getData().containsKey("random_key"), is(true));
         assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
     }
@@ -560,6 +540,36 @@ public class DeleteEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
         assertThat(editedRecords.get(0).getData().get("message", List.class), equalTo(
                 List.of(Collections.emptyMap())));
+    }
+
+    @Test
+    public void test_multiple_entries_with_withKey_and_withKeyRegex_configs() {
+        final DeleteEntryProcessorConfig.Entry entry1 = new DeleteEntryProcessorConfig.Entry(List.of(
+                eventKeyFactory.createEventKey("key1", EventKeyFactory.EventAction.DELETE),
+                eventKeyFactory.createEventKey("key2", EventKeyFactory.EventAction.DELETE)),
+                null, null, null, null, null);
+        final DeleteEntryProcessorConfig.Entry entry2 = new DeleteEntryProcessorConfig.Entry(
+                null, List.of("ran.*"), Set.of(eventKeyFactory.createEventKey("random")), null, null, null);
+        final DeleteEntryProcessorConfig.Entry entry3 = new DeleteEntryProcessorConfig.Entry(
+                null, List.of("test.*"), null, null, null, null);
+
+        when(mockConfig.getEntries()).thenReturn(List.of(entry1, entry2, entry3));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("test");
+        record.getData().put("key1", "value1");
+        record.getData().put("key2", "value2");
+        record.getData().put("randomKey", "value3");
+        record.getData().put("random", "value4");
+        record.getData().put("testKey", "value5");
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("key1"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("key2"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("randomKey"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("random"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("testKey"), is(false));
     }
 
     @Test
