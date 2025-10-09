@@ -16,12 +16,12 @@ import java.util.List;
 
 public class CloudWatchLogsSinkUtils {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsSinkUtils.class);
-    public static DlqObject createDlqObject(final int status, final EventHandle eventHandle, final String message, final String failureMessage, final DlqPushHandler dlqPushHandler) {
+    public static DlqObject createDlqObject(final int status, final EventHandle eventHandle, final String message, final String failureMessage, final DlqPushHandler dlqPushHandler, final boolean dropIfDlqNotConfigured) {
         if (dlqPushHandler != null) {
             CloudWatchLogsSinkDlqData cloudWatchLogsSinkDlqData = CloudWatchLogsSinkDlqData.createDlqData(status, message, failureMessage);
             return DlqObject.createDlqObject(dlqPushHandler.getPluginSetting(), List.of(eventHandle), cloudWatchLogsSinkDlqData);
         } else {
-            eventHandle.release(false);
+            eventHandle.release(dropIfDlqNotConfigured);
         }
         return null;
     }

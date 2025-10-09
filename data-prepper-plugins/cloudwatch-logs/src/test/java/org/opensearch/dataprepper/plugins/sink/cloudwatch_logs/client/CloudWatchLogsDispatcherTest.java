@@ -76,6 +76,7 @@ class CloudWatchLogsDispatcherTest {
                 .logGroup(LOG_GROUP)
                 .logStream(LOG_STREAM)
                 .retryCount(RETRY_COUNT)
+                .dropIfDlqNotConfigured(true)
                 .build();
     }
 
@@ -122,8 +123,8 @@ class CloudWatchLogsDispatcherTest {
         executeDispatcherRunnable();
 
         // First two events should not be released
-        verify(eventHandles.get(0), never()).release(true);
-        verify(eventHandles.get(1), never()).release(true);
+        verify(eventHandles.get(0)).release(true);
+        verify(eventHandles.get(1)).release(true);
 
         // Remaining events should be released
         for (int i = 2; i < eventHandles.size(); i++) {
@@ -157,7 +158,7 @@ class CloudWatchLogsDispatcherTest {
 
         // Last three events should not be released
         for (int i = eventHandles.size() - 3; i < eventHandles.size(); i++) {
-            verify(eventHandles.get(i), never()).release(true);
+            verify(eventHandles.get(i)).release(true);
         }
     }
 
@@ -181,8 +182,8 @@ class CloudWatchLogsDispatcherTest {
         executeDispatcherRunnable();
 
         // First two events should not be released (too old)
-        verify(eventHandles.get(0), never()).release(true);
-        verify(eventHandles.get(1), never()).release(true);
+        verify(eventHandles.get(0)).release(true);
+        verify(eventHandles.get(1)).release(true);
 
         // Middle events should be released
         for (int i = 2; i < eventHandles.size() - 2; i++) {
@@ -190,8 +191,8 @@ class CloudWatchLogsDispatcherTest {
         }
 
         // Last two events should not be released (too new)
-        verify(eventHandles.get(eventHandles.size() - 2), never()).release(true);
-        verify(eventHandles.get(eventHandles.size() - 1), never()).release(true);
+        verify(eventHandles.get(eventHandles.size() - 2)).release(true);
+        verify(eventHandles.get(eventHandles.size() - 1)).release(true);
     }
 
     @Test
@@ -247,6 +248,6 @@ class CloudWatchLogsDispatcherTest {
         verify(mockCloudWatchLogsMetrics, never()).increaseRequestSuccessCounter(1);
 
         // No events should be released after max retries
-        eventHandles.forEach(eventHandle -> verify(eventHandle, never()).release(true));
+        eventHandles.forEach(eventHandle -> verify(eventHandle).release(true));
     }
 }
