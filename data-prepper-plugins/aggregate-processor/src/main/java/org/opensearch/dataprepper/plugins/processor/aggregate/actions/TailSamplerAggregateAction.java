@@ -80,6 +80,10 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
+        if (groupState.isEmpty()) {
+            return null;
+        }
+
         int randomInt = random.nextInt(100);
         aggregateActionInput.getEventHandle().release(true);
         if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {

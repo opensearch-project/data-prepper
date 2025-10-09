@@ -136,6 +136,10 @@ public class CountAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
+        if (groupState.isEmpty()) {
+            return null;
+        }
+
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
         Instant endTime = (Instant)groupState.get(endTimeKey);
