@@ -31,6 +31,7 @@ public class SqsSinkConfig {
     private PluginModel codec;
 
     @JsonProperty("threshold")
+    @Valid
     private SqsThresholdConfig thresholdConfig = new SqsThresholdConfig();
 
     @JsonProperty("max_retries")
