@@ -1,0 +1,18 @@
+csv-s3-pipeline:
+source:
+  s3:
+    notification_type: "sqs"
+    codec:
+      newline:
+        skip_lines: 1
+        header_destination: "header"
+    compression: none
+    sqs:
+      queue_url: "https://sqs.<region>.amazonaws.com/<account id>/<queue name>"
+    aws:
+      region: "<region>"
+processor:
+  - csv:
+      column_names_source_key: "header"
+sink:
+  - stdout:

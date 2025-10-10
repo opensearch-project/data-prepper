@@ -1,0 +1,13 @@
+processor:
+    - grok:
+        performance_metadata: true
+        match:
+          log: "%{COMMONAPACHELOG}"
+    - add_entries:
+        entries:
+          - add_when: 'getMetadata("_total_grok_patterns_attempted") != null'
+            key: "grok_patterns_attempted"
+            value_expression: 'getMetadata("_total_grok_patterns_attempted")'
+          - add_when: 'getMetadata("_total_grok_processing_time") != null'
+            key: "grok_time_spent"
+            value_expression: 'getMetadata("_total_grok_processing_time")'

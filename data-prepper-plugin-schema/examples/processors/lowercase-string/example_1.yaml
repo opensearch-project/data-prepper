@@ -1,0 +1,12 @@
+pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - lowercase_string:
+      with_keys:
+        - "lowercaseField"
+sink:
+  - stdout:

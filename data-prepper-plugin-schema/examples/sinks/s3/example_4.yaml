@@ -1,0 +1,6 @@
+sink:
+- s3:
+    default_bucket_owner: 111111111111
+    bucket_owners:
+      my-bucket-01: 123456789012
+      my-bucket-02: 999999999999

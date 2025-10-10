@@ -1,0 +1,8 @@
+parse-json-pipeline:
+source:
+  stdin:
+processor:
+  - parse_json:
+      source: "my_ion"
+sink:
+  - stdout:
