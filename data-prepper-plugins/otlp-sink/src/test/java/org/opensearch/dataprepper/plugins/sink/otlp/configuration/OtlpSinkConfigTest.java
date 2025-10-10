@@ -145,6 +145,7 @@ class OtlpSinkConfigTest {
 
         assertThat(config.getStsRoleArn(), nullValue());
         assertThat(config.getStsExternalId(), nullValue());
+        assertThat(config.getStsHeaderOverrides(), nullValue());
     }
 
     @Test

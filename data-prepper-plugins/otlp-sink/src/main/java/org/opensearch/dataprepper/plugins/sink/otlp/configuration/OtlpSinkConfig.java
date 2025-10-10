@@ -16,6 +16,7 @@ import software.amazon.awssdk.regions.Region;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -111,6 +112,14 @@ public class OtlpSinkConfig {
         }
 
         return awsConfig.getAwsStsExternalId();
+    }
+
+    public Map<String, String> getStsHeaderOverrides() {
+        if (awsConfig == null || awsConfig.getAwsStsHeaderOverrides() == null) {
+            return null;
+        }
+
+        return awsConfig.getAwsStsHeaderOverrides();
     }
 
     /**

@@ -6,6 +6,8 @@ package org.opensearch.dataprepper.plugins.sink.otlp.http;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.otlp.configuration.OtlpSinkConfig;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -14,11 +16,14 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.regions.Region;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -31,16 +36,20 @@ class SigV4SignerTest {
     private AwsCredentialsSupplier mockSupplier;
     private SigV4Signer target;
 
+    private ArgumentCaptor<AwsCredentialsOptions> awsCredentialsOptionsArgumentCaptor;
+
     @BeforeEach
     void setup() {
         mockConfig = mock(OtlpSinkConfig.class);
         mockSupplier = mock(AwsCredentialsSupplier.class);
+        awsCredentialsOptionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
 
         when(mockConfig.getAwsRegion()).thenReturn(REGION);
+        when(mockConfig.getStsHeaderOverrides()).thenReturn(Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 
         final AwsBasicCredentials mockCredentials = AwsBasicCredentials.create("mockAccessKey", "mockSecretKey");
         final StaticCredentialsProvider mockCredentialsProvider = StaticCredentialsProvider.create(mockCredentials);
-        when(mockSupplier.getProvider(any())).thenReturn(mockCredentialsProvider);
+        when(mockSupplier.getProvider(awsCredentialsOptionsArgumentCaptor.capture())).thenReturn(mockCredentialsProvider);
     }
 
     @Test
@@ -56,6 +65,10 @@ class SigV4SignerTest {
         assertTrue(request.headers().containsKey("Authorization"));
         assertEquals("application/x-protobuf", request.firstMatchingHeader("Content-Type").orElse(null));
         assertEquals(endpoint, request.getUri().toString());
+
+        final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
+        assertNotNull(awsCredentialsOptions);
+        assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(mockConfig.getStsHeaderOverrides()));
     }
 
     @Test
