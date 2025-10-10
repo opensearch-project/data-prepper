@@ -32,8 +32,8 @@ class ThresholdConfigTest {
         final ThresholdConfig thresholdConfig = new ThresholdConfig();
 
         assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
-        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_EVENT_SIZE).getBytes()));
-        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST).getBytes()));
+        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_MAX_EVENT_SIZE).getBytes()));
+        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_MAX_REQUEST_SIZE).getBytes()));
         assertThat(thresholdConfig.getFlushInterval(), equalTo(ThresholdConfig.DEFAULT_FLUSH_INTERVAL));
     }
 
@@ -67,6 +67,20 @@ class ThresholdConfigTest {
         ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
         ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "flushInterval", Duration.ofSeconds(log_send_interval));
         assertThat(sampleThresholdConfig.getFlushInterval(), equalTo(Duration.ofSeconds(log_send_interval).getSeconds())) ;
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "2mb"})
+    void GIVEN_invalid_max_request_size_SHOULD_fail(final String maxRequestSize) throws NoSuchFieldException, IllegalAccessException {
+        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxRequestSize", maxRequestSize);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "2mb"})
+    void GIVEN_invalid_max_event_size_SHOULD_fail(final String maxEventSize) throws NoSuchFieldException, IllegalAccessException {
+        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxEventSize", maxEventSize);
     }
 
 }
