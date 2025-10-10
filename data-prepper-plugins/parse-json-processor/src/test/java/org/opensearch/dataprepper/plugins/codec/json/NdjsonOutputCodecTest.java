@@ -41,8 +41,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NdjsonOutputCodecTest {
@@ -119,6 +121,56 @@ class NdjsonOutputCodecTest {
         final Map<?, ?> serializedMap = OBJECT_MAPPER.readValue(outputStream.toByteArray(), Map.class);
 
         assertThat(serializedMap, equalTo(eventMap));
+    }
+
+    @Test
+    void constructor_with_null_extension_should_not_throw_exception() {
+        when(config.getExtension()).thenReturn(null);
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("ndjson")); // Should return default extension
+    }
+
+    @Test
+    void constructor_with_valid_ndjson_extension_should_not_throw_exception() {
+        when(config.getExtension()).thenReturn("ndjson");
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("ndjson"));
+    }
+
+    @Test
+    void constructor_with_valid_jsonl_extension_should_not_throw_exception() {
+        when(config.getExtension()).thenReturn("jsonl");
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("jsonl"));
+    }
+
+    @Test
+    void constructor_with_uppercase_valid_extension_should_not_throw_exception() {
+        when(config.getExtension()).thenReturn("NDJSON");
+
+        final NdjsonOutputCodec codec = createObjectUnderTest();
+
+        assertThat(codec.getExtension(), equalTo("NDJSON"));
+    }
+
+    @Test
+    void constructor_with_invalid_extension_should_throw_exception() {
+        when(config.getExtension()).thenReturn("invalid");
+
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(),
+                "Invalid extension 'invalid'. Allowed values are: ndjson, jsonl");
+    }
+
+    @Test
+    void constructor_with_null_config_should_throw_exception() {
+        assertThrows(NullPointerException.class, () -> new NdjsonOutputCodec(null),
+                "NdjsonOutputConfig cannot be null");
     }
 
     @ParameterizedTest
