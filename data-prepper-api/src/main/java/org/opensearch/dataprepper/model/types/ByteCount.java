@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  *
  * @since 2.1
  */
-public class ByteCount {
+public class ByteCount implements Comparable<ByteCount> {
     private static final Pattern BYTE_PATTERN = Pattern.compile("^(?<value>\\d+\\.?\\d*)(?<unit>[a-z]+)?\\z");
     private static final ByteCount ZERO_BYTES = new ByteCount(0);
     private final long bytes;
@@ -166,5 +166,10 @@ public class ByteCount {
     @Override
     public String toString() {
         return bytes + Unit.BYTE.unitString;
+    }
+
+    @Override
+    public int compareTo(final ByteCount otherByteCount) {
+        return Long.compare(this.bytes, otherByteCount.bytes);
     }
 }
