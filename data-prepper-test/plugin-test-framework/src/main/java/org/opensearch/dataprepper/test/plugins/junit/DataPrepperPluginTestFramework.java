@@ -26,7 +26,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @ExtendWith({
         DataPrepperPluginTestContextParameterResolver.class,
-        PluginProviderParameterResolver.class
+        PluginProviderParameterResolver.class,
+        EventParameterResolver.class,
+        PluginInstanceParameterResolver.class
 })
 public @interface DataPrepperPluginTestFramework {
 }

@@ -1,0 +1,11 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{SYSLOGBASE}"]
+          bad_key: ["%{SYSLOGBASE}"]
+
+  sink:
+    - unused:

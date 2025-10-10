@@ -10,4 +10,9 @@
 package org.opensearch.dataprepper.plugins.test;
 
 public class TestPluginConfiguration {
+    private String optionA;
+
+    public String getOptionA() {
+        return optionA;
+    }
 }

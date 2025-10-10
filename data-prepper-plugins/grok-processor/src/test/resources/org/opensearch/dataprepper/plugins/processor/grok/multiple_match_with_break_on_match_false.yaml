@@ -1,0 +1,12 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{COMMONAPACHELOG}"]
+          extra_field: ["%{GREEDYDATA} %{IPORHOST:host}"]
+        break_on_match: false
+
+  sink:
+    - unused:

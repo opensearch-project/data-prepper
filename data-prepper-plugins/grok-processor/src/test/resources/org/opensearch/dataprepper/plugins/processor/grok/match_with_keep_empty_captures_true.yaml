@@ -1,0 +1,11 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{COMMONAPACHELOG}"]
+        keep_empty_captures: true
+
+  sink:
+    - unused:

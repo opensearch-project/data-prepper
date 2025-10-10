@@ -10,4 +10,5 @@
 package org.opensearch.dataprepper.plugins.test;
 
 public interface TestPluggableInterface {
+    String getOptionAValue();
 }
