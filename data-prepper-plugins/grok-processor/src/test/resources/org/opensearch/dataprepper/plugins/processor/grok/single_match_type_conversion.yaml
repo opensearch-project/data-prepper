@@ -1,0 +1,11 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message:
+            - "\"(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:response:int} (?:%{NUMBER:bytes:float}|-)"
+
+  sink:
+    - unused:

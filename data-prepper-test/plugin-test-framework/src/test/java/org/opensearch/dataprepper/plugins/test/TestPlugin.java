@@ -13,8 +13,16 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 
 @DataPrepperPlugin(name = "test_plugin", pluginType = TestPluggableInterface.class, pluginConfigurationType = TestPluginConfiguration.class)
-public class TestPlugin {
+public class TestPlugin implements TestPluggableInterface {
+    private final TestPluginConfiguration configuration;
+
     @DataPrepperPluginConstructor
     public TestPlugin(final TestPluginConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
+    @Override
+    public String getOptionAValue() {
+        return configuration.getOptionA();
     }
 }

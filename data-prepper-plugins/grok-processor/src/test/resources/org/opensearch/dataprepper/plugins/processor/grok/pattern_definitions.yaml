@@ -1,0 +1,12 @@
+grok-pipeline:
+  source:
+    unused:
+  processor:
+    - grok:
+        match:
+          message: ["%{GREEDYDATA:greedy_data} %{CUSTOMPHONENUMBERPATTERN:my_number}"]
+        pattern_definitions:
+          CUSTOMPHONENUMBERPATTERN: "\\d\\d\\d-\\d\\d\\d-\\d\\d\\d"
+
+  sink:
+    - unused:
