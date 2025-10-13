@@ -43,6 +43,15 @@ public class DeleteEntryProcessorConfigTests {
     }
 
     @Test
+    void test_with_keys_valid_config() throws NoSuchFieldException, IllegalAccessException{
+        final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
+        final List<String> regexKeys = List.of("test.*");
+        ReflectivelySetField.setField(DeleteEntryProcessorConfig.class, objectUnderTest, "withKeys", regexKeys);
+
+        assertThat(objectUnderTest.isExcludeFromDeleteValid(), equalTo(true));
+    }
+
+    @Test
     void testisExcludeFromDeleteValid_with_invalid_config() throws NoSuchFieldException, IllegalAccessException{
         final DeleteEntryProcessorConfig objectUnderTest = new DeleteEntryProcessorConfig();
         final List<EventKey> testKeys = List.of(mock(EventKey.class));
