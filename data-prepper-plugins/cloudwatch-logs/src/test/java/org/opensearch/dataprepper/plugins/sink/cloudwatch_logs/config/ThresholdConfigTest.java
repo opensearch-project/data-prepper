@@ -32,8 +32,8 @@ class ThresholdConfigTest {
         final ThresholdConfig thresholdConfig = new ThresholdConfig();
 
         assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
-        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_MAX_EVENT_SIZE).getBytes()));
-        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(ThresholdConfig.DEFAULT_MAX_REQUEST_SIZE).getBytes()));
+        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_MAX_EVENT_SIZE.getBytes()));
+        assertThat(thresholdConfig.getMaxRequestSizeBytes(), equalTo(ThresholdConfig.DEFAULT_MAX_REQUEST_SIZE.getBytes()));
         assertThat(thresholdConfig.getFlushInterval(), equalTo(ThresholdConfig.DEFAULT_FLUSH_INTERVAL));
     }
 
@@ -49,7 +49,7 @@ class ThresholdConfigTest {
     @ValueSource(strings = {"1kb", "10kb", "256kb"})
     void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_event_size(final String max_event_size) throws NoSuchFieldException, IllegalAccessException {
         ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxEventSize", max_event_size);
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxEventSize", ByteCount.parse(max_event_size));
         assertThat(sampleThresholdConfig.getMaxEventSizeBytes(), equalTo(ByteCount.parse(max_event_size).getBytes()));
     }
 
@@ -57,7 +57,7 @@ class ThresholdConfigTest {
     @ValueSource(strings = {"1b", "100b", "1048576b"})
     void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_request_size(final String max_batch_request_size) throws NoSuchFieldException, IllegalAccessException {
         ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxRequestSize", max_batch_request_size);
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxRequestSize", ByteCount.parse(max_batch_request_size));
         assertThat(sampleThresholdConfig.getMaxRequestSizeBytes(), equalTo(ByteCount.parse(max_batch_request_size).getBytes()));
     }
 
@@ -67,20 +67,6 @@ class ThresholdConfigTest {
         ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
         ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "flushInterval", Duration.ofSeconds(log_send_interval));
         assertThat(sampleThresholdConfig.getFlushInterval(), equalTo(Duration.ofSeconds(log_send_interval).getSeconds())) ;
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"0", "2mb"})
-    void GIVEN_invalid_max_request_size_SHOULD_fail(final String maxRequestSize) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxRequestSize", maxRequestSize);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"0", "2mb"})
-    void GIVEN_invalid_max_event_size_SHOULD_fail(final String maxEventSize) throws NoSuchFieldException, IllegalAccessException {
-        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
-        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "maxEventSize", maxEventSize);
     }
 
 }

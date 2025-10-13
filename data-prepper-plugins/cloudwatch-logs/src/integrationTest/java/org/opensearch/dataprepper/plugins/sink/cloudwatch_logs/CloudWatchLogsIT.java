@@ -57,6 +57,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.time.Duration;
@@ -451,12 +452,7 @@ public class CloudWatchLogsIT {
     }
 
     @Test
-    void testWithLargeSingleMessagesWhenDLQNotConfigured() {
-        s3Client = S3Client.builder()
-                .credentialsProvider(awsCredentialsProvider)
-                .region(Region.of(awsRegion))
-                .build();
-
+    void testWithLargeSingleMessagesWhenDLQNotConfigured() throws Exception {
         long startTime = Instant.now().toEpochMilli();
         when(thresholdConfig.getBatchSize()).thenReturn(NUM_RECORDS);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(200L);
@@ -469,6 +465,7 @@ public class CloudWatchLogsIT {
         records.add(largeRecord);
 
         sink.doOutput(records);
+        List<OutputLogEvent>[] foundEvents = new List[1];
         await().atMost(Duration.ofSeconds(30))
                 .untilAsserted(() -> {
                     long endTime = Instant.now().toEpochMilli();
@@ -481,14 +478,17 @@ public class CloudWatchLogsIT {
                                        .build();
                     GetLogEventsResponse response = cloudWatchLogsClient.getLogEvents(getRequest);
                     List<OutputLogEvent> events = response.events();
+                    foundEvents[0] = events;
                     assertThat(events.size(), equalTo(NUM_RECORDS));
-                    for (int i = 0; i < events.size(); i++) {
-                        String message = events.get(i).message();
-                        Map<String, Object> event = objectMapper.readValue(message, Map.class);
-                        assertThat(event.get("name"), equalTo("Person"+i));
-                        assertThat(event.get("age"), equalTo(Integer.toString(i)));
-                    }
                 });
+        List<OutputLogEvent> events = foundEvents[0];
+        assertThat(events, notNullValue());
+        for (int i = 0; i < events.size(); i++) {
+            String message = events.get(i).message();
+            Map<String, Object> event = objectMapper.readValue(message, Map.class);
+            assertThat(event.get("name"), equalTo("Person"+i));
+            assertThat(event.get("age"), equalTo(Integer.toString(i)));
+        }
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(largeEventsDroppedCount.get(), equalTo(1));
