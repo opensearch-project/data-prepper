@@ -10,6 +10,7 @@ public interface SinkMetrics {
     public void incrementRequestsSuccessCounter(int value);
     public void incrementEventsFailedCounter(int value);
     public void incrementRequestsFailedCounter(int value);
+    public void incrementEventsDroppedCounter(int value);
     public void incrementRetries(int value);
     public void recordRequestLatency(double value);
     public void recordRequestSize(double value);

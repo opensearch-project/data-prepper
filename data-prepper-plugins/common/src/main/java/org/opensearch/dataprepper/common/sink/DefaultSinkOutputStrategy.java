@@ -27,6 +27,10 @@ public abstract class DefaultSinkOutputStrategy implements SinkOutputStrategy {
         this.sinkMetrics = sinkMetrics;
     }
 
+    SinkMetrics getSinkMetrics() {
+        return sinkMetrics;
+    }
+
     private void flushBuffer() {
         long startTime = System.nanoTime();
         boolean flushSucceeded = bufferStrategy.flushBuffer(sinkMetrics);
@@ -38,7 +42,8 @@ public abstract class DefaultSinkOutputStrategy implements SinkOutputStrategy {
     public void execute(Collection<Record<Event>> records) {
         lockStrategy.lock();
         try {
-            // If records are empty check if batch buffer needs to be flushed based on flush interval
+            // If records are empty, check if batch buffer needs to be flushed
+            // based on flush interval
             if (records.isEmpty()) {
                 if (bufferStrategy.exceedsFlushTimeInterval()) {
                     flushBuffer();
@@ -57,14 +62,14 @@ public abstract class DefaultSinkOutputStrategy implements SinkOutputStrategy {
                         if (bufferStrategy.willExceedMaxRequestSizeBytes(event, estimatedSize)) {
                             flushBuffer();
                         }
-                        boolean reachedMaxEventsLimit = bufferStrategy.addToBuffer(event, estimatedSize);
-                        // Check if after adding the event, max events in a batch threshold exceeded,
+                        long numEvents = bufferStrategy.addToBuffer(event, estimatedSize);
+                        // Check if after adding the event, max events in a batch threshold exceeded
                         // If yes, flush the batch buffer
-                        if (reachedMaxEventsLimit) {
+                        if (bufferStrategy.isMaxEventsLimitReached(numEvents)) {
                             flushBuffer();
                         } 
                     } catch (Exception ex) {
-                        LOG.warn(NOISY, "Failed to flush to the sink ", ex);
+                        LOG.warn(NOISY, "Failed process the event ", ex);
                         addEventToDLQList(event, ex);
                     }
                 }
