@@ -115,6 +115,7 @@ public class EndToEndRawSpanTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
+        builder.withInsecure(true);
         final RestHighLevelClient restHighLevelClient = builder.build().createClient(null);
         // Wait for data to flow through pipeline and be indexed by ES
         await().atLeast(3, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(

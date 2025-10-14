@@ -22,6 +22,7 @@ pipeline2:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
+        insecure: true
         index: "test-substitute-index"
         flush_timeout: 5000
 
@@ -38,5 +39,6 @@ pipeline3:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
+        insecure: true
         index: "test-grok-index"
         flush_timeout: 5000

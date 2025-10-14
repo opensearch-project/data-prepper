@@ -150,7 +150,6 @@ class ConnectionConfigurationTests {
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
 
         final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
-        when(apacheHttpClientBuilder.tlsTrustManagersProvider(any())).thenReturn(apacheHttpClientBuilder);
         when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
         final OpenSearchClient openSearchClient;
         try (final MockedStatic<ApacheHttpClient> apacheHttpClientMockedStatic = mockStatic(ApacheHttpClient.class)) {
@@ -160,7 +159,6 @@ class ConnectionConfigurationTests {
         assertNotNull(openSearchClient);
         assertThat(openSearchClient._transport(), instanceOf(AwsSdk2Transport.class));
         assertThat(openSearchClient._transport().jsonpMapper(), instanceOf(PreSerializedJsonpMapper.class));
-        verify(apacheHttpClientBuilder).tlsTrustManagersProvider(any());
         verify(apacheHttpClientBuilder).build();
         openSearchClient.shutdown();
         client.close();

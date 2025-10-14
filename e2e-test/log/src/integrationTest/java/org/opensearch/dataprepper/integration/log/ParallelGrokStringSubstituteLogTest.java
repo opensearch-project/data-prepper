@@ -100,6 +100,7 @@ public class ParallelGrokStringSubstituteLogTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
+        builder.withInsecure(true);
         final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         return builder.build().createClient(awsCredentialsSupplier);
     }
