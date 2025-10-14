@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * An implementation of {@link OutputCodec} which deserializes Data-Prepper events
@@ -21,26 +20,12 @@ import java.util.Set;
  */
 @DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NdjsonOutputConfig.class)
 public class NdjsonOutputCodec implements OutputCodec {
-    private static final String NDJSON = "ndjson";
-    private static final String JSONL = "jsonl";
-    private static final Set<String> VALID_EXTENSIONS = Set.of(NDJSON, JSONL);
-
     private final NdjsonOutputConfig ndjsonOutputConfig;
     private OutputCodecContext deprecatedSupportCodecContext;
 
     @DataPrepperPluginConstructor
     public NdjsonOutputCodec(final NdjsonOutputConfig config) {
         Objects.requireNonNull(config, "NdjsonOutputConfig cannot be null");
-        // Validate extension
-        String configExtension = config.getExtension();
-        if (configExtension != null && !VALID_EXTENSIONS.contains(configExtension.toLowerCase())) {
-            throw new IllegalArgumentException(
-                    String.format("Invalid extension '%s'. Allowed values are: %s",
-                            configExtension,
-                            String.join(", ", VALID_EXTENSIONS))
-            );
-        }
-
         this.ndjsonOutputConfig = config;
     }
 
@@ -99,10 +84,7 @@ public class NdjsonOutputCodec implements OutputCodec {
 
     @Override
     public String getExtension() {
-        if (ndjsonOutputConfig.getExtension() == null) {
-            return NDJSON;
-        }
-        return ndjsonOutputConfig.getExtension();
+        return ndjsonOutputConfig.getExtensionOption().getExtension();
     }
 
     private static void doWriteEvent(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {

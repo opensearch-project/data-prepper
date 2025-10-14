@@ -124,17 +124,8 @@ class NdjsonOutputCodecTest {
     }
 
     @Test
-    void constructor_with_null_extension_should_not_throw_exception() {
-        when(config.getExtension()).thenReturn(null);
-
-        final NdjsonOutputCodec codec = createObjectUnderTest();
-
-        assertThat(codec.getExtension(), equalTo("ndjson")); // Should return default extension
-    }
-
-    @Test
     void constructor_with_valid_ndjson_extension_should_not_throw_exception() {
-        when(config.getExtension()).thenReturn("ndjson");
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.NDJSON);
 
         final NdjsonOutputCodec codec = createObjectUnderTest();
 
@@ -143,7 +134,7 @@ class NdjsonOutputCodecTest {
 
     @Test
     void constructor_with_valid_jsonl_extension_should_not_throw_exception() {
-        when(config.getExtension()).thenReturn("jsonl");
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.JSONL);
 
         final NdjsonOutputCodec codec = createObjectUnderTest();
 
@@ -152,19 +143,11 @@ class NdjsonOutputCodecTest {
 
     @Test
     void constructor_with_uppercase_valid_extension_should_not_throw_exception() {
-        when(config.getExtension()).thenReturn("NDJSON");
+        when(config.getExtensionOption()).thenReturn(ExtensionOption.NDJSON);
 
         final NdjsonOutputCodec codec = createObjectUnderTest();
 
-        assertThat(codec.getExtension(), equalTo("NDJSON"));
-    }
-
-    @Test
-    void constructor_with_invalid_extension_should_throw_exception() {
-        when(config.getExtension()).thenReturn("invalid");
-
-        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest(),
-                "Invalid extension 'invalid'. Allowed values are: ndjson, jsonl");
+        assertThat(codec.getExtension(), equalTo("ndjson"));
     }
 
     @Test

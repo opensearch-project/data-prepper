@@ -6,15 +6,17 @@
 package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 /**
  * Configuration class for the newline delimited codec.
  */
 public class NdjsonOutputConfig {
     @JsonProperty("extension")
-    private String extension;
+    @JsonPropertyDescription("defines the extension of the output file")
+    private ExtensionOption extension = ExtensionOption.NDJSON;
 
-    public String getExtension() {
-        return extension;
+    public ExtensionOption getExtensionOption() {
+        return extension != null ? extension : ExtensionOption.NDJSON;
     }
 }
