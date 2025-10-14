@@ -12,5 +12,6 @@ aggregate-pipeline:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
+        insecure: true
         index: "test-peer-forwarder-index"
         flush_timeout: 5000
