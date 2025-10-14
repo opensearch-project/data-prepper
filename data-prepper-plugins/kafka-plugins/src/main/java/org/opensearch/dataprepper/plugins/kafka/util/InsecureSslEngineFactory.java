@@ -39,7 +39,7 @@ public class InsecureSslEngineFactory implements SslEngineFactory {
     public SSLEngine createClientSslEngine(String peerHost, int peerPort, String endpointIdentification) {
         TrustManager[] trustManagers = new TrustManager[]{ INSECURE_TRUST_MANAGER };
         try {
-            SSLContext sslContext = SSLContext.getInstance("SSL");
+            SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, trustManagers, new SecureRandom());
             SSLEngine sslEngine = sslContext.createSSLEngine(peerHost, peerPort);
             sslEngine.setUseClientMode(true);

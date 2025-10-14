@@ -41,7 +41,7 @@ public interface DBSource {
                 }
         };
 
-        final SSLContext sc = SSLContext.getInstance("SSL");
+        final SSLContext sc = SSLContext.getInstance("TLS");
         sc.init(null, trustAllCerts, new SecureRandom());
         HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
         final HostnameVerifier hostnameVerifier = new HostnameVerifier() {
