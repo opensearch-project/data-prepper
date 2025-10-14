@@ -16,5 +16,6 @@ aggregate-pipeline:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
+        insecure: true
         index: "test-log-metrics-index"
         flush_timeout: 5000

@@ -384,8 +384,18 @@ public class ConnectionConfiguration {
   }
 
   private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
-    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
-    httpClientBuilder.setSSLContext(sslContext);
+    final SSLContext sslContext;
+    if(certPath != null) {
+      sslContext = getCAStrategy(certPath);
+    } else if(this.insecure) {
+      sslContext = getTrustAllStrategy();
+    } else {
+      sslContext = null;
+    }
+    if(sslContext != null) {
+      httpClientBuilder.setSSLContext(sslContext);
+    }
+
     if (this.insecure) {
       httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
     }
@@ -439,7 +449,7 @@ public class ConnectionConfiguration {
         transportOptions.setRequestCompressionSize(Integer.MAX_VALUE);
       }
 
-      return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
+      return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).toHostString(),
               serviceName, Region.of(awsRegion), transportOptions.build());
     } else {
       return new RestClientTransport(
@@ -461,11 +471,13 @@ public class ConnectionConfiguration {
   }
 
   private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
-    TrustManager[] trustManagers = createTrustManagers(certPath);
-    apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+    TrustManager[] trustManagers = createTrustManagers(certPath, insecure);
+    if(trustManagers.length > 0) {
+      apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+    }
   }
 
-  private static TrustManager[] createTrustManagers(final Path certPath) {
+  private static TrustManager[] createTrustManagers(final Path certPath, final boolean insecure) {
     if (certPath != null) {
       LOG.info("Using the cert provided in the config.");
       try (InputStream certificateInputStream = Files.newInputStream(certPath)) {
@@ -481,8 +493,11 @@ public class ConnectionConfiguration {
       } catch (Exception ex) {
         throw new RuntimeException(ex.getMessage(), ex);
       }
-    } else {
+    } else if(insecure) {
+      LOG.info("Using the trust all strategy");
       return new TrustManager[] { new X509TrustAllManager() };
+    } else {
+      return new TrustManager[0];
     }
   }
 
