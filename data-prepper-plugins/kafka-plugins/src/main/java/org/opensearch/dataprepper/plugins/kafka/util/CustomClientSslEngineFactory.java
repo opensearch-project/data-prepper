@@ -40,7 +40,7 @@ public class CustomClientSslEngineFactory implements SslEngineFactory {
     @Override
     public SSLEngine createClientSslEngine(final String peerHost, final int peerPort, final String endpointIdentification) {
         try {
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            final SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, getTrustManager(), new SecureRandom());
             SSLEngine sslEngine = sslContext.createSSLEngine(peerHost, peerPort);
             sslEngine.setUseClientMode(true);
