@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 
+import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -30,6 +31,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
@@ -68,6 +70,8 @@ class CloudWatchLogsSinkTest {
         mockHeaderOverrides.put("X-Test-Header", "test-value");
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
         mockClient = mock(CloudWatchLogsClient.class);
+        DistributionSummary summary = mock(DistributionSummary.class);
+        when(mockPluginMetrics.summary(anyString())).thenReturn(summary);
 
         when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(mockAwsConfig);
         when(mockCloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);

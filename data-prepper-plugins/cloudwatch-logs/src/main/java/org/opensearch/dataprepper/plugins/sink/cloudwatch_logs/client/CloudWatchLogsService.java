@@ -83,6 +83,7 @@ public class CloudWatchLogsService {
             String logString = log.getData().toJsonString();
             int logLength = logString.length();
 
+            cloudWatchLogsMetrics.recordLogSize(logLength);
             if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
                 final String failureMessage = String.format("Event blocked due to Max Size restriction! Event Size : %s", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
                 DlqObject dlqObject = CloudWatchLogsSinkUtils.createDlqObject(0, log.getData().getEventHandle(), logString, failureMessage, dlqPushHandler, dropIfDlqNotConfigured);
@@ -121,6 +122,7 @@ public class CloudWatchLogsService {
 
         List<InputLogEvent> inputLogEvents = cloudWatchLogsDispatcher.prepareInputLogEvents(buffer.getBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, buffer.getEventHandles());
+        cloudWatchLogsMetrics.recordRequestSize(buffer.getBufferSize());
 
         buffer.resetBuffer();
     }

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -99,6 +100,9 @@ public class CloudWatchLogsIT {
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
 
     @Mock
+    private DistributionSummary summary;
+
+    @Mock
     private Counter eventsSuccessCounter;
     @Mock
     private Counter requestsSuccessCounter;
@@ -156,6 +160,7 @@ public class CloudWatchLogsIT {
         logGroupName = System.getProperty("tests.cloudwatch.log_group");
         logStreamName = createLogStream(logGroupName);
         pluginMetrics = mock(PluginMetrics.class);
+        summary = mock(DistributionSummary.class);
         eventsSuccessCounter = mock(Counter.class);
         requestsSuccessCounter = mock(Counter.class);
         eventsFailedCounter = mock(Counter.class);
@@ -218,6 +223,7 @@ public class CloudWatchLogsIT {
             }
             return null;
         }).when(pluginMetrics).counter(anyString());
+        when(pluginMetrics.summary(anyString())).thenReturn(summary);
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn(logGroupName);
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
