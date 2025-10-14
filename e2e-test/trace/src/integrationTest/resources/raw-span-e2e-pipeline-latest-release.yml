@@ -18,5 +18,6 @@ raw-pipeline:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
+        insecure: true
         index_type: trace-analytics-raw
         flush_timeout: 5000

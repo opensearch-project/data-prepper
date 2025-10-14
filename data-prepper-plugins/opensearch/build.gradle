@@ -46,6 +46,7 @@ dependencies {
     testImplementation 'net.bytebuddy:byte-buddy:1.15.11'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.15.11'
     testImplementation testLibs.slf4j.simple
+    testImplementation 'org.wiremock:wiremock:3.10.0'
 }
 
 sourceSets {

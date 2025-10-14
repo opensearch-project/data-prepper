@@ -271,7 +271,9 @@ public class OpenSearchClientFactory {
 
     private void attachSSLContext(final NettyNioAsyncHttpClient.Builder asyncClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration());
-        asyncClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+        if (trustManagers.length > 0) {
+            asyncClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+        }
     }
 
     private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
@@ -287,31 +289,37 @@ public class OpenSearchClientFactory {
 
     private TrustManager[] createTrustManagers(final ConnectionConfiguration connectionConfiguration) {
         final Path certPath = connectionConfiguration.getCertPath();
-        if (Objects.nonNull(certPath)) {
+        final String certificate = connectionConfiguration.getCertificate();
+        if (certPath != null) {
             return TrustStoreProvider.createTrustManager(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
-            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
-                return TrustStoreProvider.createTrustManager(connectionConfiguration.getCertificate());
+        } else if (certificate != null) {
+            if (PemObjectValidator.isPemObject(certificate)) {
+                return TrustStoreProvider.createTrustManager(certificate);
             } else {
-                return TrustStoreProvider.createTrustManager(Path.of(connectionConfiguration.getCertificate()));
-            }
-        } else {
+                return TrustStoreProvider.createTrustManager(Path.of(certificate));}
+        } else if (connectionConfiguration.isInsecure()) {
             return TrustStoreProvider.createTrustAllManager();
+
+        } else {
+            return new TrustManager[0];
         }
     }
 
     private SSLContext getCAStrategy(final ConnectionConfiguration connectionConfiguration) {
         final Path certPath = connectionConfiguration.getCertPath();
-        if (Objects.nonNull(certPath)) {
+        final String certificate = connectionConfiguration.getCertificate();
+        if (certPath != null) {
             return TrustStoreProvider.createSSLContext(certPath);
-        } else if (Objects.nonNull(connectionConfiguration.getCertificate())) {
-            if (PemObjectValidator.isPemObject(connectionConfiguration.getCertificate())) {
-                return TrustStoreProvider.createSSLContext(connectionConfiguration.getCertificate());
+        } else if (certificate != null) {
+            if (PemObjectValidator.isPemObject(certificate)) {
+                return TrustStoreProvider.createSSLContext(certificate);
             } else {
                 return TrustStoreProvider.createSSLContext(Path.of(connectionConfiguration.getCertificate()));
             }
+        } else if (connectionConfiguration.isInsecure()) {
+                return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
         } else {
-            return TrustStoreProvider.createSSLContextWithTrustAllStrategy();
+            return null;
         }
     }
 }

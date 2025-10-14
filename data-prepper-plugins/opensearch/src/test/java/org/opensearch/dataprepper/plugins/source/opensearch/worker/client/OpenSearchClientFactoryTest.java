@@ -27,6 +27,8 @@ import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
@@ -41,6 +43,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -409,9 +412,40 @@ public class OpenSearchClientFactoryTest {
         lenient().when(openSearchSourceConfiguration.getConnectionConfiguration()).thenReturn(connectionConfiguration);
         lenient().when(connectionConfiguration.getCertPath()).thenReturn(path);
         try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            TrustManager[] mockTrustManagers = new TrustManager[] { mock(TrustManager.class) };
+            trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createTrustManager(path)).thenReturn(mockTrustManagers);
             final SdkAsyncHttpClient sdkAsyncHttpClient = createObjectUnderTest().createSdkAsyncHttpClient(openSearchSourceConfiguration);
             assertThat(sdkAsyncHttpClient, notNullValue());
             trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustManager(path));
         }
     }
+    @Test
+    void createSdkAsyncHttpClient_with_secure_configuration_and_no_cert_path_does_not_trust_all_managers() {
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(false);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(Duration.ofSeconds(30));
+        try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            final SdkAsyncHttpClient sdkAsyncHttpClient = createObjectUnderTest().createSdkAsyncHttpClient(openSearchSourceConfiguration);
+            assertThat(sdkAsyncHttpClient, notNullValue());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustAllManager(), never());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustManager(any(Path.class)), never());
+        }
+    }
+    
+    @Test
+    void createSdkAsyncHttpClient_with_insecure_configuration_and_no_cert_path_trusts_all_managers() {
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(Duration.ofSeconds(30));
+        try (MockedStatic<TrustStoreProvider> trustStoreProviderMockedStatic = mockStatic(TrustStoreProvider.class)) {
+            TrustManager[] mockTrustManagers = new TrustManager[] { mock(TrustManager.class) };
+            trustStoreProviderMockedStatic.when(() -> TrustStoreProvider.createTrustAllManager())
+                    .thenReturn(mockTrustManagers);
+            final SdkAsyncHttpClient sdkAsyncHttpClient = createObjectUnderTest().createSdkAsyncHttpClient(openSearchSourceConfiguration);
+            assertThat(sdkAsyncHttpClient, notNullValue());
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustAllManager(), times(1));
+            trustStoreProviderMockedStatic.verify(() -> TrustStoreProvider.createTrustManager(any(Path.class)), never());
+        }
+    }
+
 }
