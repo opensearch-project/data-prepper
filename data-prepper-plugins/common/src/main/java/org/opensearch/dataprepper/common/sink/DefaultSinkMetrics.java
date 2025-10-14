@@ -14,7 +14,7 @@ public class DefaultSinkMetrics implements SinkMetrics {
     public static final String SINK_REQUESTS_SUCCEEDED = "SinkRequestsSucceeded";
     public static final String SINK_EVENTS_SUCCEEDED = "SinkEventsSucceeded";
     public static final String SINK_EVENTS_FAILED = "SinkEventsFailed";
-    public static final String SINK_EVENTS_FAILED = "SinkEventsDropped";
+    public static final String SINK_EVENTS_DROPPED = "SinkEventsDropped";
     public static final String SINK_REQUESTS_FAILED = "SinkRequestsFailed";
     public static final String SINK_REQUEST_LATENCY = "SinkRequestLatency";
     public static final String SINK_RETRIES = "SinkRetries";
@@ -33,7 +33,7 @@ public class DefaultSinkMetrics implements SinkMetrics {
         this.sinkEventsSucceeded = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sSucceeded");
         this.sinkRequestsFailed = pluginMetrics.counter(sinkPrefix + SINK_REQUESTS_FAILED);
         this.sinkEventsFailed = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sFailed");
-        this.sinkEventsFailed = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sDropped");
+        this.sinkEventsDropped = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sDropped");
         this.sinkRetries = pluginMetrics.counter(sinkPrefix + SINK_RETRIES);
         this.sinkRequestLatency = pluginMetrics.summary(sinkPrefix + SINK_REQUEST_LATENCY);
         this.sinkRequestSize = pluginMetrics.summary(sinkPrefix + SINK_REQUEST_SIZE);
