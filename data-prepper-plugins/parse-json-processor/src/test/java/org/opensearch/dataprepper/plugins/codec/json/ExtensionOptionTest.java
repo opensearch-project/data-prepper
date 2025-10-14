@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.codec.json;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -27,11 +26,6 @@ public class ExtensionOptionTest {
     @EnumSource(ExtensionOption.class)
     void fromExtension_returns_expected_value(final ExtensionOption extensionOption) {
         assertThat(ExtensionOption.fromExtension(extensionOption.getExtension()), equalTo(extensionOption));
-    }
-
-    @Test
-    void fromExtension_convert_to_lowercase() {
-        assertThat(ExtensionOption.fromExtension("NDJSON"), equalTo(ExtensionOption.NDJSON));
     }
 
     @ParameterizedTest

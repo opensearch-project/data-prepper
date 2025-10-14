@@ -35,6 +35,6 @@ public enum ExtensionOption {
 
     @JsonCreator
     public static ExtensionOption fromExtension(String extension) {
-        return EXTENSIONS_MAP.get(extension.toLowerCase());
+        return EXTENSIONS_MAP.get(extension);
     }
 }

@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
  */
 public class NdjsonOutputConfig {
     @JsonProperty("extension")
-    @JsonPropertyDescription("defines the extension of the output file")
+    @JsonPropertyDescription("Defines the file extension of the file produced by the sink. Default is 'ndjson'.")
     private ExtensionOption extension = ExtensionOption.NDJSON;
 
     public ExtensionOption getExtensionOption() {
