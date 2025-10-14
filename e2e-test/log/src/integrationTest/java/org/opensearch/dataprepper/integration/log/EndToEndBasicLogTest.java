@@ -132,6 +132,7 @@ public class EndToEndBasicLogTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
+        builder.withInsecure(true);
         return builder.build().createClient(null);
     }
 
