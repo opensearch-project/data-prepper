@@ -2,6 +2,10 @@
 
 ---
 
+### Breaking Changes
+
+* The Docker task no longer runs as root. This may break existing Docker compose configurations. For example, mapping the `.aws` directory to the `/root/.aws` directory should map it to `/.aws` instead.
+
 ### Features
 
 * Support AWS Aurora/RDS PostgreSQL as source ([#5309](https://github.com/opensearch-project/data-prepper/issues/5309))
