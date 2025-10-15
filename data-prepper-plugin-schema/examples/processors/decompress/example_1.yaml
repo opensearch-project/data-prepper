@@ -1,0 +1,5 @@
+processor:
+- decompress:
+    decompress_when: '/some_key == null'
+    keys: [ "base_64_gzip_key" ]
+    type: gzip

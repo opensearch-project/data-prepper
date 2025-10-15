@@ -1,0 +1,12 @@
+pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - trim_string:
+      with_keys:
+        - "trimField"
+sink:
+  - stdout:

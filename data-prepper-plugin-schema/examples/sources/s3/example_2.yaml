@@ -1,0 +1,17 @@
+source:
+s3:
+  codec:
+    newline:
+  compression: none
+  aws:
+    region: "us-east-1"
+    sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
+  scan:
+    start_time: 2023-01-01T00:00:00
+    range: "P365D"
+    buckets:
+      - bucket:
+          name: "s3-scan-test"
+          filter:
+            exclude_suffix:
+              - "*.log"

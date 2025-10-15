@@ -1,0 +1,6 @@
+processor:
+- otel_metrics_raw_processor:
+    calculate_histogram_buckets: true
+    calculate_exponential_histogram_buckets: true
+    exponential_histogram_max_allowed_scale: 10
+    flatten_attributes: false

@@ -1,0 +1,5 @@
+processor:
+  - grok:
+      grok_when: '/type == "ipv6"'
+      match:
+        message: ['%{IPV6:clientip} %{WORD:request} %{POSINT:bytes}']

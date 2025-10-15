@@ -1,0 +1,8 @@
+opensearch-source-pipeline:
+source:
+  opensearch:
+    hosts: [ "https://search-my-domain-soopywaovobopgs8ywurr3utsu.us-east-1.es.amazonaws.com" ]
+    aws:
+      region: "us-east-1"
+      sts_role_arn: "arn:aws:iam::123456789012:role/my-domain-role"
+...

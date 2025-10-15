@@ -1,0 +1,15 @@
+pipeline:
+source:
+  file:
+    path: "/full/path/to/logs_json.log"
+    record_type: "event"
+    format: "json"
+processor:
+  - rename_keys:
+      entries:
+      - from_key: "message"
+        to_key: "message2"
+      - from_key: "message2"
+        to_key: "message3"
+sink:
+  - stdout:
