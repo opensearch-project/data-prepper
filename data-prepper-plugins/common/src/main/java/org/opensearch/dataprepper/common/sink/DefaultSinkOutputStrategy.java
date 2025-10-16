@@ -1,0 +1,107 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.common.sink;
+
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.List;
+
+public abstract class DefaultSinkOutputStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultSinkOutputStrategy.class);
+    private final LockStrategy lockStrategy;
+    private final SinkBuffer sinkBuffer;
+    private final SinkMetrics sinkMetrics;
+    private final SinkFlushContext sinkFlushContext;
+
+    public DefaultSinkOutputStrategy(final LockStrategy lockStrategy, final SinkBuffer sinkBuffer, final SinkFlushContext sinkFlushContext, final SinkMetrics sinkMetrics) {
+        this.lockStrategy = lockStrategy;
+        this.sinkBuffer = sinkBuffer;
+        this.sinkMetrics = sinkMetrics;
+        this.sinkFlushContext = sinkFlushContext;
+    }
+
+    public void flushBuffer() {
+        long startTime = System.nanoTime();
+        // getBuffer() should return the buffer contents
+        SinkFlushableBuffer flushableBuffer = sinkBuffer.getFlushableBuffer(sinkFlushContext);
+        try {      
+            SinkFlushResult flushResult = flushableBuffer.flush();
+            if (flushResult == null) { // success
+                sinkMetrics.recordRequestLatency((double)(System.nanoTime() - startTime));
+                List<Event> events = flushableBuffer.getEvents();
+                for (final Event event: events) {
+                    event.getEventHandle().release(true);
+                }
+            } else {    
+                // flush Result should contain the events that are 
+                // failed to be delivered, so that these events can be forwarded to DLQ
+                addFailedEventsToDLQ(flushResult.getEvents(), flushResult.getException());
+            }           
+        } catch (Exception e) {
+            // Add list of events to DLQ
+            addFailedEventsToDLQ(flushableBuffer.getEvents(), e);
+        }              
+    }
+
+    public void execute(Collection<Record<Event>> records) {
+        lockStrategy.lock();
+        try {
+            if (sinkBuffer.exceedsFlushTimeInterval()) {
+                flushBuffer();
+            }
+            if (records == null || records.isEmpty()) {
+                return;
+            }
+            for (Record<Event> record : records) {
+                final Event event = record.getData();
+                try {
+                    // getSinkBufferEntry() is a sink method that may use codec to get
+                    // the estimated size of the event
+                    SinkBufferEntry bufferEntry = getSinkBufferEntry(event);
+
+                    // Check if individual event exceeds sink's max event size
+                    if (exceedsMaxEventSizeThreshold(bufferEntry.getEstimatedSize())) {
+                        throw new RuntimeException("Event size exceeds max allowed event size");
+                    }
+
+                    // Check if adding this event to the batch buffer, would exceed the batch
+                    // buffer's max bytes threshold, if yes, flush the batch buffer before adding
+                    // new buffer entry
+                    if (sinkBuffer.willExceedMaxRequestSizeBytes(bufferEntry)) {
+                        flushBuffer();
+                    }
+
+                    if (!sinkBuffer.addToBuffer(bufferEntry)) {
+                        throw new RuntimeException("Failed to add event to sink buffer");
+                    }
+
+                    // Check if after adding the event, max events in a batch threshold exceeded
+                    // If yes, flush the batch buffer
+                    if (sinkBuffer.isMaxEventsLimitReached()) {
+                        flushBuffer();
+                    } 
+                } catch (Exception ex) {
+                    LOG.warn(NOISY, "Failed process the event ", ex);
+                    addFailedEventsToDLQ(List.of(event), ex);
+                }
+            }   
+        } finally {     
+            flushDLQList();
+            lockStrategy.unlock();
+        }                   
+    }
+
+    public abstract void flushDLQList();
+    public abstract void addFailedEventsToDLQ(final List<Event> events, final Throwable ex);
+    public abstract SinkBufferEntry getSinkBufferEntry(final Event event) throws Exception;
+    public abstract boolean exceedsMaxEventSizeThreshold(final long estimatedSize);
+}
