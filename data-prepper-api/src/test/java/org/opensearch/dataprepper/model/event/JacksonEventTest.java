@@ -270,6 +270,37 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testPutWithReplaceInvalidKeyChars_for_map(final String key) {
+        final String value = UUID.randomUUID().toString();
+        final Map<String, String> mapToPut = Map.of(key, value);
+
+        event.put("myMap", mapToPut, true);
+        assertThat(event.get("myMap/key_1", String.class), equalTo(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testPutEventKeyWithReplaceInvalidKeyChars_for_map(final String key) {
+        final String value = UUID.randomUUID().toString();
+        final Map<String, String> mapToPut = Map.of(key, value);
+
+        final EventKey eventKey = new JacksonEventKey("myMap");
+        event.put(eventKey, mapToPut, true);
+        assertThat(event.get("myMap/key_1", String.class), equalTo(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testPutEventKeyWithReplaceInvalidKeyCharsFalse_for_map(final String key) {
+        final String value = UUID.randomUUID().toString();
+        final Map<String, String> mapToPut = Map.of(key, value);
+
+        final EventKey eventKey = new JacksonEventKey("myMap");
+        event.put(eventKey, mapToPut, false);
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"key&1", "key^1", "key%1"})
     public void testPutWithoutReplaceInvalidKeyChars(final String key) {
         final String value = UUID.randomUUID().toString();

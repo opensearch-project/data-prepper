@@ -150,8 +150,8 @@ public class JacksonEvent implements Event {
         return jsonNode;
     }
 
-    void normalizeKeys(Map<String, Object> map) {
-        Map<String, Object> toAdd = new HashMap<>();
+    private Map<String, Object> normalizeKeys(final Map<String, Object> map) {
+        final Map<String, Object> replacementMap = new HashMap<>();
         Iterator<Map.Entry<String, Object>> iterator = map.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, Object> entry = iterator.next();
@@ -159,22 +159,24 @@ public class JacksonEvent implements Event {
             Object value = entry.getValue();
             final String newKey = JacksonEventKey.replaceInvalidCharacters(key);
             if (value instanceof Map) {
-                normalizeKeys((Map<String, Object>)value);
+                value = normalizeKeys((Map<String, Object>)value);
             }
             if (!newKey.equals(key)) {
-                toAdd.put(newKey, value);
-                iterator.remove();
+                replacementMap.put(newKey, value);
+            } else {
+                replacementMap.put(key, value);
             }
         }
-        map.putAll(toAdd);
+        return replacementMap;
     }
 
     @Override
     public void put(EventKey key, Object value, boolean replaceInvalidCharacters) {
         if (replaceInvalidCharacters && (value instanceof Map)) {
-            normalizeKeys((Map<String, Object>)value);
+            put(key, normalizeKeys((Map<String, Object>)value));
+        } else {
+            put(key, value);
         }
-        put(key, value);
     }
 
     @Override
@@ -203,13 +205,14 @@ public class JacksonEvent implements Event {
 
     @Override
     public void put(String key, final Object value, final boolean replaceInvalidCharacters) {
+        Object valueToPut = value;
         if (replaceInvalidCharacters) {
             key = JacksonEventKey.replaceInvalidCharacters(key);
             if (value instanceof Map) {
-                normalizeKeys((Map<String, Object>)value);
+                valueToPut = normalizeKeys((Map<String, Object>)value);
             }
         }
-        put(key, value);
+        put(key, valueToPut);
     }
 
     public EventFailureMetadata updateFailureMetadata() {
