@@ -56,6 +56,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.BUFFER_TIMEOUT;
 import static org.opensearch.dataprepper.plugins.source.dynamodb.stream.ShardConsumer.DEFAULT_BUFFER_BATCH_SIZE;
@@ -173,6 +174,7 @@ class ShardConsumerTest {
 
 
         lenient().when(shardAcknowledgementManager.isExportDone(any(StreamPartition.class))).thenReturn(true);
+        lenient().when(shardAcknowledgementManager.isStillTrackingShard(any(StreamPartition.class))).thenReturn(true);
     }
 
     @Test
@@ -367,6 +369,27 @@ class ShardConsumerTest {
         }
         // Verify that startUpdatingOwnershipForShard is called
         verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
+    }
+
+    @Test
+    void test_run_shardConsumer_exits_if_acknowledgment_manager_stops_tracking_shard() throws Exception {
+        when(shardAcknowledgementManager.isStillTrackingShard(streamPartition)).thenReturn(false);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, DEFAULT_BUFFER_BATCH_SIZE, BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
+            ShardConsumer shardConsumer = ShardConsumer.builder(dynamoDbStreamsClient, pluginMetrics, aggregateMetrics, buffer, streamConfig)
+                    .shardIterator(shardIterator)
+                    .shardAcknowledgementManager(shardAcknowledgementManager)
+                    .streamPartition(streamPartition)
+                    .tableInfo(tableInfo)
+                    .startTime(null)
+                    .waitForExport(false)
+                    .build();
+
+            shardConsumer.run();
+        }
+
+        verify(shardAcknowledgementManager).startUpdatingOwnershipForShard(streamPartition);
+        verifyNoMoreInteractions(shardAcknowledgementManager, dynamoDbStreamsClient);
     }
 
     @Test

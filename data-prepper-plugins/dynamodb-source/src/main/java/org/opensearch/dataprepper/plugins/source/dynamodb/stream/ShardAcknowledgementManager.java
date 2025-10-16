@@ -10,11 +10,13 @@
 
 package org.opensearch.dataprepper.plugins.source.dynamodb.stream;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourceCoordinator;
 import org.opensearch.dataprepper.common.concurrent.BackgroundThreadFactory;
 import org.opensearch.dataprepper.model.source.coordinator.enhanced.EnhancedSourcePartition;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
@@ -39,6 +41,8 @@ import java.util.function.Consumer;
 
 import org.opensearch.dataprepper.plugins.source.dynamodb.model.ShardCheckpointStatus;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
+
 public class ShardAcknowledgementManager {
     private static final Logger LOG = LoggerFactory.getLogger(ShardAcknowledgementManager.class);
 
@@ -46,7 +50,7 @@ public class ShardAcknowledgementManager {
 
     private static final long WAIT_FOR_ACKNOWLEDGMENTS_TIMEOUT = 10L;
 
-    static final Duration CHECKPOINT_INTERVAL = Duration.ofMinutes(2);
+    static final Duration CHECKPOINT_INTERVAL = Duration.ofMinutes(3);
 
     private final DynamoDBSourceConfig dynamoDBSourceConfig;
     private final Map<StreamPartition, ConcurrentLinkedQueue<ShardCheckpointStatus>> checkpoints = new ConcurrentHashMap<>();
@@ -77,6 +81,20 @@ public class ShardAcknowledgementManager {
         this.lastCheckpointTime = Instant.now();
         
         executorService.submit(() -> monitorAcknowledgments(stopWorkerConsumer));
+    }
+
+    @VisibleForTesting
+    public ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
+    final EnhancedSourceCoordinator sourceCoordinator,
+    final DynamoDBSourceConfig dynamoDBSourceConfig,
+                                       final ExecutorService executorService) {
+        this.executorService = executorService;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.sourceCoordinator = sourceCoordinator;
+        this.dynamoDBSourceConfig = dynamoDBSourceConfig;
+        this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
+        this.partitionsToGiveUp = Collections.synchronizedList(new ArrayList<>());
+        this.lastCheckpointTime = Instant.now();
     }
 
     void monitorAcknowledgments(final Consumer<StreamPartition> stopWorkerConsumer) {
@@ -153,13 +171,9 @@ public class ShardAcknowledgementManager {
                     sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
                     LOG.debug("Checkpointed shard {} with latest sequence number acknowledged {}", streamPartition.getShardId(), latestCheckpointForShard.getSequenceNumber());
                 }
-                if (partitionsToGiveUp.contains(streamPartition)) {
-                    partitionsToRemove.add(streamPartition);
-                    sourceCoordinator.giveUpPartition(streamPartition);
-                }
-
             } catch (final Exception e) {
-                LOG.error("Received exception while monitoring acknowledgments for stream partition {}", streamPartition.getPartitionKey(), e);
+                LOG.error(NOISY, "Received exception while monitoring acknowledgments for stream partition {}, stop processing shard", streamPartition.getPartitionKey(), e);
+                markPartitionForRemoval(streamPartition);
             }
         }
 
@@ -172,6 +186,13 @@ public class ShardAcknowledgementManager {
         final boolean isFinalSetForPartition) {
         final String sequenceNumberNoNull = sequenceNumber == null ? NULL_SEQUENCE_NUMBER : sequenceNumber;
         final ShardCheckpointStatus shardCheckpointStatus = new ShardCheckpointStatus(sequenceNumber, Instant.now().toEpochMilli(), isFinalSetForPartition);
+
+        // Shard should already be in checkpoints map from call to startUpdatingOwnershipForShard, if it is not in the map
+        // that means that ShardAcknowledgmentManager stopped tracking it due to some error, and another worker will pick it up
+        // We throw an error in this case to have the ShardConsumer exit and stop reading data from the shard
+        if (!isStillTrackingShard(streamPartition)) {
+            throw new ShardNotTrackedException("The shard {} is not being tracked anymore, stop reading from shard");
+        }
         checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>()).add(shardCheckpointStatus);
         ackStatuses.computeIfAbsent(streamPartition, segment -> new ConcurrentHashMap<>());
         ackStatuses.get(streamPartition).put(sequenceNumberNoNull, shardCheckpointStatus);
@@ -199,7 +220,12 @@ public class ShardAcknowledgementManager {
         if (Duration.between(lastCheckpointTime, Instant.now()).compareTo(CHECKPOINT_INTERVAL) > 0) {
             for (final StreamPartition streamPartition : checkpoints.keySet()) {
                 if (!partitionsToRemove.contains(streamPartition)) {
-                    sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+                    try {
+                        sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+                    } catch (final PartitionUpdateException e) {
+                        LOG.warn(NOISY, "Failed to update progress state for shard {}, will stop tracking this shard as someone else owns it", streamPartition.getShardId());
+                        markPartitionForRemoval(streamPartition);
+                    }
                 }
             }
 
@@ -214,9 +240,8 @@ public class ShardAcknowledgementManager {
             streamProgressState.setSequenceNumber(latestCheckpointForShard.getSequenceNumber());
             sourceCoordinator.saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
         }
-        partitionsToRemove.add(streamPartition);
-        sourceCoordinator.giveUpPartition(streamPartition);
-        partitionsToGiveUp.remove(streamPartition);
+
+        markPartitionForRemoval(streamPartition);
     }
 
     private void handleCompletedShard(final StreamPartition streamPartition) {
@@ -245,13 +270,17 @@ public class ShardAcknowledgementManager {
             ackStatuses.remove(streamPartition);
         });
 
+        partitionsToGiveUp.forEach(sourceCoordinator::giveUpPartition);
+
         partitionsToRemove.clear();
+        partitionsToGiveUp.clear();
     }
 
     public void giveUpPartition(final StreamPartition streamPartition) {
-        if (!partitionsToGiveUp.contains(streamPartition)) {
+        if (isStillTrackingShard(streamPartition)) {
             LOG.debug("Adding partition {} to give up list", streamPartition.getPartitionKey());
             partitionsToGiveUp.add(streamPartition);
+            partitionsToRemove.add(streamPartition);
         }
     }
 
@@ -260,7 +289,24 @@ public class ShardAcknowledgementManager {
         return globalPartition.isPresent();
     }
 
-    public void startUpdatingOwnershipForShard(final StreamPartition streamPartition) {
+    void startUpdatingOwnershipForShard(final StreamPartition streamPartition) {
         checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>());
+    }
+
+    boolean isStillTrackingShard(final StreamPartition streamPartition) {
+        return isStillTrackingShardInternal(streamPartition);
+    }
+
+    private boolean isStillTrackingShardInternal(final StreamPartition streamPartition) {
+        LOG.info("partitions to remove: {}", partitionsToRemove);
+        LOG.info("Checkpoints: {}", checkpoints);
+        return !partitionsToRemove.contains(streamPartition) && checkpoints.containsKey(streamPartition);
+    }
+
+    private void markPartitionForRemoval(final StreamPartition streamPartition) {
+        if (!partitionsToRemove.contains(streamPartition)) {
+            partitionsToRemove.add(streamPartition);
+            partitionsToGiveUp.add(streamPartition);
+        }
     }
 }
