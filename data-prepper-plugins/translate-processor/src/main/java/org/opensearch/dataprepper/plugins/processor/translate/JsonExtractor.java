@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.translate;
 
+import org.opensearch.dataprepper.model.event.EventKey;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,6 +45,14 @@ public class JsonExtractor {
         String strippedPath = getStrippedPath(fullPath);
         final String[] fields = strippedPath.split(DELIMITER);
         return fields.length==0 ? "" : fields[fields.length - 1].strip();
+    }
+
+    /**
+     * @param fullPath full path to the leaf field
+     * @return the path leading up to the lead field, returns empty string "" if there is no parent path
+     */
+    public String getParentPath(EventKey fullPath) {
+        return getParentPath(fullPath.getKey());
     }
 
     /**
