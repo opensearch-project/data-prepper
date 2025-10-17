@@ -161,11 +161,7 @@ public class JacksonEvent implements Event {
             if (value instanceof Map) {
                 value = normalizeKeys((Map<String, Object>)value);
             }
-            if (!newKey.equals(key)) {
-                replacementMap.put(newKey, value);
-            } else {
-                replacementMap.put(key, value);
-            }
+            replacementMap.put(newKey, value);
         }
         return replacementMap;
     }
