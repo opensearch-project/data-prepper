@@ -190,10 +190,12 @@ public class ShardAcknowledgementManager {
         // Shard should already be in checkpoints map from call to startUpdatingOwnershipForShard, if it is not in the map
         // that means that ShardAcknowledgmentManager stopped tracking it due to some error, and another worker will pick it up
         // We throw an error in this case to have the ShardConsumer exit and stop reading data from the shard
-        if (!isStillTrackingShard(streamPartition)) {
+        ConcurrentLinkedQueue<ShardCheckpointStatus> queue = checkpoints.get(streamPartition);
+        if (queue == null) {
             throw new ShardNotTrackedException("The shard {} is not being tracked anymore, stop reading from shard");
         }
-        checkpoints.computeIfAbsent(streamPartition, segment -> new ConcurrentLinkedQueue<>()).add(shardCheckpointStatus);
+        queue.add(shardCheckpointStatus);
+
         ackStatuses.computeIfAbsent(streamPartition, segment -> new ConcurrentHashMap<>());
         ackStatuses.get(streamPartition).put(sequenceNumberNoNull, shardCheckpointStatus);
 
@@ -217,6 +219,7 @@ public class ShardAcknowledgementManager {
     }
 
     void updateOwnershipForAllShardPartitions() {
+
         if (Duration.between(lastCheckpointTime, Instant.now()).compareTo(CHECKPOINT_INTERVAL) > 0) {
             for (final StreamPartition streamPartition : checkpoints.keySet()) {
                 if (!partitionsToRemove.contains(streamPartition)) {
@@ -298,8 +301,6 @@ public class ShardAcknowledgementManager {
     }
 
     private boolean isStillTrackingShardInternal(final StreamPartition streamPartition) {
-        LOG.info("partitions to remove: {}", partitionsToRemove);
-        LOG.info("Checkpoints: {}", checkpoints);
         return !partitionsToRemove.contains(streamPartition) && checkpoints.containsKey(streamPartition);
     }
 
