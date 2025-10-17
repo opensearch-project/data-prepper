@@ -14,7 +14,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventKeyFactory;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.test.plugins.DataPrepperPluginTest;
+import org.opensearch.dataprepper.test.plugins.PluginConfigurationFile;
+import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStandardTestSuite;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
-class TranslateProcessorJsonConfigTest {
+@DataPrepperPluginTest(pluginName = "drop_events", pluginType = Processor.class)
+class TranslateProcessorJsonConfigTest extends BaseDataPrepperPluginStandardTestSuite {
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -49,6 +54,45 @@ class TranslateProcessorJsonConfigTest {
 
         assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
         assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+    }
+
+
+    @Test
+    void test_new_framework(@PluginConfigurationFile("translate_dynamic_key_multiple_source_keys.yaml") final Processor<Record<Event>, Record<Event>> objectUnderTest) {
+        Map<String, Object> data = new HashMap<>();
+        String replaceValue = "Administrative";
+        String firstValueToAssert = "Sacramento";
+        String secondValueToAssert = "Salem";
+        data.put("type", replaceValue);
+        Map<String, Object> states = new HashMap<>();
+        states.put("california." + replaceValue + ".capital", "ca" + replaceValue + "Capital");
+        states.put("oregon." + replaceValue + ".capital", "or" + replaceValue + "Capital");
+        states.put("loadCities", true);
+        data.put("states", states);
+        Record<Event> record = buildRecordWithEvent(data);
+
+        List<Record<Event>> translatedRecords = (List<Record<Event>>) objectUnderTest.execute(Collections.singletonList(record));
+        
+        // The majorCapitals should be added to the states object, not the root level
+        Map<String, Object> statesData = (Map<String, Object>) translatedRecords.get(0).getData().get("states", Map.class);
+        assertTrue(statesData.containsKey("majorCapitals"));
+        assertEquals(List.of(firstValueToAssert, secondValueToAssert), statesData.get("majorCapitals"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"Administrative, Sacramento, Salem", "Financial, San Francisco, Portland"})
+    void test_dynamic_key_translation_with_multiple_source_keys(String replaceValue, String firstValueToAssert, String secondValueToAssert) throws IOException {
+        TranslateProcessor processor = createProcessor("translate_dynamic_key_multiple_source_keys.json");
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", replaceValue);
+        data.put("loadCities", true);
+        data.put("california." + replaceValue + ".capital", "ca" + replaceValue + "Capital");
+        data.put("oregon." + replaceValue + ".capital", "or" + replaceValue + "Capital");
+        Record<Event> record = buildRecordWithEvent(data);
+
+        List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        assertTrue(translatedRecords.get(0).getData().containsKey("majorCapitals"));
+        assertEquals(List.of(firstValueToAssert, secondValueToAssert), translatedRecords.get(0).getData().get("majorCapitals", List.class));
     }
 
     @ParameterizedTest

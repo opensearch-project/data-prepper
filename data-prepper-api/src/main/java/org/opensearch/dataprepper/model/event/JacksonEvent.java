@@ -276,6 +276,40 @@ public class JacksonEvent implements Event {
     }
 
     @Override
+    public Event get(EventKey key) {
+        JacksonEventKey jacksonEventKey = asJacksonEventKey(key);
+
+        final JsonNode node = getNode(jacksonEventKey);
+        if (node.isMissingNode()) {
+            return null;
+        }
+        
+        // If the node is an object or array, create a new JacksonEvent that directly references this node
+        if (node.isObject() || node.isArray()) {
+            return createEventFromNode(node);
+        }
+        
+        return mapNodeToObject(key.getKey(), node, JacksonEvent.class);
+    }
+    
+    /**
+     * Package-private constructor for creating JacksonEvent with direct JsonNode reference
+     * Used internally for creating child events that maintain reference to parent nodes
+     */
+    JacksonEvent(JsonNode jsonNode, EventMetadata eventMetadata, EventHandle eventHandle) {
+        this.jsonNode = jsonNode;
+        this.eventMetadata = eventMetadata;
+        this.eventHandle = eventHandle != null ? eventHandle : new DefaultEventHandle(eventMetadata.getTimeReceived());
+    }
+
+    /**
+     * Creates a new JacksonEvent that directly references the given JsonNode for in-place modifications
+     */
+    private JacksonEvent createEventFromNode(JsonNode node) {
+        return new JacksonEvent(node, this.eventMetadata, this.eventHandle);
+    }
+
+    @Override
     public <T> T get(EventKey key, Class<T> clazz) {
         JacksonEventKey jacksonEventKey = asJacksonEventKey(key);
 
