@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBufferConfig;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -189,19 +190,19 @@ public class KafkaCustomConsumerTest {
 
     public KafkaCustomConsumer createObjectUnderTestWithMockBuffer(String schemaType) {
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, mockBuffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, null);
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
 
     public KafkaCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, null);
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate);
     }
 
     public KafkaCustomConsumer createObjectUnderTestWithCodec(String schemaType, boolean acknowledgementsEnabled, InputCodec inputCodec) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         return new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType,
-                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, inputCodec);
+                acknowledgementSetManager, null, topicMetrics, pauseConsumePredicate, CompressionOption.NONE, inputCodec);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() throws JsonProcessingException {
@@ -491,7 +492,7 @@ public class KafkaCustomConsumerTest {
                 found1 = true;
                 assertEquals("099ce04f04acea26f8191b2a900d92e1", span.getTraceId());
                 assertEquals("frontend", span.getServiceName());
-                assertEquals(8081, span.getAttributes().get("net.peer.port"));
+                assertEquals(8081L, span.getAttributes().get("net.peer.port"));
                 assertEquals(325722026, span.getDurationInNanos());
                 assertEquals("4ce150ecd279e8c6", span.getParentSpanId());
             } else if (span.getSpanId().equals("4ce150ecd279e8c6")) {

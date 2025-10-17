@@ -34,16 +34,11 @@ import org.opensearch.dataprepper.model.plugin.PluginConfigObservable;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaMdc;
 import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.thread.KafkaPluginThreadFactory;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.*;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaCustomConsumerFactory;
 import org.opensearch.dataprepper.plugins.kafka.consumer.PauseConsumePredicate;
@@ -57,12 +52,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -170,7 +160,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
                         }
                         consumer = new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType,
-                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause(), getInputCodec());
+                                acknowledgementSetManager, null, topicMetrics, PauseConsumePredicate.noPause(), CompressionOption.NONE, getInputCodec());
                         allTopicConsumers.add(consumer);
 
                         executorService.submit(consumer);
@@ -190,8 +180,11 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    private InputCodec getInputCodec(){
+    private InputCodec getInputCodec() {
         final PluginModel codecConfiguration = sourceConfig.getCodec();
+        if (codecConfiguration == null) {
+            return null;
+        }
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
         return pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
     }
@@ -349,7 +342,7 @@ public class KafkaSource implements Source<Record<Event>> {
         }
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonSchemaDeserializer.class);
-	    properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
+            properties.put("json.value.type", "com.fasterxml.jackson.databind.JsonNode");
         } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         } else {

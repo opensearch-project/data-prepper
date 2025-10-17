@@ -116,7 +116,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate,
-                               final CompressionOption compressionConfig
+                               final CompressionOption compressionConfig,
                                final InputCodec inputCodec) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
@@ -159,7 +159,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate) {
-        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE);
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE, null);
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
