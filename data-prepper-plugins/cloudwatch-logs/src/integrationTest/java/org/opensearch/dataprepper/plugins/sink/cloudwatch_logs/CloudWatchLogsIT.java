@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +58,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.time.Duration;
@@ -98,11 +100,16 @@ public class CloudWatchLogsIT {
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
 
     @Mock
+    private DistributionSummary summary;
+
+    @Mock
     private Counter eventsSuccessCounter;
     @Mock
     private Counter requestsSuccessCounter;
     @Mock
     private Counter eventsFailedCounter;
+    @Mock
+    private Counter largeEventsDroppedCounter;
     @Mock
     private Counter requestsFailedCounter;
     @Mock
@@ -119,6 +126,7 @@ public class CloudWatchLogsIT {
     private AtomicInteger eventsFailedCount;
     private AtomicInteger requestsFailedCount;
     private AtomicInteger dlqSuccessCount;
+    private AtomicInteger largeEventsDroppedCount;
     private CloudWatchLogsClient cloudWatchLogsClient;
     private ObjectMapper objectMapper;
     private AwsCredentialsProvider awsCredentialsProvider;
@@ -130,6 +138,7 @@ public class CloudWatchLogsIT {
         eventsSuccessCount = new AtomicInteger(0);
         requestsSuccessCount = new AtomicInteger(0);
         eventsFailedCount = new AtomicInteger(0);
+        largeEventsDroppedCount = new AtomicInteger(0);
         requestsFailedCount = new AtomicInteger(0);
         dlqSuccessCount = new AtomicInteger(0);
         objectMapper = new ObjectMapper();
@@ -151,9 +160,11 @@ public class CloudWatchLogsIT {
         logGroupName = System.getProperty("tests.cloudwatch.log_group");
         logStreamName = createLogStream(logGroupName);
         pluginMetrics = mock(PluginMetrics.class);
+        summary = mock(DistributionSummary.class);
         eventsSuccessCounter = mock(Counter.class);
         requestsSuccessCounter = mock(Counter.class);
         eventsFailedCounter = mock(Counter.class);
+        largeEventsDroppedCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
         dlqSuccessCounter = mock(Counter.class);
         lenient().doAnswer((a)-> {
@@ -166,6 +177,11 @@ public class CloudWatchLogsIT {
             eventsFailedCount.addAndGet(v);
             return null;
         }).when(eventsFailedCounter).increment(any(Double.class));
+        lenient().doAnswer((a)-> {
+            int v = (int)(double)(a.getArgument(0));
+            largeEventsDroppedCount.addAndGet(v);
+            return null;
+        }).when(largeEventsDroppedCounter).increment(any(Double.class));
         lenient().doAnswer((a)-> {
             requestsSuccessCount.addAndGet(1);
             return null;
@@ -199,11 +215,15 @@ public class CloudWatchLogsIT {
             if (s.equals(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_EVENTS_FAILED)) {
                 return eventsFailedCounter;
             }
+            if (s.equals(CloudWatchLogsMetrics.CLOUDWATCH_LOGS_LARGE_EVENTS_DROPPED)) {
+                return largeEventsDroppedCounter;
+            }
             if (s.contains("NumDlqSuccess")) {
                 return dlqSuccessCounter;
             }
             return null;
         }).when(pluginMetrics).counter(anyString());
+        when(pluginMetrics.summary(anyString())).thenReturn(summary);
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn(logGroupName);
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
@@ -433,6 +453,52 @@ public class CloudWatchLogsIT {
         assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
         assertThat(requestsSuccessCount.get(), equalTo(1));
         assertThat(dlqSuccessCount.get(), equalTo(1));
+        verify(eventHandle, times(NUM_RECORDS+1)).release(true);
+
+    }
+
+    @Test
+    void testWithLargeSingleMessagesWhenDLQNotConfigured() throws Exception {
+        long startTime = Instant.now().toEpochMilli();
+        when(thresholdConfig.getBatchSize()).thenReturn(NUM_RECORDS);
+        when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(200L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
+        when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
+
+        sink = createObjectUnderTest();
+        Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
+        Record<Event> largeRecord = getLargeRecord(200);
+        records.add(largeRecord);
+
+        sink.doOutput(records);
+        List<OutputLogEvent>[] foundEvents = new List[1];
+        await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    long endTime = Instant.now().toEpochMilli();
+                    GetLogEventsRequest getRequest = GetLogEventsRequest
+                                       .builder()
+                                       .logGroupName(logGroupName)
+                                       .logStreamName(logStreamName)
+                                       .startTime(startTime)
+                                       .endTime(endTime)
+                                       .build();
+                    GetLogEventsResponse response = cloudWatchLogsClient.getLogEvents(getRequest);
+                    List<OutputLogEvent> events = response.events();
+                    foundEvents[0] = events;
+                    assertThat(events.size(), equalTo(NUM_RECORDS));
+                });
+        List<OutputLogEvent> events = foundEvents[0];
+        assertThat(events, notNullValue());
+        for (int i = 0; i < events.size(); i++) {
+            String message = events.get(i).message();
+            Map<String, Object> event = objectMapper.readValue(message, Map.class);
+            assertThat(event.get("name"), equalTo("Person"+i));
+            assertThat(event.get("age"), equalTo(Integer.toString(i)));
+        }
+        assertThat(eventsSuccessCount.get(), equalTo(NUM_RECORDS));
+        assertThat(requestsSuccessCount.get(), equalTo(1));
+        assertThat(largeEventsDroppedCount.get(), equalTo(1));
+        assertThat(dlqSuccessCount.get(), equalTo(0));
         verify(eventHandle, times(NUM_RECORDS+1)).release(true);
 
     }

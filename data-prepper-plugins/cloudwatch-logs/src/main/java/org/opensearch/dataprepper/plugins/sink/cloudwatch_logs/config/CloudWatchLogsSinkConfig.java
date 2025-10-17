@@ -30,6 +30,7 @@ public class CloudWatchLogsSinkConfig {
     private PluginModel dlq;
 
     @JsonProperty("threshold")
+    @Valid
     private ThresholdConfig thresholdConfig = new ThresholdConfig();
 
     @JsonProperty("log_group")

@@ -91,6 +91,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 .cloudWatchLogsClient(cloudWatchLogsClient)
                 .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
                 .dlqPushHandler(dlqPushHandler)
+                .dropIfDlqNotConfigured(true)
                 .logGroup(cloudWatchLogsSinkConfig.getLogGroup())
                 .logStream(cloudWatchLogsSinkConfig.getLogStream())
                 .retryCount(cloudWatchLogsSinkConfig.getMaxRetries())
@@ -104,7 +105,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
             throw new InvalidBufferTypeException("Error loading buffer!");
         }
 
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsLimits, cloudWatchLogsDispatcher, dlqPushHandler);
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsMetrics, cloudWatchLogsLimits, cloudWatchLogsDispatcher, dlqPushHandler, true);
     }
 
     @Override
