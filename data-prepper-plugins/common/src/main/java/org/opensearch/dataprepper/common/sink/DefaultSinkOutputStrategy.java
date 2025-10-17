@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 
-public abstract class DefaultSinkOutputStrategy {
+public abstract class DefaultSinkOutputStrategy implements SinkBufferEntryProvider, SinkDLQHandler {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultSinkOutputStrategy.class);
     private final LockStrategy lockStrategy;
     private final SinkBuffer sinkBuffer;
@@ -100,8 +100,4 @@ public abstract class DefaultSinkOutputStrategy {
         }                   
     }
 
-    public abstract void flushDLQList();
-    public abstract void addFailedEventsToDLQ(final List<Event> events, final Throwable ex);
-    public abstract SinkBufferEntry getSinkBufferEntry(final Event event) throws Exception;
-    public abstract boolean exceedsMaxEventSizeThreshold(final long estimatedSize);
 }

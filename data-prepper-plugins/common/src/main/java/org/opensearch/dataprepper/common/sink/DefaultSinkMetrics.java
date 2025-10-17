@@ -11,11 +11,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 public class DefaultSinkMetrics implements SinkMetrics {
     static final String DEFAULT_EVENT_NAME = "Event";
-    static final String SINK_REQUESTS_SUCCEEDED = "SinkRequestsSucceeded";
-    static final String SINK_REQUESTS_FAILED = "SinkRequestsFailed";
-    static final String SINK_REQUEST_LATENCY = "SinkRequestLatency";
-    static final String SINK_RETRIES = "SinkRetries";
-    static final String SINK_REQUEST_SIZE = "SinkRequestSize";
+    static final String SINK_REQUESTS_SUCCEEDED = "sinkRequestsSucceeded";
+    static final String SINK_REQUESTS_FAILED = "sinkRequestsFailed";
+    static final String SINK_REQUEST_LATENCY = "sinkRequestLatency";
+    static final String SINK_RETRIES = "sinkRetries";
+    static final String SINK_REQUEST_SIZE = "sinkRequestSize";
     private final Counter sinkRequestsSucceeded;
     private final Counter sinkRequestsFailed;
     private final Counter sinkEventsSucceeded;
@@ -26,20 +26,20 @@ public class DefaultSinkMetrics implements SinkMetrics {
     private final DistributionSummary sinkRequestSize;
     private final DistributionSummary sinkEventSize;
 
-    public DefaultSinkMetrics(final PluginMetrics pluginMetrics, final String sinkPrefix, final String eventName) {
-        this.sinkRequestsSucceeded = pluginMetrics.counter(sinkPrefix + SINK_REQUESTS_SUCCEEDED);
-        this.sinkEventsSucceeded = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sSucceeded");
-        this.sinkRequestsFailed = pluginMetrics.counter(sinkPrefix + SINK_REQUESTS_FAILED);
-        this.sinkEventsFailed = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sFailed");
-        this.sinkEventsDropped = pluginMetrics.counter(sinkPrefix + "Sink"+eventName+"sDropped");
-        this.sinkRetries = pluginMetrics.counter(sinkPrefix + SINK_RETRIES);
-        this.sinkRequestLatency = pluginMetrics.summary(sinkPrefix + SINK_REQUEST_LATENCY);
-        this.sinkRequestSize = pluginMetrics.summary(sinkPrefix + SINK_REQUEST_SIZE);
-        this.sinkEventSize = pluginMetrics.summary(sinkPrefix + "Sink"+eventName+"Size");
+    public DefaultSinkMetrics(final PluginMetrics pluginMetrics, final String eventName) {
+        this.sinkRequestsSucceeded = pluginMetrics.counter(SINK_REQUESTS_SUCCEEDED);
+        this.sinkEventsSucceeded = pluginMetrics.counter("sink"+eventName+"sSucceeded");
+        this.sinkRequestsFailed = pluginMetrics.counter(SINK_REQUESTS_FAILED);
+        this.sinkEventsFailed = pluginMetrics.counter("sink"+eventName+"sFailed");
+        this.sinkEventsDropped = pluginMetrics.counter("sink"+eventName+"sDropped");
+        this.sinkRetries = pluginMetrics.counter(SINK_RETRIES);
+        this.sinkRequestLatency = pluginMetrics.summary(SINK_REQUEST_LATENCY);
+        this.sinkRequestSize = pluginMetrics.summary(SINK_REQUEST_SIZE);
+        this.sinkEventSize = pluginMetrics.summary("sink"+eventName+"Size");
     }
 
-    public DefaultSinkMetrics(final PluginMetrics pluginMetrics, final String sinkPrefix) {
-        this(pluginMetrics, sinkPrefix, DEFAULT_EVENT_NAME);
+    public DefaultSinkMetrics(final PluginMetrics pluginMetrics) {
+        this(pluginMetrics, DEFAULT_EVENT_NAME);
     }
 
     public void incrementEventsSuccessCounter(int value){

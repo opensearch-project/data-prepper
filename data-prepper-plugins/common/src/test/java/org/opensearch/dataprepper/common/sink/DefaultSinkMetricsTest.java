@@ -43,13 +43,11 @@ public class DefaultSinkMetricsTest {
     private DistributionSummary eventSize;
 
     private DefaultSinkMetrics defaultSinkMetrics;
-    private String prefix;
     private String eventName;
 
     @BeforeEach
     private void setUp() {
         pluginMetrics = mock(PluginMetrics.class);
-        prefix = RandomStringUtils.randomNumeric(6);
         eventName = RandomStringUtils.randomNumeric(5);
         requestsSucceededCounter = mock(Counter.class);
         requestsFailedCounter = mock(Counter.class);
@@ -60,19 +58,19 @@ public class DefaultSinkMetricsTest {
         requestLatency = mock(DistributionSummary.class);
         requestSize = mock(DistributionSummary.class);
         eventSize = mock(DistributionSummary.class);
-        when(pluginMetrics.counter(eq(prefix+DefaultSinkMetrics.SINK_REQUESTS_SUCCEEDED))).thenReturn(requestsSucceededCounter);
-        when(pluginMetrics.counter(eq(prefix+DefaultSinkMetrics.SINK_REQUESTS_FAILED))).thenReturn(requestsFailedCounter);
-        when(pluginMetrics.counter(eq(prefix+DefaultSinkMetrics.SINK_RETRIES))).thenReturn(sinkRetriesCounter);
-        when(pluginMetrics.summary(eq(prefix+DefaultSinkMetrics.SINK_REQUEST_LATENCY))).thenReturn(requestLatency);
-        when(pluginMetrics.summary(eq(prefix+"Sink"+eventName+"Size"))).thenReturn(eventSize);
-        when(pluginMetrics.summary(eq(prefix+DefaultSinkMetrics.SINK_REQUEST_SIZE))).thenReturn(requestSize);
-        when(pluginMetrics.counter(eq(prefix+"Sink"+eventName+"sSucceeded"))).thenReturn(eventsSucceededCounter);
-        when(pluginMetrics.counter(eq(prefix+"Sink"+eventName+"sFailed"))).thenReturn(eventsFailedCounter);
-        when(pluginMetrics.counter(eq(prefix+"Sink"+eventName+"sDropped"))).thenReturn(eventsDroppedCounter);
+        when(pluginMetrics.counter(eq(DefaultSinkMetrics.SINK_REQUESTS_SUCCEEDED))).thenReturn(requestsSucceededCounter);
+        when(pluginMetrics.counter(eq(DefaultSinkMetrics.SINK_REQUESTS_FAILED))).thenReturn(requestsFailedCounter);
+        when(pluginMetrics.counter(eq(DefaultSinkMetrics.SINK_RETRIES))).thenReturn(sinkRetriesCounter);
+        when(pluginMetrics.summary(eq(DefaultSinkMetrics.SINK_REQUEST_LATENCY))).thenReturn(requestLatency);
+        when(pluginMetrics.summary(eq("sink"+eventName+"Size"))).thenReturn(eventSize);
+        when(pluginMetrics.summary(eq(DefaultSinkMetrics.SINK_REQUEST_SIZE))).thenReturn(requestSize);
+        when(pluginMetrics.counter(eq("sink"+eventName+"sSucceeded"))).thenReturn(eventsSucceededCounter);
+        when(pluginMetrics.counter(eq("sink"+eventName+"sFailed"))).thenReturn(eventsFailedCounter);
+        when(pluginMetrics.counter(eq("sink"+eventName+"sDropped"))).thenReturn(eventsDroppedCounter);
     }
 
     private DefaultSinkMetrics createObjectUnderTest() {
-        return new DefaultSinkMetrics(pluginMetrics, prefix, eventName);
+        return new DefaultSinkMetrics(pluginMetrics, eventName);
     }
 
     @Test
