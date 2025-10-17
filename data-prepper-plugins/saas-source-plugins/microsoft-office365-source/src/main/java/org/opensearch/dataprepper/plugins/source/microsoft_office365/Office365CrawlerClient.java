@@ -106,7 +106,6 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
 
         try {
             String nextPageUri = null;
-            List<Record<Event>> records = new ArrayList<>();
 
             do {
                 AuditLogsResponse response =
@@ -118,7 +117,8 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                         try {
                             Record<Event> record = processAuditLog(metadata);
                             if (record != null) {
-                                records.add(record);
+                                // Write each record individually as it's processed
+                                writeRecordWithRetry(record, buffer, acknowledgementSet);
                             }
                         } catch (Office365Exception e) {
 
@@ -141,14 +141,9 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
                 nextPageUri = response.getNextPageUri();
             } while (nextPageUri != null);
 
-            bufferWriteLatencyTimer.record(() -> {
-                try {
-                    writeRecordsWithRetry(records, buffer, acknowledgementSet);
-                } catch (Exception e) {
-                    bufferWriteFailuresCounter.increment();
-                    throw e;
-                }
-            });
+            if (configuration.isAcknowledgments()) {
+                acknowledgementSet.complete();
+            }
 
         } catch (Exception e) {
             log.error(NOISY, "Failed to process partition for log type {} from {} to {}",
@@ -198,56 +193,61 @@ public class Office365CrawlerClient implements CrawlerClient<DimensionalTimeSlic
         }
     }
 
-    private void writeRecordsWithRetry(final List<Record<Event>> records,
-                                       final Buffer<Record<Event>> buffer,
-                                       final AcknowledgementSet acknowledgementSet) {
-        bufferWriteAttemptsCounter.increment();
-        int retryCount = 0;
-        int currentBackoff = 1000; // Start with 1 second
-        final int maxBackoff = 30000; // Max 30 seconds
-        final int maxRetries = 5;
-
-        while (true) {
+    private void writeRecordWithRetry(final Record<Event> record,
+                                      final Buffer<Record<Event>> buffer,
+                                      final AcknowledgementSet acknowledgementSet) {
+        bufferWriteLatencyTimer.record(() -> {
             try {
+                bufferWriteAttemptsCounter.increment();
+                int retryCount = 0;
+                int currentBackoff = 1000; // Start with 1 second
+                final int maxBackoff = 30000; // Max 30 seconds
+                final int maxRetries = 5;
+
                 if (configuration.isAcknowledgments()) {
-                    records.forEach(record -> acknowledgementSet.add(record.getData()));
-                    buffer.writeAll(records, (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis());
-                    acknowledgementSet.complete();
-                } else {
-                    buffer.writeAll(records, (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis());
+                    acknowledgementSet.add(record.getData());
                 }
 
-                if (retryCount > 0) {
-                    bufferWriteRetrySuccessCounter.increment();
-                } else {
-                    bufferWriteSuccessCounter.increment();
-                }
-                return;
+                while (true) {
+                    try {
+                        buffer.write(record, (int) Duration.ofSeconds(BUFFER_TIMEOUT_IN_SECONDS).toMillis());
 
-            } catch (TimeoutException e) {
-                retryCount++;
-                if (retryCount >= maxRetries) {
-                    bufferWriteFailuresCounter.increment();
-                    throw new RuntimeException("Failed to write to buffer after " + maxRetries + " attempts", e);
-                }
+                        if (retryCount > 0) {
+                            bufferWriteRetrySuccessCounter.increment();
+                        } else {
+                            bufferWriteSuccessCounter.increment();
+                        }
+                        return;
 
-                bufferWriteRetryAttemptsCounter.increment();
-                currentBackoff = Math.min((int)(currentBackoff * 2.0), maxBackoff);
-                log.info("Buffer full, backing off for {} ms before retry", currentBackoff);
+                    } catch (TimeoutException e) {
+                        retryCount++;
+                        if (retryCount >= maxRetries) {
+                            bufferWriteFailuresCounter.increment();
+                            throw new RuntimeException("Failed to write to buffer after " + maxRetries + " attempts", e);
+                        }
 
-                try {
-                    Thread.sleep(currentBackoff);
-                    // TODO: Update worker partition state to prevent timeout
-                    // Ideally, we want to call the saveWorkerPartitionState and extend the lease like so
-                    // coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Buffer write retry interrupted", ie);
+                        bufferWriteRetryAttemptsCounter.increment();
+                        currentBackoff = Math.min((int)(currentBackoff * 2.0), maxBackoff);
+                        log.info("Buffer full, backing off for {} ms before retry", currentBackoff);
+
+                        try {
+                            Thread.sleep(currentBackoff);
+                            // TODO: Update worker partition state to prevent timeout
+                            // Ideally, we want to call the saveWorkerPartitionState and extend the lease like so
+                            // coordinator.saveProgressStateForPartition(leaderPartition, DEFAULT_EXTEND_LEASE_MINUTES);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("Buffer write retry interrupted", ie);
+                        }
+                    } catch (Exception e) {
+                        bufferWriteFailuresCounter.increment();
+                        throw new RuntimeException("Error writing to buffer", e);
+                    }
                 }
             } catch (Exception e) {
                 bufferWriteFailuresCounter.increment();
                 throw new RuntimeException("Error writing to buffer", e);
             }
-        }
+        });
     }
 }

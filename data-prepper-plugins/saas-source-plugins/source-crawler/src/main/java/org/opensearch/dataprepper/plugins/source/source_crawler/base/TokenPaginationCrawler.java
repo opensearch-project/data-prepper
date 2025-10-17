@@ -33,7 +33,11 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
     private static final int batchSize = 50;
     private static final String PAGINATION_WORKER_PARTITIONS_CREATED = "paginationWorkerPartitionsCreated";
     private static final String INVALID_PAGINATION_ITEMS = "invalidPaginationItems";
+    private static final String WORKER_PARTITION_WAIT_TIME = "WorkerPartitionWaitTime";
+    private static final String WORKER_PARTITION_PROCESS_LATENCY = "WorkerPartitionProcessLatency";
     private final Timer crawlingTimer;
+    private final Timer partitionWaitTimeTimer;
+    private final Timer partitionProcessLatencyTimer;
     private final CrawlerClient client;
     private final Counter parititionsCreatedCounter;
     private final Counter invalidPaginationItemsCounter;
@@ -43,6 +47,8 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
         this.client = client;
         this.crawlingTimer = pluginMetrics.timer("crawlingTime");
         this.parititionsCreatedCounter = pluginMetrics.counter(PAGINATION_WORKER_PARTITIONS_CREATED);
+        this.partitionWaitTimeTimer = pluginMetrics.timer(WORKER_PARTITION_WAIT_TIME);
+        this.partitionProcessLatencyTimer = pluginMetrics.timer(WORKER_PARTITION_PROCESS_LATENCY);
         this.invalidPaginationItemsCounter = pluginMetrics.counter(INVALID_PAGINATION_ITEMS);
 
     }
@@ -92,7 +98,8 @@ public class TokenPaginationCrawler implements Crawler<PaginationCrawlerWorkerPr
     }
 
     public void executePartition(PaginationCrawlerWorkerProgressState state, Buffer<Record<Event>> buffer, AcknowledgementSet acknowledgementSet) {
-        client.executePartition(state, buffer, acknowledgementSet);
+        partitionWaitTimeTimer.record(Duration.between(state.getExportStartTime(), Instant.now()));
+        partitionProcessLatencyTimer.record(() -> client.executePartition(state, buffer, acknowledgementSet));
     }
 
     private void updateLeaderProgressState(LeaderPartition leaderPartition, String updatedToken, EnhancedSourceCoordinator coordinator) {
