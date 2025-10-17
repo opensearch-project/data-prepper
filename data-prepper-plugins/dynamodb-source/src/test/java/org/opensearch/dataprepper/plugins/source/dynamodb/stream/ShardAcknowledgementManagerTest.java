@@ -21,8 +21,10 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.source.dynamodb.DynamoDBSourceConfig;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.partition.StreamPartition;
 import org.opensearch.dataprepper.plugins.source.dynamodb.coordination.state.StreamProgressState;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -36,6 +38,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -284,7 +287,7 @@ class ShardAcknowledgementManagerTest {
     }
 
     @Test
-    void failure_to_update_state_for_one_partition_stops_tracking_that_partition_and_continues_on_others() throws InterruptedException {
+    void failure_to_checkpoint_for_one_partition_stops_tracking_that_partition_and_continues_on_others() throws InterruptedException {
 
         final ShardAcknowledgementManager shardAcknowledgementManager = createObjectUnderTest();
         final StreamPartition secondPartition = mock(StreamPartition.class);
@@ -313,8 +316,6 @@ class ShardAcknowledgementManagerTest {
         callback1.accept(true);  // Positive ack
         callback2.accept(true);
 
-//        doThrow(PartitionUpdateException.class).when(sourceCoordinator).saveProgressStateForPartition(eq(streamPartition),
-//                        any(Duration.class));
         doThrow(new PartitionUpdateException("Failed update", mock(Throwable.class))).when(sourceCoordinator)
                 .saveProgressStateForPartition(same(streamPartition), any(Duration.class));
 
@@ -332,8 +333,6 @@ class ShardAcknowledgementManagerTest {
         callback1_2.accept(true);
         callback2_2.accept(true);
 
-        Thread.sleep(1000);
-
         // Run the acknowledgment loop
         assertThat(shardAcknowledgementManager.isStillTrackingShard(streamPartition), equalTo(true));
         assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
@@ -348,5 +347,78 @@ class ShardAcknowledgementManagerTest {
         verify(sourceCoordinator).giveUpPartition(streamPartition);
         verify(secondStreamProgressState).setSequenceNumber("seq124");
         verify(sourceCoordinator).saveProgressStateForPartition(secondPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+    }
+
+    @Test
+    void failure_to_update_state_for_one_partition_stops_tracking_that_partition_and_continues_on_others() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+
+
+
+        final ShardAcknowledgementManager shardAcknowledgementManager = createObjectUnderTest();
+        ReflectivelySetField.setField(ShardAcknowledgementManager.class,
+                shardAcknowledgementManager, "lastCheckpointTime", Instant.now().minusSeconds(180));
+        final StreamPartition secondPartition = mock(StreamPartition.class);
+        final StreamProgressState secondStreamProgressState = mock(StreamProgressState.class);
+        lenient().when(streamPartition.getShardId()).thenReturn(UUID.randomUUID().toString());
+        lenient().when(secondPartition.getShardId()).thenReturn(UUID.randomUUID().toString());
+
+        when(streamPartition.getProgressState()).thenReturn(Optional.of(streamProgressState));
+
+        when(secondPartition.getProgressState()).thenReturn(Optional.of(secondStreamProgressState));
+
+        // Setup
+        when(dynamoDBSourceConfig.getShardAcknowledgmentTimeout()).thenReturn(Duration.ofMinutes(15));
+        when(acknowledgementSetManager.create(ackCallbackCaptor.capture(), any(Duration.class)))
+                .thenReturn(acknowledgementSet);
+
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(streamPartition);
+        // Create first acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq1", false);
+        Consumer<Boolean> callback1 = ackCallbackCaptor.getAllValues().get(0);
+
+        // Create second acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, "seq2", false);
+        Consumer<Boolean> callback2 = ackCallbackCaptor.getAllValues().get(1);
+
+        callback1.accept(true);  // Positive ack
+        callback2.accept(true);
+
+        doThrow(new PartitionUpdateException("Failed update", mock(Throwable.class))).when(sourceCoordinator)
+                .saveProgressStateForPartition(same(streamPartition), any(Duration.class));
+
+        doNothing().when(sourceCoordinator)
+                .saveProgressStateForPartition(same(secondPartition), any(Duration.class));
+
+        shardAcknowledgementManager.startUpdatingOwnershipForShard(secondPartition);
+        // Create first acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(secondPartition, "seq123", false);
+        Consumer<Boolean> callback1_2 = ackCallbackCaptor.getAllValues().get(2);
+
+        // Create second acknowledgment set and capture its callback
+        shardAcknowledgementManager.createAcknowledgmentSet(secondPartition, "seq124", false);
+        Consumer<Boolean> callback2_2 = ackCallbackCaptor.getAllValues().get(3);
+        callback1_2.accept(true);
+
+        // Run the acknowledgment loop
+        assertThat(shardAcknowledgementManager.isStillTrackingShard(streamPartition), equalTo(true));
+        assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        verify(streamProgressState).setSequenceNumber("seq2");
+        verify(secondStreamProgressState).setSequenceNumber("seq123");
+        callback2_2.accept(true);
+
+        assertThat(shardAcknowledgementManager.isStillTrackingShard(streamPartition), equalTo(false));
+        assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
+        shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
+
+        verify(secondStreamProgressState).setSequenceNumber("seq124");
+
+        assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
+
+        verify(sourceCoordinator).giveUpPartition(streamPartition);
+        verify(sourceCoordinator, times(3)).saveProgressStateForPartition(secondPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
+
     }
 }

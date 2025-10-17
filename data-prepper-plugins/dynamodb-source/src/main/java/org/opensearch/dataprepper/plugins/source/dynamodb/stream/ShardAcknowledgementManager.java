@@ -67,7 +67,7 @@ public class ShardAcknowledgementManager {
 
     private Instant lastCheckpointTime;
 
-    public ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
+    ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
                                        final EnhancedSourceCoordinator sourceCoordinator,
                                        final DynamoDBSourceConfig dynamoDBSourceConfig,
                                        final Consumer<StreamPartition> stopWorkerConsumer
@@ -84,10 +84,10 @@ public class ShardAcknowledgementManager {
     }
 
     @VisibleForTesting
-    public ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
-    final EnhancedSourceCoordinator sourceCoordinator,
-    final DynamoDBSourceConfig dynamoDBSourceConfig,
-                                       final ExecutorService executorService) {
+    ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
+                                final EnhancedSourceCoordinator sourceCoordinator,
+                                final DynamoDBSourceConfig dynamoDBSourceConfig,
+                                final ExecutorService executorService) {
         this.executorService = executorService;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinator = sourceCoordinator;
