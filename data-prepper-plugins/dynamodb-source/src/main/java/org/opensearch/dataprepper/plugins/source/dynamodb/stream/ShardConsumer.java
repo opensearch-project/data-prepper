@@ -272,6 +272,11 @@ public class ShardConsumer implements Runnable {
                 lastCheckpointTime = System.currentTimeMillis();
             }
 
+            if (shardAcknowledgementManager != null && !shardAcknowledgementManager.isStillTrackingShard(streamPartition)) {
+                LOG.warn("Shard {} is no longer being tracked by the acknowledgment manager, exiting", streamPartition.getShardId());
+                break;
+            }
+
             GetRecordsResponse response = callGetRecords(shardIterator);
             shardIterator = response.nextShardIterator();
             if (!response.records().isEmpty()) {
