@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundExcepti
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -148,9 +149,109 @@ public class JacksonEventTest {
     }
 
     @Test
+    void testPutAndGet_withArrays_eventKey() {
+
+        final String key = "list-key/0/foo";
+        final String newValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listValue = new ArrayList<>();
+        final Map<String, Object> mapValue = Map.of("foo", "bar", "foo-2", "bar-2");
+        listValue.add(mapValue);
+
+        final String listKey = "list-key";
+        final EventKey eventKey = new JacksonEventKey(listKey);
+        event.put(eventKey, listValue);
+
+        final Map<String, Object> expectedMap = new HashMap<>();
+        expectedMap.put(listKey, listValue);
+
+        assertThat(event.toMap(), equalTo(expectedMap));
+
+        final EventKey eventNestedKey = new JacksonEventKey(key);
+        event.put(eventNestedKey, newValue);
+
+        final List<Map<String, Object>> newlistValue = new ArrayList<>();
+        final Map<String, Object> newMapValue = Map.of("foo", newValue, "foo-2", "bar-2");
+        newlistValue.add(newMapValue);
+
+        expectedMap.put(listKey, newlistValue);
+
+        assertThat(event.toMap(), equalTo(expectedMap));
+
+
+        final List<Map<String, Object>> result = event.get(listKey, List.class);
+        assertThat(result, equalTo(newlistValue));
+
+        final String resultValue = event.get(key, String.class);
+        assertThat(resultValue, equalTo(newValue));
+    }
+
+    @Test
+    void testPutAndGet_withArrays_out_of_bounds_on_end_of_list_creates_new_element() {
+
+        final String key = "list-key/1/foo";
+        final String fooValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listValue = new ArrayList<>();
+        final Map<String, Object> mapValue = Map.of("foo", "bar", "foo-2", "bar-2");
+        listValue.add(mapValue);
+
+        final String listKey = "list-key";
+        final EventKey eventKey = new JacksonEventKey(listKey);
+        event.put(eventKey, listValue);
+
+        event.put(key, fooValue);
+
+        final String resultValue = event.get(key, String.class);
+        assertThat(resultValue, equalTo(fooValue));
+    }
+
+    @Test
+    void testPutAndGet_withArrays_out_of_bounds_throws_IndexOutOfBoundsException() {
+
+        final String key = "list-key/3/foo";
+        final String fooValue = UUID.randomUUID().toString();
+
+        final List<Map<String, Object>> listValue = new ArrayList<>();
+        final Map<String, Object> mapValue = Map.of("foo", "bar", "foo-2", "bar-2");
+        listValue.add(mapValue);
+
+        final String listKey = "list-key";
+        final EventKey eventKey = new JacksonEventKey(listKey);
+        event.put(eventKey, listValue);
+
+        assertThrows(IndexOutOfBoundsException.class, () -> event.put(key, fooValue));
+    }
+
+    @Test
     public void testPutKeyCannotBeEmptyString() {
         Throwable exception = assertThrows(IllegalArgumentException.class, () -> event.put("", "value"));
         assertThat(exception.getMessage(), containsStringIgnoringCase("key cannot be an empty string"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testReplaceInvalidKeyChars(final String key) {
+        assertThat(JacksonEvent.replaceInvalidKeyChars(key), equalTo("key_1"));
+        assertThat(JacksonEvent.replaceInvalidKeyChars(key.substring(0,3)), equalTo("key"));
+        assertThat(JacksonEvent.replaceInvalidKeyChars(null), equalTo(null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1", "key_1"})
+    public void testPutWithReplaceInvalidKeyChars(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        event.put(key, value, true);
+        assertThat(event.get("key_1", String.class), equalTo(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"key&1", "key^1", "key%1"})
+    public void testPutWithoutReplaceInvalidKeyChars(final String key) {
+        final String value = UUID.randomUUID().toString();
+
+        assertThrows(IllegalArgumentException.class, () -> event.put(key, value, false));
     }
 
     @Test
@@ -175,6 +276,37 @@ public class JacksonEventTest {
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelInvalidValues() {
+        final Map<String, Object> data1 = new HashMap<>();
+        final Map<String, Object> data2 = new HashMap<>();
+        final Map<String, Object> data3 = new HashMap<>();
+        data3.put("key^5", "value5");
+        data2.put("key^3", 3);
+        data2.put("key%4", data3);
+        data1.put("key&2", data2);
+
+        event.put("foo", data1, true);
+        assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
+        assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
+    }
+
+    @Test
+    public void testPutAndGet_withMultiLevelInvalidValues_eventKey() {
+        final EventKey key = new JacksonEventKey("foo");
+        final Map<String, Object> data1 = new HashMap<>();
+        final Map<String, Object> data2 = new HashMap<>();
+        final Map<String, Object> data3 = new HashMap<>();
+        data3.put("key^5", "value5");
+        data2.put("key^3", 3);
+        data2.put("key%4", data3);
+        data1.put("key&2", data2);
+
+        event.put(key, data1, true);
+        assertThat(event.get("foo/key_2/key_3", Integer.class), equalTo(3));
+        assertThat(event.get("foo/key_2/key_4/key_5", String.class), equalTo("value5"));
     }
 
     @Test
@@ -1020,7 +1152,7 @@ public class JacksonEventTest {
 
 
     }
-    
+
     @Test
     void testJsonStringBuilderWithExcludeKeys() {
         final String jsonString = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
@@ -1117,5 +1249,4 @@ public class JacksonEventTest {
                 Arguments.of("1.000")
         );
     }
-
 }

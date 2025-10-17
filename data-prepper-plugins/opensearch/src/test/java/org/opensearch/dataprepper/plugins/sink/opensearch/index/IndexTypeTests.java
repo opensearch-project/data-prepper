@@ -26,17 +26,17 @@ public class IndexTypeTests {
         assertEquals(Optional.of(IndexType.CUSTOM), IndexType.getByValue("custom"));
         assertEquals(Optional.of(IndexType.MANAGEMENT_DISABLED), IndexType.getByValue("management_disabled"));
         assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW), IndexType.getByValue("trace-analytics-raw"));
-        assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW_STANDARD), IndexType.getByValue("trace-analytics-standard-raw"));
+        assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_RAW_PLAIN), IndexType.getByValue("trace-analytics-plain-raw"));
         assertEquals(Optional.of(IndexType.TRACE_ANALYTICS_SERVICE_MAP), IndexType.getByValue("trace-analytics-service-map"));
         assertEquals(Optional.of(IndexType.LOG_ANALYTICS), IndexType.getByValue("log-analytics"));
-        assertEquals(Optional.of(IndexType.LOG_ANALYTICS_STANDARD), IndexType.getByValue("log-analytics-standard"));
+        assertEquals(Optional.of(IndexType.LOG_ANALYTICS_PLAIN), IndexType.getByValue("log-analytics-plain"));
         assertEquals(Optional.of(IndexType.METRIC_ANALYTICS), IndexType.getByValue("metric-analytics"));
-        assertEquals(Optional.of(IndexType.METRIC_ANALYTICS_STANDARD), IndexType.getByValue("metric-analytics-standard"));
+        assertEquals(Optional.of(IndexType.METRIC_ANALYTICS_PLAIN), IndexType.getByValue("metric-analytics-plain"));
     }
 
     @Test
     public void getIndexTypeValues() {
-        assertEquals("[trace-analytics-raw, trace-analytics-standard-raw, trace-analytics-service-map, log-analytics, log-analytics-standard, metric-analytics, metric-analytics-standard, custom, management_disabled]", IndexType.getIndexTypeValues());
+        assertEquals("[trace-analytics-raw, trace-analytics-plain-raw, trace-analytics-service-map, log-analytics, log-analytics-plain, metric-analytics, metric-analytics-plain, custom, management_disabled]", IndexType.getIndexTypeValues());
     }
 
     @ParameterizedTest

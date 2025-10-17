@@ -13,12 +13,12 @@ import java.util.stream.Collectors;
 
 public enum IndexType {
     TRACE_ANALYTICS_RAW("trace-analytics-raw"),
-    TRACE_ANALYTICS_RAW_STANDARD("trace-analytics-standard-raw"),
+    TRACE_ANALYTICS_RAW_PLAIN("trace-analytics-plain-raw"),
     TRACE_ANALYTICS_SERVICE_MAP("trace-analytics-service-map"),
     LOG_ANALYTICS("log-analytics"),
-    LOG_ANALYTICS_STANDARD("log-analytics-standard"),
+    LOG_ANALYTICS_PLAIN("log-analytics-plain"),
     METRIC_ANALYTICS("metric-analytics"),
-    METRIC_ANALYTICS_STANDARD("metric-analytics-standard"),
+    METRIC_ANALYTICS_PLAIN("metric-analytics-plain"),
     CUSTOM("custom"),
     MANAGEMENT_DISABLED("management_disabled");
 

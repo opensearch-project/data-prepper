@@ -277,7 +277,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     void checkAndCreateIndex_NeedToCreateNewIndex_withStandardIndexManager() throws IOException {
         traceAnalyticsRawStandardIndexManager = indexManagerFactory.getIndexManager(
-                IndexType.TRACE_ANALYTICS_RAW_STANDARD, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
+                IndexType.TRACE_ANALYTICS_RAW_PLAIN, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
 
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
         when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))

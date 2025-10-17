@@ -12,7 +12,6 @@ import org.opensearch.dataprepper.expression.ExpressionParsingException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.annotations.Experimental;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 
-@Experimental
 @DataPrepperPlugin(name = "ml_inference", pluginType = Processor.class, pluginConfigurationType = MLProcessorConfig.class)
 public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final Logger LOG = LoggerFactory.getLogger(MLProcessor.class);
@@ -61,11 +59,16 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+        List<Record<Event>> resultRecords = new ArrayList<>();
+        // check and process any existing batch
+        mlBatchJobCreator.checkAndProcessBatch();
+        // Add processed records to results
+        mlBatchJobCreator.addProcessedBatchRecordsToResults(resultRecords);
         // reads from input - S3 input
         if (records.size() == 0)
-            return records;
+            return resultRecords;
 
-        List<Record<Event>> resultRecords = new ArrayList<>();
+        // Process new records
         List<Record<Event>> recordsToMlCommons = records.stream()
             .filter(record -> {
                 try {
@@ -91,7 +94,7 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
             .collect(Collectors.toList());
 
         if (recordsToMlCommons.isEmpty()) {
-            return records;
+            return resultRecords;
         }
 
         try {
@@ -109,14 +112,16 @@ public class MLProcessor extends AbstractProcessor<Record<Event>, Record<Event>>
 
     @Override
     public void prepareForShutdown() {
+        mlBatchJobCreator.prepareForShutdown();
     }
 
     @Override
     public boolean isReadyForShutdown() {
-        return true;
+        return mlBatchJobCreator.isReadyForShutdown();
     }
 
     @Override
     public void shutdown() {
+        mlBatchJobCreator.shutdown();
     }
 }

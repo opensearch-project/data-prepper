@@ -42,10 +42,10 @@ public class IndexConstants {
     // TODO: extract out version number into version enum
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_SERVICE_MAP, "otel-v1-apm-service-map");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW, "otel-v1-apm-span");
-    TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_STANDARD, "otel-v1-apm-span");
+    TYPE_TO_DEFAULT_ALIAS.put(IndexType.TRACE_ANALYTICS_RAW_PLAIN, "otel-v1-apm-span");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS, "logs-otel-v1");
-    TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS_STANDARD, "logs-otel-v1");
+    TYPE_TO_DEFAULT_ALIAS.put(IndexType.LOG_ANALYTICS_PLAIN, "logs-otel-v1");
     TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS, "metrics-otel-v1");
-    TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS_STANDARD, "metrics-otel-v1");
+    TYPE_TO_DEFAULT_ALIAS.put(IndexType.METRIC_ANALYTICS_PLAIN, "metrics-otel-v1");
   }
 }

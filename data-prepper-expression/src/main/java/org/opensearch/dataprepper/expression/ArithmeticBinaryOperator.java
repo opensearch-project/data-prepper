@@ -49,12 +49,20 @@ class ArithmeticBinaryOperator implements Operator<Number> {
         final Class<?> leftValueClass = leftValue.getClass();
         final Class<?> rightValueClass = rightValue.getClass();
         if (!operandsToOperationMap.containsKey(leftValueClass)) {
-            throw new IllegalArgumentException(displayName + " requires left operand to be either Float or Integer.");
+            if (symbol == DataPrepperExpressionParser.MOD) {
+                throw new IllegalArgumentException(displayName + " requires left operand to be an Integer.");
+            } else {
+                throw new IllegalArgumentException(displayName + " requires left operand to be either Float or Integer.");
+            }
         }
         Map<Class<? extends Number>, BiFunction<Object, Object, Number>> rightOperandToOperation =
                 operandsToOperationMap.get(leftValueClass);
         if (!rightOperandToOperation.containsKey(rightValueClass)) {
-            throw new IllegalArgumentException(displayName + " requires right operand to be either Float or Integer.");
+            if (symbol == DataPrepperExpressionParser.MOD) {
+                throw new IllegalArgumentException(displayName + " requires right operand to be an Integer.");
+            } else {
+                throw new IllegalArgumentException(displayName + " requires right operand to be either Float or Integer.");
+            }
         }
         final BiFunction<Object, Object, Number> operation = rightOperandToOperation.get(rightValueClass);
         return operation.apply(leftValue, rightValue);

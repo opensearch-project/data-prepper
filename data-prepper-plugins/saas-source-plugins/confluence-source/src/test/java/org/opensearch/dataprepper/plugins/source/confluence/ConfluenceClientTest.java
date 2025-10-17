@@ -23,8 +23,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
-import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.SaasWorkerProgressState;
-
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerWorkerProgressState;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -49,7 +48,7 @@ public class ConfluenceClientTest {
     @Mock
     private Buffer<Record<Event>> buffer;
     @Mock
-    private SaasWorkerProgressState saasWorkerProgressState;
+    private PaginationCrawlerWorkerProgressState saasWorkerProgressState;
     @Mock
     private AcknowledgementSet acknowledgementSet;
     @Mock
@@ -63,14 +62,13 @@ public class ConfluenceClientTest {
     @Test
     void testConstructor() {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
-        confluenceClient.setLastPollTime(Instant.ofEpochSecond(1234L));
         assertNotNull(confluenceClient);
     }
 
     @Test
     void testListItems() {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
-        assertNotNull(confluenceClient.listItems());
+        assertNotNull(confluenceClient.listItems(Instant.ofEpochSecond(1234L)));
     }
 
 
@@ -78,7 +76,7 @@ public class ConfluenceClientTest {
     void testExecutePartition() throws Exception {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
-        keyAttributes.put("project", "test");
+        keyAttributes.put("space", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
         List<String> itemIds = new ArrayList<>();
         itemIds.add(null);
@@ -128,7 +126,7 @@ public class ConfluenceClientTest {
     void bufferWriteRuntimeTest() throws Exception {
         ConfluenceClient confluenceClient = new ConfluenceClient(confluenceService, confluenceIterator, executorServiceProvider, confluenceSourceConfig);
         Map<String, Object> keyAttributes = new HashMap<>();
-        keyAttributes.put("project", "test");
+        keyAttributes.put("space", "test");
         when(saasWorkerProgressState.getKeyAttributes()).thenReturn(keyAttributes);
         List<String> itemIds = List.of("ID1", "ID2", "ID3", "ID4");
         when(saasWorkerProgressState.getItemIds()).thenReturn(itemIds);

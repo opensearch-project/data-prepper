@@ -27,6 +27,7 @@ dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:common')
     implementation project(path: ':data-prepper-plugins:failures-common')
+    implementation libs.armeria.core
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -37,7 +38,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation 'org.projectlombok:lombok:1.18.26'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
-    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation project(path: ':data-prepper-test:test-common')
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 }

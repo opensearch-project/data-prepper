@@ -48,6 +48,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     protected static final String ATTRIBUTES_KEY = "attributes";
     private static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
     private static final String EVENTS_KEY = "events";
+    private static final String SCHEMA_URL_KEY = "schemaUrl";
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
@@ -89,6 +90,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
         putIfAbsent(DROPPED_LINKS_COUNT_KEY, Integer.class, 0);
         putIfAbsent(EVENTS_KEY, LinkedList.class, new LinkedList<>());
         putIfAbsent(DROPPED_EVENTS_COUNT_KEY, Integer.class, 0);
+    }
+
+    @Override
+    public String getSchemaUrl() {
+        return this.get(SCHEMA_URL_KEY, String.class);
     }
 
     @Override
@@ -226,7 +232,13 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public void setTraceGroupFields(final TraceGroupFields traceGroupFields) {
-        this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        EventMetadata metadata = getMetadata();
+        Object oldTraceGroupFields = metadata.getAttribute(TRACE_GROUP_FIELDS_KEY);
+        if (oldTraceGroupFields != null) {
+            metadata.setAttribute(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        } else {
+            this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+        }
     }
 
     public static Builder builder() {
@@ -406,7 +418,19 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Sets the status of the log event
+         * Sets the schema url of span
+         *
+         * @param schemaUrl schema url
+         * @return returns the builder
+         * @since 2.11
+         */
+        public Builder withSchemaUrl(final String schemaUrl) {
+            data.put(SCHEMA_URL_KEY, schemaUrl);
+            return this;
+        }
+
+        /**
+         * Sets the status of the span event
          *
          * @param status status to be set
          * @return the builder
@@ -418,7 +442,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Sets the scope of the log event
+         * Sets the scope of the span event
          *
          * @param scope scope to be set
          * @return the builder
@@ -430,7 +454,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
-         * Sets the resource of the log event
+         * Sets the resource of the span event
          *
          * @param resource resource to be set
          * @return the builder

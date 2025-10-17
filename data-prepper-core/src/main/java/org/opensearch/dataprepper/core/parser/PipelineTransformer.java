@@ -12,6 +12,9 @@ import org.opensearch.dataprepper.core.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.core.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.core.pipeline.Pipeline;
 import org.opensearch.dataprepper.core.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.core.pipeline.HeadlessPipelineSource;
+import org.opensearch.dataprepper.core.pipeline.PipelineRunnerImpl;
+import org.opensearch.dataprepper.core.pipeline.SupportsPipelineRunner;
 import org.opensearch.dataprepper.core.pipeline.router.Router;
 import org.opensearch.dataprepper.core.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.core.sourcecoordination.SourceCoordinatorFactory;
@@ -53,13 +56,11 @@ import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
 public class PipelineTransformer {
-    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
-
     static final String CONDITIONAL_ROUTE_INVALID_EXPRESSION_FORMAT = "Route %s contains an invalid conditional expression '%s'. " +
             "See https://opensearch.org/docs/latest/data-prepper/pipelines/expression-syntax/ for valid expression syntax.";
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
@@ -74,7 +75,7 @@ public class PipelineTransformer {
 
     private final ExpressionEvaluator expressionEvaluator;
 
-    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+    public PipelineTransformer(
                                final PluginFactory pluginFactory,
                                final PeerForwarderProvider peerForwarderProvider,
                                final RouterFactory routerFactory,
@@ -86,7 +87,6 @@ public class PipelineTransformer {
                                final PluginErrorCollector pluginErrorCollector,
                                final PluginErrorsHandler pluginErrorsHandler,
                                final ExpressionEvaluator expressionEvaluator) {
-        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
@@ -100,7 +100,7 @@ public class PipelineTransformer {
         this.expressionEvaluator = expressionEvaluator;
     }
 
-    public Map<String, Pipeline> transformConfiguration() {
+    public Map<String, Pipeline> transformConfiguration(final PipelinesDataFlowModel pipelinesDataFlowModel) {
         final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -128,24 +128,41 @@ public class PipelineTransformer {
             final Map<String, Pipeline> pipelineMap) {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
+        final String failurePipelineName = dataPrepperConfiguration.getFailurePipelineName();
         try {
-            final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-            final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
-                    pipelineMap, pipelineConfigurationMap);
-            final Source source = pipelineSource.orElseGet(() -> {
-                try {
-                    return pluginFactory.loadPlugin(Source.class, sourceSetting);
-                } catch (Exception e) {
+            Source source;
+            if (!pipelineName.equals(failurePipelineName)) {
+                final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+                if (sourceSetting == null) {
+                    Exception e = new IllegalArgumentException(String.format("{}: Source must not be null", pipelineName));
                     final PluginError pluginError = PluginError.builder()
                             .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
                             .pipelineName(pipelineName)
-                            .pluginName(sourceSetting.getName())
+                            .pluginName("UNKNOWN")
                             .exception(e)
                             .build();
                     pluginErrorCollector.collectPluginError(pluginError);
-                    return null;
+                    return;
                 }
-            });
+                final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
+                        pipelineMap, pipelineConfigurationMap);
+                source = pipelineSource.orElseGet(() -> {
+                    try {
+                        return pluginFactory.loadPlugin(Source.class, sourceSetting);
+                    } catch (Exception e) {
+                        final PluginError pluginError = PluginError.builder()
+                                .componentType(PipelineModel.SOURCE_PLUGIN_TYPE)
+                                .pipelineName(pipelineName)
+                                .pluginName(sourceSetting.getName())
+                                .exception(e)
+                                .build();
+                        pluginErrorCollector.collectPluginError(pluginError);
+                        return null;
+                    }
+                });
+            } else {
+                source = new HeadlessPipelineSource(failurePipelineName, "");
+            }
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             Buffer pipelineDefinedBuffer = null;
@@ -205,7 +222,7 @@ public class PipelineTransformer {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
                                     processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(),
                                     dataPrepperConfiguration.getPeerForwarderConfiguration() != null ?
-                                        dataPrepperConfiguration.getPeerForwarderConfiguration().getExcludeIdentificationKeys() : null,
+                                            dataPrepperConfiguration.getPeerForwarderConfiguration().getExcludeIdentificationKeys() : null,
                                     pipelineConfiguration.getWorkers()
                             );
                         }
@@ -228,10 +245,31 @@ public class PipelineTransformer {
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
 
-            // TODO: Re-enable zero-buffer
-            //if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
-            //    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(new PipelineRunnerImpl(pipeline, processors));
-            //}
+
+            if (pipelineDefinedBuffer instanceof SupportsPipelineRunner) {
+                // Check if there are any processors with @SingleThread annotation
+                boolean hasSingleThreadedProcessors = processorSets.stream()
+                        .flatMap(List::stream)
+                        .map(IdentifiedComponent::getComponent)
+                        .map(Object::getClass)
+                        .anyMatch(processorClass -> processorClass.isAnnotationPresent(SingleThread.class));
+
+                // Only allow ZeroBuffer for single-threaded pipelines with no @SingleThread processors
+                if (processorThreads == 1 && !hasSingleThreadedProcessors) {
+                    ((SupportsPipelineRunner) pipelineDefinedBuffer).setPipelineRunner(
+                            new PipelineRunnerImpl(pipeline, pipeline.getSingleThreadUnsafeProcessorProvider()));
+                } else {
+                    if (hasSingleThreadedProcessors) {
+                        throw new IllegalStateException(
+                                "ZeroBuffer cannot be used with @SingleThread processors. " +
+                                        "Pipeline [" + pipelineName + "] contains one or more @SingleThread processors.");
+                    } else {
+                        throw new IllegalStateException(
+                                "ZeroBuffer cannot be used with multiple processor threads. " +
+                                        "Pipeline [" + pipelineName + "] is configured with " + processorThreads + " threads.");
+                    }
+                }
+            }
 
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
@@ -239,6 +277,18 @@ public class PipelineTransformer {
             LOG.error("Construction of pipeline components failed, skipping building of pipeline [{}] and its connected " +
                     "pipelines", pipelineName, ex);
             processRemoveIfRequired(pipelineName, pipelineConfigurationMap, pipelineMap);
+        }
+        final Pipeline failurePipeline = pipelineMap.get(failurePipelineName);
+        boolean acknowledgementsEnabled = false;
+        if (failurePipeline != null) {
+            for (Map.Entry<String, Pipeline> pipelineEntry : pipelineMap.entrySet()) {
+                if (!(pipelineEntry.getKey().equals(failurePipelineName))) {
+                    pipelineEntry.getValue().setFailurePipeline(failurePipeline);
+                    acknowledgementsEnabled = acknowledgementsEnabled || pipelineEntry.getValue().areAcknowledgementsEnabled();
+
+                }
+            }
+            failurePipeline.setAcknowledgementsEnabled(acknowledgementsEnabled);
         }
 
     }
@@ -331,7 +381,7 @@ public class PipelineTransformer {
     }
 
     private Optional<String> getPipelineNameIfPipelineType(final PluginSetting pluginSetting) {
-        if (PIPELINE_TYPE.equals(pluginSetting.getName()) &&
+        if (pluginSetting != null && PIPELINE_TYPE.equals(pluginSetting.getName()) &&
                 pluginSetting.getAttributeFromSettings(ATTRIBUTE_NAME) != null) {
             //Validator marked valid config with type as pipeline will have attribute name
             return Optional.of((String) pluginSetting.getAttributeFromSettings(ATTRIBUTE_NAME));
@@ -374,24 +424,6 @@ public class PipelineTransformer {
         }
     }
 
-    private static class IdentifiedComponent<T> {
-        private final T component;
-        private final String name;
-
-        private IdentifiedComponent(final T component, final String name) {
-            this.component = component;
-            this.name = name;
-        }
-
-        T getComponent() {
-            return component;
-        }
-
-        String getName() {
-            return name;
-        }
-    }
-
     Duration getPeerForwarderDrainTimeout(final DataPrepperConfiguration dataPrepperConfiguration) {
         return Optional.ofNullable(dataPrepperConfiguration)
                 .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
@@ -410,7 +442,7 @@ public class PipelineTransformer {
         if (source instanceof PipelineConnector)
             return buffer;
 
-        if(buffer.isWrittenOffHeapOnly())
+        if (buffer.isWrittenOffHeapOnly())
             return buffer;
 
         return circuitBreakerManager.getGlobalCircuitBreaker()
@@ -419,7 +451,21 @@ public class PipelineTransformer {
                 .orElseGet(() -> buffer);
     }
 
-    public PipelinesDataFlowModel getPipelinesDataFlowModel() {
-        return pipelinesDataFlowModel;
+    private static class IdentifiedComponent<T> {
+        private final T component;
+        private final String name;
+
+        private IdentifiedComponent(final T component, final String name) {
+            this.component = component;
+            this.name = name;
+        }
+
+        T getComponent() {
+            return component;
+        }
+
+        String getName() {
+            return name;
+        }
     }
 }

@@ -27,4 +27,31 @@ public interface MLBatchJobCreator {
         jobName = JOB_NAME_PATTERN.matcher(jobName).replaceAll("");
         return jobName.substring(0, Math.min(63, jobName.length()));
     }
+
+    default void prepareForShutdown() {
+    }
+
+    default boolean isReadyForShutdown() {
+        return true;
+    }
+
+    default void shutdown() {
+    }
+
+    /**
+     * Adds any processed batch records to the provided result records list and clears the processed batch.
+     * Currently, this is needed for SageMaker batch jobs
+     *
+     * @param resultRecords The list to add processed batch records to
+     */
+    default void addProcessedBatchRecordsToResults(List<Record<Event>> resultRecords) {
+    }
+
+    /**
+     * Checks and processes batch if batch processing is supported.
+     * Default implementation does nothing.
+     */
+    default void checkAndProcessBatch() {
+        // Default no-op implementation
+    }
 }

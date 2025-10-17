@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -31,6 +32,9 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
+import static org.mockito.Mockito.mock;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -179,6 +183,14 @@ public class AbstractBufferTest {
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
         byte[] bytes = new byte[2];
         assertThrows(RuntimeException.class, () -> abstractBuffer.writeBytes(bytes, "", 10));
+    }
+
+    @Test
+    void testGetAndSetFailurePipeline() {
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
+        HeadlessPipeline failurePipeline = mock(HeadlessPipeline.class);
+        abstractBuffer.setFailurePipeline(failurePipeline);
+        assertThat(abstractBuffer.getFailurePipeline(), sameInstance(failurePipeline));
     }
 
     @Test

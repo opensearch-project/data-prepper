@@ -23,6 +23,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import javax.inject.Named;
 import java.net.URI;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.NOISY;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_FIELD;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.EXPAND_VALUE;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.JqlConstants.JQL_FIELD;
@@ -86,7 +87,7 @@ public class JiraRestClient extends AtlassianRestClient {
                     try {
                         return invokeRestApi(uri, SearchResults.class).getBody();
                     } catch (Exception e) {
-                        log.error("Error while fetching issues with jql {}", jql);
+                        log.error(NOISY, "Error while fetching issues with jql {}", jql, e);
                         searchRequestsFailedCounter.increment();
                         throw e;
                     }

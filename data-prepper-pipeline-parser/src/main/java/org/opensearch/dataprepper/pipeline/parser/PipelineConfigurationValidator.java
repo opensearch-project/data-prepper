@@ -9,6 +9,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.pipeline.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.pipeline.parser.model.SinkContextPluginSetting;
+import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -28,11 +30,14 @@ public class PipelineConfigurationValidator {
     private static final String PIPELINE_TYPE = "pipeline";
     private static final Set<String> INVALID_PIPELINE_NAMES = new HashSet<>(List.of("data-prepper", "dataPrepper", "core"));
 
+    private static final String DEFAULT_ROUTE = "_default";
+
     /**
      * Sorts the pipelines in topological order while also validating for
      * i. cycles in pipeline configuration
      * ii. incorrect pipeline source-sink configuration
      * iii. orphan pipelines [check is disabled for now]
+     * iv. routes defined in sink pipeline plugins exist in the pipeline's configured routes.
      *
      * @param pipelineConfigurationMap String to PipelineConfiguration map
      * @return List of pipeline names in topological order
@@ -43,6 +48,8 @@ public class PipelineConfigurationValidator {
         final List<String> orderedPipelineNames = new LinkedList<>();
 
         checkInvalidPipelineNames(pipelineConfigurationMap);
+
+        validateSinkRoutes(pipelineConfigurationMap);
 
         pipelineConfigurationMap.forEach((pipeline, configuration) -> {
             if (!visitedAndProcessedPipelineSet.contains(pipeline)) {
@@ -170,4 +177,39 @@ public class PipelineConfigurationValidator {
         }
     }
 
+    /**
+     * Validates that the routes set in the sink pipeline plugin are present in the pipeline's overall conditional routes.
+     * Each pipeline configuration provides its valid routes via getRoutes() which returns a set of ConditionalRoute.
+     * Sink pipeline plugins have their desired routes configured in their settings.
+     * This method ensures that every route used in a sink exists in the parent's configuration.
+     *
+     * @param pipelineConfigurationMap A map of pipeline names to PipelineConfiguration objects.
+     */
+    private static void validateSinkRoutes(final Map<String, PipelineConfiguration> pipelineConfigurationMap) {
+        for (Map.Entry<String, PipelineConfiguration> entry : pipelineConfigurationMap.entrySet()) {
+            final String pipelineName = entry.getKey();
+            final PipelineConfiguration pipelineConfiguration = entry.getValue();
+            final Set<String> validRoutes = pipelineConfiguration.getRoutes().stream()
+                    .map(ConditionalRoute::getName)
+                    .collect(Collectors.toSet());
+
+            final List<SinkContextPluginSetting> sinkSettings = pipelineConfiguration.getSinkPluginSettings();
+            for (SinkContextPluginSetting sinkPlugin : sinkSettings) {
+                Collection<String> sinkRoutes = sinkPlugin.getSinkContext().getRoutes();
+                if (sinkRoutes == null) {
+                    sinkRoutes = Collections.emptyList();
+                }
+                List<String> invalidRoutes = sinkRoutes.stream()
+                        .filter(route -> !validRoutes.contains(route))
+                        .filter(route -> !route.equals(DEFAULT_ROUTE))
+                        .collect(Collectors.toList());
+
+                if (!invalidRoutes.isEmpty()) {
+                    throw new InvalidPipelineConfigurationException(String.format(
+                            "The following routes do not exist in pipeline \"%s\": %s. Configured routes include %s",
+                            pipelineName, invalidRoutes, validRoutes));
+                }
+            }
+        }
+    }
 }

@@ -30,15 +30,67 @@ import java.util.stream.Collectors;
 public class JsonOutputCodec implements OutputCodec {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String JSON = "json";
-    private static final JsonFactory factory = new JsonFactory();
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
     private final JsonOutputCodecConfig config;
-    private JsonGenerator generator;
-    private OutputCodecContext codecContext;
+    private JsonWriter deprecatedSupportWriter;
 
     @DataPrepperPluginConstructor
     public JsonOutputCodec(final JsonOutputCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
+    }
+
+    private class JsonWriter implements Writer {
+        private final JsonGenerator generator;
+        private final OutputStream outputStream;
+        private final OutputCodecContext codecContext;
+
+        private JsonWriter(final OutputStream outputStream, final OutputCodecContext codecContext) throws IOException {
+            this.outputStream = outputStream;
+            this.codecContext = codecContext;
+            generator = JSON_FACTORY.createGenerator(outputStream, JsonEncoding.UTF8);
+            generator.writeStartObject();
+            generator.writeFieldName(config.getKeyName());
+            generator.writeStartArray();
+        }
+
+        @Override
+        public void writeEvent(final Event event) throws IOException {
+            Objects.requireNonNull(event);
+            final Map<String, Object> dataMap = getDataMapToSerialize(event);
+            objectMapper.writeValue(generator, dataMap);
+            generator.flush();
+        }
+
+        @Override
+        public void complete() throws IOException {
+            generator.writeEndArray();
+            generator.writeEndObject();
+            generator.close();
+            outputStream.flush();
+            outputStream.close();
+        }
+
+        private Map<String, Object> getDataMapToSerialize(final Event event) throws JsonProcessingException {
+            final Event modifiedEvent;
+            if (codecContext.getTagsTargetKey() != null) {
+                modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
+            } else {
+                modifiedEvent = event;
+            }
+            Map<String, Object> dataMap = modifiedEvent.toMap();
+
+            if ((codecContext.getIncludeKeys() != null && !codecContext.getIncludeKeys().isEmpty()) ||
+                    (codecContext.getExcludeKeys() != null && !codecContext.getExcludeKeys().isEmpty())) {
+
+                final Map<String, Object> finalDataMap = dataMap;
+                dataMap = dataMap.keySet()
+                        .stream()
+                        .filter(codecContext::shouldIncludeKey)
+                        .collect(Collectors.toMap(Function.identity(), finalDataMap::get));
+            }
+            return dataMap;
+        }
     }
 
     @Override
@@ -47,52 +99,28 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
+    public Writer createWriter(final OutputStream outputStream, final Event sampleEvent, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
         Objects.requireNonNull(codecContext);
-        this.codecContext = codecContext;
-        generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
-        generator.writeStartObject();
-        generator.writeFieldName(config.getKeyName());
-        generator.writeStartArray();
+
+        return new JsonWriter(outputStream, codecContext);
+    }
+
+    @Override
+    public void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        deprecatedSupportWriter = new JsonWriter(outputStream, codecContext);
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
-        generator.writeEndArray();
-        generator.writeEndObject();
-        generator.close();
-        outputStream.flush();
-        outputStream.close();
+        deprecatedSupportWriter.complete();
     }
 
     @Override
     public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
-        Objects.requireNonNull(event);
-        Map<String, Object> dataMap = getDataMapToSerialize(event);
-        objectMapper.writeValue(generator, dataMap);
-        generator.flush();
-    }
-
-    private Map<String, Object> getDataMapToSerialize(Event event) throws JsonProcessingException {
-        final Event modifiedEvent;
-        if (codecContext.getTagsTargetKey() != null) {
-            modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
-        } else {
-            modifiedEvent = event;
-        }
-        Map<String, Object> dataMap = modifiedEvent.toMap();
-
-        if ((codecContext.getIncludeKeys() != null && !codecContext.getIncludeKeys().isEmpty()) ||
-                (codecContext.getExcludeKeys() != null && !codecContext.getExcludeKeys().isEmpty())) {
-
-            Map<String, Object> finalDataMap = dataMap;
-            dataMap = dataMap.keySet()
-                    .stream()
-                    .filter(codecContext::shouldIncludeKey)
-                    .collect(Collectors.toMap(Function.identity(), finalDataMap::get));
-        }
-        return dataMap;
+        deprecatedSupportWriter.writeEvent(event);
     }
 }
 

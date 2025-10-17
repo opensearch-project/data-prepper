@@ -13,11 +13,13 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KmsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
 
-class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig {
+class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig, KafkaIsolationLevelConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final String DEFAULT_FETCH_MAX_BYTES = "50mb";
@@ -97,6 +99,14 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
 
     @JsonProperty("fetch_min_bytes")
     private String fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
+
+    @JsonProperty("isolation_level")
+    private IsolationLevel isolationLevel = IsolationLevel.READ_UNCOMMITTED;
+
+    @Override
+    public String getEncryptionId() {
+        return null;
+    }
 
 
     @Override
@@ -206,5 +216,10 @@ class SourceTopicConfig extends CommonTopicConfig implements TopicConsumerConfig
     @Override
     public Duration getHeartBeatInterval() {
         return heartBeatInterval;
+    }
+
+    @Override
+    public IsolationLevel getIsolationLevel() {
+        return isolationLevel;
     }
 }

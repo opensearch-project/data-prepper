@@ -20,7 +20,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.test.plugins.DataPrepperPluginTest;
+import org.opensearch.dataprepper.test.plugins.junit.BaseDataPrepperPluginStandardTestSuite;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,7 +42,8 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorTests.buildRecordWithEvent;
 
-public class GrokProcessorIT {
+@DataPrepperPluginTest(pluginName = "grok", pluginType = Processor.class)
+public class GrokProcessorIT extends BaseDataPrepperPluginStandardTestSuite {
     private PluginSetting pluginSetting;
     private PluginMetrics pluginMetrics;
     private GrokProcessorConfig grokProcessorConfig;
@@ -81,7 +85,9 @@ public class GrokProcessorIT {
 
     @AfterEach
     public void tearDown() {
-        grokProcessor.shutdown();
+        if(grokProcessor != null) {
+            grokProcessor.shutdown();
+        }
     }
 
     private PluginSetting completePluginSettingForGrokProcessor(final boolean breakOnMatch,

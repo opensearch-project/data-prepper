@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
+import org.opensearch.dataprepper.model.annotations.ExtensionDependsOn;
+import org.opensearch.dataprepper.model.annotations.ExtensionProvides;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -17,12 +19,48 @@ import org.opensearch.dataprepper.validation.PluginErrorsHandler;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Named
 public class ExtensionLoader {
+    public class ExtensionPluginWithContext {
+        ExtensionPlugin extensionPlugin;
+        boolean configured;
+        Class<?>[] dependentClasses;
+        Class<?>[] providedClasses;
+
+        public ExtensionPluginWithContext(final ExtensionPlugin extensionPlugin,
+                                          final boolean isConfigured,
+                                          final Class<?>[] dependentClasses,
+                                          final Class<?>[] providedClasses) {
+            this.extensionPlugin = extensionPlugin;
+            this.configured = isConfigured;
+            this.dependentClasses = dependentClasses;
+            this.providedClasses = providedClasses;
+        }
+
+        public ExtensionPlugin getExtensionPlugin() {
+            return extensionPlugin;
+        }
+
+        public boolean isConfigured() {
+            return configured;
+        }
+
+        public Class<?>[] getDependentClasses() {
+            return dependentClasses;
+        }
+
+        public Class<?>[] getProvidedClasses() {
+            return providedClasses;
+        }
+    }
+
+    private Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator;
+
     private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator extensionPluginCreator;
@@ -35,23 +73,34 @@ public class ExtensionLoader {
             final ExtensionClassProvider extensionClassProvider,
             @Named("extensionPluginCreator") final PluginCreator extensionPluginCreator,
             final PluginErrorCollector pluginErrorCollector,
-            final PluginErrorsHandler pluginErrorsHandler) {
+            final PluginErrorsHandler pluginErrorsHandler,
+            @Named("extensionsLoaderComparator") final Comparator<ExtensionLoader.ExtensionPluginWithContext> extensionsLoaderComparator) {
         this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.extensionPluginCreator = extensionPluginCreator;
         this.pluginErrorCollector = pluginErrorCollector;
         this.pluginErrorsHandler = pluginErrorsHandler;
+        this.extensionsLoaderComparator = Objects.requireNonNull(extensionsLoaderComparator);
     }
 
     public List<? extends ExtensionPlugin> loadExtensions() {
-        final List<? extends ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
+        final List<ExtensionPlugin> result = extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
                 .map(extensionClass -> {
                     final String pluginName = convertClassToName(extensionClass);
                     try {
                         final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
-                        return extensionPluginCreator.newPluginInstance(
-                                extensionClass, pluginArgumentsContext, pluginName);
+                        final ExtensionProvides extensionProvidesAnnotation = extensionClass.getAnnotation(ExtensionProvides.class);
+                        final ExtensionDependsOn extensionDependsOnAnnotation = extensionClass.getAnnotation(ExtensionDependsOn.class);
+
+                        final Class<?>[] providedClasses = extensionProvidesAnnotation != null ?
+                                extensionProvidesAnnotation.providedClasses() : new Class<?>[]{};
+                        final Class<?>[] dependentClasses = extensionDependsOnAnnotation != null ?
+                                extensionDependsOnAnnotation.dependentClasses() : new Class<?>[]{};
+
+                        final Object config = pluginArgumentsContext.getArgument(0);
+                        return new ExtensionPluginWithContext(extensionPluginCreator.newPluginInstance(
+                                extensionClass, pluginArgumentsContext, pluginName), (config != null), dependentClasses, providedClasses);
                     } catch (Exception e) {
                         final PluginError pluginError = PluginError.builder()
                                 .componentType(PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE)
@@ -62,7 +111,11 @@ public class ExtensionLoader {
                         return null;
                     }
                 })
+                .filter(pluginWithContext -> pluginWithContext != null)
+                .sorted(extensionsLoaderComparator)
+                .map(extensionPluginWithContext -> extensionPluginWithContext.getExtensionPlugin())
                 .collect(Collectors.toList());
+
         final List<PluginError> extensionPluginErrors = pluginErrorCollector.getPluginErrors()
                 .stream().filter(pluginError -> PipelinesDataFlowModel.EXTENSION_PLUGIN_TYPE
                         .equals(pluginError.getComponentType()))
@@ -132,6 +185,11 @@ public class ExtensionLoader {
                         extensionPluginConfiguration.getClass()));
             }
             return new Object[] { extensionPluginConfiguration };
+        }
+
+        @Override
+        public Object getArgument(int index) {
+            return (index == 0) ? extensionPluginConfiguration : null;
         }
     }
 }

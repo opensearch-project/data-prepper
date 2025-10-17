@@ -33,6 +33,11 @@ public class PlaintextKafkaDataConfig implements KafkaDataConfig {
     }
 
     @Override
+    public String getEncryptionId() {
+        return dataConfig.getEncryptionId();
+    }
+
+    @Override
     public String getEncryptedDataKey() {
         return dataConfig.getEncryptedDataKey();
     }

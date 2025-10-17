@@ -116,6 +116,7 @@ public class DefaultPluginFactory implements PluginFactory {
         final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
+
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
         final PluginConfigObservable pluginConfigObservable = pluginConfigurationObservableFactory
                 .createDefaultPluginConfigObservable(pluginConfigurationConverter, pluginConfigurationType, pluginSetting);
@@ -144,12 +145,14 @@ public class DefaultPluginFactory implements PluginFactory {
                 .orElseThrow(() -> new NoPluginFoundException(
                         "Unable to find a plugin named '" + pluginName + "'. Please ensure that plugin is annotated with appropriate values."));
 
-        handleDefinedPlugins(pluginClass, pluginName);
+        handleDefinedPlugins(pluginClass, baseClass, pluginName);
         return pluginClass;
     }
 
-    private <T> void handleDefinedPlugins(final Class<? extends T> pluginClass, final String pluginName) {
-        final DefinedPlugin<? extends T> definedPlugin = new DefinedPlugin<>(pluginClass, pluginName);
+    private <T> void handleDefinedPlugins(final Class<? extends T> pluginClass,
+                                          final Class<? extends T> pluginTypeClass,
+                                          final String pluginName) {
+        final DefinedPlugin<? extends T> definedPlugin = new DefinedPlugin<>(pluginClass, pluginTypeClass, pluginName);
 
         definedPluginConsumers.forEach(definedPluginConsumer -> definedPluginConsumer.accept(definedPlugin));
     }

@@ -13,19 +13,27 @@ import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
+
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 
+import java.net.URI;
 
+
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +47,7 @@ class CloudWatchLogsClientFactoryTest {
     private AwsCredentialsSupplier mockAwsCredentialsSupplier;
     private AwsCredentialsOptions mockAwsCredentialsOptions;
     private AwsCredentialsProvider mockAwsCredentialsProvider;
+    private Map<String, String> mockCustomHeaders;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +55,8 @@ class CloudWatchLogsClientFactoryTest {
         mockAwsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         mockAwsCredentialsOptions = mock(AwsCredentialsOptions.class);
         mockAwsCredentialsProvider = mock(AwsCredentialsProvider.class);
+        mockCustomHeaders = new HashMap<>();
+        mockCustomHeaders.put("X-Test-Header", "test-value");
         when(mockAwsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(mockAwsCredentialsSupplier.getDefaultRegion()).thenReturn(Optional.of(Region.US_EAST_1));
     }
@@ -53,14 +64,14 @@ class CloudWatchLogsClientFactoryTest {
     @Test
     void GIVEN_default_credentials_SHOULD_return_non_null_client() {
         when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
 
         assertNotNull(cloudWatchLogsClientToTest);
     }
 
     @Test
     void GIVEN_default_credentials_with_no_provider_SHOULD_return_null_client() {
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
 
         assertNull(cloudWatchLogsClientToTest);
     }
@@ -68,7 +79,7 @@ class CloudWatchLogsClientFactoryTest {
     @Test
     void GIVEN_default_credentials_with_no_region_SHOULD_return_null_client() {
         when(mockAwsConfig.getAwsRegion()).thenReturn(null);
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
 
         assertNull(cloudWatchLogsClientToTest);
     }
@@ -92,7 +103,7 @@ class CloudWatchLogsClientFactoryTest {
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
-            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
         }
 
         final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
@@ -110,5 +121,141 @@ class CloudWatchLogsClientFactoryTest {
         assertThat(actualOptions.getStsRoleArn(), equalTo(mockAwsConfig.getAwsStsRoleArn()));
         assertThat(actualOptions.getStsExternalId(), equalTo(mockAwsConfig.getAwsStsExternalId()));
         assertThat(actualOptions.getStsHeaderOverrides(), equalTo(mockAwsConfig.getAwsStsHeaderOverrides()));
+    }
+
+    @Test
+    void GIVEN_custom_headers_SHOULD_create_client_with_custom_headers() {
+        // Arrange
+        final Map<String, String> customHeaders = Map.of(
+            "X-Custom-Header", "custom-value",
+            "X-Request-ID", "request-123"
+        );
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+
+        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
+        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
+        
+        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
+                    .thenReturn(cloudWatchLogsClientBuilder);
+
+            // Act
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, customHeaders, null);
+
+            // Assert
+            final ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(ClientOverrideConfiguration.class);
+            verify(cloudWatchLogsClientBuilder).overrideConfiguration(configCaptor.capture());
+            
+            final ClientOverrideConfiguration actualConfig = configCaptor.getValue();
+            assertNotNull(actualConfig);
+            
+            // Verify that headers are configured
+            assertThat(actualConfig.headers().get("X-Custom-Header"), equalTo(List.of("custom-value")));
+            assertThat(actualConfig.headers().get("X-Request-ID"), equalTo(List.of("request-123")));
+        }
+    }
+
+    @Test
+    void GIVEN_empty_custom_headers_SHOULD_create_client_without_custom_headers() {
+        // Arrange
+        final Map<String, String> emptyHeaders = new HashMap<>();
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+
+        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
+        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
+        
+        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
+                    .thenReturn(cloudWatchLogsClientBuilder);
+
+            // Act
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, emptyHeaders, null);
+
+            // Assert
+            final ArgumentCaptor<ClientOverrideConfiguration> configCaptor = ArgumentCaptor.forClass(ClientOverrideConfiguration.class);
+            verify(cloudWatchLogsClientBuilder).overrideConfiguration(configCaptor.capture());
+            
+            final ClientOverrideConfiguration actualConfig = configCaptor.getValue();
+            assertNotNull(actualConfig);
+            
+            // Verify that no custom headers are configured
+            assertThat(actualConfig.headers().isEmpty(), is(true));
+        }
+    }
+
+    @Test
+    void GIVEN_endpoint_SHOULD_create_client_with_endpoint_override() {
+        // Arrange
+        final String customEndpoint = "https://logs.us-west-2.amazonaws.com";
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+
+        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
+        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.endpointOverride(any(URI.class))).thenReturn(cloudWatchLogsClientBuilder);
+        
+        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
+                    .thenReturn(cloudWatchLogsClientBuilder);
+
+            // Act
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), customEndpoint);
+
+            // Assert
+            final ArgumentCaptor<URI> endpointCaptor = ArgumentCaptor.forClass(URI.class);
+            verify(cloudWatchLogsClientBuilder).endpointOverride(endpointCaptor.capture());
+            
+            final URI actualEndpoint = endpointCaptor.getValue();
+            assertThat(actualEndpoint.toString(), equalTo(customEndpoint));
+        }
+    }
+
+    @Test
+    void GIVEN_null_endpoint_SHOULD_create_client_without_endpoint_override() {
+        // Arrange
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+
+        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
+        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
+        
+        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
+                    .thenReturn(cloudWatchLogsClientBuilder);
+
+            // Act
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), null);
+
+            // Assert - verify endpointOverride is never called
+            verify(cloudWatchLogsClientBuilder, org.mockito.Mockito.never()).endpointOverride(any(URI.class));
+        }
+    }
+
+    @Test
+    void GIVEN_empty_endpoint_SHOULD_create_client_without_endpoint_override() {
+        // Arrange
+        when(mockAwsCredentialsSupplier.getProvider(any())).thenReturn(mockAwsCredentialsProvider);
+
+        final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
+        when(cloudWatchLogsClientBuilder.region(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.credentialsProvider(any())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
+        
+        try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
+            cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
+                    .thenReturn(cloudWatchLogsClientBuilder);
+
+            // Act
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier, new HashMap<>(), "");
+
+            // Assert - verify endpointOverride is never called
+            verify(cloudWatchLogsClientBuilder, org.mockito.Mockito.never()).endpointOverride(any(URI.class));
+        }
     }
 }

@@ -140,7 +140,7 @@ public class CloudWatchLogsIT {
         when(awsConfig.getAwsStsExternalId()).thenReturn(null);
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(null);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
-        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier, new HashMap<>(), null);
         logGroupName = System.getProperty("tests.cloudwatch.log_group");
         logStreamName = createLogStream(logGroupName);
         pluginMetrics = mock(PluginMetrics.class);
@@ -202,12 +202,10 @@ public class CloudWatchLogsIT {
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
         when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(logStreamName);
         when(cloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
-        when(cloudWatchLogsSinkConfig.getBufferType()).thenReturn(CloudWatchLogsSinkConfig.DEFAULT_BUFFER_TYPE);
+        when(cloudWatchLogsSinkConfig.getMaxRetries()).thenReturn(3);
 
         thresholdConfig = mock(ThresholdConfig.class);
-        when(thresholdConfig.getBackOffTime()).thenReturn(500L);
-        when(thresholdConfig.getLogSendInterval()).thenReturn(60L);
-        when(thresholdConfig.getRetryCount()).thenReturn(10);
+        when(thresholdConfig.getFlushInterval()).thenReturn(60L);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
     }
@@ -268,7 +266,7 @@ public class CloudWatchLogsIT {
     void TestSinkOperationWithLogSendInterval() throws Exception {
         long startTime = Instant.now().toEpochMilli();
         when(thresholdConfig.getBatchSize()).thenReturn(10);
-        when(thresholdConfig.getLogSendInterval()).thenReturn(10L);
+        when(thresholdConfig.getFlushInterval()).thenReturn(10L);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
         when(cloudWatchLogsSinkConfig.getDlq()).thenReturn(null);
         

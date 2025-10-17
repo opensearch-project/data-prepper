@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.core;
 
-import io.micrometer.core.instrument.util.StringUtils;
+
 import org.opensearch.dataprepper.DataPrepperShutdownListener;
 import org.opensearch.dataprepper.DataPrepperShutdownOptions;
 import org.opensearch.dataprepper.core.parser.PipelineTransformer;
@@ -38,7 +38,6 @@ public class DataPrepper implements PipelinesProvider {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
-    private static final int MAX_RETRIES = 100;
 
     private final PluginFactory pluginFactory;
     private final PeerForwarderServer peerForwarderServer;
@@ -51,7 +50,7 @@ public class DataPrepper implements PipelinesProvider {
     @Inject
     @Lazy
     private DataPrepperServer dataPrepperServer;
-    private List<DataPrepperShutdownListener> shutdownListeners = new LinkedList<>();
+    private final List<DataPrepperShutdownListener> shutdownListeners = new LinkedList<>();
 
     /**
      * returns serviceName if exists or default serviceName
@@ -59,19 +58,20 @@ public class DataPrepper implements PipelinesProvider {
      */
     public static String getServiceNameForMetrics() {
         final String serviceName = System.getenv(DATAPREPPER_SERVICE_NAME);
-        return StringUtils.isNotBlank(serviceName) ? serviceName : DEFAULT_SERVICE_NAME;
+        return serviceName != null && !serviceName.trim().isEmpty() ? serviceName : DEFAULT_SERVICE_NAME;
     }
 
     @Inject
     public DataPrepper(
+            final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PipelineTransformer pipelineTransformer,
             final PluginFactory pluginFactory,
             final PeerForwarderServer peerForwarderServer,
             final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate) {
         this.pluginFactory = pluginFactory;
 
-        transformationPipelines = pipelineTransformer.transformConfiguration();
-        pipelinesDataFlowModel = pipelineTransformer.getPipelinesDataFlowModel();
+        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
+        transformationPipelines = pipelineTransformer.transformConfiguration(pipelinesDataFlowModel);
         this.shouldShutdownOnPipelineFailurePredicate = shouldShutdownOnPipelineFailurePredicate;
         if (transformationPipelines.isEmpty()) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
@@ -100,6 +100,10 @@ public class DataPrepper implements PipelinesProvider {
     public void shutdown() {
         shutdownPipelines();
         shutdownServers();
+    }
+
+    public Pipeline getPipeline(String pipelineName) {
+        return transformationPipelines.get(pipelineName);
     }
 
     private void shutdownPipelines() {

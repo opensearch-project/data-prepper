@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.buffer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.kafka.configuration.CommonTopicConfig;
@@ -36,6 +37,9 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+
+    @JsonProperty("encryption_id")
+    private String encryptionId;
 
     @JsonProperty("encryption_key")
     private String encryptionKey;
@@ -117,6 +121,11 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @JsonIgnore
     public MessageFormat getSerdeFormat() {
         return MessageFormat.BYTES;
+    }
+
+    @Override
+    public String getEncryptionId() {
+        return encryptionId;
     }
 
     @Override
@@ -238,5 +247,18 @@ class BufferTopicConfig extends CommonTopicConfig implements TopicProducerConfig
     @Override
     public long getMaxPartitionFetchBytes() {
         return maxPartitionFetchBytes.getBytes();
+    }
+
+    @AssertTrue(message = "Either encryption_id or encryption_key together with kms_config must be specified, " +
+            "and only one of them can be specified")
+    public boolean IsEncryptionAtRestSettingValid() {
+        if (encryptionId != null && (encryptionKey != null || kmsConfig != null)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean encryptionAtRestEnabled() {
+        return encryptionId != null || encryptionKey != null || kmsConfig != null;
     }
 }

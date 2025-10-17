@@ -24,8 +24,10 @@ public class TestDataProvider {
     public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/cyclic_multiple_pipeline_configuration.yml";
     public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/incorrect_source_multiple_pipeline_configuration.yml";
     public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
+    public static final String MISSING_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_source_multiple_pipeline_configuration.yml";
     public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_pipeline_multiple_pipeline_configuration.yml";
     public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String VALID_MULTIPLE_SINKS_WITH_FAILURE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_sinks_with_routes_with_failure_pipeline.yml";
     public static final String COMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/compatible_version.yml";
     public static final String VALID_MULTIPLE_PROCESSERS_CONFIG_FILE = "src/test/resources/valid_multiple_processors.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config.yml";
@@ -71,6 +73,10 @@ public class TestDataProvider {
     public static final String VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config_with_acm_ssl.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/valid_data_prepper_config_with_metric_filter.yml";
     public static final String INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/invalid_data_prepper_config_with_metric_filter.yml";
+    public static final String VALID_ZERO_BUFFER_SINGLE_THREAD_CONFIG_FILE = "src/test/resources/valid_zero_buffer_single_thread.yml";
+    public static final String INVALID_ZERO_BUFFER_MULTIPLE_THREADS_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_multiple_threads.yml";
+    public static final String INVALID_ZERO_BUFFER_WITH_SINGLE_THREAD_PROCESSOR_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_with_single_thread_processor.yml";
+    public static final String INVALID_ZERO_BUFFER_MULTIPLE_THREADS_NO_SINGLE_THREAD_PROCESSORS_CONFIG_FILE = "src/test/resources/invalid_zero_buffer_multiple_threads_no_single_thread_processors.yml";
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
             "test-pipeline-2", "test-pipeline-3"));
 }

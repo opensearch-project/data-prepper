@@ -170,11 +170,13 @@ You can also deny a release by using _deny_ or _denied_ in the comment.
 
 **NOTE** The smoke tests currently report a build failure, even when they succeed. Thus, you need to manually verify the output.
 
-### Further details
+### OpenSearch CI server build
 
-For more details on the release build, or to setup your own GitHub repository, see [release/README.md](release/README.md).
+After two maintainers approve the GitHub issue, the [OpenSearch CI server](https://build.ci.opensearch.org/) will start a build.
+This is a Jenkins server that promotes our releases. 
+You can check the promotion status by checking the [release-data-prepper](https://build.ci.opensearch.org/job/release-data-prepper/) job.
 
-
+You can also check the Maven artifacts after the promote stage completes by viewing the [AWS Sonatype repository](https://aws.oss.sonatype.org/content/repositories/releases/org/opensearch/dataprepper/).
 
 ## <a name="post-release">Post release</a>
 
@@ -198,3 +200,8 @@ Steps:
 * Find the milestone for the release.
 * Make sure there are no issues. If there are any triage them by closing, or changing the milestone.
 * Click the "Close" button
+
+
+### Further details
+
+For more details on the release build, or to setup your own GitHub repository, see [release/README.md](release/README.md).

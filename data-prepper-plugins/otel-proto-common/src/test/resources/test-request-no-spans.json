@@ -68,7 +68,8 @@
           }
         ],
         "droppedAttributesCount": 0
-      }
+      },
+      "schemaUrl": "resourceSchemaUrl"
     }
   ]
 }

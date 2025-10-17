@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
@@ -102,6 +103,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
     private final ByteDecoder byteDecoder;
     private final long maxRetriesOnException;
     private final Map<Integer, Long> partitionToLastReceivedTimestampMillis;
+    private final CompressionOption compressionConfig;
     private final InputCodec inputCodec;
 
     public KafkaCustomConsumer(final KafkaConsumer consumer,
@@ -114,6 +116,7 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
                                final ByteDecoder byteDecoder,
                                final KafkaTopicConsumerMetrics topicMetrics,
                                final PauseConsumePredicate pauseConsumePredicate,
+                               final CompressionOption compressionConfig
                                final InputCodec inputCodec) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
@@ -143,6 +146,20 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
         this.numberOfAcksPending = new AtomicInteger(0);
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
         this.inputCodec = inputCodec;
+        this.compressionConfig = (compressionConfig == null) ? CompressionOption.NONE : compressionConfig;
+    }
+
+    public KafkaCustomConsumer(final KafkaConsumer consumer,
+                               final AtomicBoolean shutdownInProgress,
+                               final Buffer<Record<Event>> buffer,
+                               final KafkaConsumerConfig consumerConfig,
+                               final TopicConsumerConfig topicConfig,
+                               final String schemaType,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final ByteDecoder byteDecoder,
+                               final KafkaTopicConsumerMetrics topicMetrics,
+                               final PauseConsumePredicate pauseConsumePredicate) {
+        this(consumer, shutdownInProgress, buffer, consumerConfig, topicConfig, schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, CompressionOption.NONE);
     }
 
     KafkaTopicConsumerMetrics getTopicMetrics() {
@@ -544,15 +561,17 @@ public class KafkaCustomConsumer implements Runnable, ConsumerRebalanceListener 
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 if (schema == MessageFormat.BYTES) {
-                    InputStream inputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
+                    InputStream byteInputStream = new ByteArrayInputStream((byte[])consumerRecord.value());
+                    InputStream decompressedInputStream = compressionConfig.getDecompressionEngine().createInputStream(byteInputStream);
+
                     if(byteDecoder != null) {
                         final long receivedTimeStamp = getRecordTimeStamp(consumerRecord, Instant.now().toEpochMilli());
 
-                        byteDecoder.parse(inputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
+                        byteDecoder.parse(decompressedInputStream, Instant.ofEpochMilli(receivedTimeStamp), (record) -> {
                             processRecord(acknowledgementSet, record);
                         });
                     } else {
-                        JsonNode jsonNode = objectMapper.readValue(inputStream, JsonNode.class);
+                        JsonNode jsonNode = objectMapper.readValue(decompressedInputStream, JsonNode.class);
 
                         Event event = JacksonLog.builder().withData(jsonNode).build();
                         Record<Event> record = new Record<>(event);

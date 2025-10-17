@@ -17,6 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfluenceNextLinkValidatorTest {
 
     @Test
+    void testValidURL_with_multile_filter_values_in_cql() throws Exception {
+        String validUrl = "https://hostname/wiki/rest/api/content/search?next=true&cursor=_f_NTA%3D_sa_WzE3Mzk4MTM4MzIwMDAsIlx0NTAzOTcyOTMgciFcImAoQz47PVtPZSlHR2lDcEgqIGNwIl0%3D&expand=all,space,history.lastUpdated&limit=50&start=50&startAt=0&cql=lastModified%3E%221969-12-31%2016:00%22%20AND%20space%20in%20(%22SD%22)%20AND%20type%20in%20(%22page%22,%22blogpost%22,%22comment%22)%20order%20by%20lastModified";
+        String sanitized = ConfluenceNextLinkValidator.validateAndSanitizeURL(validUrl);
+        assertNotNull(sanitized);
+        assertTrue(sanitized.contains("next=true"));
+        assertTrue(sanitized.contains("limit=50"));
+        assertTrue(sanitized.contains("start=50"));
+        assertTrue(sanitized.contains("cql="));
+        assertTrue(sanitized.contains("cursor=_f_NTA%3D_sa_WzE3Mzk4MTM4MzIwMDAsIlx0NTAzOTcyOTMgciFcImAoQz47PVtPZSlHR2lDcEgqIGNwIl0"));
+        assertTrue(sanitized.contains("expand=all%2Cspace%2Chistory.lastUpdated"));
+        assertTrue(sanitized.contains("cql=lastModified%3E%221969-12-31+16%3A00%22+AND+space+in+%28%22SD%22%29+AND+type+in+%28%22page%22%2C%22blogpost%22%2C%22comment%22%29+order+by+lastModified"));
+
+    }
+
+    @Test
     void testValidURL() throws Exception {
         String validUrl = "http://hostname/rest/api/content/search?next=true&limit=25&start=25";
         String sanitized = ConfluenceNextLinkValidator.validateAndSanitizeURL(validUrl);

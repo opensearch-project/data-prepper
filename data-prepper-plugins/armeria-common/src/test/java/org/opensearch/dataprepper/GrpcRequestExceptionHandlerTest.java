@@ -85,11 +85,11 @@ public class GrpcRequestExceptionHandlerTest {
         final String exceptionMessage = UUID.randomUUID().toString();
         final BadRequestException badRequestExceptionWithMessage = new BadRequestException(exceptionMessage, new IOException());
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, badRequestExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INVALID_ARGUMENT, badRequestExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
         assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.INVALID_ARGUMENT.name()));
 
-        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, badRequestExceptionWithMessage, metadata);
+        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INVALID_ARGUMENT, badRequestExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 
@@ -102,11 +102,11 @@ public class GrpcRequestExceptionHandlerTest {
         final String exceptionMessage = UUID.randomUUID().toString();
         final BufferWriteException timeoutExceptionWithMessage = new BufferWriteException(exceptionMessage, new TimeoutException(exceptionMessage));
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, timeoutExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.DEADLINE_EXCEEDED, timeoutExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.RESOURCE_EXHAUSTED.name()));
 
-        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, timeoutExceptionWithMessage, metadata);
+        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.DEADLINE_EXCEEDED, timeoutExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 
@@ -123,7 +123,7 @@ public class GrpcRequestExceptionHandlerTest {
     public void testHandleArmeriaTimeoutException() {
         final RequestTimeoutException timeoutExceptionNoMessage = RequestTimeoutException.get();
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, timeoutExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.DEADLINE_EXCEEDED, timeoutExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(noMessageStatus.getDescription(), equalTo(ARMERIA_REQUEST_TIMEOUT_MESSAGE));
 
@@ -136,11 +136,11 @@ public class GrpcRequestExceptionHandlerTest {
         final String exceptionMessage = UUID.randomUUID().toString();
         final BufferWriteException sizeOverflowExceptionWithMessage = new BufferWriteException(exceptionMessage, new SizeOverflowException(exceptionMessage));
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, sizeOverflowExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INVALID_ARGUMENT, sizeOverflowExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.RESOURCE_EXHAUSTED.name()));
 
-        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, sizeOverflowExceptionWithMessage, metadata);
+        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INVALID_ARGUMENT, sizeOverflowExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 
@@ -153,11 +153,11 @@ public class GrpcRequestExceptionHandlerTest {
         final String exceptionMessage = UUID.randomUUID().toString();
         final RequestCancelledException requestCancelledExceptionWithMessage = new RequestCancelledException(exceptionMessage);
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, requestCancelledExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.CANCELLED, requestCancelledExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.CANCELLED));
         assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.CANCELLED.name()));
 
-        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, requestCancelledExceptionWithMessage, metadata);
+        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.CANCELLED, requestCancelledExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.CANCELLED));
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 
@@ -170,11 +170,11 @@ public class GrpcRequestExceptionHandlerTest {
         final String exceptionMessage = UUID.randomUUID().toString();
         final RuntimeException runtimeExceptionWithMessage = new RuntimeException(exceptionMessage);
 
-        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, runtimeExceptionNoMessage, metadata);
+        final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INTERNAL, runtimeExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.INTERNAL));
         assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.INTERNAL.name()));
 
-        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, runtimeExceptionWithMessage, metadata);
+        final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, Status.INTERNAL, runtimeExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.INTERNAL));
         assertThat(messageStatus.getDescription(), equalTo(exceptionMessage));
 

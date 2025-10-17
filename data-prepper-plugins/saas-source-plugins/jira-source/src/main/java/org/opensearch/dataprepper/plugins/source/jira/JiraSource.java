@@ -24,12 +24,14 @@ import org.opensearch.dataprepper.plugins.source.atlassian.AtlassianSourceConfig
 import org.opensearch.dataprepper.plugins.source.atlassian.rest.auth.AtlassianAuthConfig;
 import org.opensearch.dataprepper.plugins.source.jira.utils.JiraConfigHelper;
 import org.opensearch.dataprepper.plugins.source.source_crawler.CrawlerApplicationContextMarker;
-import org.opensearch.dataprepper.plugins.source.source_crawler.base.Crawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.CrawlerSourcePlugin;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.LeaderProgressState;
+import org.opensearch.dataprepper.plugins.source.source_crawler.base.PaginationCrawler;
 import org.opensearch.dataprepper.plugins.source.source_crawler.base.PluginExecutorServiceProvider;
+import org.opensearch.dataprepper.plugins.source.source_crawler.coordination.state.PaginationCrawlerLeaderProgressState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.time.Instant;
 import static org.opensearch.dataprepper.plugins.source.jira.utils.Constants.PLUGIN_NAME;
 
 
@@ -54,7 +56,7 @@ public class JiraSource extends CrawlerSourcePlugin {
                       final AtlassianAuthConfig jiraOauthConfig,
                       final PluginFactory pluginFactory,
                       final AcknowledgementSetManager acknowledgementSetManager,
-                      Crawler crawler,
+                      final PaginationCrawler crawler,
                       PluginExecutorServiceProvider executorServiceProvider) {
         super(PLUGIN_NAME, pluginMetrics, jiraSourceConfig, pluginFactory, acknowledgementSetManager, crawler, executorServiceProvider);
         log.info("Creating Jira Source Plugin");
@@ -68,6 +70,11 @@ public class JiraSource extends CrawlerSourcePlugin {
         JiraConfigHelper.validateConfig(jiraSourceConfig);
         jiraOauthConfig.initCredentials();
         super.start(buffer);
+    }
+
+    @Override
+    protected LeaderProgressState createLeaderProgressState() {
+        return new PaginationCrawlerLeaderProgressState(Instant.EPOCH);
     }
 
     @Override

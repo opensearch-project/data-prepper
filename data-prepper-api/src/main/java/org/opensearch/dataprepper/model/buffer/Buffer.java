@@ -6,7 +6,9 @@
 package org.opensearch.dataprepper.model.buffer;
 
 import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.plugin.PluginComponentType;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.pipeline.HeadlessPipeline;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -18,6 +20,7 @@ import java.util.concurrent.TimeoutException;
  * Buffer queues the records between TI components and acts as a layer between source and processor/sink. Buffer can
  * be in-memory, disk based or other a standalone implementation.
  */
+@PluginComponentType("buffer")
 public interface Buffer<T extends Record<?>> {
     /**
      * writes the record to the buffer
@@ -136,4 +139,14 @@ public interface Buffer<T extends Record<?>> {
      */
     default void shutdown() {
     }
+
+    /**
+     * Sets default failure pipeline of a source
+
+     * @param failurePipeline failure pipeline
+     * @since 2.12
+     */
+    default void setFailurePipeline(final HeadlessPipeline failurePipeline) {
+    }
+
 }

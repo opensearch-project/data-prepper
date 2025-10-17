@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -56,7 +57,6 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
 
     @JsonProperty("custom_metric_prefix")
     private String customMetricPrefix;
-
 
     public List<String> getBootstrapServers() {
         if (Objects.nonNull(bootstrapServers)) {
@@ -148,4 +148,5 @@ class KafkaBufferConfig implements KafkaProducerConfig, KafkaConsumerConfig {
     public Optional<String> getCustomMetricPrefix() {
         return Optional.ofNullable(customMetricPrefix);
     }
+
 }

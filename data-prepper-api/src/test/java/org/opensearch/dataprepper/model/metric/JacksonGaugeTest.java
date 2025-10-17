@@ -40,6 +40,7 @@ class JacksonGaugeTest {
             "key2", TEST_KEY2);
     protected static final Map<String, Object> TEST_SCOPE = ImmutableMap.of("name", UUID.randomUUID().toString(), "version", UUID.randomUUID().toString(), "attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
     protected static final Map<String, Object> TEST_RESOURCE = ImmutableMap.of("attributes", List.of(Map.of("key", UUID.randomUUID().toString(), "value", UUID.randomUUID().toString())));
+    protected static final Map<String, Object> TEST_METADATA = ImmutableMap.of("metadataKey1", UUID.randomUUID().toString(), "metadataKey2", UUID.randomUUID().toString(), "metadataKey3", UUID.randomUUID().toString());
     protected static final String TEST_SERVICE_NAME = "service";
     protected static final String TEST_NAME = "name";
     protected static final String TEST_DESCRIPTION = "description";
@@ -72,6 +73,7 @@ class JacksonGaugeTest {
                 .withUnit(TEST_UNIT_NAME)
                 .withScope(TEST_SCOPE)
                 .withResource(TEST_RESOURCE)
+                .withMetricMetadata(TEST_METADATA)
                 .withValue(TEST_VALUE)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withExemplars(TEST_EXEMPLARS)
@@ -158,6 +160,12 @@ class JacksonGaugeTest {
     public void testGetResource() {
         final Map<String, Object> resource = gauge.getResource();
         assertThat(resource, is(equalTo(TEST_RESOURCE)));
+    }
+
+    @Test
+    public void testGetMetricMetadata() {
+        final Map<String, Object> metadata = gauge.getMetricMetadata();
+        assertThat(metadata, is(equalTo(TEST_METADATA)));
     }
 
     @Test

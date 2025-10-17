@@ -9,14 +9,20 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.plugin.PluginComponentType;
+
 import java.util.Objects;
 
 class DefinedPlugin<T> {
     private final Class<? extends T> pluginClass;
+    private final Class<? extends T> pluginTypeClass;
     private final String pluginName;
 
-    public DefinedPlugin(final Class<? extends T> pluginClass, final String pluginName) {
+    public DefinedPlugin(final Class<? extends T> pluginClass,
+                         final Class<? extends T> pluginTypeClass,
+                         final String pluginName) {
         this.pluginClass = Objects.requireNonNull(pluginClass);
+        this.pluginTypeClass = Objects.requireNonNull(pluginTypeClass);
         this.pluginName = Objects.requireNonNull(pluginName);
     }
 
@@ -26,5 +32,13 @@ class DefinedPlugin<T> {
 
     public String getPluginName() {
         return pluginName;
+    }
+
+    public String getPluginTypeName() {
+        if(pluginTypeClass.isAnnotationPresent(PluginComponentType.class)) {
+            return pluginTypeClass.getAnnotation(PluginComponentType.class).value();
+        }
+
+        return null;
     }
 }

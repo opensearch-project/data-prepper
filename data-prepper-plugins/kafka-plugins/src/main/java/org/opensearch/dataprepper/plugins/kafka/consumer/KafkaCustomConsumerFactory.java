@@ -22,9 +22,10 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.ByteDecoder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.codec.ByteDecoder;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfig;
 import org.opensearch.dataprepper.plugins.kafka.common.KafkaDataConfigAdapter;
 import org.opensearch.dataprepper.plugins.kafka.common.PlaintextKafkaDataConfig;
@@ -32,6 +33,7 @@ import org.opensearch.dataprepper.plugins.kafka.common.aws.AwsContext;
 import org.opensearch.dataprepper.plugins.kafka.common.key.KeyFactory;
 import org.opensearch.dataprepper.plugins.kafka.common.serialization.SerializationFactory;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
@@ -39,6 +41,9 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfi
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaIsolationLevelConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.IsolationLevel;
+
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicConsumerMetrics;
@@ -77,10 +82,12 @@ public class KafkaCustomConsumerFactory {
                                                              final ByteDecoder byteDecoder,
                                                              final AtomicBoolean shutdownInProgress,
                                                              final boolean topicNameInMetrics,
-                                                             final CircuitBreaker circuitBreaker) {
+                                                             final CircuitBreaker circuitBreaker,
+                                                             final CompressionOption compressionConfig) {
         Properties authProperties = new Properties();
         KafkaSecurityConfigurer.setAuthProperties(authProperties, kafkaConsumerConfig, LOG);
         KafkaTopicConsumerMetrics topicMetrics = new KafkaTopicConsumerMetrics(topic.getName(), pluginMetrics, topicNameInMetrics);
+
         Properties consumerProperties = getConsumerProperties(kafkaConsumerConfig, topic, authProperties);
         MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
 
@@ -106,7 +113,7 @@ public class KafkaCustomConsumerFactory {
                 final KafkaConsumer kafkaConsumer = new KafkaConsumer<>(consumerProperties, keyDeserializer, valueDeserializer);
 
                 consumers.add(new KafkaCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, kafkaConsumerConfig, topic,
-                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, null));
+                    schemaType, acknowledgementSetManager, byteDecoder, topicMetrics, pauseConsumePredicate, compressionConfig, null));
 
             });
         } catch (Exception e) {
@@ -169,6 +176,12 @@ public class KafkaCustomConsumerFactory {
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
         properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int)topicConfig.getFetchMinBytes());
         properties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName());
+        if (topicConfig instanceof KafkaIsolationLevelConfig) {
+            IsolationLevel isolationLevel = ((KafkaIsolationLevelConfig) topicConfig).getIsolationLevel();
+            if (isolationLevel != null) {
+                properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.getType());
+            }
+        }
     }
 
     private void setSchemaRegistryProperties(final KafkaConsumerConfig kafkaConsumerConfig, final Properties properties, final TopicConfig topicConfig) {

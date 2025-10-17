@@ -2,6 +2,8 @@ plugins {
     id 'data-prepper.publish'
 }
 
+group = 'org.opensearch.dataprepper.core'
+
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugin-framework')

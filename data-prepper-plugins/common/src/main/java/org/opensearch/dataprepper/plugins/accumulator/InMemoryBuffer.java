@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -16,12 +17,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class InMemoryBuffer implements Buffer {
 
-    private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final ByteArrayOutputStream byteArrayOutputStream;
     private int eventCount;
     private final StopWatch watch;
 
     InMemoryBuffer() {
-        byteArrayOutputStream.reset();
+        byteArrayOutputStream = new ByteArrayOutputStream();
         eventCount = 0;
         watch = new StopWatch();
         watch.start();

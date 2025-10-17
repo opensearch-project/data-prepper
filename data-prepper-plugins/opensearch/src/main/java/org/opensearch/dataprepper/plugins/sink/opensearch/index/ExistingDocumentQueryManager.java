@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -43,13 +44,23 @@ public class ExistingDocumentQueryManager implements Runnable {
 
     static final String DOCUMENTS_CURRENTLY_BEING_QUERIED = "documentsBeingQueried";
 
+    static final String DUPLICATE_EVENTS_IN_QUERY_MANAGER = "duplicateEventsInQueryManager";
 
+    static final String QUERY_TIME = "queryDuplicatesTime";
+
+    static final String POTENTIAL_DUPLICATES = "potentialDuplicates";
 
     private final Counter eventsDroppedAndReleasedCounter;
 
     private final Counter eventsAddedForQuerying;
 
     private final Counter eventsReturnedForIndexing;
+
+    private final Counter duplicateEventsInQueryManager;
+
+    private final Counter potentialDuplicatesDeleted;
+
+    private final Timer queryTimePerLoop;
 
     private final AtomicInteger documentsCurrentlyBeingQueried = new AtomicInteger(0);
 
@@ -88,6 +99,9 @@ public class ExistingDocumentQueryManager implements Runnable {
         this.eventsDroppedAndReleasedCounter = pluginMetrics.counter(EVENTS_DROPPED_AND_RELEASED);
         this.eventsReturnedForIndexing = pluginMetrics.counter(EVENTS_RETURNED_FOR_INDEXING);
         this.documentsCurrentlyBeingQueriedGauge = pluginMetrics.gauge(DOCUMENTS_CURRENTLY_BEING_QUERIED, documentsCurrentlyBeingQueried, AtomicInteger::get);
+        this.duplicateEventsInQueryManager = pluginMetrics.counter(DUPLICATE_EVENTS_IN_QUERY_MANAGER);
+        this.queryTimePerLoop = pluginMetrics.timer(QUERY_TIME);
+        this.potentialDuplicatesDeleted = pluginMetrics.counter(POTENTIAL_DUPLICATES);
         this.lockReadyToIngest = new ReentrantLock();
         this.lockWaitingForQuery = new ReentrantLock();
     }
@@ -96,7 +110,7 @@ public class ExistingDocumentQueryManager implements Runnable {
     public void run() {
         while (!Thread.currentThread().isInterrupted() && !shouldStop) {
             try {
-                runQueryLoop();
+                queryTimePerLoop.record(this::runQueryLoop);
             } catch (final Exception e) {
                 LOG.error("Exception in primary loop responsible for querying for existing documents, retrying", e);
             } finally {
@@ -111,18 +125,19 @@ public class ExistingDocumentQueryManager implements Runnable {
 
     @VisibleForTesting
     void runQueryLoop() {
-        if (!bulkOperationsWaitingForQuery.isEmpty()) {
+        if (!bulkOperationsWaitingForQuery.isEmpty() && documentsCurrentlyBeingQueriedGauge.get() > 0) {
 
             // Query for existing documents
             final MsearchRequest msearchRequest = buildMultiSearchRequest();
             final MsearchResponse<ObjectNode> msearchResponse = queryForTermValues(msearchRequest);
-            lastQueryTime = Instant.now();
 
             // Drop and Release Existing Documents
             dropAndReleaseFoundEvents(msearchResponse);
 
             // Move non-existing documents past query_duration to bulkOperationsReadyForIndex
             moveBulkRequestsThatHaveReachedQueryDuration();
+
+            lastQueryTime = Instant.now();
         }
     }
 
@@ -134,12 +149,17 @@ public class ExistingDocumentQueryManager implements Runnable {
         lockWaitingForQuery.lock();
         final String termValue = bulkOperationWrapper.getTermValue();
         try {
-            bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(),
+            final QueryManagerBulkOperation queryManagerBulkOperation = bulkOperationsWaitingForQuery.computeIfAbsent(bulkOperationWrapper.getIndex(),
                     k -> new ConcurrentHashMap<>()).put(termValue, new QueryManagerBulkOperation(bulkOperationWrapper, Instant.now(), termValue));
+            // Only increment if this is a new document
+            if (queryManagerBulkOperation == null) {
+                documentsCurrentlyBeingQueriedGauge.incrementAndGet();
+            } else {
+                duplicateEventsInQueryManager.increment();
+            }
         } finally {
             lockWaitingForQuery.unlock();
         }
-        documentsCurrentlyBeingQueriedGauge.incrementAndGet();
         eventsAddedForQuerying.increment();
     }
 
@@ -168,18 +188,25 @@ public class ExistingDocumentQueryManager implements Runnable {
             for (final Map.Entry<String, Map<String, QueryManagerBulkOperation>> entry : bulkOperationsWaitingForQuery.entrySet()) {
                 final String index = entry.getKey();
                 final List<FieldValue> values = getTermValues(entry.getValue().values());
+                final int batchSize = 1000;
 
-                m.searches(s -> s
-                        .header(h -> h.index(index))
-                        .body(b -> b
-                                .source(source -> source.filter(f -> f.includes(queryTerm)))
-                                .query(Query.of(q -> q
-                                        .terms(TermsQuery.of(t -> t
-                                                .field(queryTerm)
-                                                .terms(TermsQueryField.of(tf -> tf.value(values)))
-                                        ))
-                                ))
-                        ));
+                LOG.info("Creating search requests for {} query term values in batches of {}", values.size(), batchSize);
+                for (int i = 0; i < values.size(); i += batchSize) {
+                    final List<FieldValue> chunk = values.subList(i, Math.min(i + batchSize, values.size()));
+
+                    m.searches(s -> s
+                            .header(h -> h.index(index))
+                            .body(b -> b
+                                    .size(chunk.size() * 2)
+                                    .source(source -> source.filter(f -> f.includes(queryTerm)))
+                                    .query(Query.of(q -> q
+                                            .terms(TermsQuery.of(t -> t
+                                                    .field(queryTerm)
+                                                    .terms(TermsQueryField.of(tf -> tf.value(chunk)))
+                                            ))
+                                    ))
+                            ));
+                }
             }
             return m;
         });
@@ -213,7 +240,7 @@ public class ExistingDocumentQueryManager implements Runnable {
             while (bulkOperationIterator.hasNext()) {
                 final Map.Entry<String, QueryManagerBulkOperation> entry = bulkOperationIterator.next();
                 final QueryManagerBulkOperation bulkOperation = entry.getValue();
-                if (bulkOperation.getStartTime().plus(indexConfiguration.getQueryDuration()).isBefore(lastQueryTime)) {
+                if (lastQueryTime != null && bulkOperation.getStartTime().plus(indexConfiguration.getQueryDuration()).isBefore(lastQueryTime)) {
                     lockReadyToIngest.lock();
                     try {
                         LOG.debug("Moving bulk operation for index {} and term value {} to be ingested after querying and finding no existing document",
@@ -233,7 +260,7 @@ public class ExistingDocumentQueryManager implements Runnable {
     private void dropAndReleaseFoundEvents(final MsearchResponse<ObjectNode> msearchResponse) {
         msearchResponse.responses().forEach(response -> {
             if (response.isFailure()) {
-                LOG.error("Search response failed: {}", response.failure().error().reason());
+                LOG.error("Search response failed, potential for duplicate documents: {}", response.failure().error().toString());
             } else {
                 response.result().hits().hits().forEach(hit -> {
                     final String indexForHit = hit.index();
@@ -245,11 +272,14 @@ public class ExistingDocumentQueryManager implements Runnable {
                         final Map<String, QueryManagerBulkOperation> bulkOperationsForIndex = bulkOperationsWaitingForQuery.get(indexForHit);
                         final QueryManagerBulkOperation bulkOperationToRelease = bulkOperationsForIndex.get(queryTermValue);
                         if (bulkOperationToRelease == null) {
-                            LOG.error("bulk operation for term value {} is null", queryTermValue);
+                            // Means two documents with the same query term value were found
+                            LOG.warn("Bulk operation for term value {} with id {} is null, potentially a duplicate document", queryTermValue, hit.id());
+                            potentialDuplicatesDeleted.increment();
                         } else {
                             LOG.debug("Found document with query term {}, dropping and releasing Event handle", queryTermValue);
                             bulkOperationToRelease.getBulkOperationWrapper().releaseEventHandle(true);
                             eventsDroppedAndReleasedCounter.increment();
+                            documentsCurrentlyBeingQueriedGauge.decrementAndGet();
                             bulkOperationsForIndex.remove(queryTermValue);
                         }
                     } finally {

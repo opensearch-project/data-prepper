@@ -45,6 +45,14 @@ List<LogTestConfiguration> logTestConfigurations = [
                 'data_prepper.yml'
         ),
         new LogTestConfiguration(
+                'basicLogEndToEndTestWithDatePatternedIndex',
+                'Runs the basic grok end-to-end test against an index with a date pattern.',
+                'org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineWithDatePatternedIndexEndToEnd*',
+                'data-prepper-basic-log-with-date-patterned-index',
+                'basic-grok-e2e-pipeline-date-pattern-index.yml',
+                'data_prepper.yml'
+        ),
+        new LogTestConfiguration(
                 'basicLogWithAwsSecretsEndToEndTest',
                 'Runs the basic grok with AWS secrets end-to-end test.',
                 'org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*',
@@ -100,7 +108,7 @@ logTestConfigurations.each { testConfiguration ->
     }
 
     tasks.register(testConfiguration.testName, Test) {
-        dependsOn build
+        dependsOn compileJava
         dependsOn startOpenSearchDockerContainer
         dependsOn "start${testConfiguration.testName}"
 
@@ -122,7 +130,6 @@ logTestConfigurations.each { testConfiguration ->
         finalizedBy "remove${testConfiguration.testName}"
         finalizedBy removeDataPrepperNetwork
     }
-
 }
 
 dependencies {

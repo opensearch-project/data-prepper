@@ -5,7 +5,7 @@
 
 plugins {
     id 'java'
-    id 'me.champeau.jmh' version '0.7.2'
+    id 'me.champeau.jmh' version '0.7.3'
 }
 
 dependencies {
@@ -14,14 +14,16 @@ dependencies {
     implementation project(':data-prepper-plugins:http-source-common')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:armeria-common')
+    implementation project(':data-prepper-plugins:http-common')
     implementation libs.armeria.core
     implementation libs.commons.io
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:apache-client'
-    testImplementation 'org.assertj:assertj-core:3.27.0'
+    testImplementation 'org.assertj:assertj-core:3.27.3'
     testImplementation project(':data-prepper-api').sourceSets.test.output
-    testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-test:test-common')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
 }
 
 jacocoTestCoverageVerification {

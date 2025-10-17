@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.rds.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
@@ -18,6 +19,7 @@ public class ExportConfig {
      * The ARN of the IAM role that will be passed to RDS for export.
      */
     @JsonProperty("iam_role_arn")
+    @JsonAlias("export_role_arn")
     @NotNull
     private String iamRoleArn;
 

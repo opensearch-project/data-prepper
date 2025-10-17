@@ -138,8 +138,23 @@ public class ParseJsonProcessorTest {
         when(processorConfig.getDepth()).thenReturn(1);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 	
-	Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key5", Map.of("key6", "value6")));
-	Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", "{\"key5\":{\"key6\":\"value6\"}}");
+        Map<String, Object> data = Map.of("key1", "value1", "key2", 1, "key3", Map.of("key5", Map.of("key6", "value6")));
+        Map<String, Object> expectedResult = Map.of("key1", "value1", "key2", 1, "key3", "{\"key5\":{\"key6\":\"value6\"}}");
+        final String serializedMessage = objectMapper.writeValueAsString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+        assertThatKeyEquals(parsedEvent, source, expectedResult);
+    }
+
+    @Test
+    void test_replace_invalid_key_characters() throws Exception {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);
+        when(processorConfig.getDepth()).thenReturn(0);
+        when(processorConfig.getNormalizeKeys()).thenReturn(true);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+        Map<String, Object> data = Map.of("key^2", 1, "key%5", Map.of("key&6", "value6"));
+        Map<String, Object> expectedResult = Map.of("key_2", 1, "key_5", Map.of("key_6", "value6"));
         final String serializedMessage = objectMapper.writeValueAsString(data);
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
         assertThatKeyEquals(parsedEvent, source, expectedResult);

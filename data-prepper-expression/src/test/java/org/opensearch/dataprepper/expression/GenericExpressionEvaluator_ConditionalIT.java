@@ -192,6 +192,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/should_drop", event("{\"should_drop\": true}"), true),
                 arguments("/should_drop", event("{\"should_drop\": false}"), false),
                 arguments("/logs/2/should_drop", event("{\"logs\": [{}, {}, {\"should_drop\": true}]}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/path/to/route\"}"), true),
+                arguments("/path == \"\"\"/path/to/route\"\"\"", event("{\"path\": \"/incorrect/path\"}"), false),
                 arguments(
                         escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
@@ -248,8 +250,10 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"name\": \"dataprepper-abc\"}"), false),
                 arguments("/name =~ \".*dataprepper-[0-9]+\"", event("{\"other\": \"dataprepper-abc\"}"), false),
                 arguments("startsWith(\""+strValue+ UUID.randomUUID() + "\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
-                arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false)
-                );
+                arguments("startsWith(\""+ UUID.randomUUID() +strValue+ "\",/status)", event("{\"status\":\""+strValue+"\"}"), false),
+                arguments("getEventType() == \"event\"",  longEvent, true),
+                arguments("getEventType() == \"LOG\"",  longEvent, false)
+        );
     }
 
     private static Stream<Arguments> invalidExpressionArguments() {
@@ -344,7 +348,10 @@ class GenericExpressionEvaluator_ConditionalIT {
                 arguments("getMetadata(10)", tagEvent),
                 arguments("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 arguments("getMetadata(\""+ testMetadataKey+")", tagEvent),
-                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
+                arguments("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                arguments("getEventType() == \"test_event", tagEvent),
+                arguments("getEventType() == test_event\"", tagEvent)
+                
         );
     }
 
