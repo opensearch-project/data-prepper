@@ -1,27 +1,60 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ */
+
 package org.opensearch.dataprepper.model.configuration;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
 import java.util.Random;
+import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
-public class DataPrepperVersionTest {
+@ExtendWith(MockitoExtension.class)
+class DataPrepperVersionTest {
+    @Mock
+    private ServiceLoader<VersionProvider> serviceLoader;
+    @Mock
+    private VersionProvider currentVersionProvider;
+
+    @AfterEach
+    void resetCurrentVersion() throws IllegalAccessException, NoSuchFieldException {
+        final Field instanceField = DataPrepperVersion.class.getDeclaredField("instance");
+        instanceField.setAccessible(true);
+        instanceField.set(null, null);
+        instanceField.setAccessible(false);
+    }
 
     @ParameterizedTest
     @MethodSource("validDataPrepperVersions")
-    public void testValidVersionsCanBeParsedSuccessfully(final String version, final int expectedMajorVersion, final Optional<Integer> expectedMinorVersion) {
+    void testValidVersionsCanBeParsedSuccessfully(final String version, final int expectedMajorVersion, final Optional<Integer> expectedMinorVersion) {
         final DataPrepperVersion result = DataPrepperVersion.parse(version);
         assertThat(result, notNullValue());
         assertThat(result.getMajorVersion(), is(equalTo(expectedMajorVersion)));
@@ -30,23 +63,28 @@ public class DataPrepperVersionTest {
 
     private static Stream<Arguments> validDataPrepperVersions() {
         return Stream.of(
-            Arguments.of("1", 1, Optional.empty()),
-            Arguments.of("1.0", 1, Optional.of(0)),
-            Arguments.of("123423.0", 123423, Optional.of(0)),
-            Arguments.of("2.325", 2, Optional.of(325)),
-            Arguments.of("3.14", 3, Optional.of(14))
+            arguments("1", 1, Optional.empty()),
+            arguments("1.0", 1, Optional.of(0)),
+            arguments("123423.0", 123423, Optional.of(0)),
+            arguments("2.325", 2, Optional.of(325)),
+            arguments("3.14", 3, Optional.of(14)),
+            arguments("3.14.0", 3, Optional.of(14)),
+            arguments("3.14.1", 3, Optional.of(14)),
+            arguments("3.14.1-SNAPSHOT", 3, Optional.of(14)),
+            arguments("11-SNAPSHOT", 11, Optional.empty())
         );
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"*", "1.*", ".0", "alpha", "4.text", "foo.645", "\\a323"})
-    public void testInvalidVersionsCannotBeParsed(final String version) {
+    @ValueSource(strings = {"*", "1.*", ".0", "alpha", "4.text", "foo.645",
+            "\\a323", "1.1.1.1", "1.1.1-RELEASE", "1.1-RELEASE", "1-test"})
+    void testInvalidVersionsCannotBeParsed(final String version) {
         assertThrows(IllegalArgumentException.class, () -> DataPrepperVersion.parse(version));
     }
 
     @ParameterizedTest
     @MethodSource("compatibleDataPrepperVersions")
-    public void testCompatibleWith_equalVersions(final String versionA, final String versionB) {
+    void testCompatibleWith_equalVersions(final String versionA, final String versionB) {
         final DataPrepperVersion resultA = DataPrepperVersion.parse(versionA);
         final DataPrepperVersion resultB = DataPrepperVersion.parse(versionB);
         assertThat(resultA, notNullValue());
@@ -71,7 +109,7 @@ public class DataPrepperVersionTest {
 
     @ParameterizedTest
     @MethodSource("nonCompatibleDataPrepperVersions")
-    public void testCompatibleWith_lessThanVersions(final String versionA, final String versionB) {
+    void testCompatibleWith_lessThanVersions(final String versionA, final String versionB) {
         final DataPrepperVersion resultA = DataPrepperVersion.parse(versionA);
         final DataPrepperVersion resultB = DataPrepperVersion.parse(versionB);
         assertThat(resultA, notNullValue());
@@ -91,7 +129,7 @@ public class DataPrepperVersionTest {
     }
 
     @Test
-    public void testEquals_withEqualShorthandVersions() {
+    void testEquals_withEqualShorthandVersions() {
         final String randVersion = RandomStringUtils.randomNumeric(4);
         final DataPrepperVersion resultA = DataPrepperVersion.parse(randVersion);
         final DataPrepperVersion resultB = DataPrepperVersion.parse(randVersion);
@@ -99,7 +137,7 @@ public class DataPrepperVersionTest {
     }
 
     @Test
-    public void testEquals_withEqualVersions() {
+    void testEquals_withEqualVersions() {
         final Random random = new Random();
         final int randMajorVersion = random.nextInt(100000);
         final int randMinorVersion = random.nextInt(100000);
@@ -110,7 +148,7 @@ public class DataPrepperVersionTest {
     }
 
     @Test
-    public void testEquals_withNonEquivalentShorthandVersions() {
+    void testEquals_withNonEquivalentShorthandVersions() {
         final String randVersionA = RandomStringUtils.randomNumeric(4);
         final String randVersionB = RandomStringUtils.randomNumeric(2);
         final DataPrepperVersion resultA = DataPrepperVersion.parse(randVersionA);
@@ -119,7 +157,7 @@ public class DataPrepperVersionTest {
     }
 
     @Test
-    public void testEquals_withRandomNonEquivalentVersions() {
+    void testEquals_withRandomNonEquivalentVersions() {
         final Random random = new Random();
         final int randMajorVersionA = random.nextInt(50000);
         int randMajorVersionB = random.nextInt(50000);
@@ -137,7 +175,7 @@ public class DataPrepperVersionTest {
 
     @ParameterizedTest
     @MethodSource("nonCompatibleDataPrepperVersions")
-    public void testEquals_withNonEquivalentVersions(final String versionA, final String versionB) {
+    void testEquals_withNonEquivalentVersions(final String versionA, final String versionB) {
         final DataPrepperVersion resultA = DataPrepperVersion.parse(versionA);
         final DataPrepperVersion resultB = DataPrepperVersion.parse(versionB);
         assertThat(resultA, notNullValue());
@@ -146,41 +184,71 @@ public class DataPrepperVersionTest {
     }
 
     @Test
-    public void testEquals_withDifferentObject() {
-        final DataPrepperVersion currentVersion = DataPrepperVersion.getCurrentVersion();
-        assertThat(currentVersion.equals("foo"), is(false));
+    void testEquals_withDifferentObject() {
+        final DataPrepperVersion currentVersion = DataPrepperVersion.parse("1.2");
+        assertThat(currentVersion.equals("1.2"), is(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2.11", "2.13", "3.0", "3.1"})
+    void getCurrentVersion_returns_value_from_VersionProvider(final String versionString) {
+        final DataPrepperVersion currentVersion;
+        when(serviceLoader.findFirst()).thenReturn(Optional.of(currentVersionProvider));
+        when(currentVersionProvider.getVersionString()).thenReturn(versionString);
+        try (final MockedStatic<ServiceLoader> serviceLoaderStatic = mockStatic(ServiceLoader.class)) {
+            serviceLoaderStatic.when(() -> ServiceLoader.load(VersionProvider.class))
+                    .thenReturn(serviceLoader);
+
+            currentVersion = DataPrepperVersion.getCurrentVersion();
+        }
+
+        assertThat(currentVersion, is(notNullValue()));
+        assertThat(currentVersion, is(equalTo(DataPrepperVersion.parse(versionString))));
     }
 
     @Test
-    public void testGetCurrentVersionIsNotNull() {
-        final DataPrepperVersion currentVersion = DataPrepperVersion.getCurrentVersion();
-        assertThat(currentVersion, notNullValue());
+    void getCurrentVersion_called_multiple_times_returns_same_instance() {
+        final DataPrepperVersion currentVersion;
+        when(serviceLoader.findFirst()).thenReturn(Optional.of(currentVersionProvider));
+        when(currentVersionProvider.getVersionString()).thenReturn("2.11");
+        try (final MockedStatic<ServiceLoader> serviceLoaderStatic = mockStatic(ServiceLoader.class)) {
+            serviceLoaderStatic.when(() -> ServiceLoader.load(VersionProvider.class))
+                    .thenReturn(serviceLoader);
+
+            currentVersion = DataPrepperVersion.getCurrentVersion();
+        }
+
+        assertThat(currentVersion, is(notNullValue()));
+        assertThat(DataPrepperVersion.getCurrentVersion(), is(sameInstance(currentVersion)));
+        assertThat(DataPrepperVersion.getCurrentVersion(), is(sameInstance(currentVersion)));
     }
 
     @Test
-    public void testGetCurrentVersionAreAlwaysEqual() {
-        final DataPrepperVersion currentVersion = DataPrepperVersion.getCurrentVersion();
-        assertThat(currentVersion, notNullValue());
-        final DataPrepperVersion currentVersion2 = DataPrepperVersion.getCurrentVersion();
-        assertThat(currentVersion2, notNullValue());
-        assertThat(currentVersion, is(equalTo(currentVersion2)));
+    void getCurrentVersion_throws_if_no_VersionProvider() {
+        when(serviceLoader.findFirst()).thenReturn(Optional.empty());
+        try (final MockedStatic<ServiceLoader> serviceLoaderStatic = mockStatic(ServiceLoader.class)) {
+            serviceLoaderStatic.when(() -> ServiceLoader.load(VersionProvider.class))
+                    .thenReturn(serviceLoader);
+
+            assertThrows(RuntimeException.class, DataPrepperVersion::getCurrentVersion);
+        }
     }
 
     @Test
-    public void testToString_shorthandVersion() {
+    void testToString_shorthandVersion() {
         final DataPrepperVersion result = DataPrepperVersion.parse("2");
         assertThat(result.toString(), is(equalTo("2")));
     }
 
     @Test
-    public void testToString_fullVersion() {
+    void testToString_fullVersion() {
         final DataPrepperVersion result = DataPrepperVersion.parse("7.0");
         assertThat(result.toString(), is(equalTo("7.0")));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"1", "2.0", "3.14", "105435"})
-    public void testHashCode_areEqualForSameVersion(final String version) {
+    void testHashCode_areEqualForSameVersion(final String version) {
 
         final DataPrepperVersion dpVersionA = DataPrepperVersion.parse(version);
         final int hashCodeA = dpVersionA.hashCode();

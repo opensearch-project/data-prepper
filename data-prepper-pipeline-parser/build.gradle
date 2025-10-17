@@ -30,6 +30,7 @@ dependencies {
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
     implementation 'software.amazon.awssdk:arns'
     testImplementation 'org.assertj:assertj-core:3.20.2'
+    testImplementation project(':data-prepper-test:test-data-prepper-version')
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 }
