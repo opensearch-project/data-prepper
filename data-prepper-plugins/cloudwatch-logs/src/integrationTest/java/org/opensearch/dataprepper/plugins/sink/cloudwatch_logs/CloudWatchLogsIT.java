@@ -60,6 +60,7 @@ import static org.mockito.Mockito.lenient;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -540,6 +541,36 @@ public class CloudWatchLogsIT {
         assertThat(dlqSuccessCount.get(), equalTo(NUM_RECORDS));
         verify(eventHandle, times(NUM_RECORDS)).release(true);
 
+    }
+
+    @Test
+    public void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
+        long startTime = Instant.now().toEpochMilli();
+        when(thresholdConfig.getBatchSize()).thenReturn(1);
+        when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
+        when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
+        AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+
+        sink = createObjectUnderTest();
+        Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
+        sink.doOutput(records);
+
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    long endTime = Instant.now().toEpochMilli();
+                    GetLogEventsRequest getRequest = GetLogEventsRequest
+                                       .builder()
+                                       .logGroupName(logGroupName)
+                                       .logStreamName(logStreamName)
+                                       .startTime(startTime)
+                                       .endTime(endTime)
+                                       .build();
+                    GetLogEventsResponse response = cloudWatchLogsClient.getLogEvents(getRequest);
+                    List<OutputLogEvent> events = response.events();
+                    assertThat(events.size(), equalTo(NUM_RECORDS));
+        }));
+        assertThat(eventsSuccessCount.get(), equalTo(0));
     }
 
     private Collection<Record<Event>> getRecordList(int numberOfRecords) {

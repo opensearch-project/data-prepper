@@ -71,6 +71,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
@@ -170,7 +171,7 @@ public class SqsSinkIT {
         requestsFailedCounter = mock(Counter.class);
         dlqSuccessCounter = mock(Counter.class);
         summary = mock(DistributionSummary.class);
-        doNothing().when(summary).record(any(Double.class));
+        lenient().doNothing().when(summary).record(any(Double.class));
         lenient().doAnswer((a)-> {
             int v = (int)(double)(a.getArgument(0));
             eventsSuccessCount.addAndGet(v);
@@ -258,7 +259,7 @@ public class SqsSinkIT {
         when(sqsSinkConfig.getDlq()).thenReturn(null);
 
         thresholdConfig = mock(SqsThresholdConfig.class);
-        when(sqsSinkConfig.getMaxRetries()).thenReturn(3);
+        lenient().when(sqsSinkConfig.getMaxRetries()).thenReturn(3);
         when(thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
         when(thresholdConfig.getMaxMessageSizeBytes()).thenReturn(250*1024L);
         when(sqsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
@@ -670,6 +671,28 @@ public class SqsSinkIT {
         assertThat(eventsSuccessCount.get(), equalTo(numRecords - numLargeMessages));
         assertThat(dlqSuccessCount.get(), equalTo(numLargeMessages));
         verify(eventHandle, times(numRecords)).release(true);
+    }
+
+    @Test
+    public void testToVerifyLackOfCredentialsResultInFailure() throws Exception {
+        AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
+        when(thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
+        sink = createObjectUnderTest();
+        int numRecords = 2;
+        Collection<Record<Event>> records = getRecordList(numRecords, false);
+        sink.doOutput(records);
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(60))
+                .untilAsserted(() -> {
+                    final Map<String, Object> expectedMap = new HashMap<>();
+                    for (int i = 0; i < numRecords; i++) {
+                        expectedMap.put("Person"+i, Integer.toString(i));
+                    }
+                    List<Message> msgs = getMessages(queueUrl);
+                    messages.addAll(msgs);
+                    assertThat(messages.size(), equalTo(numRecords));
+        }));
+        assertThat(eventsSuccessCount.get(), equalTo(0));
     }
 
 
