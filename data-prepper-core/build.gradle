@@ -7,8 +7,13 @@ plugins {
     id 'data-prepper.publish'
 }
 
+def generatedSourcesDir = "${project.buildDir}/generated/sources/version/java"
+
 sourceSets {
     main {
+        java {
+            srcDirs += generatedSourcesDir
+        }
         resources {
             srcDirs += "../shared-config"
         }
@@ -79,6 +84,29 @@ sourceSets {
 configurations {
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntime.extendsFrom testRuntime
+}
+
+task generateVersionProvider {
+    inputs.property('version', version)
+    inputs.file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
+    outputs.dir(generatedSourcesDir)
+
+    doLast {
+        def outputDir = file("$generatedSourcesDir/org/opensearch/dataprepper/core")
+        outputDir.mkdirs()
+
+        def templateFile = file('src/main/java/org/opensearch/dataprepper/core/CoreVersionProvider.java.template')
+        def versionProviderFile = file("$outputDir/CoreVersionProvider.java")
+        versionProviderFile.text = templateFile.text.replace('${version}', version)
+    }
+}
+
+compileJava.dependsOn generateVersionProvider
+sourcesJar.dependsOn generateVersionProvider
+spotlessJava.mustRunAfter generateVersionProvider
+
+test {
+    systemProperty 'project.version', version
 }
 
 task integrationTest(type: Test) {
