@@ -295,7 +295,13 @@ public class ShardConsumer implements Runnable {
 
                 AcknowledgementSet acknowledgementSet = null;
                 if (shardAcknowledgementManager != null) {
-                    acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    try {
+                        acknowledgementSet = shardAcknowledgementManager.createAcknowledgmentSet(streamPartition, sequenceNumber, shardIterator == null);
+                    } catch (final ShardNotTrackedException e) {
+                        LOG.warn(e.getMessage());
+                        break;
+                    }
+
                     if (shardIterator == null) {
                         createdFinalAcknowledgmentSetForShard = true;
                     }

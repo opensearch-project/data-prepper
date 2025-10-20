@@ -343,8 +343,6 @@ class ShardAcknowledgementManagerTest {
         shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
         assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
 
-        verify(streamProgressState).setSequenceNumber("seq2");
-        verify(sourceCoordinator).giveUpPartition(streamPartition);
         verify(secondStreamProgressState).setSequenceNumber("seq124");
         verify(sourceCoordinator).saveProgressStateForPartition(secondPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
     }
@@ -404,7 +402,6 @@ class ShardAcknowledgementManagerTest {
         assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
         shardAcknowledgementManager.runMonitorAcknowledgmentLoop(stopWorkerConsumer);
 
-        verify(streamProgressState).setSequenceNumber("seq2");
         verify(secondStreamProgressState).setSequenceNumber("seq123");
         callback2_2.accept(true);
 
@@ -416,9 +413,7 @@ class ShardAcknowledgementManagerTest {
 
         assertThat(shardAcknowledgementManager.isStillTrackingShard(secondPartition), equalTo(true));
 
-        verify(sourceCoordinator).giveUpPartition(streamPartition);
         verify(sourceCoordinator, times(3)).saveProgressStateForPartition(secondPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
-        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
-
+        verify(sourceCoordinator, times(1)).saveProgressStateForPartition(streamPartition, dynamoDBSourceConfig.getShardAcknowledgmentTimeout());
     }
 }
