@@ -30,15 +30,12 @@ jobs:
 
       - name: configure aws credentials
         id: creds
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.TEST_IAM_ROLE_ARN }}
           aws-region: ${{ secrets.TEST_REGION }}
           output-credentials: true
 
-      - name: get caller identity 1
-        run: |
-          aws sts get-caller-identity
       - name: Configure AWS Credentials file
         run: |
           aws configure set default.region ${{ secrets.TEST_REGION }}
