@@ -549,6 +549,7 @@ public class CloudWatchLogsIT {
         when(thresholdConfig.getBatchSize()).thenReturn(1);
         when(thresholdConfig.getMaxEventSizeBytes()).thenReturn(1000L);
         when(thresholdConfig.getMaxRequestSizeBytes()).thenReturn(1000L);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
 
@@ -556,7 +557,7 @@ public class CloudWatchLogsIT {
         Collection<Record<Event>> records = getRecordList(NUM_RECORDS);
         sink.doOutput(records);
 
-        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(30))
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(2))
                 .untilAsserted(() -> {
                     long endTime = Instant.now().toEpochMilli();
                     GetLogEventsRequest getRequest = GetLogEventsRequest

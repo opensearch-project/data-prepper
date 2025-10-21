@@ -677,11 +677,12 @@ public class SqsSinkIT {
         AwsCredentialsProvider provider = mock(AwsCredentialsProvider.class);
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(provider);
         when(thresholdConfig.getMaxEventsPerMessage()).thenReturn(1);
+        lenient().when(thresholdConfig.getFlushInterval()).thenReturn(1L);
         sink = createObjectUnderTest();
         int numRecords = 2;
         Collection<Record<Event>> records = getRecordList(numRecords, false);
         sink.doOutput(records);
-        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(60))
+        assertThrows( org.awaitility.core.ConditionTimeoutException.class, () ->  await().atMost(Duration.ofSeconds(2))
                 .untilAsserted(() -> {
                     final Map<String, Object> expectedMap = new HashMap<>();
                     for (int i = 0; i < numRecords; i++) {
