@@ -51,7 +51,7 @@ import java.util.Optional;
 
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
 
-public class DynamoDbClientWrapper {
+class DynamoDbClientWrapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientWrapper.class);
     private static final int DEFAULT_QUERY_LIMIT = 1000;
@@ -65,14 +65,14 @@ public class DynamoDbClientWrapper {
     private final DynamoDbClient dynamoDbClient;
     private DynamoDbTable<DynamoDbSourcePartitionItem> table;
 
-
-    private DynamoDbClientWrapper(final String region, final String stsRoleArn, final String stsExternalId) {
-        this.dynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, stsExternalId);
-        this.dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
+    private DynamoDbClientWrapper(final DynamoDbClient dynamoDbClient, final DynamoDbEnhancedClient dynamoDbEnhancedClient) {
+        this.dynamoDbClient = dynamoDbClient;
+        this.dynamoDbEnhancedClient = dynamoDbEnhancedClient;
     }
 
-    public static DynamoDbClientWrapper create(final String region, final String stsRoleArn, final String stsExternalId) {
-        return new DynamoDbClientWrapper(region, stsRoleArn, stsExternalId);
+    static DynamoDbClientWrapper create(final DynamoDbClient dynamoDbClient) {
+        final DynamoDbEnhancedClient dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
+        return new DynamoDbClientWrapper(dynamoDbClient, dynamoDbEnhancedClient);
     }
 
     public void initializeTable(final DynamoStoreSettings dynamoStoreSettings,
@@ -94,7 +94,7 @@ public class DynamoDbClientWrapper {
             }
         }
 
-        try (final DynamoDbWaiter dynamoDbWaiter = DynamoDbWaiter.create()) {
+        try (final DynamoDbWaiter dynamoDbWaiter = DynamoDbWaiter.builder().client(dynamoDbClient).build()) {
             final DescribeTableRequest describeTableRequest = DescribeTableRequest.builder().tableName(dynamoStoreSettings.getTableName()).build();
             final ResponseOrException<DescribeTableResponse> response = dynamoDbWaiter
                     .waitUntilTableExists(describeTableRequest)
