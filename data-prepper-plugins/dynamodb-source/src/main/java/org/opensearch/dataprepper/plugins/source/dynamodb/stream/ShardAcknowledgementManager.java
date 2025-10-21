@@ -75,23 +75,20 @@ public class ShardAcknowledgementManager {
                                        final DynamoDBSourceConfig dynamoDBSourceConfig,
                                        final Consumer<StreamPartition> stopWorkerConsumer
     ) {
-        this.acknowledgementSetManager = acknowledgementSetManager;
-        this.sourceCoordinator = sourceCoordinator;
-        this.dynamoDBSourceConfig = dynamoDBSourceConfig;
-        this.executorService = Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
-        this.partitionsToRemove = Collections.synchronizedList(new ArrayList<>());
-        this.partitionsToGiveUp = Collections.synchronizedList(new ArrayList<>());
-        this.lastCheckpointTime = Instant.now();
-        this.lock = new ReentrantLock();
-        
-        executorService.submit(() -> monitorAcknowledgments(stopWorkerConsumer));
+        this(acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig,
+                createExecutorService(), stopWorkerConsumer);
+    }
+
+    private static ExecutorService createExecutorService() {
+        return Executors.newSingleThreadExecutor(BackgroundThreadFactory.defaultExecutorThreadFactory("dynamodb-shard-ack-monitor"));
     }
 
     @VisibleForTesting
     ShardAcknowledgementManager(final AcknowledgementSetManager acknowledgementSetManager,
                                 final EnhancedSourceCoordinator sourceCoordinator,
                                 final DynamoDBSourceConfig dynamoDBSourceConfig,
-                                final ExecutorService executorService) {
+                                final ExecutorService executorService,
+                                final Consumer<StreamPartition> stopWorkerConsumer) {
         this.executorService = executorService;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sourceCoordinator = sourceCoordinator;
@@ -100,6 +97,7 @@ public class ShardAcknowledgementManager {
         this.partitionsToGiveUp = Collections.synchronizedList(new ArrayList<>());
         this.lastCheckpointTime = Instant.now();
         this.lock = new ReentrantLock();
+        executorService.submit(() -> monitorAcknowledgments(stopWorkerConsumer));
     }
 
     void monitorAcknowledgments(final Consumer<StreamPartition> stopWorkerConsumer) {

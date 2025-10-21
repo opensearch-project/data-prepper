@@ -87,7 +87,7 @@ class ShardAcknowledgementManagerTest {
 
     private ShardAcknowledgementManager createObjectUnderTest() {
             return new ShardAcknowledgementManager(
-                    acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig, executorService);
+                    acknowledgementSetManager, sourceCoordinator, dynamoDBSourceConfig, executorService, mock(Consumer.class));
     }
 
     @Test
